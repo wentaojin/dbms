@@ -1,0 +1,43 @@
+task-name = ""
+task-rule-name = ""
+
+[struct-migrate-param]
+case-field-rule = ""
+migrate-thread = 10
+task-queue-size = 1024
+direct-write = true
+output-dir = ""
+
+[struct-migrate-rule]
+[[struct-migrate-rule.task-struct-rules]]
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
+[[struct-migrate-rule.schema-struct-rules]]
+source-schema = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
+[[struct-migrate-rule.table-struct-rules]]
+source-schema = ""
+source-table = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
+[[struct-migrate-rule.column-struct-rules]]
+source-schema = ""
+source-table = ""
+source-column = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
+[[struct-migrate-rule.table-attrs-rules]]
+source-schema = ""
+source-tables = []
+table-attrs-t = ""
+
+

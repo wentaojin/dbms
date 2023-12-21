@@ -1,0 +1,691 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Swagger DBMS
+  description: A sample API that uses a dbms as an example to demonstrate features in the OpenAPI 3.0 specification
+  contact:
+    name: Swagger API Team
+    email: apiteam@swagger.io
+    url: https://swagger.io
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: http://{host}:{port}{basePath}
+    description: The server url
+    variables:
+      host:
+        default: '127.0.0.1'
+      port:
+        default: '2379'
+      basePath:
+        default: '/api/v1/'
+
+paths:
+  /database:
+    put:
+      tags:
+        - database
+      description: Put database connection information
+      operationId: APIPutDatabase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Database'
+      responses:
+        '200':
+          description: database create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    get:
+      tags:
+        - database
+      description: List database connect information
+      operationId: APIListDatabase
+      responses:
+        '200':
+          description: page array of database list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - database
+      description: Delete database connection information
+      operationId: APIDeleteDatabase
+      responses:
+        '204':
+          description: Delete a database connection information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+  /datasource:
+    put:
+      tags:
+        - datasource
+      description: Put datasource connection information
+      operationId: APIPutDatasource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Datasource'
+      responses:
+        '200':
+          description: datasource create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - datasource
+      description: List datasource connect information
+      operationId: APIListDatasource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of datasource list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - datasource
+      description: Delete datasource connection information
+      operationId: APIDeleteDatasource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: datasource delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+  /rule:
+    put:
+      tags:
+        - rule
+      description: Put task migrate rule information
+      operationId: APIPutTaskMigrateRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskMigrateRule'
+      responses:
+        '200':
+          description: task migrate rule create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - rule
+      description: List task migrate rule connect information
+      operationId: APIListTaskMigrateRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of datasource list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - rule
+      description: Delete task migrate rule connection information
+      operationId: APIDeleteTaskMigrateRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+  /task/structMigrateTask:
+    put:
+      tags:
+        - structMigrateTask
+      description: Put struct migrate task information
+      operationId: APIPutStructMigrateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StructMigrateTask'
+      responses:
+        '200':
+          description: struct migrate task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - rule
+      description: List struct migrate task connect information
+      operationId: APIListStructMigrateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of struct migrate task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - rule
+      description: Delete struct migrate rule connection information
+      operationId: APIDeleteStructMigrateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+  /task:
+    put:
+      tags:
+        - task
+      description: Put task operate
+      operationId: APIPutTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '200':
+          description: task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - task
+      description: Kill task operate
+      operationId: APIKillTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '201':
+          description: kill task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - task
+      description: Delete task
+      operationId: APIDeleteTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+components:
+  schemas:
+    Database:
+      type: object
+      properties:
+        host:
+          type: string
+          format: string
+        port:
+          type: integer
+          format: uint64
+        username:
+          type: string
+          format: string
+        password:
+          type: string
+          format: string
+        schema:
+          type: string
+          format: string
+        slowThreshold:
+          type: integer
+          format: uint64
+
+    Datasource:
+      type: object
+      properties:
+        datasourceName:
+          type: string
+          format: string
+        dbType:
+          type: string
+          format: string
+        username:
+          type: string
+          format: string
+        password:
+          type: string
+          format: string
+        hostIP:
+          type: string
+          format: string
+        hostPort:
+          type: integer
+          format: uint64
+        connectParams:
+          type: string
+          format: string
+        connectCharset:
+          type: string
+          format: string
+        connectStatus:
+          type: string
+          format: string
+        serviceName:
+          type: string
+          format: string
+        pdbName:
+          type: string
+          format: string
+        tableOption:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+
+    TaskMigrateRule:
+      type: object
+      properties:
+        taskRuleName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        migrateSchemaRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/MigrateSchemaRule'
+    MigrateSchemaRule:
+      type: object
+      properties:
+        sourceSchema:
+          type: string
+          format: string
+        targetSchema:
+          type: string
+          format: string
+        sourceIncludeTable:
+          type: array
+          items:
+            type: string
+            format: string
+        sourceExcludeTable:
+          type: array
+          items:
+            type: string
+            format: string
+        sourceTableRoutes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceTableRoute'
+    SourceTableRoute:
+      type: object
+      properties:
+        sourceTable:
+          type: string
+          format: string
+        targetTable:
+          type: string
+          format: string
+        sourceColumnRoutes:
+          type: object
+          additionalProperties:
+            type: string
+            format: string
+
+    StructMigrateTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        taskRuleName:
+          type: string
+          format: string
+        subTaskNums:
+          type: integer
+          format: uint64
+        structMigrateParam:
+          $ref: '#/components/schemas/StructMigrateParam'
+        structMigrateRule:
+          $ref: '#/components/schemas/StructMigrateRule'
+    StructMigrateParam:
+      type: object
+      properties:
+        lowerCaseFieldName:
+          type: string
+          format: string
+        migrateThread:
+          type: integer
+          format: uint64
+        directWrite:
+          type: boolean
+        outputDir:
+          type: string
+          format: string
+    StructMigrateRule:
+      type: object
+      properties:
+        taskStructRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskStructRule'
+        schemaStructRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaStructRule'
+        tableStructRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableStructRule'
+        columnStructRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnStructRule'
+        tableAttrsRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableAttrsRule'
+    TaskStructRule:
+      type: object
+      properties:
+        columnTypeS:
+          type: string
+          format: string
+        columnTypeT:
+          type: string
+          format: string
+        defaultValueS:
+          type: string
+          format: string
+        defaultValueT:
+          type: string
+          format: string
+    SchemaStructRule:
+      type: object
+      properties:
+        sourceSchema:
+          type: string
+          format: string
+        columnTypeS:
+          type: string
+          format: string
+        columnTypeT:
+          type: string
+          format: string
+        defaultValueS:
+          type: string
+          format: string
+        defaultValueT:
+          type: string
+          format: string
+    TableStructRule:
+      type: object
+      properties:
+        sourceSchema:
+          type: string
+          format: string
+        sourceTable:
+          type: string
+          format: string
+        columnTypeS:
+          type: string
+          format: string
+        columnTypeT:
+          type: string
+          format: string
+        defaultValueS:
+          type: string
+          format: string
+        defaultValueT:
+          type: string
+          format: string
+    ColumnStructRule:
+      type: object
+      properties:
+        sourceSchema:
+          type: string
+          format: string
+        sourceTable:
+          type: string
+          format: string
+        sourceColumn:
+          type: string
+          format: string
+        columnTypeS:
+          type: string
+          format: string
+        columnTypeT:
+          type: string
+          format: string
+        defaultValueS:
+          type: string
+          format: string
+        defaultValueT:
+          type: string
+          format: string
+    TableAttrsRule:
+      type: object
+      properties:
+        sourceSchema:
+          type: string
+          format: string
+        sourceTables:
+          type: array
+          items:
+            type: string
+            format: string
+        tableAttrsT:
+          type: string
+          format: string
+    Task:
+      type: object
+      properties:
+        operate:
+          type: string
+          format: string
+        taskName:
+          type: string
+          format: string
+        express:
+          type: string
+          format: string
+    RequestPostParam:
+      type: object
+      properties:
+        param:
+          type: string
+          format: string
+        page:
+          type: integer
+          format: uint64
+        pageSize:
+          type: integer
+          format: uint64
+    RequestDeleteParam:
+      type: array
+      items:
+        type: string
+        format: string
+    Response:
+      type: object
+      required:
+        - code
+        - data
+        - error
+      properties:
+        code:
+          type: integer
+          format: uint64
+        data:
+          type: string
+          format: string
+        error:
+          type: string
+          format: string

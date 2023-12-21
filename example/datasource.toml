@@ -1,0 +1,11 @@
+[[datasource]]
+datasource-name = "ora00"
+db-type = "oracle"
+username = ""
+password = ""
+host = ""
+port = 1521
+connect-charset = "al32utf8"
+connect-params = ""
+service-name = "orclpdb1"
+#pdb-name = ""

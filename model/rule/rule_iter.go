@@ -1,0 +1,70 @@
+/*
+Copyright © 2020 Marvin
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package rule
+
+import "context"
+
+type IMigrateTaskRule interface {
+	CreateMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error)
+	UpdateMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error)
+	GetMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error)
+	ListMigrateTaskRule(ctx context.Context, page uint64, pageSize uint64) ([]*MigrateTaskRule, error)
+	DeleteMigrateTaskRule(ctx context.Context, taskRuleName []string) error
+	IsContainedMigrateTaskRuleRecord(ctx context.Context, rule *MigrateTaskRule) (bool, error)
+	FindMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) ([]*MigrateTaskRule, error)
+}
+
+type ISchemaRouteRule interface {
+	CreateSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error)
+	UpdateSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error)
+	GetSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error)
+	ListSchemaRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*SchemaRouteRule, error)
+	DeleteSchemaRouteRule(ctx context.Context, taskRuleName []string) error
+	IsContainedSchemaRouteRuleRecord(ctx context.Context, rule *SchemaRouteRule) (bool, error)
+	FindSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) ([]*SchemaRouteRule, error)
+}
+
+type IMigrateTaskTable interface {
+	CreateMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) (*MigrateTaskTable, error)
+	UpdateMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) (*MigrateTaskTable, error)
+	GetMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) (*MigrateTaskTable, error)
+	ListMigrateTaskTable(ctx context.Context, page uint64, pageSize uint64) ([]*MigrateTaskTable, error)
+	DeleteMigrateTaskTable(ctx context.Context, taskRuleName []string) error
+	IsContainedMigrateTaskTableRecord(ctx context.Context, rule *MigrateTaskTable) (bool, error)
+	FindMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) ([]*MigrateTaskTable, error)
+}
+
+type ITableRouteRule interface {
+	CreateTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
+	CreateInBatchTableRouteRule(ctx context.Context, rule []*TableRouteRule, batchSize int) ([]*TableRouteRule, error)
+	UpdateTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
+	GetTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
+	ListTableRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*TableRouteRule, error)
+	DeleteTableRouteRule(ctx context.Context, taskRuleName []string) error
+	IsContainedTableRouteRuleRecord(ctx context.Context, rule *TableRouteRule) (bool, error)
+	FindTableRouteRule(ctx context.Context, rule *TableRouteRule) ([]*TableRouteRule, error)
+}
+
+type IColumnRouteRule interface {
+	CreateColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
+	CreateInBatchColumnRouteRule(ctx context.Context, rule []*ColumnRouteRule, batchSize int) ([]*ColumnRouteRule, error)
+	UpdateColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
+	GetColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
+	ListColumnRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*ColumnRouteRule, error)
+	DeleteColumnRouteRule(ctx context.Context, taskRuleName []string) error
+	IsContainedColumnRouteRuleRecord(ctx context.Context, rule *ColumnRouteRule) (bool, error)
+	FindColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) ([]*ColumnRouteRule, error)
+}

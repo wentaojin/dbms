@@ -1,0 +1,8 @@
+[database]
+host = "10.2.14.60"
+port = 5000
+username = "root"
+password = ""
+schema = "marvin"
+# slow threshold
+slow-threshold = 100

@@ -1,0 +1,306 @@
+// 版本声明，使用Protocol Buffers v3版本
+syntax = "proto3";
+// 默认包名
+package proto;
+// 编译生成的 .pb.go 文件存放地址
+option go_package = "proto/pb";
+
+import "google/api/annotations.proto";
+
+// 定义服务
+service Master {
+  rpc UpsertDatabase(UpsertDatabaseRequest) returns (UpsertDatabaseResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/database"
+      body: "*"
+    };
+  }
+  rpc DeleteDatabase(DeleteDatabaseRequest) returns (DeleteDatabaseResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/database"
+      body: "*"
+    };
+  }
+  rpc ShowDatabase(ShowDatabaseRequest) returns (ShowDatabaseResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/database"
+      body: "*"
+    };
+  }
+  rpc UpsertDatasource(UpsertDatasourceRequest) returns (UpsertDatasourceResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/datasource"
+      body: "*"
+    };
+  }
+  rpc DeleteDatasource(DeleteDatasourceRequest) returns (DeleteDatasourceResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/datasource"
+      body: "*"
+    };
+  }
+  rpc ShowDatasource(ShowDatasourceRequest) returns (ShowDatasourceResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/datasource"
+      body: "*"
+    };
+  }
+  rpc UpsertTaskMigrateRule(UpsertMigrateTaskRuleRequest) returns (UpsertMigrateTaskRuleResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/taskMigrateRule"
+      body: "*"
+    };
+  }
+  rpc DeleteTaskMigrateRule(DeleteMigrateTaskRuleRequest) returns (DeleteMigrateTaskRuleResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/taskMigrateRule"
+      body: "*"
+    };
+  }
+  rpc ShowTaskMigrateRule(ShowMigrateTaskRuleRequest) returns (ShowMigrateTaskRuleResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/taskMigrateRule"
+      body: "*"
+    };
+  }
+  rpc UpsertStructMigrateTask(UpsertStructMigrateTaskRequest) returns (UpsertStructMigrateTaskResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/structMigrateTask"
+      body: "*"
+    };
+  }
+  rpc DeleteStructMigrateTask(DeleteStructMigrateTaskRequest) returns (DeleteStructMigrateTaskResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/structMigrateTask"
+      body: "*"
+    };
+  }
+  rpc ShowStructMigrateTask(ShowStructMigrateTaskRequest) returns (ShowStructMigrateTaskResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/structMigrateTask"
+      body: "*"
+    };
+  }
+  rpc OperateTask (OperateTaskRequest) returns (OperateTaskResponse) {
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/task"
+      body: "*"
+    };
+  }
+}
+
+/*
+ 消息结构体
+ */
+message UpsertDatabaseRequest{
+  Database database = 1;
+}
+message UpsertDatabaseResponse{
+  Response response = 1;
+}
+
+message DeleteDatabaseRequest{}
+message DeleteDatabaseResponse{
+  Response response = 1;
+}
+
+message ShowDatabaseRequest{}
+message ShowDatabaseResponse{
+  Response response = 1;
+}
+
+message UpsertDatasourceRequest{
+  Datasource datasource = 1;
+}
+message UpsertDatasourceResponse{
+  Response response = 1;
+}
+
+message DeleteDatasourceRequest{
+  repeated string datasourceName = 2;
+}
+message DeleteDatasourceResponse{
+  Response response = 1;
+}
+
+message ShowDatasourceRequest{
+  string datasourceName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowDatasourceResponse{
+  Response response = 1;
+}
+
+message UpsertMigrateTaskRuleRequest{
+  MigrateTaskRule migrateTaskRule = 1;
+}
+message UpsertMigrateTaskRuleResponse{
+  Response response = 1;
+}
+
+message DeleteMigrateTaskRuleRequest{
+ repeated string taskRuleName = 1;
+}
+message DeleteMigrateTaskRuleResponse{
+  Response response = 1;
+}
+
+message ShowMigrateTaskRuleRequest{
+  string taskRuleName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowMigrateTaskRuleResponse{
+  Response response = 1;
+}
+
+message UpsertStructMigrateTaskRequest{
+  string taskName = 1;
+  string taskRuleName = 2;
+  StructMigrateParam structMigrateParam = 3;
+  StructMigrateRule structMigrateRule = 4;
+}
+message UpsertStructMigrateTaskResponse{
+  Response response = 1;
+}
+
+message DeleteStructMigrateTaskRequest{
+  repeated string taskName = 1;
+}
+message DeleteStructMigrateTaskResponse{
+  Response response = 1;
+}
+
+message ShowStructMigrateTaskRequest{
+  string taskName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowStructMigrateTaskResponse{
+  Response response = 1;
+}
+
+message OperateTaskRequest {
+  string operate = 1;
+  string taskName = 2;
+  string express = 3;
+}
+message OperateTaskResponse {
+ Response response = 1;
+}
+
+/*
+  通用结构体
+ */
+message Response {
+  bool result = 1;
+  string message = 2;
+}
+
+message Database {
+  string username = 1;
+  string password = 2;
+  string host = 3;
+  uint64 port = 4;
+  string schema = 5;
+  uint64 slowThreshold = 6;
+}
+
+message Datasource {
+  string datasourceName = 1;
+  string dbType = 2;
+  string username = 3;
+  string password = 4;
+  string host = 5;
+  uint64 port = 6;
+  string connectCharset = 7;
+  string connectParams = 8;
+  string connectStatus = 9;
+
+  string serviceName = 10;
+  string pdbName = 11;
+  string comment = 12;
+}
+
+message MigrateTaskRule {
+  string taskRuleName = 1;
+  string datasourceNameS = 2;
+  string datasourceNameT = 3;
+  string comment = 4;
+
+  repeated SchemaRouteRule schemaRouteRules = 5;
+}
+
+message SchemaRouteRule{
+  string sourceSchema = 1;
+  string targetSchema = 2;
+
+  repeated string sourceIncludeTable = 3;
+  repeated string sourceExcludeTable = 4;
+
+  repeated TableRouteRule tableRouteRules = 5;
+}
+
+message TableRouteRule {
+  string sourceTable = 1;
+  string targetTable = 2;
+  map<string,string> columnRouteRules = 3;
+}
+
+message StructMigrateParam {
+  string caseFieldRule = 1;
+  uint64 migrateThread = 2;
+  uint64 taskQueueSize = 3;
+  bool directWrite = 4;
+  string outputDir = 5;
+}
+
+message StructMigrateRule {
+  repeated TaskStructRule taskStructRules = 1;
+  repeated SchemaStructRule schemaStructRules = 2;
+  repeated TableStructRule tableStructRules = 3;
+  repeated ColumnStructRule columnStructRules = 4;
+  repeated TableAttrsRule tableAttrsRules = 5;
+}
+
+message TaskStructRule {
+  string columnTypeS = 1;
+  string columnTypeT = 2;
+  string TableAttrOption = 3;
+  string DefaultValueS = 4;
+  string DefaultValueT = 5;
+}
+
+message SchemaStructRule {
+  string sourceSchema = 1;
+  string columnTypeS = 2;
+  string columnTypeT = 3;
+  string defaultValueS = 4;
+  string defaultValueT = 5;
+}
+
+message TableStructRule {
+  string sourceSchema = 1;
+  string sourceTable = 2;
+  string columnTypeS = 3;
+  string columnTypeT = 4;
+  string defaultValueS = 5;
+  string defaultValueT = 6;
+}
+
+message ColumnStructRule {
+  string sourceSchema = 1;
+  string sourceTable = 2;
+  string sourceColumn = 3;
+  string columnTypeS = 4;
+  string columnTypeT = 5;
+  string defaultValueS = 6;
+  string defaultValueT = 7;
+}
+
+message TableAttrsRule {
+  string sourceSchema = 1;
+  repeated string sourceTables = 2;
+  string tableAttrsT = 3;
+}
