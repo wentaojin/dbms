@@ -17,6 +17,10 @@ package master
 
 import (
 	"context"
+	"errors"
+	"strings"
+
+	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/proto/pb"
 
@@ -35,9 +39,13 @@ func (s *Server) upsertDatabase(ctx context.Context, req openapi.APIPutDatabaseJ
 		},
 	})
 	if err != nil {
-		return kvResp.String(), err
+		return "", err
 	}
-	return kvResp.String(), nil
+
+	if strings.EqualFold(kvResp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return kvResp.Response.Message, nil
+	}
+	return "", errors.New(kvResp.Response.Message)
 }
 
 func (s *Server) listDatabase(ctx context.Context) (string, error) {
@@ -45,7 +53,10 @@ func (s *Server) listDatabase(ctx context.Context) (string, error) {
 	if err != nil {
 		return kvResp.String(), err
 	}
-	return kvResp.String(), nil
+	if strings.EqualFold(kvResp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return kvResp.Response.Message, nil
+	}
+	return "", errors.New(kvResp.Response.Message)
 }
 
 func (s *Server) deleteDatabase(ctx context.Context) (string, error) {
@@ -53,29 +64,41 @@ func (s *Server) deleteDatabase(ctx context.Context) (string, error) {
 	if err != nil {
 		return kvResp.String(), err
 	}
-	return kvResp.String(), nil
+	if strings.EqualFold(kvResp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return kvResp.Response.Message, nil
+	}
+	return "", errors.New(kvResp.Response.Message)
 }
 
 func (s *Server) upsertDatasource(ctx context.Context, req openapi.APIPutDatasourceJSONRequestBody) (string, error) {
+	var pds []*pb.Datasource
+
+	for _, r := range *req.Datasource {
+		ds := &pb.Datasource{
+			DatasourceName: *r.DatasourceName,
+			DbType:         *r.DbType,
+			Username:       *r.Username,
+			Password:       *r.Password,
+			Host:           *r.Host,
+			Port:           *r.Port,
+			ConnectCharset: *r.ConnectCharset,
+			ConnectParams:  *r.ConnectParams,
+			ServiceName:    *r.ServiceName,
+			PdbName:        *r.PdbName,
+			Comment:        *r.Comment,
+			ConnectStatus:  *r.ConnectStatus,
+		}
+		pds = append(pds, ds)
+	}
 	resp, err := s.UpsertDatasource(ctx, &pb.UpsertDatasourceRequest{
-		Datasource: &pb.Datasource{
-			DatasourceName: *req.DatasourceName,
-			DbType:         *req.DbType,
-			Username:       *req.Username,
-			Password:       *req.Password,
-			Host:           *req.HostIP,
-			Port:           *req.HostPort,
-			ConnectCharset: *req.ConnectCharset,
-			ConnectParams:  *req.ConnectParams,
-			ServiceName:    *req.ServiceName,
-			PdbName:        *req.PdbName,
-			Comment:        *req.Comment,
-			ConnectStatus:  *req.ConnectStatus,
-		}})
+		Datasource: pds})
 	if err != nil {
 		return resp.String(), err
 	}
-	return resp.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) deleteDatasource(ctx context.Context, req openapi.APIDeleteDatasourceJSONRequestBody) (string, error) {
@@ -84,19 +107,24 @@ func (s *Server) deleteDatasource(ctx context.Context, req openapi.APIDeleteData
 	if err != nil {
 		return resp.String(), err
 	}
-	return resp.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) listDatasource(ctx context.Context, req openapi.APIListDatasourceJSONRequestBody) (string, error) {
-	dataS, err := s.ShowDatasource(ctx, &pb.ShowDatasourceRequest{
+	resp, err := s.ShowDatasource(ctx, &pb.ShowDatasourceRequest{
 		DatasourceName: *req.Param,
 		Page:           *req.Page,
 		PageSize:       *req.PageSize})
 	if err != nil {
 		return "", err
 	}
-
-	return dataS.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) upsertTaskMigrateRule(ctx context.Context, req openapi.APIPutTaskMigrateRuleJSONRequestBody) (string, error) {
@@ -130,9 +158,12 @@ func (s *Server) upsertTaskMigrateRule(ctx context.Context, req openapi.APIPutTa
 			SchemaRouteRules: migrateSchemaRs,
 		}})
 	if err != nil {
-		return resp.String(), err
+		return "", err
 	}
-	return resp.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) deleteTaskMigrateRule(ctx context.Context, req openapi.APIDeleteTaskMigrateRuleJSONRequestBody) (string, error) {
@@ -140,7 +171,10 @@ func (s *Server) deleteTaskMigrateRule(ctx context.Context, req openapi.APIDelet
 	if err != nil {
 		return resp.String(), err
 	}
-	return resp.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) listTaskMigrateRule(ctx context.Context, req openapi.APIListTaskMigrateRuleJSONRequestBody) (string, error) {
@@ -152,7 +186,10 @@ func (s *Server) listTaskMigrateRule(ctx context.Context, req openapi.APIListTas
 	if err != nil {
 		return resp.String(), err
 	}
-	return resp.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPutStructMigrateTaskJSONRequestBody) (string, error) {
@@ -227,17 +264,23 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 		},
 	})
 	if err != nil {
-		return resp.String(), err
+		return "", err
 	}
-	return resp.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) deleteStructMigrateTask(ctx context.Context, req openapi.APIDeleteStructMigrateTaskJSONRequestBody) (string, error) {
 	resp, err := s.DeleteStructMigrateTask(ctx, &pb.DeleteStructMigrateTaskRequest{TaskName: req})
 	if err != nil {
-		return resp.String(), err
+		return "", err
 	}
-	return resp.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) listStructMigrateTask(ctx context.Context, req openapi.APIListStructMigrateTaskJSONRequestBody) (string, error) {
@@ -247,43 +290,55 @@ func (s *Server) listStructMigrateTask(ctx context.Context, req openapi.APIListS
 		PageSize: *req.PageSize,
 	})
 	if err != nil {
-		return resp.String(), err
+		return "", err
 	}
-	return resp.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) upsertTask(ctx context.Context, req openapi.APIPutTaskJSONRequestBody) (string, error) {
-	task, err := s.OperateTask(ctx, &pb.OperateTaskRequest{
+	resp, err := s.OperateTask(ctx, &pb.OperateTaskRequest{
 		Operate:  *req.Operate,
 		TaskName: *req.TaskName,
 		Express:  *req.Express,
 	})
 	if err != nil {
-		return task.String(), err
+		return "", err
 	}
-	return task.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) deleteTask(ctx context.Context, req openapi.APIDeleteTaskJSONRequestBody) (string, error) {
-	task, err := s.OperateTask(ctx, &pb.OperateTaskRequest{
+	resp, err := s.OperateTask(ctx, &pb.OperateTaskRequest{
 		Operate:  *req.Operate,
 		TaskName: *req.TaskName,
 		Express:  *req.Express,
 	})
 	if err != nil {
-		return task.String(), err
+		return "", err
 	}
-	return task.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }
 
 func (s *Server) killTask(ctx context.Context, req openapi.APIKillTaskJSONRequestBody) (string, error) {
-	task, err := s.OperateTask(ctx, &pb.OperateTaskRequest{
+	resp, err := s.OperateTask(ctx, &pb.OperateTaskRequest{
 		Operate:  *req.Operate,
 		TaskName: *req.TaskName,
 		Express:  *req.Express,
 	})
 	if err != nil {
-		return task.String(), err
+		return "", err
 	}
-	return task.String(), nil
+	if strings.EqualFold(resp.Response.Result, constant.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
 }

@@ -17,9 +17,11 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/wentaojin/dbms/model/buildin"
 
@@ -37,8 +39,10 @@ import (
 
 	"github.com/wentaojin/dbms/logger"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/datasource"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -76,9 +80,9 @@ type Database struct {
 	SlowThreshold uint64 `toml:"slowThreshold" json:"slowThreshold"`
 }
 
-// CreateDatabase create database
-func CreateDatabase(cfg *Database, logLevel string) error {
-	dsn := buildMysqlDSN(cfg.Username, cfg.Password, cfg.Host, cfg.Port, "")
+// CreateDatabaseConnection create database connection
+func CreateDatabaseConnection(cfg *Database, logLevel string) error {
+	dsn := buildMysqlDSN(cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Schema)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		PrepareStmt:                              true,
@@ -92,35 +96,42 @@ func CreateDatabase(cfg *Database, logLevel string) error {
 		return fmt.Errorf("database open failed, database error: [%v]", err)
 	}
 
-	sqlDB, err := db.DB()
-	if err != nil {
-		return fmt.Errorf("database get DB failed, database error: [%v]", err)
-	}
-
-	createSchema := fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s`, cfg.Schema)
-	_, err = sqlDB.Exec(createSchema)
-	if err != nil {
-		return fmt.Errorf("database sql [%v] exec failed, database error: [%v]", createSchema, err)
-	}
-
-	useSchema := fmt.Sprintf("USE %s", cfg.Schema)
-	_, err = sqlDB.Exec(useSchema)
-	if err != nil {
-		return fmt.Errorf("database sql [%v] use failed, database error: [%v]", useSchema, err)
-	}
-
 	DefaultDB = &database{
 		base: db,
 	}
 
 	DefaultDB.initReaderWriters()
 
-	logger.Info("database table", zap.String("database", cfg.Schema), zap.String("migrate table", "start"))
+	startTime := time.Now()
+	logger.Info("database table migrate starting", zap.String("database", cfg.Schema), zap.String("startTime", startTime.String()))
 	err = DefaultDB.migrateTables()
 	if err != nil {
 		return fmt.Errorf("database [%s] migrate tables failed, database error: [%v]", cfg.Schema, err)
 	}
-	logger.Info("database table", zap.String("database", cfg.Schema), zap.String("migrate table", "success"))
+
+	endTime := time.Now()
+	logger.Info("database table migrate end", zap.String("database", cfg.Schema), zap.String("endTime", endTime.String()), zap.String("cost", time.Now().Sub(startTime).String()))
+	return nil
+}
+
+func CreateDatabaseSchema(cfg *Database) error {
+	dsn := buildMysqlDSN(cfg.Username, cfg.Password, cfg.Host, cfg.Port, "")
+
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return fmt.Errorf("error on open mysql database connection: %v", err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return fmt.Errorf("database ping failed, database error: [%v]", err)
+	}
+
+	createSchema := fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s`, cfg.Schema)
+	_, err = db.Exec(createSchema)
+	if err != nil {
+		return fmt.Errorf("database sql [%v] exec failed, database error: [%v]", createSchema, err)
+	}
 	return nil
 }
 
@@ -153,11 +164,8 @@ func (p *database) initReaderWriters() {
 
 func (p *database) migrateStream(models ...interface{}) (err error) {
 	for _, m := range models {
-		if !p.base.Migrator().HasTable(&m) {
-			err = p.base.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARACTER SET UTF8MB4 COLLATE UTF8MB4_GENERAL_CI").AutoMigrate(m)
-			if err != nil {
-				return err
-			}
+		if err = p.base.Set("gorm:table_options", " ENGINE=InnoDB DEFAULT CHARACTER SET UTF8MB4 COLLATE UTF8MB4_GENERAL_CI").AutoMigrate(m); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -167,7 +175,7 @@ func (p *database) migrateTables() (err error) {
 	return p.migrateStream(
 		new(datasource.Datasource),
 		new(rule.MigrateTaskRule),
-		new(rule.MigrateTaskRule),
+		new(rule.MigrateTaskTable),
 		new(rule.SchemaRouteRule),
 		new(rule.TableRouteRule),
 		new(rule.ColumnRouteRule),

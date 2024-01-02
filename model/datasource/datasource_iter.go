@@ -18,7 +18,7 @@ package datasource
 import "context"
 
 type IDatasource interface {
-	CreateDatasource(ctx context.Context, datasource *Datasource) (*Datasource, error)
+	CreateDatasource(ctx context.Context, datasource []*Datasource) ([]*Datasource, error)
 	UpdateDatasource(ctx context.Context, datasource *Datasource) (*Datasource, error)
 	ListDatasource(ctx context.Context, page uint64, pageSize uint64) ([]*Datasource, error)
 	GetDatasource(ctx context.Context, datasourceName string) (*Datasource, error)

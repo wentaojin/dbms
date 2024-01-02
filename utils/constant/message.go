@@ -23,10 +23,6 @@ const (
 )
 
 const (
-	ResponseResultStatusSuccess = true
-	ResponseResultStatusFailed  = false
-
-	ResponseResultMessageSuccess = "success"
-
-	ResponseResultMessageInvalidCode = "Invalid Operate Code"
+	ResponseResultStatusSuccess = "success"
+	ResponseResultStatusFailed  = "failed"
 )

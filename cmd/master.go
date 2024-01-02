@@ -38,7 +38,7 @@ func main() {
 
 	logger.NewRootLogger(cfg.LogConfig)
 
-	version.RecordAppVersion("dbms", cfg.String())
+	version.RecordAppVersion("dbms-master", cfg.String())
 
 	ctx, cancel := context.WithCancel(context.Background())
 

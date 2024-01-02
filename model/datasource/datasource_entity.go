@@ -25,8 +25,8 @@ type Datasource struct {
 	DbType         string `gorm:"not null;type:varchar(10);uniqueIndex:uniq_datasource_complex;comment:type of datasource, eg.Oracle/Mysql/Tidb" json:"dbType"`
 	Username       string `gorm:"type:varchar(100);uniqueIndex:uniq_datasource_complex;comment:username" json:"username"`
 	Password       string `gorm:"type:varchar(100);comment:user password" json:"password"`
-	HostIP         string `gorm:"type:varchar(15);uniqueIndex:uniq_datasource_complex;comment:host ip" json:"hostIP"`
-	HostPort       uint64 `gorm:"uniqueIndex:uniq_datasource_complex;comment:host port" json:"hostPort"`
+	Host           string `gorm:"type:varchar(15);uniqueIndex:uniq_datasource_complex;comment:host ip" json:"host"`
+	Port           uint64 `gorm:"uniqueIndex:uniq_datasource_complex;comment:host port" json:"port"`
 	ConnectParams  string `gorm:"type:varchar(150);comment:connect params" json:"connectParams"`
 	ConnectCharset string `gorm:"type:varchar(60);comment:datasource connect charset" json:"connectCharset"`
 	ConnectStatus  string `gorm:"type:varchar(1);comment:connection status, eg.Y/N" json:"connectStatus"`

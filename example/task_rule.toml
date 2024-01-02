@@ -1,36 +1,20 @@
-task-rule-name = ""
-datasource-name-s = ""
-datasource-name-t = ""
-comment = 4
+task-rule-name = "oracle33totidb145_rule"
+datasource-name-s = "oracle33"
+datasource-name-t = "tidb145"
+comment = "测试数据源"
 
 [[schema-route-rules]]
-source-schema = "marvin00"
-target-schema = "steven00"
+source-schema = "findpt"
+target-schema = "steven"
 
-source-include-table = ["marvin00","marvin01"]
+source-include-table = []
 source-exclude-table = []
 
 [[schema-route-rules.table-route-rules]]
 source-table = "marvin00"
 target-table = "steven00"
-column-route-rules = {"m_col00" = "s_col01", "m_col100" = "s_col200"}
+column-route-rules = {"name" = "s_name00"}
 [[schema-route-rules.table-route-rules]]
 source-table = "marvin01"
-target-table = "steven01"
-column-route-rules = {"m_col00" = "s_col01", "m_col100" = "s_col200"}
-
-[[schema-route-rules]]
-source-schema = "marvin01"
-target-schema = "steven01"
-
-source-include-table = ["marvin00","marvin01"]
-source-exclude-table = []
-
-[[schema-route-rules.table-route-rules]]
-source-table = "marvin00"
-target-table = "steven00"
-column-route-rules = {"m_col00" = "s_col01", "m_col100" = "s_col200"}
-[[migrate-schema-rule.table-route-rules]]
-source-table = "marvin01"
-target-table = "steven01"
-column-route-rules = {"m_col00" = "s_col01", "m_col100" = "s_col200"}
+target-table = "steven02"
+column-route-rules = {"i01" = "s_i01", "i02" = "s_i02"}

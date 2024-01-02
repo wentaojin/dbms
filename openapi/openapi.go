@@ -17,7 +17,6 @@ package openapi
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 )
@@ -50,7 +49,6 @@ func Request(method, url string, body []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// 设置 Content-Type，根据实际情况进行修改
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
@@ -59,14 +57,9 @@ func Request(method, url string, body []byte) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	responseBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP request failed with status code: %d", resp.StatusCode)
-	}
-
-	return responseBody, nil
+	return respBody, nil
 }

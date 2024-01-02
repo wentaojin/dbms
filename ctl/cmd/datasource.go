@@ -160,11 +160,10 @@ func (a *AppDatasourceGet) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	resp, err := datasource.Get(a.Server, a.name)
+	err := datasource.Get(a.Server, a.name)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(resp)
 	return nil
 }

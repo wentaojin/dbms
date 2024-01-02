@@ -15,7 +15,7 @@ servers:
     description: The server url
     variables:
       host:
-        default: '127.0.0.1'
+        default: '192.168.233.41'
       port:
         default: '2379'
       basePath:
@@ -94,7 +94,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Datasource'
+              $ref: '#/components/schemas/NewDatasource'
       responses:
         '200':
           description: datasource create success response
@@ -398,7 +398,13 @@ components:
         slowThreshold:
           type: integer
           format: uint64
-
+    NewDatasource:
+      type: object
+      properties:
+        datasource:
+          type: array
+          items:
+            $ref: '#/components/schemas/Datasource'
     Datasource:
       type: object
       properties:
@@ -414,10 +420,10 @@ components:
         password:
           type: string
           format: string
-        hostIP:
+        host:
           type: string
           format: string
-        hostPort:
+        port:
           type: integer
           format: uint64
         connectParams:
@@ -435,13 +441,9 @@ components:
         pdbName:
           type: string
           format: string
-        tableOption:
-          type: string
-          format: string
         comment:
           type: string
           format: string
-
     TaskMigrateRule:
       type: object
       properties:

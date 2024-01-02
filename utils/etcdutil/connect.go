@@ -49,34 +49,34 @@ func NewServiceConnect(etcdCli *clientv3.Client, logLevel string, dbConnReady *a
 }
 
 func (c *Connect) Connect(prefixKey string) error {
-	for !c.dbConnReady.Load() {
-		// according to the configuring prefix key, and get key information from etcd
-		keyResp, err := GetKey(c.etcdClient, prefixKey, clientv3.WithPrefix())
+	// according to the configuring prefix key, and get key information from etcd
+	keyResp, err := GetKey(c.etcdClient, prefixKey, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		// open database conn
+		var dbCfg *model.Database
+		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+		if err != nil {
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", string(keyResp.Kvs[0].Value), err)
+		}
+
+		err = model.CreateDatabaseConnection(dbCfg, c.logLevel)
 		if err != nil {
 			return err
 		}
 
-		switch {
-		case len(keyResp.Kvs) > 1:
-			return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
-		case len(keyResp.Kvs) == 1:
-			// open database conn
-			var dbCfg *model.Database
-			err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
-			if err != nil {
-				return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", string(keyResp.Kvs[0].Value), err)
-			}
+		// before database connect success, api request disable service
+		c.dbConnReady.Store(true)
 
-			err = model.CreateDatabase(dbCfg, c.logLevel)
-			if err != nil {
-				return err
-			}
-
-			// before database connect success, api request disable service
-			c.dbConnReady.Store(true)
-
-			logger.Info("database open connect", zap.String("dbconn", dbCfg.String()))
-		}
+		logger.Info("database open init connect", zap.String("dbconn", dbCfg.String()))
+	default:
+		logger.Warn("database conn info is not exist, watch starting", zap.String("key prefix", prefixKey))
 	}
 	return nil
 }
@@ -86,7 +86,11 @@ func (c *Connect) Connect(prefixKey string) error {
 
 // Watch used for watch database key change
 func (c *Connect) Watch(prefixKey string) error {
-	logger.Info("database conn watch starting", zap.String("key prefix", prefixKey))
+	err := c.Connect(prefixKey)
+	if err != nil {
+		return err
+	}
+
 	watchCh := WatchKey(c.etcdClient, prefixKey, clientv3.WithPrefix())
 	for {
 		select {
@@ -106,22 +110,28 @@ func (c *Connect) Watch(prefixKey string) error {
 					case mvccpb.PUT:
 						for i := 1; i <= constant.DefaultInstanceServiceRetryCounts; i++ {
 							var dbCfg *model.Database
-							err := json.Unmarshal(ev.Kv.Value, &dbCfg)
+							err = json.Unmarshal(ev.Kv.Value, &dbCfg)
 							if err != nil {
 								if i == constant.DefaultInstanceServiceRetryCounts {
 									return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", string(ev.Kv.Value), err)
 								} else {
 									// retry
+									logger.Warn("json unmarshal bytes to struct database failed, retrying",
+										zap.String("bytes", string(ev.Kv.Value)),
+										zap.Int("current retry counts", i),
+										zap.Int("max retry counts", constant.DefaultInstanceServiceRetryCounts),
+										zap.Duration("retry interval", constant.DefaultInstanceServiceRetryInterval))
+
 									time.Sleep(constant.DefaultInstanceServiceRetryInterval)
 									continue
 								}
 							}
 
-							err = model.CreateDatabase(dbCfg, c.logLevel)
+							err = model.CreateDatabaseConnection(dbCfg, c.logLevel)
 							if err != nil && i == constant.DefaultInstanceServiceRetryCounts {
 								return err
 							} else if err == nil {
-								logger.Info("database connect hot update", zap.String("dbconn", dbCfg.String()))
+								logger.Info("database connect watch success update", zap.String("dbconn", dbCfg.String()))
 
 								// before database connect success, api request disable service
 								c.dbConnReady.Store(true)
@@ -129,6 +139,11 @@ func (c *Connect) Watch(prefixKey string) error {
 								break
 							} else {
 								// retry
+								logger.Warn("database create connection failed, retrying",
+									zap.String("connection info", dbCfg.String()),
+									zap.Int("current retry counts", i),
+									zap.Int("max retry counts", constant.DefaultInstanceServiceRetryCounts),
+									zap.Duration("retry interval", constant.DefaultInstanceServiceRetryInterval))
 								time.Sleep(constant.DefaultInstanceServiceRetryInterval)
 								continue
 							}
@@ -136,7 +151,7 @@ func (c *Connect) Watch(prefixKey string) error {
 
 					// delete
 					case mvccpb.DELETE:
-						// TODO: ignore, don't know how to deal with it now. if the program occur restart, maybe the program will crash
+						c.dbConnReady.Store(false)
 					}
 				}
 			}

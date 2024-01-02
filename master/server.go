@@ -23,7 +23,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/wentaojin/dbms/service"
+	"github.com/wentaojin/dbms/worker"
 
 	"go.uber.org/zap"
 
@@ -55,11 +55,8 @@ type Server struct {
 	// the embed etcd election information
 	election *etcdutil.Election
 
-	// the used for database connection ready
-	// before database connect success, api request disable service
+	// database connect is whether active, if active , it can service, otherwise disable service
 	dbConnReady *atomic.Bool
-
-	errDBConnReady chan error
 
 	// discoveries used for service discovery, watch worker
 	discoveries *etcdutil.Discovery
@@ -73,10 +70,10 @@ type Server struct {
 // NewServer creates a new server
 func NewServer(cfg *Config) *Server {
 	return &Server{
-		cfg:            cfg,
-		etcdSrv:        etcdutil.NewETCDServer(),
-		errDBConnReady: make(chan error, 1),
-		mutex:          sync.Mutex{},
+		cfg:         cfg,
+		etcdSrv:     etcdutil.NewETCDServer(),
+		dbConnReady: new(atomic.Bool),
+		mutex:       sync.Mutex{},
 	}
 }
 
@@ -89,7 +86,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// Http API Handler
 	// securityOpt is used for rpc client tls in grpc gateway
-	apiHandler, err := s.InitOpenAPIHandler()
+	apiHandler, err := s.initOpenAPIHandler()
 	if err != nil {
 		return err
 	}
@@ -159,7 +156,6 @@ func (s *Server) Start(ctx context.Context) error {
 				// usually put your code
 				logger.Info("listening server addr request", zap.String("address", s.cfg.MasterOptions.ClientAddr))
 
-				// init db conn
 				s.createDatabaseConn()
 
 				// pending, start receive request
@@ -167,8 +163,6 @@ func (s *Server) Start(ctx context.Context) error {
 					select {
 					case <-ctx.Done():
 						return nil
-					case err = <-s.errDBConnReady:
-						return err
 					}
 				}
 			},
@@ -223,9 +217,14 @@ func (s *Server) createDatabaseConn() {
 	conn := etcdutil.NewServiceConnect(s.etcdClient, s.cfg.MasterOptions.LogLevel, s.dbConnReady)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error("dbms-master create database failed", zap.Any("PANIC", r))
+			}
+		}()
 		err := conn.Watch(constant.DefaultMasterDatabaseDBMSKey)
 		if err != nil {
-			s.errDBConnReady <- err
+			panic(err)
 		}
 	}()
 }
@@ -247,7 +246,7 @@ func (s *Server) Close() {
 func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
 	switch strings.ToUpper(req.Operate) {
 	case "SUBMIT":
-		err := service.UpsertTask(s.etcdClient, req)
+		err := worker.UpsertTask(s.etcdClient, req)
 		if err != nil {
 			return &pb.OperateTaskResponse{Response: &pb.Response{
 				Result:  constant.ResponseResultStatusFailed,
@@ -255,7 +254,7 @@ func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*
 			}}, err
 		}
 	case "DELETE":
-		err := service.DeleteTask(s.etcdClient, req)
+		err := worker.DeleteTask(s.etcdClient, req)
 		if err != nil {
 			return &pb.OperateTaskResponse{Response: &pb.Response{
 				Result:  constant.ResponseResultStatusFailed,
@@ -263,7 +262,7 @@ func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*
 			}}, err
 		}
 	case "KILL":
-		err := service.KillTask(s.etcdClient, req)
+		err := worker.KillTask(s.etcdClient, req)
 		if err != nil {
 			return &pb.OperateTaskResponse{Response: &pb.Response{
 				Result:  constant.ResponseResultStatusFailed,

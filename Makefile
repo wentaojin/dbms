@@ -4,7 +4,25 @@ MASTERCMD="./cmd/master.go"
 WORKERCMD="./cmd/worker.go"
 CTLCMD="./ctl/dbmsctl.go"
 BINARYPATH="bin/"
-CONFIGPATH="./example/"
+CONFIGPATH="./example"
+
+MASTERCONFIG00TEMP = $(CONFIGPATH)/master_config00_temp.toml
+MASTERCONFIG01TEMP = $(CONFIGPATH)/master_config01_temp.toml
+MASTERCONFIG02TEMP = $(CONFIGPATH)/master_config02_temp.toml
+
+WORKERCONFIG00TEMP = $(CONFIGPATH)/worker_config00_temp.toml
+WORKERCONFIG01TEMP = $(CONFIGPATH)/worker_config01_temp.toml
+WORKERCONFIG02TEMP = $(CONFIGPATH)/worker_config02_temp.toml
+
+SEEDIPVALUE = 192.168.0.101
+
+MASTERCONFIG00 = $(CONFIGPATH)/master_config00.toml
+MASTERCONFIG01 = $(CONFIGPATH)/master_config01.toml
+MASTERCONFIG02 = $(CONFIGPATH)/master_config02.toml
+
+WORKERCONFIG00 = $(CONFIGPATH)/worker_config00.toml
+WORKERCONFIG01 = $(CONFIGPATH)/worker_config01.toml
+WORKERCONFIG02 = $(CONFIGPATH)/worker_config02.toml
 
 REPO    := github.com/wentaojin/dbms
 
@@ -21,6 +39,7 @@ BUILDTS := $(shell date -u '+%Y-%m-%d %H:%M:%S')
 GITHASH := $(shell git rev-parse HEAD)
 GITREF  := $(shell git rev-parse --abbrev-ref HEAD)
 
+CURRENTIPADDR := $(shell ipconfig getifaddr en0)
 
 LDFLAGS := -w -s
 LDFLAGS += -X "$(REPO)/config.Version=$(COMMIT)"
@@ -29,39 +48,45 @@ LDFLAGS += -X "$(REPO)/config.GitHash=$(GITHASH)"
 LDFLAGS += -X "$(REPO)/config.GitBranch=$(GITREF)"
 
 
-runMaster: clean gotool masterProgram00 masterProgram01 masterProgram02
+runMaster: clean gotool seedMaster masterProgram00 masterProgram01 masterProgram02
 
 stopMaster:
-	kill -9 $$(cat $(MASTERCMD)/masterProgram00.pid) 2>/dev/null || true
-	kill -9 $$(cat $(MASTERCMD)/masterProgram01.pid) 2>/dev/null || true
-	kill -9 $$(cat $(MASTERCMD)/masterProgram02.pid) 2>/dev/null || true
-	rm -f $(MASTERCMD)/masterProgram00.pid $(MASTERCMD)/masterProgram01.pid $(MASTERCMD)/masterProgram02.pid
+	ps -ef| grep 'example/master' | grep -v 'grep' | awk '{print $$2}' | xargs kill -9
+	rm -f $(MASTERCONFIG00) $(MASTERCONFIG01) $(MASTERCONFIG02)
 
-runWorker: clean gotool workerProgram00 workerProgram01 workerProgram02
+runWorker: clean gotool seedWorker workerProgram00 workerProgram01 workerProgram02
 
 stopWorker:
-	-kill -9 $$(cat $(MASTERCMD)/workerProgram00.pid) 2>/dev/null || true
-	-kill -9 $$(cat $(MASTERCMD)/workerProgram01.pid) 2>/dev/null || true
-	-kill -9 $$(cat $(MASTERCMD)/workerProgram02.pid) 2>/dev/null || true
-	rm -f $(MASTERCMD)/workerProgram00.pid $(MASTERCMD)/workerProgram01.pid $(MASTERCMD)/workerProgram02.pid
+	ps -ef| grep 'example/worker' | grep -v 'grep' | awk '{print $$2}' | xargs kill -9
+	rm -f $(WORKERCONFIG00) $(WORKERCONFIG01) $(WORKERCONFIG02)
 
 masterProgram00:
-	$(GORUN) $(MASTERCMD) --config $(CONFIGPATH)/master_config00.toml & echo $$! > $(MASTERCMD)/masterProgram00.pid
+	$(GORUN) $(MASTERCMD) --config $(MASTERCONFIG00) &
 
 masterProgram01:
-	$(GORUN) $(MASTERCMD) --config $(CONFIGPATH)/master_config01.toml & echo $$! > $(MASTERCMD)/masterProgram01.pid
+	$(GORUN) $(MASTERCMD) --config $(MASTERCONFIG01) &
 
 masterProgram02:
-	$(GORUN) $(MASTERCMD) --config $(CONFIGPATH)/master_config02.toml & echo $$! > $(MASTERCMD)/masterProgram02.pid
+	$(GORUN) $(MASTERCMD) --config $(MASTERCONFIG02) &
 
 workerProgram00:
-	$(GORUN) $(WORKERCMD) --config $(CONFIGPATH)/worker_config00.toml & echo $$! > $(WORKERCMD)/workerProgram00.pid
+	$(GORUN) $(WORKERCMD) --config $(WORKERCONFIG00) &
 
 workerProgram01:
-	$(GORUN) $(WORKERCMD) --config $(CONFIGPATH)/worker_config01.toml & echo $$! > $(WORKERCMD)/workerProgram01.pid
+	$(GORUN) $(WORKERCMD) --config $(WORKERCONFIG01) &
 
 workerProgram02:
-	$(GORUN) $(WORKERCMD) --config $(CONFIGPATH)/worker_config02.toml & echo $$! > $(WORKERCMD)/workerProgram02.pid
+	$(GORUN) $(WORKERCMD) --config $(WORKERCONFIG02) &
+
+seedMaster:
+	sed 's/$(SEEDIPVALUE)/$(CURRENTIPADDR)/g' $(MASTERCONFIG00TEMP) > $(MASTERCONFIG00)
+	sed 's/$(SEEDIPVALUE)/$(CURRENTIPADDR)/g' $(MASTERCONFIG01TEMP) > $(MASTERCONFIG01)
+	sed 's/$(SEEDIPVALUE)/$(CURRENTIPADDR)/g' $(MASTERCONFIG02TEMP) > $(MASTERCONFIG02)
+
+seedWorker:
+	sed 's/$(SEEDIPVALUE)/$(CURRENTIPADDR)/g' $(WORKERCONFIG00TEMP) > $(WORKERCONFIG00)
+	sed 's/$(SEEDIPVALUE)/$(CURRENTIPADDR)/g' $(WORKERCONFIG01TEMP) > $(WORKERCONFIG01)
+	sed 's/$(SEEDIPVALUE)/$(CURRENTIPADDR)/g' $(WORKERCONFIG02TEMP) > $(WORKERCONFIG02)
 
 build: clean gotool
 	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms-master $(MASTERCMD)

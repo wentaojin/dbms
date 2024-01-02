@@ -44,7 +44,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource) (*Datab
 		datasource.ConnectParams = fmt.Sprintf("charset=%s&%s", strings.ToLower(datasource.ConnectStatus), datasource.ConnectParams)
 	}
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/?%s",
-		datasource.Username, datasource.Password, datasource.HostIP, datasource.HostPort, datasource.ConnectParams)
+		datasource.Username, datasource.Password, datasource.Host, datasource.Port, datasource.ConnectParams)
 
 	mysqlDB, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -60,6 +60,25 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource) (*Datab
 		return nil, fmt.Errorf("error on ping mysql database connection: %v", err)
 	}
 	return &Database{Ctx: ctx, DBConn: mysqlDB}, nil
+}
+
+func PingDatabaseConnection(datasource *datasource.Datasource) error {
+	if !strings.EqualFold(datasource.ConnectCharset, "") {
+		datasource.ConnectParams = fmt.Sprintf("charset=%s&%s", strings.ToLower(datasource.ConnectStatus), datasource.ConnectParams)
+	}
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/?%s",
+		datasource.Username, datasource.Password, datasource.Host, datasource.Port, datasource.ConnectParams)
+
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return fmt.Errorf("error on open mysql database connection: %v", err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return fmt.Errorf("database ping failed, database error: [%v]", err)
+	}
+	return nil
 }
 
 func (d *Database) QueryContext(query string) (*sql.Rows, error) {

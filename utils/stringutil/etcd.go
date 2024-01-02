@@ -144,3 +144,46 @@ func UnmarshalJSON(data []byte, v any) error {
 	}
 	return nil
 }
+
+// FormatJSONFields returns format json string
+func FormatJSONFields(data interface{}) interface{} {
+	switch value := data.(type) {
+	case map[string]interface{}:
+		formattedMap := make(map[string]interface{})
+		for key, val := range value {
+			formattedMap[key] = FormatJSONFields(val)
+		}
+		return formattedMap
+	case []map[string]interface{}:
+		formattedMapArray := make([]map[string]interface{}, len(value))
+
+		for i, item := range value {
+			formattedMap := make(map[string]interface{})
+			for key, val := range item {
+				formattedMap[key] = FormatJSONFields(val)
+			}
+			formattedMapArray[i] = formattedMap
+		}
+	case []interface{}:
+		formattedArray := make([]interface{}, len(value))
+		for i, item := range value {
+			formattedArray[i] = FormatJSONFields(item)
+		}
+		return formattedArray
+	case float64:
+		return value
+	case string:
+		var nestedData interface{}
+		err := json.Unmarshal([]byte(value), &nestedData)
+		if err == nil {
+			return FormatJSONFields(nestedData)
+		} else {
+			var nestedArrayData []map[string]interface{}
+			err = json.Unmarshal([]byte(value), &nestedArrayData)
+			if err == nil {
+				return FormatJSONFields(nestedData)
+			}
+		}
+	}
+	return data
+}

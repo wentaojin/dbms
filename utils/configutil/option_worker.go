@@ -21,26 +21,30 @@ const (
 	// DefaultWorkerKeepaliveTTL represented service lease keep alive ttl (seconds)
 	DefaultWorkerKeepaliveTTL    = 5
 	DefaultEventQueueChannelSize = 1024
+	// DefaultBalanceSleepTime represented service lease keep alive ttl (millions)
+	DefaultBalanceSleepTime = 100
 )
 
 // WorkerOptions etcd server relative config items
 type WorkerOptions struct {
-	Name           string `toml:"name" json:"name"`
-	Endpoint       string `toml:"endpoint" json:"endpoint"` // server addrs
-	WorkerAddr     string `toml:"worker-addr" json:"worker-addr"`
-	KeepaliveTTL   int64  `toml:"keepalive-ttl" json:"keepalive-ttl"`
-	EventQueueSize int64  `toml:"event-queue-size" json:"event-queue-size"`
+	Name             string `toml:"name" json:"name"`
+	Endpoint         string `toml:"endpoint" json:"endpoint"` // server addrs
+	WorkerAddr       string `toml:"worker-addr" json:"worker-addr"`
+	KeepaliveTTL     int64  `toml:"keepalive-ttl" json:"keepalive-ttl"`
+	EventQueueSize   int64  `toml:"event-queue-size" json:"event-queue-size"`
+	BalanceSleepTime int64  `toml:"balance-sleep-time" json:"balance-sleep-time"`
 }
 
 type WorkerOption func(opts *WorkerOptions)
 
 func DefaultWorkerServerConfig() *WorkerOptions {
 	return &WorkerOptions{
-		Name:           DefaultWorkerNamePrefix,
-		Endpoint:       DefaultMasterClientAddr,
-		WorkerAddr:     DefaultWorkerRegisterAddr,
-		KeepaliveTTL:   DefaultWorkerKeepaliveTTL,
-		EventQueueSize: DefaultEventQueueChannelSize,
+		Name:             DefaultWorkerNamePrefix,
+		Endpoint:         DefaultMasterClientAddr,
+		WorkerAddr:       DefaultWorkerRegisterAddr,
+		KeepaliveTTL:     DefaultWorkerKeepaliveTTL,
+		EventQueueSize:   DefaultEventQueueChannelSize,
+		BalanceSleepTime: DefaultBalanceSleepTime,
 	}
 }
 
@@ -71,5 +75,11 @@ func WithWorkerLease(aliveTTL int64) WorkerOption {
 func WithEventQueueSize(queueSize int64) WorkerOption {
 	return func(opts *WorkerOptions) {
 		opts.EventQueueSize = queueSize
+	}
+}
+
+func WithBalanceSleepTime(time int64) WorkerOption {
+	return func(opts *WorkerOptions) {
+		opts.BalanceSleepTime = time
 	}
 }

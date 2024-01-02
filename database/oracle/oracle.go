@@ -57,7 +57,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	//	common.StringsBuilder(datasource.Host, ":", strconv.Itoa(datasource.Port)),
 	//	datasource.ServiceName, "connClass", datasource.ConnectParams)
 	connString = fmt.Sprintf("oracle://@%s/%s?standaloneConnection=1&%s",
-		stringutil.StringBuilder(datasource.HostIP, ":", strconv.FormatUint(datasource.HostPort, 10)),
+		stringutil.StringBuilder(datasource.Host, ":", strconv.FormatUint(datasource.Port, 10)),
 		datasource.ServiceName, datasource.ConnectParams)
 	oraDSN, err = godror.ParseDSN(connString)
 	if err != nil {
@@ -97,6 +97,58 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 		return nil, fmt.Errorf("error on ping oracle database connection:%v", err)
 	}
 	return &Database{Ctx: ctx, DBConn: sqlDB}, nil
+}
+
+func PingDatabaseConnection(datasource *datasource.Datasource, currentSchema string) error {
+	var (
+		connString    string
+		oraDSN        dsn.ConnectionParams
+		err           error
+		sessionParams []string
+	)
+
+	connString = fmt.Sprintf("oracle://@%s/%s?standaloneConnection=1&%s",
+		stringutil.StringBuilder(datasource.Host, ":", strconv.FormatUint(datasource.Port, 10)),
+		datasource.ServiceName, datasource.ConnectParams)
+	oraDSN, err = godror.ParseDSN(connString)
+	if err != nil {
+		return err
+	}
+
+	oraDSN.Username, oraDSN.Password = datasource.Username, godror.NewPassword(datasource.Password)
+
+	if !strings.EqualFold(datasource.PdbName, "") {
+		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CONTAINER = %s`, datasource.PdbName))
+	}
+
+	if !strings.EqualFold(datasource.Username, currentSchema) && !strings.EqualFold(currentSchema, "") {
+		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CURRENT_SCHEMA = %s`, currentSchema))
+	}
+
+	if !strings.EqualFold(datasource.SessionParams, "") {
+		sessionParams = stringutil.StringSplit(datasource.SessionParams, constant.StringSeparatorComma)
+	}
+
+	// 关闭外部认证
+	oraDSN.ExternalAuth = false
+	oraDSN.OnInitStmts = sessionParams
+
+	// charset 字符集
+	if !strings.EqualFold(datasource.ConnectCharset, "") {
+		oraDSN.CommonParams.Charset = datasource.ConnectCharset
+	}
+
+	sqlDB := sql.OpenDB(godror.NewConnector(oraDSN))
+	sqlDB.SetMaxIdleConns(0)
+	sqlDB.SetMaxOpenConns(0)
+	sqlDB.SetConnMaxLifetime(0)
+
+	err = sqlDB.Ping()
+	if err != nil {
+		return fmt.Errorf("error on ping oracle database connection:%v", err)
+	}
+
+	return nil
 }
 
 func (d *Database) QueryContext(query string) (*sql.Rows, error) {

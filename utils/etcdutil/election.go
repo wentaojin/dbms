@@ -159,8 +159,8 @@ func (e *Election) Leader(ctx context.Context) (string, error) {
 	return string(resp.Kvs[0].Value), nil
 }
 
-// IsLeader judge current node whether is leader
-func (e *Election) IsLeader(ctx context.Context) (bool, error) {
+// CurrentIsLeader judge current node whether is leader
+func (e *Election) CurrentIsLeader(ctx context.Context) (bool, error) {
 	leader, err := e.Leader(ctx)
 	if err != nil {
 		return false, err

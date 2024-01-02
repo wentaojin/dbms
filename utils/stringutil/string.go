@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"runtime"
 	"strings"
 	"unicode"
 
@@ -169,13 +168,6 @@ func valueToString(value reflect.Value) string {
 	default:
 		panic("Unsupported Type")
 	}
-}
-
-func PrintStackTrace() string {
-	const size = 64 << 10
-	buf := make([]byte, size)
-	buf = buf[:runtime.Stack(buf, false)]
-	return string(buf)
 }
 
 // VersionOrdinal used for the database version comparison

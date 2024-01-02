@@ -24,24 +24,26 @@ import (
 )
 
 type Config struct {
-	Datasource []Datasource `json:"datasource"`
+	Datasource []Datasource `toml:"datasource" json:"datasource"`
 }
 
 type Datasource struct {
-	DatasourceName string `json:"datasourceName"`
-	DbType         int64  `json:"dbType"`
-	Username       string `json:"username"`
-	Password       string `json:"password"`
-	Host           string `json:"host"`
-	Port           int64  `json:"port"`
-	ConnectCharset string `json:"connectCharset"`
-	ConnectParams  string `json:"connectParams"`
-	ServiceName    string `json:"serviceName"`
-	PdbName        string `json:"pdbName"`
+	DatasourceName string `toml:"datasource-name" json:"datasourceName"`
+	DbType         string `toml:"db-type" json:"dbType"`
+	Username       string `toml:"username" json:"username"`
+	Password       string `toml:"password" json:"password"`
+	Host           string `toml:"host" json:"host"`
+	Port           int64  `toml:"port" json:"port"`
+	ConnectCharset string `toml:"connect-charset" json:"connectCharset"`
+	ConnectParams  string `toml:"connect-params" json:"connectParams"`
+	ConnectStatus  string `toml:"connect-status" json:"connectStatus"`
+	ServiceName    string `toml:"service-name" json:"serviceName"`
+	PdbName        string `toml:"pdb-name" json:"pdbName"`
+	Comment        string `toml:"comment" json:"comment"`
 }
 
-func (d *Datasource) String() string {
-	jsonStr, _ := stringutil.MarshalJSON(d)
+func (c *Config) String() string {
+	jsonStr, _ := stringutil.MarshalJSON(c)
 	return jsonStr
 }
 
@@ -51,33 +53,64 @@ func Upsert(serverAddr string, file string) error {
 		return fmt.Errorf("failed decode toml config file %s: %v", file, err)
 	}
 
-	for _, ds := range cfg.Datasource {
-		_, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(ds.String()))
-		if err != nil {
-			return err
-		}
+	resp, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(cfg.String()))
+	if err != nil {
+		return err
 	}
+
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	if err != nil {
+		return fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
+
 	return nil
 }
 
 func Delete(serverAddr string, name string) error {
-	_, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(name))
+	resp, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(name))
 	if err != nil {
 		return err
 	}
+
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	if err != nil {
+		return fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
+
 	return nil
 }
 
-func Get(serverAddr string, name string) (string, error) {
+func Get(serverAddr string, name string) error {
 	resp, err := openapi.Request(openapi.RequestGETMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(name))
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	jsonStr, err := stringutil.MarshalIndentJSON(resp)
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("error decoding JSON: %v", err)
 	}
 
-	return jsonStr, nil
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
+
+	return nil
 }

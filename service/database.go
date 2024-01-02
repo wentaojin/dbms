@@ -17,7 +17,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
+
+	"github.com/wentaojin/dbms/database/mysql"
+
+	"github.com/wentaojin/dbms/database/oracle"
+	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/datasource"
@@ -39,6 +45,11 @@ func UpsertDatabase(etcdClient *clientv3.Client, defaultDatabaseDBMSKey string, 
 		SlowThreshold: req.Database.SlowThreshold,
 	}
 	jsonStr, err := stringutil.MarshalJSON(db)
+	if err != nil {
+		return jsonStr, err
+	}
+
+	err = model.CreateDatabaseSchema(db)
 	if err != nil {
 		return jsonStr, err
 	}
@@ -67,20 +78,48 @@ func ShowDatabase(etcdClient *clientv3.Client, defaultDatabaseDBMSKey string) (s
 }
 
 func UpsertDatasource(ctx context.Context, req *pb.UpsertDatasourceRequest) (string, error) {
-	dataS, err := model.GetIDatasourceRW().CreateDatasource(ctx, &datasource.Datasource{
-		DatasourceName: req.Datasource.DatasourceName,
-		DbType:         req.Datasource.DbType,
-		Username:       req.Datasource.Username,
-		Password:       req.Datasource.Password,
-		HostIP:         req.Datasource.Host,
-		HostPort:       req.Datasource.Port,
-		ConnectParams:  req.Datasource.ConnectParams,
-		ConnectCharset: req.Datasource.ConnectCharset,
-		ConnectStatus:  req.Datasource.ConnectStatus,
-		ServiceName:    req.Datasource.ServiceName,
-		PdbName:        req.Datasource.PdbName,
-		Entity:         &common.Entity{Comment: req.Datasource.Comment},
-	})
+	var ds []*datasource.Datasource
+
+	for _, r := range req.Datasource {
+
+		dataS := &datasource.Datasource{
+			DatasourceName: r.DatasourceName,
+			DbType:         r.DbType,
+			Username:       r.Username,
+			Password:       r.Password,
+			Host:           r.Host,
+			Port:           r.Port,
+			ConnectParams:  r.ConnectParams,
+			ConnectCharset: r.ConnectCharset,
+			ConnectStatus:  r.ConnectStatus,
+			ServiceName:    r.ServiceName,
+			PdbName:        r.PdbName,
+			Entity:         &common.Entity{Comment: r.Comment},
+		}
+		switch strings.ToUpper(r.DbType) {
+		case constant.DatabaseTypeOracle:
+			err := oracle.PingDatabaseConnection(dataS, "")
+			if err != nil {
+				return "", err
+			}
+		case constant.DatabaseTypeMySQL:
+			err := mysql.PingDatabaseConnection(dataS)
+			if err != nil {
+				return "", err
+			}
+		case constant.DatabaseTypeTiDB:
+			err := mysql.PingDatabaseConnection(dataS)
+			if err != nil {
+				return "", err
+			}
+		default:
+			return "", fmt.Errorf("datasource [%v] database type is not support, please contact author or reselect", r.DatasourceName)
+		}
+
+		ds = append(ds, dataS)
+	}
+
+	dataS, err := model.GetIDatasourceRW().CreateDatasource(ctx, ds)
 	if err != nil {
 		return "", err
 	}

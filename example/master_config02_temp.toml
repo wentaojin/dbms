@@ -1,16 +1,14 @@
-open-api = true
-
 [master]
-data-dir = "/Users/marvin/gostore/dbms/test"
-client-addr = "192.168.0.101:2379"
-peer-addr = "192.168.0.101:2380"
+data-dir = "/Users/marvin/gostore/dbms/data"
+client-addr = "192.168.0.101:4379"
+peer-addr = "192.168.0.101:4380"
 initial-cluster = "192.168.0.101:2380,192.168.0.101:3380,192.168.0.101:4380"
 #initial-cluster-state = "new"
 #join = "192.168.0.101:2380,192.168.0.101:3380,192.168.0.101:4380"
 
 [log]
 log-level = "info"
-log-file = "/Users/marvin/gostore/dbms/test/dbms-master-2379.log"
+log-file = "/Users/marvin/gostore/dbms/data/dbms-master-4379.log"
 max-size = 128
 max-days = 7
 max-backups = 30

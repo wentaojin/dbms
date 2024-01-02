@@ -1,8 +1,8 @@
-task-name = ""
-task-rule-name = ""
+task-name = "oracle33totidb145_task"
+task-rule-name = "oracle33totidb145_rule"
 
 [struct-migrate-param]
-case-field-rule = ""
+case-field-rule = "1"
 migrate-thread = 10
 task-queue-size = 1024
 direct-write = true

@@ -16,12 +16,16 @@ limitations under the License.
 package master
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"strings"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
+
+	"go.uber.org/zap/zapcore"
 
 	middleware "github.com/deepmap/oapi-codegen/pkg/gin-middleware"
 	"github.com/getkin/kin-openapi/openapi3"
@@ -33,8 +37,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// InitOpenAPIHandler returns a HTTP handler to handle dbms-master apis
-func (s *Server) InitOpenAPIHandler() (*gin.Engine, error) {
+// initOpenAPIHandler returns a HTTP handler to handle dbms-master apis
+func (s *Server) initOpenAPIHandler() (*gin.Engine, error) {
 	swagger, err := openapi.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("openapi get swagger failed: [%v]", err)
@@ -46,21 +50,37 @@ func (s *Server) InitOpenAPIHandler() (*gin.Engine, error) {
 	r := gin.New()
 
 	// middlewares
+
+	r.Use(s.cors())
+
 	// add a ginzap middleware, which:
 	//   - log requests, like a combined access and error log.
 	r.Use(ginzap.GinzapWithConfig(logger.GetRootLogger().With(zap.String("component", "gin")), &ginzap.Config{
 		TimeFormat: logger.LogTimeFmt,
-		UTC:        false}))
+		UTC:        false,
+		Context: func(c *gin.Context) []zapcore.Field {
+			var fields []zapcore.Field
+
+			// log request body
+			var body []byte
+			var buf bytes.Buffer
+			tee := io.TeeReader(c.Request.Body, &buf)
+			body, _ = io.ReadAll(tee)
+			c.Request.Body = io.NopCloser(&buf)
+
+			fields = append(fields, zap.String("body", string(body)))
+
+			return fields
+		}}))
 
 	// logs all panic to error log
 	//   - stack means whether output the stack info.
 	r.Use(ginzap.RecoveryWithZap(logger.GetRootLogger().With(zap.String("component", "gin")), true))
 
 	// reverse proxy
-	r.Use(s.reverseRequestToLeader())
+	r.Use(s.reverseProxy())
 
-	// db ping
-	r.Use(s.pingDBConnReady())
+	r.Use(s.databaseReady())
 
 	// use validation middleware to check all requests against the OpenAPI schema.
 	r.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
@@ -73,28 +93,51 @@ func (s *Server) InitOpenAPIHandler() (*gin.Engine, error) {
 	return r, nil
 }
 
-// reverseRequestToLeader used for reverses request to leader
-func (s *Server) reverseRequestToLeader() gin.HandlerFunc {
+// reverseProxy used for reverses request to leader
+func (s *Server) reverseProxy() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-
-		isLeader, err := s.election.IsLeader(ctx)
+		isLeader, err := s.election.CurrentIsLeader(ctx)
 		if err != nil {
-			c.IndentedJSON(http.StatusOK, openapi.Response{
+			c.JSON(http.StatusOK, openapi.Response{
 				Code:  http.StatusBadRequest,
 				Error: err.Error(),
 			})
+			c.Abort()
 			return
 		}
-		if isLeader {
+
+		switch {
+		case isLeader:
 			c.Next()
-		} else {
+		default:
 			leaderAddr, err := s.election.Leader(ctx)
 			if err != nil {
-				c.IndentedJSON(http.StatusOK, openapi.Response{
+				c.JSON(http.StatusOK, openapi.Response{
 					Code:  http.StatusBadRequest,
 					Error: err.Error(),
 				})
+				logger.Error("api request get leader error",
+					zap.String("request URL", c.Request.URL.String()),
+					zap.String("current addr", s.cfg.MasterOptions.ClientAddr),
+					zap.String("current leader", leaderAddr),
+					zap.Bool("current is leader", isLeader))
+
+				c.Abort()
+				return
+			}
+
+			if strings.EqualFold(leaderAddr, "") {
+				c.JSON(http.StatusOK, openapi.Response{
+					Code:  http.StatusBadRequest,
+					Error: fmt.Sprintf("current leader service election action isn't finished, please wait retrying"),
+				})
+				logger.Error("api request leader not election",
+					zap.String("request URL", c.Request.URL.String()),
+					zap.String("current addr", s.cfg.MasterOptions.ClientAddr),
+					zap.String("current leader", leaderAddr),
+					zap.Bool("current is leader", isLeader))
+				c.Abort()
 				return
 			}
 
@@ -104,28 +147,36 @@ func (s *Server) reverseRequestToLeader() gin.HandlerFunc {
 					req.URL.Scheme = "http"
 					req.URL.Host = leaderAddr
 					req.Host = leaderAddr
+
+					var buf bytes.Buffer
+					req.Body = io.NopCloser(io.TeeReader(req.Body, &buf))
 				},
 			}
 
-			logger.Info("reverse request to leader", zap.String("Request URL", c.Request.URL.String()), zap.String("leader", leaderAddr))
+			logger.Warn("reverse request to leader",
+				zap.String("request URL", c.Request.URL.String()),
+				zap.String("current addr", s.cfg.MasterOptions.ClientAddr),
+				zap.String("current leader", leaderAddr),
+				zap.Bool("current is leader", isLeader), zap.String("forward leader", leaderAddr))
 
 			simpleProxy.ServeHTTP(c.Writer, c.Request)
 			c.Abort()
+			return
 		}
 	}
 }
 
-// pingDBConnReady used for ping db connection is whether active
-func (s *Server) pingDBConnReady() gin.HandlerFunc {
+// databaseReady used for db connection is whether active
+func (s *Server) databaseReady() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// exclude /api/v1/database interface request
 		if strings.EqualFold(c.Request.URL.Path, stringutil.StringBuilder(openapi.DBMSAPIBasePath, openapi.APIDatabasePath)) {
 			c.Next()
 		} else {
 			if !s.dbConnReady.Load() {
-				c.IndentedJSON(http.StatusOK, openapi.Response{
+				c.JSON(http.StatusOK, openapi.Response{
 					Code:  http.StatusBadRequest,
-					Error: fmt.Sprintf("database connection is not ready, disable service, please create database and wait retrying"),
+					Error: fmt.Sprintf("database connection is not ready, disable service, please create database connection and wait auto-retrying"),
 				})
 				c.Abort()
 				return
@@ -135,16 +186,34 @@ func (s *Server) pingDBConnReady() gin.HandlerFunc {
 	}
 }
 
+// cors used for support cors request
+func (s *Server) cors() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token, Authorization, Token")
+		c.Header("Access-Control-Allow-Methods", "POST, GET, PUT, PATCH, DELETE, OPTIONS")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Content-Type")
+		c.Header("Access-Control-Allow-Credentials", "true")
+
+		// release all OPTIONS methods
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+		}
+		c.Next()
+	}
+}
+
 func (s *Server) APIListDatabase(c *gin.Context) {
 	database, err := s.listDatabase(c.Request.Context())
 	if err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, openapi.Response{
+	c.JSON(http.StatusOK, openapi.Response{
 		Code: http.StatusOK,
 		Data: database,
 	})
@@ -153,22 +222,21 @@ func (s *Server) APIListDatabase(c *gin.Context) {
 func (s *Server) APIPutDatabase(c *gin.Context) {
 	var req openapi.APIPutDatabaseJSONRequestBody
 	if err := c.Bind(&req); err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-
 	database, err := s.upsertDatabase(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, openapi.Response{
+	c.JSON(http.StatusOK, openapi.Response{
 		Code: http.StatusOK,
 		Data: database})
 }
@@ -176,13 +244,13 @@ func (s *Server) APIPutDatabase(c *gin.Context) {
 func (s *Server) APIDeleteDatabase(c *gin.Context) {
 	database, err := s.deleteDatabase(c.Request.Context())
 	if err != nil {
-		c.IndentedJSON(http.StatusNoContent, openapi.Response{
+		c.JSON(http.StatusNoContent, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusNoContent, openapi.Response{
+	c.JSON(http.StatusNoContent, openapi.Response{
 		Code: http.StatusNoContent,
 		Data: database,
 	})
@@ -192,7 +260,7 @@ func (s *Server) APIListDatasource(c *gin.Context) {
 	var req openapi.APIListDatasourceJSONRequestBody
 	err := c.Bind(&req)
 	if err != nil {
-		c.IndentedJSON(http.StatusCreated, openapi.Response{
+		c.JSON(http.StatusCreated, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -200,13 +268,13 @@ func (s *Server) APIListDatasource(c *gin.Context) {
 	}
 	datasource, err := s.listDatasource(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusCreated, openapi.Response{
+		c.JSON(http.StatusCreated, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusCreated, openapi.Response{
+	c.JSON(http.StatusCreated, openapi.Response{
 		Code: http.StatusCreated,
 		Data: datasource,
 	})
@@ -215,21 +283,22 @@ func (s *Server) APIListDatasource(c *gin.Context) {
 func (s *Server) APIPutDatasource(c *gin.Context) {
 	var req openapi.APIPutDatasourceJSONRequestBody
 	if err := c.Bind(&req); err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
+
 	datasource, err := s.upsertDatasource(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, openapi.Response{
+	c.JSON(http.StatusOK, openapi.Response{
 		Code: http.StatusOK,
 		Data: datasource,
 	})
@@ -239,7 +308,7 @@ func (s *Server) APIDeleteDatasource(c *gin.Context) {
 	var req openapi.APIDeleteDatasourceJSONRequestBody
 	err := c.Bind(&req)
 	if err != nil {
-		c.IndentedJSON(http.StatusNoContent, openapi.Response{
+		c.JSON(http.StatusNoContent, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -247,13 +316,13 @@ func (s *Server) APIDeleteDatasource(c *gin.Context) {
 	}
 	delMsg, err := s.deleteDatasource(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusNoContent, openapi.Response{
+		c.JSON(http.StatusNoContent, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusNoContent, openapi.Response{
+	c.JSON(http.StatusNoContent, openapi.Response{
 		Code: http.StatusNoContent,
 		Data: delMsg,
 	})
@@ -263,7 +332,7 @@ func (s *Server) APIDeleteTaskMigrateRule(c *gin.Context) {
 	var req openapi.APIDeleteTaskMigrateRuleJSONRequestBody
 	err := c.Bind(&req)
 	if err != nil {
-		c.IndentedJSON(http.StatusNoContent, openapi.Response{
+		c.JSON(http.StatusNoContent, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -271,13 +340,13 @@ func (s *Server) APIDeleteTaskMigrateRule(c *gin.Context) {
 	}
 	delMsg, err := s.deleteTaskMigrateRule(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusNoContent, openapi.Response{
+		c.JSON(http.StatusNoContent, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusNoContent, openapi.Response{
+	c.JSON(http.StatusNoContent, openapi.Response{
 		Code: http.StatusNoContent,
 		Data: delMsg,
 	})
@@ -287,7 +356,7 @@ func (s *Server) APIListTaskMigrateRule(c *gin.Context) {
 	var req openapi.APIListTaskMigrateRuleJSONRequestBody
 	err := c.Bind(&req)
 	if err != nil {
-		c.IndentedJSON(http.StatusCreated, openapi.Response{
+		c.JSON(http.StatusCreated, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -295,13 +364,13 @@ func (s *Server) APIListTaskMigrateRule(c *gin.Context) {
 	}
 	listMsg, err := s.listTaskMigrateRule(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusCreated, openapi.Response{
+		c.JSON(http.StatusCreated, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusCreated, openapi.Response{
+	c.JSON(http.StatusCreated, openapi.Response{
 		Code: http.StatusCreated,
 		Data: listMsg,
 	})
@@ -310,7 +379,7 @@ func (s *Server) APIListTaskMigrateRule(c *gin.Context) {
 func (s *Server) APIPutTaskMigrateRule(c *gin.Context) {
 	var req openapi.APIPutTaskMigrateRuleJSONRequestBody
 	if err := c.Bind(&req); err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -318,13 +387,13 @@ func (s *Server) APIPutTaskMigrateRule(c *gin.Context) {
 	}
 	upsertMsg, err := s.upsertTaskMigrateRule(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, openapi.Response{
+	c.JSON(http.StatusOK, openapi.Response{
 		Code: http.StatusOK,
 		Data: upsertMsg,
 	})
@@ -334,7 +403,7 @@ func (s *Server) APIDeleteStructMigrateTask(c *gin.Context) {
 	var req openapi.APIDeleteStructMigrateTaskJSONRequestBody
 	err := c.Bind(&req)
 	if err != nil {
-		c.IndentedJSON(http.StatusNoContent, openapi.Response{
+		c.JSON(http.StatusNoContent, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -342,13 +411,13 @@ func (s *Server) APIDeleteStructMigrateTask(c *gin.Context) {
 	}
 	delMsg, err := s.deleteStructMigrateTask(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusNoContent, openapi.Response{
+		c.JSON(http.StatusNoContent, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusNoContent, openapi.Response{
+	c.JSON(http.StatusNoContent, openapi.Response{
 		Code: http.StatusNoContent,
 		Data: delMsg,
 	})
@@ -358,7 +427,7 @@ func (s *Server) APIListStructMigrateTask(c *gin.Context) {
 	var req openapi.APIListStructMigrateTaskJSONRequestBody
 	err := c.Bind(&req)
 	if err != nil {
-		c.IndentedJSON(http.StatusCreated, openapi.Response{
+		c.JSON(http.StatusCreated, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -366,13 +435,13 @@ func (s *Server) APIListStructMigrateTask(c *gin.Context) {
 	}
 	listMsg, err := s.listStructMigrateTask(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusCreated, openapi.Response{
+		c.JSON(http.StatusCreated, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusCreated, openapi.Response{
+	c.JSON(http.StatusCreated, openapi.Response{
 		Code: http.StatusCreated,
 		Data: listMsg,
 	})
@@ -381,7 +450,7 @@ func (s *Server) APIListStructMigrateTask(c *gin.Context) {
 func (s *Server) APIPutStructMigrateTask(c *gin.Context) {
 	var req openapi.APIPutStructMigrateTaskJSONRequestBody
 	if err := c.Bind(&req); err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -389,13 +458,13 @@ func (s *Server) APIPutStructMigrateTask(c *gin.Context) {
 	}
 	upsertMsg, err := s.upsertStructMigrateTask(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, openapi.Response{
+	c.JSON(http.StatusOK, openapi.Response{
 		Code: http.StatusOK,
 		Data: upsertMsg,
 	})
@@ -404,7 +473,7 @@ func (s *Server) APIPutStructMigrateTask(c *gin.Context) {
 func (s *Server) APIPutTask(c *gin.Context) {
 	var req openapi.APIPutTaskJSONRequestBody
 	if err := c.Bind(&req); err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -412,13 +481,13 @@ func (s *Server) APIPutTask(c *gin.Context) {
 	}
 	task, err := s.upsertTask(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, openapi.Response{
+	c.JSON(http.StatusOK, openapi.Response{
 		Code: http.StatusOK,
 		Data: task,
 	})
@@ -427,7 +496,7 @@ func (s *Server) APIPutTask(c *gin.Context) {
 func (s *Server) APIDeleteTask(c *gin.Context) {
 	var req openapi.APIDeleteTaskJSONRequestBody
 	if err := c.Bind(&req); err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -435,13 +504,13 @@ func (s *Server) APIDeleteTask(c *gin.Context) {
 	}
 	task, err := s.deleteTask(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, openapi.Response{
+	c.JSON(http.StatusOK, openapi.Response{
 		Code: http.StatusOK,
 		Data: task,
 	})
@@ -450,7 +519,7 @@ func (s *Server) APIDeleteTask(c *gin.Context) {
 func (s *Server) APIKillTask(c *gin.Context) {
 	var req openapi.APIKillTaskJSONRequestBody
 	if err := c.Bind(&req); err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -458,13 +527,13 @@ func (s *Server) APIKillTask(c *gin.Context) {
 	}
 	task, err := s.killTask(c.Request.Context(), req)
 	if err != nil {
-		c.IndentedJSON(http.StatusOK, openapi.Response{
+		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, openapi.Response{
+	c.JSON(http.StatusOK, openapi.Response{
 		Code: http.StatusOK,
 		Data: task,
 	})

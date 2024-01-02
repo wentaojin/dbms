@@ -38,12 +38,12 @@ import (
 type Executor struct {
 	ctx              context.Context
 	etcdClient       *clientv3.Client
-	balanceSleepTime int
+	balanceSleepTime int64
 	planChan         chan *Plan
 }
 
-func NewExecutor() *Executor {
-	return &Executor{}
+func NewExecutor(ctx context.Context, etcdClient *clientv3.Client, balanceSleepTime int64) *Executor {
+	return &Executor{ctx: ctx, etcdClient: etcdClient, balanceSleepTime: balanceSleepTime}
 }
 
 func (e *Executor) PushTaskPlan(p *Plan) {
@@ -95,7 +95,7 @@ func (e *Executor) Execute() {
 func (e *Executor) run(p *Plan) error {
 	if strings.EqualFold(p.Status, constant.TaskDatabaseStatusWaiting) {
 		// There are micro-level differences in the clock verification of different machines. For the sake of task queue scheduling, when a slight delay in task scheduling is allowed, random sleep 0-1000ms // When the minimum execution time of a task is less than the sleep time, it will cause different nodes to Repeat
-		time.Sleep(time.Duration(rand.Intn(e.balanceSleepTime)) * time.Millisecond)
+		time.Sleep(time.Duration(rand.Int63n(e.balanceSleepTime)) * time.Millisecond)
 
 		// grab distributed lock
 		lock := NewLocker(p.Task.Name, e.etcdClient)

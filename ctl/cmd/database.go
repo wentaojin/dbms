@@ -162,11 +162,10 @@ func (a *AppDatabaseGet) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	resp, err := database.Get(a.Server)
+	err := database.Get(a.Server)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(resp)
 	return nil
 }

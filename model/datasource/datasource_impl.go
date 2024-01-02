@@ -42,7 +42,7 @@ func (rw *RWDatasource) TableName(ctx context.Context) string {
 	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(Datasource{}).Name())
 }
 
-func (rw *RWDatasource) CreateDatasource(ctx context.Context, dataSource *Datasource) (*Datasource, error) {
+func (rw *RWDatasource) CreateDatasource(ctx context.Context, dataSource []*Datasource) ([]*Datasource, error) {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "datasource_name"}},
 		UpdateAll: true,

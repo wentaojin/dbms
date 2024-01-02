@@ -1,6 +1,6 @@
 [database]
-host = "10.2.14.60"
-port = 5000
+host = "120.92.77.145"
+port = 4000
 username = "root"
 password = ""
 schema = "marvin"

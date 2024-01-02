@@ -13,19 +13,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package service
+package worker
 
 import (
 	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	"github.com/wentaojin/dbms/utils/stringutil"
-	"github.com/wentaojin/dbms/worker"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 func UpsertTask(etcdClient *clientv3.Client, req *pb.OperateTaskRequest) error {
-	t := &worker.Task{Name: req.TaskName, Express: req.Express}
+	t := &Task{Name: req.TaskName, Express: req.Express}
 	_, err := etcdutil.PutKey(etcdClient, stringutil.StringBuilder(constant.DefaultScheduledTaskSubmitPrefixKey, req.TaskName), t.String(), clientv3.WithPrevKV())
 	if err != nil {
 		return err
@@ -42,7 +41,7 @@ func DeleteTask(etcdClient *clientv3.Client, req *pb.OperateTaskRequest) error {
 }
 
 func KillTask(etcdClient *clientv3.Client, req *pb.OperateTaskRequest) error {
-	t := &worker.Task{Name: req.TaskName, Express: req.Express}
+	t := &Task{Name: req.TaskName, Express: req.Express}
 	_, err := etcdutil.PutKey(etcdClient, stringutil.StringBuilder(constant.DefaultScheduledTaskKillPrefixKey, req.TaskName), t.String(), clientv3.WithPrevKV())
 	if err != nil {
 		return err

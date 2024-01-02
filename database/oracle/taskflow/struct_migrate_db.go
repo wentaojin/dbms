@@ -33,7 +33,6 @@ import (
 type StructMigrateDatabase struct {
 	Ctx           context.Context       `json:"-"`
 	TaskName      string                `json:"taskName"`
-	SubTaskName   string                `json:"subTaskName"`
 	TaskFlow      string                `json:"taskFlow"`
 	TaskStartTime time.Time             `json:"-"`
 	DatasourceT   database.IDatabase    `json:"-"`
@@ -46,7 +45,6 @@ func NewStructMigrateDatabase(ctx context.Context,
 	return &StructMigrateDatabase{
 		Ctx:           ctx,
 		TaskName:      taskName,
-		SubTaskName:   subTaskName,
 		TaskFlow:      taskFlow,
 		TaskStartTime: taskStartTime,
 		DatasourceT:   datasourceT,
@@ -61,11 +59,11 @@ func (s *StructMigrateDatabase) WriteStructDatabase() error {
 		return err
 	}
 	_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(s.Ctx, &task.StructMigrateTask{
-		SubTaskName: s.SubTaskName,
+		TaskName:    s.TaskName,
 		SchemaNameS: s.TableStruct.SchemaNameS,
 		TableNameS:  s.TableStruct.TableNameT,
 	}, map[string]string{
-		"TaskStatus":      constant.TaskStatusFinished,
+		"TaskStatus":      constant.TaskDatabaseStatusSuccess,
 		"SourceSqlDigest": originSqlDigest,
 		"TargetSqlDigest": compDigest,
 		"IncompSqlDigest": incompDigest,
@@ -95,11 +93,11 @@ func (s *StructMigrateDatabase) SyncStructDatabase() error {
 		}
 	}
 	_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(s.Ctx, &task.StructMigrateTask{
-		SubTaskName: s.SubTaskName,
+		TaskName:    s.TaskName,
 		SchemaNameS: s.TableStruct.SchemaNameS,
 		TableNameS:  s.TableStruct.TableNameT,
 	}, map[string]string{
-		"TaskStatus":      constant.TaskStatusFinished,
+		"TaskStatus":      constant.TaskDatabaseStatusSuccess,
 		"SourceSqlDigest": originSqlDigest,
 		"TargetSqlDigest": compDigest,
 		"IncompSqlDigest": incompDigest,
@@ -241,6 +239,6 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		}
 		return compatibleSql, incompatibleSql, nil
 	default:
-		return compatibleSql, incompatibleSql, fmt.Errorf("oracle current task [%s] subtask [%s] taskflow [%s] isn't support, please contact author or reselect", s.TaskName, s.SubTaskName, s.TaskFlow)
+		return compatibleSql, incompatibleSql, fmt.Errorf("oracle current task [%s] taskflow [%s] isn't support, please contact author or reselect", s.TaskName, s.TaskFlow)
 	}
 }

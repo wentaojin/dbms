@@ -21,6 +21,8 @@ import (
 	"net"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"sync/atomic"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -49,7 +51,8 @@ type Server struct {
 // NewServer creates a new server
 func NewServer(cfg *Config) *Server {
 	return &Server{
-		cfg: cfg,
+		cfg:         cfg,
+		dbConnReady: new(atomic.Bool),
 	}
 }
 
@@ -59,7 +62,8 @@ func (s *Server) Start(ctx context.Context) error {
 		configutil.WithWorkerAddr(s.cfg.WorkerOptions.WorkerAddr),
 		configutil.WithMasterEndpoint(s.cfg.WorkerOptions.Endpoint),
 		configutil.WithWorkerLease(s.cfg.WorkerOptions.KeepaliveTTL),
-		configutil.WithEventQueueSize(s.cfg.WorkerOptions.EventQueueSize))
+		configutil.WithEventQueueSize(s.cfg.WorkerOptions.EventQueueSize),
+		configutil.WithBalanceSleepTime(s.cfg.WorkerOptions.BalanceSleepTime))
 	if err != nil {
 		return err
 	}
@@ -74,7 +78,6 @@ func (s *Server) Start(ctx context.Context) error {
 		return err
 	}
 
-	// init db conn
 	s.createDatabaseConn()
 
 	s.schedule(ctx)
@@ -140,6 +143,11 @@ func (s *Server) createDatabaseConn() {
 	conn := etcdutil.NewServiceConnect(s.etcdClient, s.cfg.LogConfig.LogLevel, s.dbConnReady)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error("dbms-worker create database failed", zap.Any("PANIC", r))
+			}
+		}()
 		err := conn.Watch(constant.DefaultMasterDatabaseDBMSKey)
 		if err != nil {
 			panic(err)
@@ -148,7 +156,7 @@ func (s *Server) createDatabaseConn() {
 }
 
 func (s *Server) schedule(ctx context.Context) {
-	er := NewExecutor()
+	er := NewExecutor(ctx, s.etcdClient, s.cfg.WorkerOptions.BalanceSleepTime)
 	er.Execute()
 
 	sr := NewScheduler(ctx, er, s.cfg.WorkerOptions.EventQueueSize)

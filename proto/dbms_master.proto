@@ -110,7 +110,7 @@ message ShowDatabaseResponse{
 }
 
 message UpsertDatasourceRequest{
-  Datasource datasource = 1;
+  repeated Datasource datasource = 1;
 }
 message UpsertDatasourceResponse{
   Response response = 1;
@@ -194,7 +194,7 @@ message OperateTaskResponse {
   通用结构体
  */
 message Response {
-  bool result = 1;
+  string result = 1;
   string message = 2;
 }
 
