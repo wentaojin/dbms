@@ -26,10 +26,10 @@ import (
 )
 
 func (d *Database) GetDatabasePartitionTable(schemaName string) ([]string, error) {
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT table_name AS TABLE_NAME
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT TABLE_NAME AS TABLE_NAME
 	FROM DBA_TABLES
- WHERE partitioned = 'YES'
-   AND UPPER(owner) = UPPER('%s')`, schemaName))
+ WHERE PARTITIONED = 'YES'
+   AND OWNER = '%s'`, schemaName))
 	if err != nil {
 		return []string{}, err
 	}
@@ -42,10 +42,11 @@ func (d *Database) GetDatabasePartitionTable(schemaName string) ([]string, error
 }
 
 func (d *Database) GetDatabaseTemporaryTable(schemaName string) ([]string, error) {
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`select table_name AS TABLE_NAME
-  from dba_tables
- where TEMPORARY = 'Y'
-   and upper(owner) = upper('%s')`, schemaName))
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	TABLE_NAME AS TABLE_NAME
+  FROM DBA_TABLES
+ WHERE TEMPORARY = 'Y'
+   AND OWNER = '%s'`, schemaName))
 	if err != nil {
 		return []string{}, err
 	}
@@ -58,10 +59,11 @@ func (d *Database) GetDatabaseTemporaryTable(schemaName string) ([]string, error
 }
 
 func (d *Database) GetDatabaseClusteredTable(schemaName string) ([]string, error) {
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`select table_name AS TABLE_NAME
-  from dba_tables
- where CLUSTER_NAME IS NOT NULL
-   and upper(owner) = upper('%s')`, schemaName))
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+    TABLE_NAME AS TABLE_NAME
+  FROM dba_tables
+ WHERE CLUSTER_NAME IS NOT NULL
+   AND OWNER = '%s'`, schemaName))
 	if err != nil {
 		return []string{}, err
 	}
@@ -74,7 +76,13 @@ func (d *Database) GetDatabaseClusteredTable(schemaName string) ([]string, error
 }
 
 func (d *Database) GetDatabaseMaterializedView(schemaName string) ([]string, error) {
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT OWNER,MVIEW_NAME FROM DBA_MVIEWS WHERE UPPER(OWNER) = UPPER('%s')`, schemaName))
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	OWNER,
+	MVIEW_NAME
+FROM
+	DBA_MVIEWS
+WHERE
+	OWNER = '%s'`, schemaName))
 	if err != nil {
 		return []string{}, err
 	}
@@ -90,25 +98,32 @@ func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, e
 	tableTypeMap := make(map[string]string)
 
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
-	f.TABLE_NAME,
+	F.TABLE_NAME,
 	(
 	CASE
-		WHEN f.CLUSTER_NAME IS NOT NULL THEN 'CLUSTERED'
-		WHEN (SELECT COUNT(1) FROM DBA_MVIEWS v WHERE v.owner = f.owner AND f.table_name = v.MVIEW_NAME) = 1 THEN 'MATERIALIZED VIEW'
+		WHEN F.CLUSTER_NAME IS NOT NULL THEN 'CLUSTERED'
+		WHEN (
+		SELECT
+			COUNT(1)
+		FROM
+			DBA_MVIEWS V
+		WHERE
+			V.OWNER = F.OWNER
+			AND F.TABLE_NAME = V.MVIEW_NAME) = 1 THEN 'MATERIALIZED VIEW'
 		ELSE
 		CASE
-			WHEN f.IOT_TYPE = 'IOT' THEN
+			WHEN F.IOT_TYPE = 'IOT' THEN
 			CASE
-				WHEN t.IOT_TYPE != 'IOT' THEN t.IOT_TYPE
+				WHEN T.IOT_TYPE != 'IOT' THEN T.IOT_TYPE
 				ELSE 'IOT'
 			END
 			ELSE
 				CASE	
-						WHEN f.PARTITIONED = 'YES' THEN 'PARTITIONED'
+						WHEN F.PARTITIONED = 'YES' THEN 'PARTITIONED'
 				ELSE
 					CASE
-							WHEN f.TEMPORARY = 'Y' THEN 
-							DECODE(f.DURATION, 'SYS$SESSION', 'SESSION TEMPORARY', 'SYS$TRANSACTION', 'TRANSACTION TEMPORARY')
+							WHEN F.TEMPORARY = 'Y' THEN 
+							DECODE(F.DURATION, 'SYS$SESSION', 'SESSION TEMPORARY', 'SYS$TRANSACTION', 'TRANSACTION TEMPORARY')
 					ELSE 'HEAP'
 				END
 			END
@@ -117,39 +132,39 @@ func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, e
 FROM
 	(
 	SELECT
-		tmp.owner,
-		tmp.TABLE_NAME,
-		tmp.CLUSTER_NAME,
-		tmp.PARTITIONED,
-		tmp.TEMPORARY,
-		tmp.DURATION,
-		tmp.IOT_TYPE
+		TMP.OWNER,
+		TMP.TABLE_NAME,
+		TMP.CLUSTER_NAME,
+		TMP.PARTITIONED,
+		TMP.TEMPORARY,
+		TMP.DURATION,
+		TMP.IOT_TYPE
 	FROM
-		DBA_TABLES tmp,
-		DBA_TABLES w
+		DBA_TABLES TMP,
+		DBA_TABLES W
 	WHERE
-		tmp.owner = w.owner
-		AND tmp.table_name = w.table_name
-		AND tmp.owner = '%s'
-		AND (w.IOT_TYPE IS NULL
-			OR w.IOT_TYPE = 'IOT')) f
+		TMP.OWNER = W.OWNER
+		AND TMP.TABLE_NAME = W.TABLE_NAME
+		AND TMP.OWNER = '%s'
+		AND (W.IOT_TYPE IS NULL
+			OR W.IOT_TYPE = 'IOT')) F
 LEFT JOIN (
 	SELECT
-		owner,
-		iot_name,
-		iot_type
+		OWNER,
+		IOT_NAME,
+		IOT_TYPE
 	FROM
 		DBA_TABLES
 	WHERE
-		owner = '%s')t 
+		OWNER = '%s')T 
 ON
-	f.owner = t.owner
-	AND f.table_name = t.iot_name`, strings.ToUpper(schemaName), strings.ToUpper(schemaName)))
+	F.OWNER = T.OWNER
+	AND F.TABLE_NAME = T.IOT_NAME`, schemaName, schemaName))
 	if err != nil {
 		return tableTypeMap, err
 	}
 	if len(res) == 0 {
-		return tableTypeMap, fmt.Errorf("oracle schema [%s] table type can't be null", schemaName)
+		return tableTypeMap, fmt.Errorf("oracle schema [%s] get table type result null, but can't be null", schemaName)
 	}
 
 	for _, r := range res {
@@ -163,7 +178,10 @@ ON
 }
 
 func (d *Database) GetDatabaseCharset() (string, error) {
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`select userenv('language') AS LANG from dual`))
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	USERENV('LANGUAGE') AS LANG
+FROM
+	DUAL`))
 	if err != nil {
 		return res[0]["LANG"], err
 	}
@@ -171,7 +189,13 @@ func (d *Database) GetDatabaseCharset() (string, error) {
 }
 
 func (d *Database) GetDatabaseCharsetCollation() (string, string, error) {
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT PARAMETER,VALUE from NLS_DATABASE_PARAMETERS WHERE PARAMETER IN ('NLS_SORT','NLS_COMP')`))
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	PARAMETER,
+	VALUE
+FROM
+	NLS_DATABASE_PARAMETERS
+WHERE
+	PARAMETER IN ('NLS_SORT', 'NLS_COMP')`))
 	if err != nil {
 		return "", "", err
 	}
@@ -192,7 +216,12 @@ func (d *Database) GetDatabaseCharsetCollation() (string, string, error) {
 }
 
 func (d *Database) GetDatabaseVersion() (string, error) {
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`select VALUE from NLS_DATABASE_PARAMETERS WHERE PARAMETER='NLS_RDBMS_VERSION'`))
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	VALUE
+FROM
+	NLS_DATABASE_PARAMETERS
+WHERE
+	PARAMETER = 'NLS_RDBMS_VERSION'`))
 	if err != nil {
 		return res[0]["VALUE"], err
 	}
@@ -219,77 +248,93 @@ func (d *Database) GetDatabaseTableColumns(schemaName string, tableName string, 
 	*/
 	if collation {
 		queryStr = fmt.Sprintf(`SELECT 
-		t.COLUMN_NAME,
-	    t.DATA_TYPE,
-		t.CHAR_LENGTH,
-		NVL(t.CHAR_USED, 'UNKNOWN') CHAR_USED,
-	    NVL(t.DATA_LENGTH, 0) AS DATA_LENGTH,
-	    DECODE(NVL(TO_CHAR(t.DATA_PRECISION), '*'), '*', '38', TO_CHAR(t.DATA_PRECISION)) AS DATA_PRECISION,
-	    DECODE(NVL(TO_CHAR(t.DATA_SCALE), '*'), '*', '127', TO_CHAR(t.DATA_SCALE)) AS DATA_SCALE,
-		t.NULLABLE,
-	    NVL(s.DATA_DEFAULT, 'NULLSTRING') DATA_DEFAULT,
-		DECODE(t.COLLATION, 'USING_NLS_COMP',(SELECT VALUE FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_COMP'), t.COLLATION) COLLATION,
-	    c.COMMENTS
+		T.COLUMN_NAME,
+	    T.DATA_TYPE,
+		T.CHAR_LENGTH,
+		NVL(T.CHAR_USED, 'UNKNOWN') CHAR_USED,
+	    NVL(T.DATA_LENGTH, 0) AS DATA_LENGTH,
+	    DECODE(NVL(TO_CHAR(T.DATA_PRECISION), '*'), '*', '38', TO_CHAR(T.DATA_PRECISION)) AS DATA_PRECISION,
+	    DECODE(NVL(TO_CHAR(T.DATA_SCALE), '*'), '*', '127', TO_CHAR(T.DATA_SCALE)) AS DATA_SCALE,
+		T.NULLABLE,
+	    NVL(S.DATA_DEFAULT, 'NULLSTRING') DATA_DEFAULT,
+		DECODE(T.COLLATION, 'USING_NLS_COMP',(SELECT VALUE FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_COMP'), T.COLLATION) COLLATION,
+	    C.COMMENTS
 FROM
-	dba_tab_columns t,
-	dba_col_comments c,
+	DBA_TAB_COLUMNS T,
+	DBA_COL_COMMENTS C,
 	(
-	SELECT xs.OWNER,xs.TABLE_NAME,xs.COLUMN_NAME,xs.DATA_DEFAULT FROM
-	XMLTABLE (
-		'/ROWSET/ROW' PASSING (
 	SELECT
-		DBMS_XMLGEN.GETXMLTYPE (
-				q'[SELECT d.OWNER,d.TABLE_NAME,d.COLUMN_NAME,d.DATA_DEFAULT FROM DBA_TAB_COLUMNS d WHERE upper(d.owner) = upper('%s') AND upper(d.table_name) = upper('%s')]')
+		XS.OWNER,
+		XS.TABLE_NAME,
+		XS.COLUMN_NAME,
+		XS.DATA_DEFAULT
 	FROM
-		DUAL ) COLUMNS OWNER VARCHAR2 (300) PATH 'OWNER', TABLE_NAME VARCHAR2(300) PATH 'TABLE_NAME', COLUMN_NAME VARCHAR2(300) PATH 'COLUMN_NAME', DATA_DEFAULT VARCHAR2(4000) PATH 'DATA_DEFAULT') xs
-		) s
+		XMLTABLE (
+		'/ROWSET/ROW' PASSING (
+		SELECT
+			DBMS_XMLGEN.GETXMLTYPE (
+				Q'[SELECT D.OWNER,D.TABLE_NAME,D.COLUMN_NAME,D.DATA_DEFAULT FROM DBA_TAB_COLUMNS D WHERE D.OWNER = '%s' AND D.TABLE_NAME = '%s']')
+		FROM
+			DUAL ) COLUMNS OWNER VARCHAR2 (300) PATH 'OWNER',
+		TABLE_NAME VARCHAR2(300) PATH 'TABLE_NAME',
+		COLUMN_NAME VARCHAR2(300) PATH 'COLUMN_NAME',
+		DATA_DEFAULT VARCHAR2(4000) PATH 'DATA_DEFAULT') XS
+		) S
 WHERE
-	t.table_name = c.table_name
-	AND t.column_name = c.column_name
-	AND t.owner = c.owner
-	AND c.owner = s.owner
-	AND c.table_name = s.table_name
-	AND c.column_name = s.column_name
-	AND upper(t.owner) = upper('%s')
-	AND upper(t.table_name) = upper('%s')
+	T.TABLE_NAME = C.TABLE_NAME
+	AND T.COLUMN_NAME = C.COLUMN_NAME
+	AND T.OWNER = C.OWNER
+	AND C.OWNER = S.OWNER
+	AND C.TABLE_NAME = S.TABLE_NAME
+	AND C.COLUMN_NAME = S.COLUMN_NAME
+	AND T.OWNER = '%s'
+	AND T.TABLE_NAME = '%s'
 ORDER BY
-	t.COLUMN_ID`, schemaName, tableName, schemaName, tableName)
+	T.COLUMN_ID`, schemaName, tableName, schemaName, tableName)
 	} else {
 		queryStr = fmt.Sprintf(`SELECT 
-		t.COLUMN_NAME,
-	    t.DATA_TYPE,
-		t.CHAR_LENGTH,
-		NVL(t.CHAR_USED, 'UNKNOWN') CHAR_USED,
-	    NVL(t.DATA_LENGTH, 0) AS DATA_LENGTH,
-	    DECODE(NVL(TO_CHAR(t.DATA_PRECISION), '*'), '*', '38', TO_CHAR(t.DATA_PRECISION)) AS DATA_PRECISION,
-	    DECODE(NVL(TO_CHAR(t.DATA_SCALE), '*'), '*', '127', TO_CHAR(t.DATA_SCALE)) AS DATA_SCALE,
-		t.NULLABLE,
-	    NVL(s.DATA_DEFAULT, 'NULLSTRING') DATA_DEFAULT,
-	    c.COMMENTS
+		T.COLUMN_NAME,
+	    T.DATA_TYPE,
+		T.CHAR_LENGTH,
+		NVL(T.CHAR_USED, 'UNKNOWN') CHAR_USED,
+	    NVL(T.DATA_LENGTH, 0) AS DATA_LENGTH,
+	    DECODE(NVL(TO_CHAR(T.DATA_PRECISION), '*'), '*', '38', TO_CHAR(T.DATA_PRECISION)) AS DATA_PRECISION,
+	    DECODE(NVL(TO_CHAR(T.DATA_SCALE), '*'), '*', '127', TO_CHAR(T.DATA_SCALE)) AS DATA_SCALE,
+		T.NULLABLE,
+	    NVL(S.DATA_DEFAULT, 'NULLSTRING') DATA_DEFAULT,
+	    C.COMMENTS
 FROM
-	dba_tab_columns t,
-	dba_col_comments c,
+	DBA_TAB_COLUMNS T,
+	DBA_COL_COMMENTS C,
 	(
-	SELECT xs.OWNER,xs.TABLE_NAME,xs.COLUMN_NAME,xs.DATA_DEFAULT FROM
-	XMLTABLE (
-		'/ROWSET/ROW' PASSING (
 	SELECT
-		DBMS_XMLGEN.GETXMLTYPE (
-				q'[SELECT d.OWNER,d.TABLE_NAME,d.COLUMN_NAME,d.DATA_DEFAULT FROM DBA_TAB_COLUMNS d WHERE upper(d.owner) = upper('%s') AND upper(d.table_name) = upper('%s')]')
+		XS.OWNER,
+		XS.TABLE_NAME,
+		XS.COLUMN_NAME,
+		XS.DATA_DEFAULT
 	FROM
-		DUAL ) COLUMNS OWNER VARCHAR2 (300) PATH 'OWNER', TABLE_NAME VARCHAR2(300) PATH 'TABLE_NAME', COLUMN_NAME VARCHAR2(300) PATH 'COLUMN_NAME', DATA_DEFAULT VARCHAR2(4000) PATH 'DATA_DEFAULT') xs
-		) s
+		XMLTABLE (
+		'/ROWSET/ROW' PASSING (
+		SELECT
+			DBMS_XMLGEN.GETXMLTYPE (
+				Q'[SELECT D.OWNER,D.TABLE_NAME,D.COLUMN_NAME,D.DATA_DEFAULT FROM DBA_TAB_COLUMNS D WHERE D.OWNER = '%s' AND D.TABLE_NAME = '%s']')
+		FROM
+			DUAL ) COLUMNS OWNER VARCHAR2 (300) PATH 'OWNER',
+		TABLE_NAME VARCHAR2(300) PATH 'TABLE_NAME',
+		COLUMN_NAME VARCHAR2(300) PATH 'COLUMN_NAME',
+		DATA_DEFAULT VARCHAR2(4000) PATH 'DATA_DEFAULT') XS
+		) S
 WHERE
-	t.table_name = c.table_name
-	AND t.column_name = c.column_name
-	AND t.owner = c.owner
-	AND c.owner = s.owner
-	AND c.table_name = s.table_name
-	AND c.column_name = s.column_name
-	AND upper(t.owner) = upper('%s')
-	AND upper(t.table_name) = upper('%s')
+	T.TABLE_NAME = C.TABLE_NAME
+	AND T.COLUMN_NAME = C.COLUMN_NAME
+	AND T.OWNER = C.OWNER
+	AND C.OWNER = S.OWNER
+	AND C.TABLE_NAME = S.TABLE_NAME
+	AND C.COLUMN_NAME = S.COLUMN_NAME
+	AND T.OWNER = '%s'
+	AND T.TABLE_NAME = '%s'
 ORDER BY
-	t.COLUMN_ID`, schemaName, tableName, schemaName, tableName)
+	T.COLUMN_ID`, schemaName, tableName, schemaName, tableName)
 	}
 
 	_, queryRes, err := d.GeneralQuery(queryStr)
@@ -303,18 +348,18 @@ ORDER BY
 	// check constraints notnull
 	// search_condition long datatype
 	_, condRes, err := d.GeneralQuery(fmt.Sprintf(`SELECT
-				col.COLUMN_NAME,
-				cons.SEARCH_CONDITION
-				FROM
-				DBA_CONS_COLUMNS col,
-				DBA_CONSTRAINTS cons
-				WHERE
-				col.OWNER = cons.OWNER
-				AND col.TABLE_NAME = cons.TABLE_NAME
-				AND col.CONSTRAINT_NAME = cons.CONSTRAINT_NAME
-				AND cons.CONSTRAINT_TYPE = 'C'
-				AND upper(col.OWNER) = '%s'
-				AND upper(col.TABLE_NAME) = '%s'`, strings.ToUpper(schemaName), strings.ToUpper(tableName)))
+				COL.COLUMN_NAME,
+				CONS.SEARCH_CONDITION
+FROM
+				DBA_CONS_COLUMNS COL,
+				DBA_CONSTRAINTS CONS
+WHERE
+				COL.OWNER = CONS.OWNER
+	AND COL.TABLE_NAME = CONS.TABLE_NAME
+	AND COL.CONSTRAINT_NAME = CONS.CONSTRAINT_NAME
+	AND CONS.CONSTRAINT_TYPE = 'C'
+	AND COL.OWNER = '%s'
+	AND COL.TABLE_NAME = '%s'`, schemaName, tableName))
 	if err != nil {
 		return queryRes, err
 	}
@@ -345,19 +390,25 @@ func (d *Database) GetDatabaseTablePrimaryKey(schemaName string, tableName strin
 	// disable the primary key: alter table tableName disable primary key;
 	// enable the primary key: alter table tableName enable primary key;
 	// primary key status Disabled will not do primary key processing
-	queryStr := fmt.Sprintf(`select cu.constraint_name,
-       LISTAGG(cu.column_name, ',') WITHIN GROUP(ORDER BY cu.POSITION) AS COLUMN_LIST
-  from dba_cons_columns cu, dba_constraints au
- where cu.constraint_name = au.constraint_name
-   and au.constraint_type = 'P'
-   and au.STATUS = 'ENABLED'
-   and cu.owner = au.owner
-   and cu.table_name = au.table_name
-   and upper(au.table_name) = upper('%s')
-   and upper(cu.owner) = upper('%s')
- group by cu.constraint_name`,
-		strings.ToUpper(tableName),
-		strings.ToUpper(schemaName))
+	queryStr := fmt.Sprintf(`SELECT
+	CU.CONSTRAINT_NAME,
+	LISTAGG(CU.COLUMN_NAME, ',') WITHIN GROUP(
+	ORDER BY CU.POSITION) AS COLUMN_LIST
+FROM
+	DBA_CONS_COLUMNS CU,
+	DBA_CONSTRAINTS AU
+WHERE
+	CU.CONSTRAINT_NAME = AU.CONSTRAINT_NAME
+	AND AU.CONSTRAINT_TYPE = 'P'
+	AND AU.STATUS = 'ENABLED'
+	AND CU.OWNER = AU.OWNER
+	AND CU.TABLE_NAME = AU.TABLE_NAME
+	AND AU.TABLE_NAME = '%s'
+	AND CU.OWNER = '%s'
+GROUP BY
+	CU.CONSTRAINT_NAME`,
+		tableName,
+		schemaName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return res, err
@@ -366,19 +417,27 @@ func (d *Database) GetDatabaseTablePrimaryKey(schemaName string, tableName strin
 }
 
 func (d *Database) GetDatabaseTableUniqueKey(schemaName string, tableName string) ([]map[string]string, error) {
-	queryStr := fmt.Sprintf(`select cu.constraint_name,au.index_name,
-       LISTAGG(cu.column_name, ',') WITHIN GROUP(ORDER BY cu.POSITION) AS column_list
-  from dba_cons_columns cu, dba_constraints au
- where cu.constraint_name = au.constraint_name
-   and cu.owner = au.owner
-   and cu.table_name = au.table_name
-   and au.constraint_type = 'U'
-   and au.STATUS = 'ENABLED'
-   and upper(au.table_name) = upper('%s')
-   and upper(cu.owner) = upper('%s')
- group by cu.constraint_name,au.index_name`,
-		strings.ToUpper(tableName),
-		strings.ToUpper(schemaName))
+	queryStr := fmt.Sprintf(`SELECT
+	CU.CONSTRAINT_NAME,
+	AU.INDEX_NAME,
+	LISTAGG(CU.COLUMN_NAME, ',') WITHIN GROUP(
+	ORDER BY CU.POSITION) AS COLUMN_LIST
+FROM
+	DBA_CONS_COLUMNS CU,
+	DBA_CONSTRAINTS AU
+WHERE
+	CU.CONSTRAINT_NAME = AU.CONSTRAINT_NAME
+	AND CU.OWNER = AU.OWNER
+	AND CU.TABLE_NAME = AU.TABLE_NAME
+	AND AU.CONSTRAINT_TYPE = 'U'
+	AND AU.STATUS = 'ENABLED'
+	AND AU.TABLE_NAME = '%s'
+	AND CU.OWNER = '%s'
+GROUP BY
+	CU.CONSTRAINT_NAME,
+	AU.INDEX_NAME`,
+		tableName,
+		schemaName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return res, err
@@ -387,44 +446,66 @@ func (d *Database) GetDatabaseTableUniqueKey(schemaName string, tableName string
 }
 
 func (d *Database) GetDatabaseTableForeignKey(schemaName string, tableName string) ([]map[string]string, error) {
-	queryStr := fmt.Sprintf(`with temp1 as
- (select
-         t1.OWNER,
-         t1.r_owner,
-         t1.constraint_name,
-         t1.r_constraint_name,
-         t1.DELETE_RULE,
-         LISTAGG(a1.column_name, ',') WITHIN GROUP(ORDER BY a1.POSITION) AS COLUMN_LIST
-    from dba_constraints t1, dba_cons_columns a1
-   where t1.constraint_name = a1.constraint_name
-     AND upper(t1.table_name) = upper('%s')
-     AND upper(t1.owner) = upper('%s')
-     AND t1.STATUS = 'ENABLED'
-     AND t1.Constraint_Type = 'R'
-   group by t1.OWNER, t1.r_owner, t1.constraint_name, t1.r_constraint_name,t1.DELETE_RULE),
-temp2 as
- (select t1.owner,
-         t1.TABLE_NAME,
-         t1.constraint_name,
-         LISTAGG(a1.column_name, ',') WITHIN GROUP(ORDER BY a1.POSITION) AS COLUMN_LIST
-    from dba_constraints t1, dba_cons_columns a1
-   where t1.constraint_name = a1.constraint_name
-     AND upper(t1.owner) = upper('%s')
-     AND t1.STATUS = 'ENABLED'
-     AND t1.Constraint_Type = 'P'
-   group by t1.owner,t1.TABLE_NAME, t1.r_owner, t1.constraint_name)
-select x.constraint_name,
-       x.COLUMN_LIST,
-       x.r_owner,
-       y.TABLE_NAME as RTABLE_NAME,
-       y.COLUMN_LIST as RCOLUMN_LIST,
-       x.DELETE_RULE
-  from temp1 x, temp2 y
- where x.r_owner = y.owner
-   and x.r_constraint_name = y.constraint_name`,
-		strings.ToUpper(tableName),
-		strings.ToUpper(schemaName),
-		strings.ToUpper(schemaName))
+	queryStr := fmt.Sprintf(`WITH TEMP1 AS
+ (
+SELECT
+	T1.OWNER,
+	T1.R_OWNER,
+	T1.CONSTRAINT_NAME,
+	T1.R_CONSTRAINT_NAME,
+	T1.DELETE_RULE,
+	LISTAGG(A1.COLUMN_NAME, ',') WITHIN GROUP(ORDER BY A1.POSITION) AS COLUMN_LIST
+FROM
+	DBA_CONSTRAINTS T1,
+	DBA_CONS_COLUMNS A1
+WHERE
+	T1.CONSTRAINT_NAME = A1.CONSTRAINT_NAME
+	AND T1.TABLE_NAME = '%s'
+	AND T1.OWNER = '%s'
+	AND T1.STATUS = 'ENABLED'
+	AND T1.CONSTRAINT_TYPE = 'R'
+GROUP BY
+	T1.OWNER,
+	T1.R_OWNER,
+	T1.CONSTRAINT_NAME,
+	T1.R_CONSTRAINT_NAME,
+	T1.DELETE_RULE),
+TEMP2 AS
+ (
+SELECT
+	T1.OWNER,
+	T1.TABLE_NAME,
+	T1.CONSTRAINT_NAME,
+	LISTAGG(A1.COLUMN_NAME, ',') WITHIN GROUP(ORDER BY A1.POSITION) AS COLUMN_LIST
+FROM
+	DBA_CONSTRAINTS T1,
+	DBA_CONS_COLUMNS A1
+WHERE
+	T1.CONSTRAINT_NAME = A1.CONSTRAINT_NAME
+	AND T1.OWNER = '%s'
+		AND T1.STATUS = 'ENABLED'
+		AND T1.CONSTRAINT_TYPE = 'P'
+	GROUP BY
+		T1.OWNER,
+		T1.TABLE_NAME,
+		T1.R_OWNER,
+		T1.CONSTRAINT_NAME)
+SELECT
+	X.CONSTRAINT_NAME,
+	X.COLUMN_LIST,
+	X.R_OWNER,
+	Y.TABLE_NAME AS RTABLE_NAME,
+	Y.COLUMN_LIST AS RCOLUMN_LIST,
+	X.DELETE_RULE
+FROM
+	TEMP1 X,
+	TEMP2 Y
+WHERE
+	X.R_OWNER = Y.OWNER
+	AND X.R_CONSTRAINT_NAME = Y.CONSTRAINT_NAME`,
+		tableName,
+		schemaName,
+		schemaName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return res, err
@@ -433,18 +514,22 @@ select x.constraint_name,
 }
 
 func (d *Database) GetDatabaseTableCheckKey(schemaName string, tableName string) ([]map[string]string, error) {
-	queryStr := fmt.Sprintf(`select cu.constraint_name,au.SEARCH_CONDITION
-          from dba_cons_columns cu, dba_constraints au
-         where cu.owner=au.owner
-           and cu.table_name=au.table_name
-           and cu.constraint_name = au.constraint_name
-           and au.constraint_type = 'C'
-           and au.STATUS = 'ENABLED'
-           and upper(au.table_name) = upper('%s')
-           and upper(au.owner) = upper('%s')`,
-		strings.ToUpper(tableName),
-		strings.ToUpper(schemaName),
-	)
+	queryStr := fmt.Sprintf(`SELECT
+	CU.CONSTRAINT_NAME,
+	AU.SEARCH_CONDITION
+FROM
+	DBA_CONS_COLUMNS CU,
+	DBA_CONSTRAINTS AU
+WHERE
+	CU.OWNER = AU.OWNER
+	AND CU.TABLE_NAME = AU.TABLE_NAME
+	AND CU.CONSTRAINT_NAME = AU.CONSTRAINT_NAME
+	AND AU.CONSTRAINT_TYPE = 'C'
+	AND AU.STATUS = 'ENABLED'
+	AND AU.TABLE_NAME = '%s'
+	AND AU.OWNER = '%s'`,
+		tableName,
+		schemaName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return res, err
@@ -454,27 +539,27 @@ func (d *Database) GetDatabaseTableCheckKey(schemaName string, tableName string)
 
 func (d *Database) GetDatabaseTableNormalIndex(schemaName string, tableName string) ([]map[string]string, error) {
 	queryStr := fmt.Sprintf(`SELECT
-	temp.TABLE_NAME,
-	temp.UNIQUENESS,
-	temp.INDEX_NAME,
-	temp.INDEX_TYPE,
-	temp.ITYP_OWNER,
-	temp.ITYP_NAME,
-	temp.PARAMETERS,
-	LISTAGG ( temp.COLUMN_NAME, ',' ) WITHIN GROUP ( ORDER BY temp.COLUMN_POSITION ) AS COLUMN_LIST 
+	TEMP.TABLE_NAME,
+	TEMP.UNIQUENESS,
+	TEMP.INDEX_NAME,
+	TEMP.INDEX_TYPE,
+	TEMP.ITYP_OWNER,
+	TEMP.ITYP_NAME,
+	TEMP.PARAMETERS,
+	LISTAGG ( TEMP.COLUMN_NAME, ',' ) WITHIN GROUP (ORDER BY TEMP.COLUMN_POSITION) AS COLUMN_LIST
 FROM
 	(
-SELECT
+	SELECT
 		T.TABLE_OWNER,
 		T.TABLE_NAME,
 		I.UNIQUENESS,
 		T.INDEX_NAME,
 		I.INDEX_TYPE,
-		NVL(I.ITYP_OWNER,'') ITYP_OWNER,
-		NVL(I.ITYP_NAME,'') ITYP_NAME,
-		NVL(I.PARAMETERS,'') PARAMETERS,
+		NVL(I.ITYP_OWNER, '') ITYP_OWNER,
+		NVL(I.ITYP_NAME, '') ITYP_NAME,
+		NVL(I.PARAMETERS, '') PARAMETERS,
 		DECODE((SELECT
-	COUNT( 1 ) 
+	COUNT(1) 
 FROM
 	DBA_IND_EXPRESSIONS S
 WHERE
@@ -482,12 +567,12 @@ WHERE
 	AND S.TABLE_NAME = T.TABLE_NAME
 	AND S.INDEX_OWNER = T.INDEX_OWNER
 	AND S.INDEX_NAME = T.INDEX_NAME
-	AND S.COLUMN_POSITION = T.COLUMN_POSITION),0,T.COLUMN_NAME, (SELECT
-	xs.COLUMN_EXPRESSION
+	AND S.COLUMN_POSITION = T.COLUMN_POSITION), 0, T.COLUMN_NAME, (SELECT
+	XS.COLUMN_EXPRESSION
 FROM
 	XMLTABLE (
 		'/ROWSET/ROW' PASSING ( SELECT DBMS_XMLGEN.GETXMLTYPE ( 
-				q'[SELECT
+				Q'[SELECT
 	S.INDEX_OWNER,
 	S.INDEX_NAME,
 	S.COLUMN_EXPRESSION,
@@ -497,44 +582,49 @@ FROM
 WHERE
 	S.TABLE_OWNER = '%s'
 	AND S.TABLE_NAME = '%s']' ) FROM DUAL ) COLUMNS 
-	INDEX_OWNER VARCHAR2 ( 30 ) PATH 'INDEX_OWNER',
-	INDEX_NAME VARCHAR2 ( 30 ) PATH 'INDEX_NAME',
-	COLUMN_POSITION VARCHAR2 ( 30 ) PATH 'COLUMN_POSITION',
-	COLUMN_EXPRESSION VARCHAR2 ( 4000 ) 
-	) xs 
+	INDEX_OWNER VARCHAR2 (30) PATH 'INDEX_OWNER',
+	INDEX_NAME VARCHAR2 (30) PATH 'INDEX_NAME',
+	COLUMN_POSITION VARCHAR2 (30) PATH 'COLUMN_POSITION',
+	COLUMN_EXPRESSION VARCHAR2 (4000) 
+	) XS 
 WHERE
-xs.INDEX_OWNER = T.INDEX_OWNER
-	AND xs.INDEX_NAME = T.INDEX_NAME
-AND xs.COLUMN_POSITION = T.COLUMN_POSITION)) COLUMN_NAME,
+XS.INDEX_OWNER = T.INDEX_OWNER
+	AND XS.INDEX_NAME = T.INDEX_NAME
+AND XS.COLUMN_POSITION = T.COLUMN_POSITION)) COLUMN_NAME,
 		T.COLUMN_POSITION
 	FROM
 		DBA_IND_COLUMNS T,
-		DBA_INDEXES I 
-	WHERE t.table_owner=i.table_owner 
-		AND t.table_name=i.table_name
-		AND t.index_name=i.index_name
-		AND i.uniqueness='NONUNIQUE'
-	  	AND T.TABLE_OWNER = '%s'
-	  	AND T.TABLE_NAME = '%s'
-		-- 排除约束索引
-		AND not exists (
-		select 1 from DBA_CONSTRAINTS C where 
-		c.owner=i.table_owner 
-		and c.table_name=i.table_name
-		and c.index_name=i.index_name)) temp		
-	GROUP BY
-		temp.TABLE_OWNER,
-		temp.TABLE_NAME,
-		temp.UNIQUENESS,
-		temp.INDEX_NAME,
-		temp.INDEX_TYPE,
-		temp.ITYP_OWNER,
-		temp.ITYP_NAME,
-		temp.PARAMETERS`,
-		strings.ToUpper(schemaName),
-		strings.ToUpper(tableName),
-		strings.ToUpper(schemaName),
-		strings.ToUpper(tableName))
+		DBA_INDEXES I
+	WHERE
+		T.TABLE_OWNER = I.TABLE_OWNER
+		AND T.TABLE_NAME = I.TABLE_NAME
+		AND T.INDEX_NAME = I.INDEX_NAME
+		AND I.UNIQUENESS = 'NONUNIQUE'
+		AND T.TABLE_OWNER = '%s'
+		AND T.TABLE_NAME = '%s'
+		-- exclude constraint index
+		AND NOT EXISTS (
+		SELECT
+			1
+		FROM
+			DBA_CONSTRAINTS C
+		WHERE
+			C.OWNER = I.TABLE_OWNER
+			AND C.TABLE_NAME = I.TABLE_NAME
+			AND C.INDEX_NAME = I.INDEX_NAME)) TEMP
+GROUP BY
+		TEMP.TABLE_OWNER,
+		TEMP.TABLE_NAME,
+		TEMP.UNIQUENESS,
+		TEMP.INDEX_NAME,
+		TEMP.INDEX_TYPE,
+		TEMP.ITYP_OWNER,
+		TEMP.ITYP_NAME,
+		TEMP.PARAMETERS`,
+		schemaName,
+		tableName,
+		schemaName,
+		tableName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return res, err
@@ -544,27 +634,27 @@ AND xs.COLUMN_POSITION = T.COLUMN_POSITION)) COLUMN_NAME,
 
 func (d *Database) GetDatabaseTableUniqueIndex(schemaName string, tableName string) ([]map[string]string, error) {
 	queryStr := fmt.Sprintf(`SELECT
-	temp.TABLE_NAME,
-	temp.UNIQUENESS,
-	temp.INDEX_NAME,
-	temp.INDEX_TYPE,
-	temp.ITYP_OWNER,
-	temp.ITYP_NAME,
-	temp.PARAMETERS,
-	LISTAGG ( temp.COLUMN_NAME, ',' ) WITHIN GROUP ( ORDER BY temp.COLUMN_POSITION ) AS COLUMN_LIST 
+	TEMP.TABLE_NAME,
+	TEMP.UNIQUENESS,
+	TEMP.INDEX_NAME,
+	TEMP.INDEX_TYPE,
+	TEMP.ITYP_OWNER,
+	TEMP.ITYP_NAME,
+	TEMP.PARAMETERS,
+	LISTAGG ( TEMP.COLUMN_NAME, ',' ) WITHIN GROUP ( ORDER BY TEMP.COLUMN_POSITION ) AS COLUMN_LIST
 FROM
 	(
-SELECT
-	I.TABLE_OWNER,
-	I.TABLE_NAME,
-	I.UNIQUENESS,
-	I.INDEX_NAME,
-	I.INDEX_TYPE,
-	NVL(I.ITYP_OWNER,'') ITYP_OWNER,
-	NVL(I.ITYP_NAME,'') ITYP_NAME,
-	NVL(I.PARAMETERS,'') PARAMETERS,
-	DECODE((SELECT
-	COUNT( 1 ) 
+	SELECT
+		I.TABLE_OWNER,
+		I.TABLE_NAME,
+		I.UNIQUENESS,
+		I.INDEX_NAME,
+		I.INDEX_TYPE,
+		NVL(I.ITYP_OWNER, '') ITYP_OWNER,
+		NVL(I.ITYP_NAME, '') ITYP_NAME,
+		NVL(I.PARAMETERS, '') PARAMETERS,
+		DECODE((SELECT
+	COUNT(1) 
 FROM
 	DBA_IND_EXPRESSIONS S
 WHERE
@@ -572,12 +662,12 @@ WHERE
 	AND S.TABLE_NAME = T.TABLE_NAME
 	AND S.INDEX_OWNER = T.INDEX_OWNER
 	AND S.INDEX_NAME = T.INDEX_NAME
-	AND S.COLUMN_POSITION = T.COLUMN_POSITION),0,T.COLUMN_NAME, (SELECT
-	xs.COLUMN_EXPRESSION
+	AND S.COLUMN_POSITION = T.COLUMN_POSITION), 0, T.COLUMN_NAME, (SELECT
+	XS.COLUMN_EXPRESSION
 FROM
 	XMLTABLE (
 		'/ROWSET/ROW' PASSING ( SELECT DBMS_XMLGEN.GETXMLTYPE ( 
-				q'[SELECT
+				Q'[SELECT
 	S.INDEX_OWNER,
 	S.INDEX_NAME,
 	S.COLUMN_EXPRESSION,
@@ -587,51 +677,51 @@ FROM
 WHERE
 	S.TABLE_OWNER = '%s'
 	AND S.TABLE_NAME = '%s']' ) FROM DUAL ) COLUMNS 
-	INDEX_OWNER VARCHAR2 ( 30 ) PATH 'INDEX_OWNER',
-	INDEX_NAME VARCHAR2 ( 30 ) PATH 'INDEX_NAME',
-	COLUMN_POSITION VARCHAR2 ( 30 ) PATH 'COLUMN_POSITION',
-	COLUMN_EXPRESSION VARCHAR2 ( 4000 ) 
-	) xs 
+	INDEX_OWNER VARCHAR2 (30) PATH 'INDEX_OWNER',
+	INDEX_NAME VARCHAR2 (30) PATH 'INDEX_NAME',
+	COLUMN_POSITION VARCHAR2 (30) PATH 'COLUMN_POSITION',
+	COLUMN_EXPRESSION VARCHAR2 (4000) 
+	) XS 
 WHERE
-xs.INDEX_OWNER = T.INDEX_OWNER
-	AND xs.INDEX_NAME = T.INDEX_NAME
-AND xs.COLUMN_POSITION = T.COLUMN_POSITION)) COLUMN_NAME,
+XS.INDEX_OWNER = T.INDEX_OWNER
+	AND XS.INDEX_NAME = T.INDEX_NAME
+AND XS.COLUMN_POSITION = T.COLUMN_POSITION)) COLUMN_NAME,
 		T.COLUMN_POSITION
-FROM
-	DBA_INDEXES I,
-	DBA_IND_COLUMNS T 
-WHERE
-	I.INDEX_NAME = T.INDEX_NAME 
-	AND I.TABLE_OWNER = T.TABLE_OWNER 
-	AND I.TABLE_NAME = T.TABLE_NAME 
-	AND I.UNIQUENESS = 'UNIQUE'
-	AND I.TABLE_OWNER = '%s' 
-	AND I.TABLE_NAME = '%s' 
-	-- 排除主键、唯一约束索引
-	AND NOT EXISTS (
-	SELECT
-		1 
 	FROM
-		DBA_CONSTRAINTS C 
+		DBA_INDEXES I,
+		DBA_IND_COLUMNS T
 	WHERE
-		I.INDEX_NAME = C.INDEX_NAME 
-		AND I.TABLE_OWNER = C.OWNER 
-		AND I.TABLE_NAME = C.TABLE_NAME 
-		AND C.CONSTRAINT_TYPE IN ('P','U')
-	)) temp
-		GROUP BY
-		temp.TABLE_OWNER,
-		temp.TABLE_NAME,
-		temp.UNIQUENESS,
-		temp.INDEX_NAME,
-		temp.INDEX_TYPE,
-		temp.ITYP_OWNER,
-		temp.ITYP_NAME,
-		temp.PARAMETERS`,
-		strings.ToUpper(schemaName),
-		strings.ToUpper(tableName),
-		strings.ToUpper(schemaName),
-		strings.ToUpper(tableName))
+		I.INDEX_NAME = T.INDEX_NAME
+		AND I.TABLE_OWNER = T.TABLE_OWNER
+		AND I.TABLE_NAME = T.TABLE_NAME
+		AND I.UNIQUENESS = 'UNIQUE'
+		AND I.TABLE_OWNER = '%s'
+		AND I.TABLE_NAME = '%s'
+		-- exclude primary and unique 
+		AND NOT EXISTS (
+		SELECT
+			1
+		FROM
+			DBA_CONSTRAINTS C
+		WHERE
+			I.INDEX_NAME = C.INDEX_NAME
+			AND I.TABLE_OWNER = C.OWNER
+			AND I.TABLE_NAME = C.TABLE_NAME
+			AND C.CONSTRAINT_TYPE IN ('P', 'U')
+	)) TEMP
+GROUP BY
+		TEMP.TABLE_OWNER,
+		TEMP.TABLE_NAME,
+		TEMP.UNIQUENESS,
+		TEMP.INDEX_NAME,
+		TEMP.INDEX_TYPE,
+		TEMP.ITYP_OWNER,
+		TEMP.ITYP_NAME,
+		TEMP.PARAMETERS`,
+		schemaName,
+		tableName,
+		schemaName,
+		tableName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return res, err
@@ -644,12 +734,16 @@ func (d *Database) GetDatabaseTableComment(schemaName string, tableName string) 
 		comments []map[string]string
 		err      error
 	)
-	queryStr := fmt.Sprintf(`select table_name,table_type,comments 
-from dba_tab_comments 
-where 
-table_type = 'TABLE'
-and upper(owner)=upper('%s')
-and upper(table_name)=upper('%s')`, strings.ToUpper(schemaName), strings.ToUpper(tableName))
+	queryStr := fmt.Sprintf(`SELECT
+	TABLE_NAME,
+	TABLE_TYPE,
+	COMMENTS
+FROM
+	DBA_TAB_COMMENTS
+WHERE
+	TABLE_TYPE = 'TABLE'
+	AND OWNER= '%s'
+	AND TABLE_NAME = '%s'`, schemaName, tableName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return comments, err
@@ -664,18 +758,22 @@ and upper(table_name)=upper('%s')`, strings.ToUpper(schemaName), strings.ToUpper
 func (d *Database) GetDatabaseTableColumnComment(schemaName string, tableName string) ([]map[string]string, error) {
 	var queryStr string
 
-	queryStr = fmt.Sprintf(`select t.COLUMN_NAME,
-	    c.COMMENTS
-	from dba_tab_columns t, dba_col_comments c
-	where t.table_name = c.table_name
-	and t.column_name = c.column_name
-	and t.owner = c.owner
-	and upper(t.owner) = upper('%s')
-	and upper(t.table_name) = upper('%s')
-	order by t.COLUMN_ID`,
-		strings.ToUpper(schemaName),
-		strings.ToUpper(tableName))
-
+	queryStr = fmt.Sprintf(`SELECT
+	T.COLUMN_NAME,
+	    C.COMMENTS
+FROM
+	DBA_TAB_COLUMNS T,
+	DBA_COL_COMMENTS C
+WHERE
+	T.TABLE_NAME = C.TABLE_NAME
+	AND T.COLUMN_NAME = C.COLUMN_NAME
+	AND T.OWNER = C.OWNER
+	AND T.OWNER = '%s'
+	AND T.TABLE_NAME = '%s'
+ORDER BY
+	T.COLUMN_ID`,
+		schemaName,
+		tableName)
 	_, queryRes, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return queryRes, err
@@ -687,8 +785,12 @@ func (d *Database) GetDatabaseTableColumnComment(schemaName string, tableName st
 }
 
 func (d *Database) GetDatabaseSchemaCollation(schemaName string) (string, error) {
-	queryStr := fmt.Sprintf(`SELECT DECODE(DEFAULT_COLLATION,
-'USING_NLS_COMP',(SELECT VALUE from NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_COMP'),DEFAULT_COLLATION) DEFAULT_COLLATION FROM DBA_USERS WHERE USERNAME = '%s'`, strings.ToUpper(schemaName))
+	queryStr := fmt.Sprintf(`SELECT
+	DECODE(DEFAULT_COLLATION,'USING_NLS_COMP',( SELECT VALUE FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_COMP'), DEFAULT_COLLATION) DEFAULT_COLLATION
+FROM
+	DBA_USERS
+WHERE
+	USERNAME = '%s'`, schemaName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return "", err
@@ -701,7 +803,15 @@ func (d *Database) GetDatabaseSchemaTableCollation(schemaName, schemaCollation s
 
 	tablesMap := make(map[string]string)
 
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT TABLE_NAME,DEFAULT_COLLATION FROM DBA_TABLES WHERE UPPER(owner) = UPPER('%s') AND (IOT_TYPE IS NUll OR IOT_TYPE='IOT')`, schemaName))
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	TABLE_NAME,
+	DEFAULT_COLLATION
+FROM
+	DBA_TABLES
+WHERE
+	OWNER = '%s'
+	AND (IOT_TYPE IS NULL
+		OR IOT_TYPE = 'IOT')`, schemaName))
 	if err != nil {
 		return tablesMap, err
 	}
@@ -718,11 +828,11 @@ func (d *Database) GetDatabaseSchemaTableCollation(schemaName, schemaCollation s
 
 func (d *Database) GetDatabaseTableOriginStruct(schemaName, tableName, tableType string) (string, error) {
 	_, err := d.ExecContext(`BEGIN
-	DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'SQLTERMINATOR', true);
-	DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'PRETTY', true);
-	DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'SEGMENT_ATTRIBUTES', false);
-	DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'TABLESPACE', false);
-	DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'STORAGE', false);
+	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', TRUE);
+	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'PRETTY', TRUE);
+	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', FALSE);
+	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'TABLESPACE', FALSE);
+	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', FALSE);
 	END;`)
 	if err != nil {
 		return "", nil

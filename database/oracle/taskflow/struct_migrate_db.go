@@ -40,7 +40,7 @@ type StructMigrateDatabase struct {
 }
 
 func NewStructMigrateDatabase(ctx context.Context,
-	taskName, subTaskName, taskFlow string, datasourceT database.IDatabase,
+	taskName, taskFlow string, datasourceT database.IDatabase,
 	taskStartTime time.Time, tableStruct *database.TableStruct) *StructMigrateDatabase {
 	return &StructMigrateDatabase{
 		Ctx:           ctx,
@@ -58,16 +58,36 @@ func (s *StructMigrateDatabase) WriteStructDatabase() error {
 	if err != nil {
 		return err
 	}
-	_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(s.Ctx, &task.StructMigrateTask{
-		TaskName:    s.TaskName,
-		SchemaNameS: s.TableStruct.SchemaNameS,
-		TableNameS:  s.TableStruct.TableNameT,
-	}, map[string]string{
-		"TaskStatus":      constant.TaskDatabaseStatusSuccess,
-		"SourceSqlDigest": originSqlDigest,
-		"TargetSqlDigest": compDigest,
-		"IncompSqlDigest": incompDigest,
-		"Duration":        fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds()),
+	err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+		duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+		_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+			TaskName:    s.TaskName,
+			SchemaNameS: s.TableStruct.SchemaNameS,
+			TableNameS:  s.TableStruct.TableNameT,
+		}, map[string]string{
+			"TaskStatus":      constant.TaskDatabaseStatusSuccess,
+			"SourceSqlDigest": originSqlDigest,
+			"TargetSqlDigest": compDigest,
+			"IncompSqlDigest": incompDigest,
+			"Duration":        duration,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+			TaskName: s.TaskName,
+			LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] source table [%v.%v] success, cost [%v]",
+				stringutil.CurrentTimeFormatString(),
+				stringutil.StringLower(constant.TaskModeStructMigrate),
+				s.TaskName,
+				s.TableStruct.SchemaNameS,
+				s.TableStruct.TableNameS,
+				duration),
+		})
+		if err != nil {
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		return err
@@ -92,16 +112,36 @@ func (s *StructMigrateDatabase) SyncStructDatabase() error {
 			return err
 		}
 	}
-	_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(s.Ctx, &task.StructMigrateTask{
-		TaskName:    s.TaskName,
-		SchemaNameS: s.TableStruct.SchemaNameS,
-		TableNameS:  s.TableStruct.TableNameT,
-	}, map[string]string{
-		"TaskStatus":      constant.TaskDatabaseStatusSuccess,
-		"SourceSqlDigest": originSqlDigest,
-		"TargetSqlDigest": compDigest,
-		"IncompSqlDigest": incompDigest,
-		"Duration":        fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds()),
+	err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+		duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+		_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+			TaskName:    s.TaskName,
+			SchemaNameS: s.TableStruct.SchemaNameS,
+			TableNameS:  s.TableStruct.TableNameT,
+		}, map[string]string{
+			"TaskStatus":      constant.TaskDatabaseStatusSuccess,
+			"SourceSqlDigest": originSqlDigest,
+			"TargetSqlDigest": compDigest,
+			"IncompSqlDigest": incompDigest,
+			"Duration":        duration,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+			TaskName: s.TaskName,
+			LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] source table [%v.%v] success, cost [%v]",
+				stringutil.CurrentTimeFormatString(),
+				stringutil.StringLower(constant.TaskModeStructMigrate),
+				s.TaskName,
+				s.TableStruct.SchemaNameS,
+				s.TableStruct.TableNameS,
+				duration),
+		})
+		if err != nil {
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		return err

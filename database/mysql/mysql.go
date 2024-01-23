@@ -41,7 +41,7 @@ type Database struct {
 
 func NewDatabase(ctx context.Context, datasource *datasource.Datasource) (*Database, error) {
 	if !strings.EqualFold(datasource.ConnectCharset, "") {
-		datasource.ConnectParams = fmt.Sprintf("charset=%s&%s", strings.ToLower(datasource.ConnectStatus), datasource.ConnectParams)
+		datasource.ConnectParams = fmt.Sprintf("charset=%s&%s", strings.ToLower(datasource.ConnectCharset), datasource.ConnectParams)
 	}
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/?%s",
 		datasource.Username, datasource.Password, datasource.Host, datasource.Port, datasource.ConnectParams)
@@ -64,7 +64,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource) (*Datab
 
 func PingDatabaseConnection(datasource *datasource.Datasource) error {
 	if !strings.EqualFold(datasource.ConnectCharset, "") {
-		datasource.ConnectParams = fmt.Sprintf("charset=%s&%s", strings.ToLower(datasource.ConnectStatus), datasource.ConnectParams)
+		datasource.ConnectParams = fmt.Sprintf("charset=%s&%s", strings.ToLower(datasource.ConnectCharset), datasource.ConnectParams)
 	}
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/?%s",
 		datasource.Username, datasource.Password, datasource.Host, datasource.Port, datasource.ConnectParams)
@@ -76,7 +76,7 @@ func PingDatabaseConnection(datasource *datasource.Datasource) error {
 
 	err = db.Ping()
 	if err != nil {
-		return fmt.Errorf("database ping failed, database error: [%v]", err)
+		return fmt.Errorf("error on ping mysql database connection:%v", err)
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func (d *Database) QueryContext(query string) (*sql.Rows, error) {
 }
 
 func (d *Database) ExecContext(query string, args ...any) (sql.Result, error) {
-	return d.DBConn.ExecContext(d.Ctx, query, args)
+	return d.DBConn.ExecContext(d.Ctx, query, args...)
 }
 
 func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, error) {

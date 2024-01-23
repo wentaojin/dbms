@@ -17,6 +17,7 @@ package rule
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -26,22 +27,22 @@ import (
 	"gorm.io/gorm"
 )
 
-type RWMigrateTaskRule struct {
+type RWRule struct {
 	common.GormDB
 }
 
-func NewMigrateTaskRuleRW(db *gorm.DB) *RWMigrateTaskRule {
-	m := &RWMigrateTaskRule{
+func NewMigrateTaskRuleRW(db *gorm.DB) *RWRule {
+	m := &RWRule{
 		common.WarpDB(db),
 	}
 	return m
 }
 
-func (rw *RWMigrateTaskRule) TableName(ctx context.Context) string {
-	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(MigrateTaskRule{}).Name())
+func (rw *RWRule) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(Rule{}).Name())
 }
 
-func (rw *RWMigrateTaskRule) CreateMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error) {
+func (rw *RWRule) CreateRule(ctx context.Context, rule *Rule) (*Rule, error) {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_rule_name"}},
 		UpdateAll: true,
@@ -52,44 +53,44 @@ func (rw *RWMigrateTaskRule) CreateMigrateTaskRule(ctx context.Context, rule *Mi
 	return rule, nil
 }
 
-func (rw *RWMigrateTaskRule) UpdateMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error) {
-	err := rw.DB(ctx).Model(&MigrateTaskRule{}).Where("task_rule_name = ?", rule.TaskRuleName).Save(&rule).Error
+func (rw *RWRule) UpdateRule(ctx context.Context, rule *Rule) (*Rule, error) {
+	err := rw.DB(ctx).Model(&Rule{}).Where("task_rule_name = ?", rule.TaskRuleName).Save(&rule).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return rule, nil
 }
 
-func (rw *RWMigrateTaskRule) GetMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error) {
-	var dataS *MigrateTaskRule
-	err := rw.DB(ctx).Model(&MigrateTaskRule{}).Where("task_rule_name = ?", rule.TaskRuleName).Find(&dataS)
+func (rw *RWRule) GetRule(ctx context.Context, rule *Rule) (*Rule, error) {
+	var dataS *Rule
+	err := rw.DB(ctx).Model(&Rule{}).Where("task_rule_name = ?", rule.TaskRuleName).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }
 
-func (rw *RWMigrateTaskRule) ListMigrateTaskRule(ctx context.Context, page uint64, pageSize uint64) ([]*MigrateTaskRule, error) {
-	var dataS []*MigrateTaskRule
-	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&MigrateTaskRule{}).Find(&dataS).Error
+func (rw *RWRule) ListRule(ctx context.Context, page uint64, pageSize uint64) ([]*Rule, error) {
+	var dataS []*Rule
+	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&Rule{}).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("list table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }
 
-func (rw *RWMigrateTaskRule) DeleteMigrateTaskRule(ctx context.Context, taskRuleName []string) error {
-	err := rw.DB(ctx).Where("task_rule_name IN (?)", taskRuleName).Delete(&MigrateTaskRule{}).Error
+func (rw *RWRule) DeleteRule(ctx context.Context, taskRuleName []string) error {
+	err := rw.DB(ctx).Where("task_rule_name IN (?)", taskRuleName).Delete(&Rule{}).Error
 	if err != nil {
 		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return nil
 }
 
-func (rw *RWMigrateTaskRule) IsContainedMigrateTaskRuleRecord(ctx context.Context, rule *MigrateTaskRule) (bool, error) {
-	err := rw.DB(ctx).Where("task_rule_name = ?", rule.TaskRuleName).First(&MigrateTaskRule{}).Error
+func (rw *RWRule) IsContainedRuleRecord(ctx context.Context, rule *Rule) (bool, error) {
+	err := rw.DB(ctx).Where("task_rule_name = ?", rule.TaskRuleName).First(&Rule{}).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("get table [%s] record is contained failed: %v", rw.TableName(ctx), err)
@@ -97,9 +98,9 @@ func (rw *RWMigrateTaskRule) IsContainedMigrateTaskRuleRecord(ctx context.Contex
 	return true, nil
 }
 
-func (rw *RWMigrateTaskRule) FindMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) ([]*MigrateTaskRule, error) {
-	var dataS []*MigrateTaskRule
-	err := rw.DB(ctx).Model(&MigrateTaskRule{}).Where("task_rule_name = ?", rule.TaskRuleName).Find(&dataS)
+func (rw *RWRule) FindRule(ctx context.Context, rule *Rule) ([]*Rule, error) {
+	var dataS []*Rule
+	err := rw.DB(ctx).Model(&Rule{}).Where("task_rule_name = ?", rule.TaskRuleName).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -142,7 +143,7 @@ func (rw *RWSchemaRouteRule) UpdateSchemaRouteRule(ctx context.Context, rule *Sc
 
 func (rw *RWSchemaRouteRule) GetSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error) {
 	var dataS *SchemaRouteRule
-	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ?", rule.TaskRuleName, rule.SchemaNameS).Find(&dataS)
+	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ?", rule.TaskRuleName, rule.SchemaNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -179,9 +180,9 @@ func (rw *RWSchemaRouteRule) IsContainedSchemaRouteRuleRecord(ctx context.Contex
 
 func (rw *RWSchemaRouteRule) FindSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) ([]*SchemaRouteRule, error) {
 	var dataS []*SchemaRouteRule
-	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_rule_name = ?", rule.TaskRuleName).Find(&dataS)
+	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_rule_name = ?", rule.TaskRuleName).Find(&dataS).Error
 	if err != nil {
-		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }
@@ -222,7 +223,7 @@ func (rw *RWMigrateTaskTable) UpdateMigrateTaskTable(ctx context.Context, rule *
 
 func (rw *RWMigrateTaskTable) GetMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) (*MigrateTaskTable, error) {
 	var dataS *MigrateTaskTable
-	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskRuleName, rule.SchemaNameS, rule.TableNameS).Find(&dataS)
+	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskRuleName, rule.SchemaNameS, rule.TableNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -249,7 +250,7 @@ func (rw *RWMigrateTaskTable) DeleteMigrateTaskTable(ctx context.Context, taskRu
 func (rw *RWMigrateTaskTable) IsContainedMigrateTaskTableRecord(ctx context.Context, rule *MigrateTaskTable) (bool, error) {
 	err := rw.DB(ctx).Where("task_rule_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskRuleName, rule.SchemaNameS, rule.TableNameS).First(&MigrateTaskTable{}).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("get table [%s] record is contained failed: %v", rw.TableName(ctx), err)
@@ -259,7 +260,7 @@ func (rw *RWMigrateTaskTable) IsContainedMigrateTaskTableRecord(ctx context.Cont
 
 func (rw *RWMigrateTaskTable) FindMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) ([]*MigrateTaskTable, error) {
 	var dataS []*MigrateTaskTable
-	err := rw.DB(ctx).Model(&MigrateTaskTable{}).Where("task_rule_name = ? AND schema_name_s = ?", rule.TaskRuleName, rule.SchemaNameS).Find(&dataS)
+	err := rw.DB(ctx).Model(&MigrateTaskTable{}).Where("task_rule_name = ? AND schema_name_s = ?", rule.TaskRuleName, rule.SchemaNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -293,7 +294,10 @@ func (rw *RWTableRouteRule) CreateTableRouteRule(ctx context.Context, rule *Tabl
 }
 
 func (rw *RWTableRouteRule) CreateInBatchTableRouteRule(ctx context.Context, rule []*TableRouteRule, batchSize int) ([]*TableRouteRule, error) {
-	err := rw.DB(ctx).CreateInBatches(rule, batchSize).Error
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_rule_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		UpdateAll: true,
+	}).CreateInBatches(rule, batchSize).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record by batch failed: %v", rw.TableName(ctx), err)
 	}
@@ -313,7 +317,7 @@ func (rw *RWTableRouteRule) UpdateTableRouteRule(ctx context.Context, rule *Tabl
 
 func (rw *RWTableRouteRule) GetTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error) {
 	var dataS *TableRouteRule
-	err := rw.DB(ctx).Model(&TableRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskRuleName, rule.SchemaNameS, rule.TableNameS).Find(&dataS)
+	err := rw.DB(ctx).Model(&TableRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskRuleName, rule.SchemaNameS, rule.TableNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -342,7 +346,7 @@ func (rw *RWTableRouteRule) IsContainedTableRouteRuleRecord(ctx context.Context,
 		rule.SchemaNameS,
 		rule.TableNameS).First(&TableRouteRule{}).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, fmt.Errorf("get table [%s] record is contained failed: %v", rw.TableName(ctx), err)
@@ -352,9 +356,9 @@ func (rw *RWTableRouteRule) IsContainedTableRouteRuleRecord(ctx context.Context,
 
 func (rw *RWTableRouteRule) FindTableRouteRule(ctx context.Context, rule *TableRouteRule) ([]*TableRouteRule, error) {
 	var dataS []*TableRouteRule
-	err := rw.DB(ctx).Model(&TableRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ?", rule.TaskRuleName, rule.SchemaNameS).Find(&dataS)
+	err := rw.DB(ctx).Model(&TableRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ?", rule.TaskRuleName, rule.SchemaNameS).Find(&dataS).Error
 	if err != nil {
-		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }
@@ -386,7 +390,10 @@ func (rw *RWColumnRouteRule) CreateColumnRouteRule(ctx context.Context, rule *Co
 }
 
 func (rw *RWColumnRouteRule) CreateInBatchColumnRouteRule(ctx context.Context, rule []*ColumnRouteRule, batchSize int) ([]*ColumnRouteRule, error) {
-	err := rw.DB(ctx).CreateInBatches(rule, batchSize).Error
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_rule_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "column_name_s"}},
+		UpdateAll: true,
+	}).CreateInBatches(rule, batchSize).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -411,7 +418,7 @@ func (rw *RWColumnRouteRule) GetColumnRouteRule(ctx context.Context, rule *Colum
 		rule.TaskRuleName,
 		rule.SchemaNameS,
 		rule.TableNameS,
-		rule.ColumnNameS).Find(&dataS)
+		rule.ColumnNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -450,7 +457,7 @@ func (rw *RWColumnRouteRule) IsContainedColumnRouteRuleRecord(ctx context.Contex
 
 func (rw *RWColumnRouteRule) FindColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) ([]*ColumnRouteRule, error) {
 	var dataS []*ColumnRouteRule
-	err := rw.DB(ctx).Model(&ColumnRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskRuleName, rule.SchemaNameS, rule.TableNameS).Find(&dataS)
+	err := rw.DB(ctx).Model(&ColumnRouteRule{}).Where("task_rule_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskRuleName, rule.SchemaNameS, rule.TableNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

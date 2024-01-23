@@ -19,11 +19,19 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
 
-	"github.com/wentaojin/dbms/worker"
+	"github.com/getkin/kin-openapi/openapi3"
+	ginzap "github.com/gin-contrib/zap"
+	"github.com/gin-gonic/gin"
+
+	middleware "github.com/deepmap/oapi-codegen/pkg/gin-middleware"
+
+	"github.com/wentaojin/dbms/service"
 
 	"go.uber.org/zap"
 
@@ -41,11 +49,12 @@ import (
 
 	"github.com/wentaojin/dbms/logger"
 
+	"github.com/robfig/cron/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 type Server struct {
-	cfg *Config
+	*Config
 
 	// the embed etcd server, and the gRPC/HTTP API server also attached to it.
 	etcdSrv etcdutil.Embed
@@ -63,6 +72,8 @@ type Server struct {
 
 	mutex sync.Mutex
 
+	cron *cron.Cron
+
 	// UnimplementedMasterServer
 	pb.UnimplementedMasterServer
 }
@@ -70,9 +81,10 @@ type Server struct {
 // NewServer creates a new server
 func NewServer(cfg *Config) *Server {
 	return &Server{
-		cfg:         cfg,
+		Config:      cfg,
 		etcdSrv:     etcdutil.NewETCDServer(),
 		dbConnReady: new(atomic.Bool),
+		cron:        cron.New(cron.WithLogger(logger.NewCronLogger(logger.GetRootLogger()))),
 		mutex:       sync.Mutex{},
 	}
 }
@@ -93,27 +105,27 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// etcd config init
 	err = s.etcdSrv.Init(
-		configutil.WithMasterName(s.cfg.MasterOptions.Name),
-		configutil.WithMasterDir(s.cfg.MasterOptions.DataDir),
-		configutil.WithClientAddr(s.cfg.MasterOptions.ClientAddr),
-		configutil.WithPeerAddr(s.cfg.MasterOptions.PeerAddr),
-		configutil.WithCluster(s.cfg.MasterOptions.InitialCluster),
-		configutil.WithClusterState(s.cfg.MasterOptions.InitialClusterState),
-		configutil.WithMaxTxnOps(s.cfg.MasterOptions.MaxTxnOps),
-		configutil.WithMaxRequestBytes(s.cfg.MasterOptions.MaxRequestBytes),
-		configutil.WithAutoCompactionMode(s.cfg.MasterOptions.AutoCompactionMode),
-		configutil.WithAutoCompactionRetention(s.cfg.MasterOptions.AutoCompactionRetention),
-		configutil.WithQuotaBackendBytes(s.cfg.MasterOptions.QuotaBackendBytes),
+		configutil.WithMasterName(s.MasterOptions.Name),
+		configutil.WithMasterDir(s.MasterOptions.DataDir),
+		configutil.WithClientAddr(s.MasterOptions.ClientAddr),
+		configutil.WithPeerAddr(s.MasterOptions.PeerAddr),
+		configutil.WithCluster(s.MasterOptions.InitialCluster),
+		configutil.WithClusterState(s.MasterOptions.InitialClusterState),
+		configutil.WithMaxTxnOps(s.MasterOptions.MaxTxnOps),
+		configutil.WithMaxRequestBytes(s.MasterOptions.MaxRequestBytes),
+		configutil.WithAutoCompactionMode(s.MasterOptions.AutoCompactionMode),
+		configutil.WithAutoCompactionRetention(s.MasterOptions.AutoCompactionRetention),
+		configutil.WithQuotaBackendBytes(s.MasterOptions.QuotaBackendBytes),
 		configutil.WithLogLogger(logger.GetRootLogger()),
-		configutil.WithLogLevel(s.cfg.LogConfig.LogLevel),
-		configutil.WithMasterLease(s.cfg.MasterOptions.KeepaliveTTL),
+		configutil.WithLogLevel(s.LogConfig.LogLevel),
+		configutil.WithMasterLease(s.MasterOptions.KeepaliveTTL),
 
 		configutil.WithGRPCSvr(gRPCSvr),
 		configutil.WithHttpHandles(map[string]http.Handler{
 			openapi.DBMSAPIBasePath:  apiHandler,
 			openapi.DebugAPIBasePath: openapi.GetHTTPDebugHandler(),
 		}),
-		configutil.WithMasterJoin(s.cfg.MasterOptions.Join),
+		configutil.WithMasterJoin(s.MasterOptions.Join),
 	)
 	if err != nil {
 		return err
@@ -131,17 +143,16 @@ func (s *Server) Start(ctx context.Context) error {
 		return err
 	}
 
-	s.cfg.MasterOptions = s.etcdSrv.GetConfig()
+	s.MasterOptions = s.etcdSrv.GetConfig()
 
 	// create an etcd client used in the whole server instance.
 	// NOTE: we only use the local member's address now, but we can use all endpoints of the cluster if needed.
-	s.etcdClient, err = etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(s.cfg.MasterOptions.ClientAddr)}, nil)
+	s.etcdClient, err = etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(s.MasterOptions.ClientAddr)}, nil)
 	if err != nil {
 		return err
 	}
 
-	// service discovery
-	err = s.discovery()
+	err = s.serviceDiscovery()
 	if err != nil {
 		return err
 	}
@@ -154,9 +165,13 @@ func (s *Server) Start(ctx context.Context) error {
 			OnStartedLeading: func(ctx context.Context) error {
 				// we're notified when we start - this is where you would
 				// usually put your code
-				logger.Info("listening server addr request", zap.String("address", s.cfg.MasterOptions.ClientAddr))
+				logger.Info("listening server addr request", zap.String("address", s.MasterOptions.ClientAddr))
 
-				s.createDatabaseConn()
+				s.watchConn()
+
+				s.cron.Start()
+
+				s.crontab(ctx)
 
 				// pending, start receive request
 				for {
@@ -171,19 +186,21 @@ func (s *Server) Start(ctx context.Context) error {
 				// reset
 				s.dbConnReady.Store(false)
 
-				logger.Info("server leader lost", zap.String("lost leader identity", s.cfg.MasterOptions.ClientAddr))
+				s.cron.Stop()
+
+				logger.Info("server leader lost", zap.String("lost leader identity", s.MasterOptions.ClientAddr))
 				return nil
 			},
 			OnNewLeader: func(identity string) {
 				// we're notified when new leader elected
-				if strings.EqualFold(s.cfg.MasterOptions.ClientAddr, identity) {
+				if strings.EqualFold(s.MasterOptions.ClientAddr, identity) {
 					return
 				}
 				logger.Info("server new leader elected", zap.String("new node identity", identity))
 			},
 		},
 		Prefix:   etcdutil.DefaultLeaderElectionPrefix,
-		Identity: s.cfg.MasterOptions.ClientAddr,
+		Identity: s.MasterOptions.ClientAddr,
 	})
 	if err != nil {
 		return err
@@ -201,8 +218,8 @@ func (s *Server) Start(ctx context.Context) error {
 	return nil
 }
 
-// discovery used for master and worker service discovery
-func (s *Server) discovery() error {
+// serviceDiscovery used for master and worker service discovery
+func (s *Server) serviceDiscovery() error {
 	s.discoveries = etcdutil.NewServiceDiscovery(s.etcdClient)
 
 	err := s.discoveries.Discovery(constant.DefaultWorkerRegisterPrefixKey)
@@ -212,9 +229,9 @@ func (s *Server) discovery() error {
 	return nil
 }
 
-func (s *Server) createDatabaseConn() {
+func (s *Server) watchConn() {
 	// get meta database conn info
-	conn := etcdutil.NewServiceConnect(s.etcdClient, s.cfg.MasterOptions.LogLevel, s.dbConnReady)
+	conn := etcdutil.NewServiceConnect(s.etcdClient, constant.DefaultInstanceRoleMaster, s.MasterOptions.LogLevel, s.dbConnReady)
 
 	go func() {
 		defer func() {
@@ -223,6 +240,25 @@ func (s *Server) createDatabaseConn() {
 			}
 		}()
 		err := conn.Watch(constant.DefaultMasterDatabaseDBMSKey)
+		if err != nil {
+			panic(err)
+		}
+	}()
+}
+
+func (s *Server) crontab(ctx context.Context) {
+	conn := service.NewServiceCrontab(ctx, s.etcdClient, s.discoveries, s.cron)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error("dbms-master crontab running failed", zap.Any("PANIC", r))
+			}
+		}()
+		err := conn.Watch(
+			constant.DefaultMasterCrontabExpressPrefixKey,
+			constant.DefaultMasterCrontabEntryPrefixKey,
+		)
 		if err != nil {
 			panic(err)
 		}
@@ -245,37 +281,463 @@ func (s *Server) Close() {
 // OperateTask implements MasterServer.OperateTask.
 func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
 	switch strings.ToUpper(req.Operate) {
-	case "SUBMIT":
-		err := worker.UpsertTask(s.etcdClient, req)
-		if err != nil {
-			return &pb.OperateTaskResponse{Response: &pb.Response{
-				Result:  constant.ResponseResultStatusFailed,
-				Message: err.Error(),
-			}}, err
-		}
-	case "DELETE":
-		err := worker.DeleteTask(s.etcdClient, req)
-		if err != nil {
-			return &pb.OperateTaskResponse{Response: &pb.Response{
-				Result:  constant.ResponseResultStatusFailed,
-				Message: err.Error(),
-			}}, err
-		}
-	case "KILL":
-		err := worker.KillTask(s.etcdClient, req)
-		if err != nil {
-			return &pb.OperateTaskResponse{Response: &pb.Response{
-				Result:  constant.ResponseResultStatusFailed,
-				Message: err.Error(),
-			}}, err
-		}
+	case constant.TaskOperationStart:
+		return service.StartTask(ctx, s.etcdClient, s.discoveries, req)
+	case constant.TaskOperationStop:
+		return service.StopTask(ctx, s.etcdClient, req)
+	case constant.TaskOperationCrontab:
+		return service.CrontabTask(ctx, s.cron, s.etcdClient, req,
+			service.NewCronjob(ctx, s.etcdClient, s.discoveries, req.TaskName))
+		// cleanup tasks are used for scheduled job tasks that are running.
+	case constant.TaskOperationClear:
+		return service.ClearTask(ctx, s.etcdClient, req)
+		// delete tasks are used to delete tasks that are not running or have stopped running.
+	case constant.TaskOperationDelete:
+		return service.DeleteTask(ctx, req)
+	case constant.TaskOperationGet:
+		return service.GetTask(ctx, req)
 	default:
 		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
-			Message: fmt.Sprintf("task [%v] operate [%v] isn't support, current support submit、delete and kill", req.TaskName, req.Operate),
-		}}, fmt.Errorf("task [%v] operate [%v] isn't support, current support submit、delete and kill", req.TaskName, req.Operate)
+			Result: openapi.ResponseResultStatusFailed,
+			Message: fmt.Sprintf("task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate,
+				stringutil.StringJoin([]string{constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontab, constant.TaskOperationClear, constant.TaskOperationDelete, constant.TaskOperationGet}, ",")),
+		}}, fmt.Errorf("task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate, stringutil.StringJoin([]string{constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontab, constant.TaskOperationClear, constant.TaskOperationDelete, constant.TaskOperationGet}, ","))
 	}
-	return &pb.OperateTaskResponse{Response: &pb.Response{
-		Result: constant.ResponseResultStatusSuccess,
-	}}, nil
+}
+
+// initOpenAPIHandler returns a HTTP handler to handle dbms-master apis
+func (s *Server) initOpenAPIHandler() (*gin.Engine, error) {
+	swagger, err := openapi.GetSwagger()
+	if err != nil {
+		return nil, fmt.Errorf("openapi get swagger failed: [%v]", err)
+	}
+	// servers configure sever api base path, avoid gin-middleware request valid failed, report error {"error":"no matching operation was found"}
+	swagger.Servers = openapi3.Servers{&openapi3.Server{URL: openapi.DBMSAPIBasePath}}
+
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+
+	// middlewares
+	r.Use(s.cors())
+
+	r.Use(s.proxy())
+
+	// add a ginzap middleware, which:
+	//   - log requests, like a combined access and error log.
+	r.Use(ginzap.GinzapWithConfig(logger.GetRootLogger().With(zap.String("component", "gin")), &ginzap.Config{
+		TimeFormat: logger.LogTimeFmt,
+		UTC:        false}))
+
+	// logs all panic to error log
+	//   - stack means whether output the stack info.
+	r.Use(ginzap.RecoveryWithZap(logger.GetRootLogger().With(zap.String("component", "gin")), true))
+
+	// use validation middleware to check all requests against the OpenAPI schema.
+	r.Use(middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
+		SilenceServersWarning: true, // forbid servers parameter check warn
+	}))
+
+	// register handlers
+	openapi.RegisterHandlersWithOptions(r, s, openapi.GinServerOptions{BaseURL: openapi.DBMSAPIBasePath})
+
+	return r, nil
+}
+
+// proxy used for reverses request to leader
+func (s *Server) proxy() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		isLeader, err := s.election.CurrentIsLeader(context.TODO())
+		if err != nil {
+			c.JSON(http.StatusOK, openapi.Response{
+				Code:  http.StatusBadRequest,
+				Error: err.Error(),
+			})
+			c.Abort()
+			return
+		}
+
+		switch {
+		case isLeader:
+			if !s.dbConnReady.Load() && !strings.EqualFold(c.Request.URL.Path, stringutil.StringBuilder(openapi.DBMSAPIBasePath, openapi.APIDatabasePath)) {
+				c.JSON(http.StatusOK, openapi.Response{
+					Code:  http.StatusBadRequest,
+					Error: fmt.Sprintf("database connection is not ready, disable service, please create database connection and wait 30s retrying"),
+				})
+				c.Abort()
+				return
+			} else {
+				c.Next()
+			}
+		default:
+			leaderAddr, err := s.election.Leader(context.TODO())
+			if err != nil {
+				c.JSON(http.StatusOK, openapi.Response{
+					Code:  http.StatusBadRequest,
+					Error: err.Error(),
+				})
+				logger.Error("api request get leader error",
+					zap.String("request URL", c.Request.URL.String()),
+					zap.String("current addr", s.MasterOptions.ClientAddr),
+					zap.String("current leader", leaderAddr),
+					zap.Bool("current is leader", isLeader))
+
+				c.Abort()
+				return
+			}
+
+			if strings.EqualFold(leaderAddr, "") {
+				c.JSON(http.StatusOK, openapi.Response{
+					Code:  http.StatusBadRequest,
+					Error: fmt.Sprintf("current leader service election action isn't finished, please wait retrying"),
+				})
+				logger.Error("api request leader not election",
+					zap.String("request URL", c.Request.URL.String()),
+					zap.String("current addr", s.MasterOptions.ClientAddr),
+					zap.String("current leader", leaderAddr),
+					zap.Bool("current is leader", isLeader))
+				c.Abort()
+				return
+			}
+
+			// simpleProxy just reverse to leader host
+			proxyUrl, err := url.Parse(stringutil.StringBuilder(`http://`, leaderAddr))
+			if err != nil {
+				c.JSON(http.StatusOK, openapi.Response{
+					Code:  http.StatusBadRequest,
+					Error: fmt.Sprintf("current leader service election action isn't finished, please wait retrying"),
+				})
+				logger.Error("api request parse url",
+					zap.String("request URL", c.Request.URL.String()),
+					zap.String("current addr", s.MasterOptions.ClientAddr),
+					zap.String("current leader", leaderAddr),
+					zap.Bool("current is leader", isLeader))
+				c.Abort()
+				return
+			}
+
+			proxy := httputil.NewSingleHostReverseProxy(proxyUrl)
+			proxy.Director = func(req *http.Request) {
+				req.URL.Scheme = proxyUrl.Scheme
+				req.URL.Host = proxyUrl.Host
+				req.Host = proxyUrl.Host
+			}
+
+			logger.Warn("reverse request to leader",
+				zap.String("request URL", c.Request.URL.String()),
+				zap.String("current addr", s.MasterOptions.ClientAddr),
+				zap.String("current leader", leaderAddr),
+				zap.Bool("current is leader", isLeader), zap.String("forward leader", leaderAddr))
+
+			proxy.ServeHTTP(c.Writer, c.Request)
+			c.Abort()
+			return
+		}
+	}
+}
+
+// cors used for support cors request
+func (s *Server) cors() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token, Authorization, Token")
+		c.Header("Access-Control-Allow-Methods", "POST, GET, PUT, PATCH, DELETE, OPTIONS")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Content-Type")
+		c.Header("Access-Control-Allow-Credentials", "true")
+
+		// release all OPTIONS methods
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+		}
+		c.Next()
+	}
+}
+
+func (s *Server) APIListDatabase(c *gin.Context) {
+	database, err := s.listDatabase(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: database,
+	})
+}
+
+func (s *Server) APIPutDatabase(c *gin.Context) {
+	var req openapi.APIPutDatabaseJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	database, err := s.upsertDatabase(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: database})
+}
+
+func (s *Server) APIDeleteDatabase(c *gin.Context) {
+	database, err := s.deleteDatabase(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusNoContent, openapi.Response{
+		Code: http.StatusNoContent,
+		Data: database,
+	})
+}
+
+func (s *Server) APIListDatasource(c *gin.Context) {
+	var req openapi.APIListDatasourceJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	datasource, err := s.listDatasource(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, openapi.Response{
+		Code: http.StatusCreated,
+		Data: datasource,
+	})
+}
+
+func (s *Server) APIPutDatasource(c *gin.Context) {
+	var req openapi.APIPutDatasourceJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+
+	datasource, err := s.upsertDatasource(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: datasource,
+	})
+}
+
+func (s *Server) APIDeleteDatasource(c *gin.Context) {
+	var req openapi.APIDeleteDatasourceJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	delMsg, err := s.deleteDatasource(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusNoContent, openapi.Response{
+		Code: http.StatusNoContent,
+		Data: delMsg,
+	})
+}
+
+func (s *Server) APIDeleteRule(c *gin.Context) {
+	var req openapi.APIDeleteRuleJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	delMsg, err := s.deleteRule(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusNoContent, openapi.Response{
+		Code: http.StatusNoContent,
+		Data: delMsg,
+	})
+}
+
+func (s *Server) APIListRule(c *gin.Context) {
+	var req openapi.APIListRuleJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	listMsg, err := s.listRule(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, openapi.Response{
+		Code: http.StatusCreated,
+		Data: listMsg,
+	})
+}
+
+func (s *Server) APIPutRule(c *gin.Context) {
+	var req openapi.APIPutRuleJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	upsertMsg, err := s.upsertRule(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: upsertMsg,
+	})
+}
+
+func (s *Server) APIDeleteStructMigrate(c *gin.Context) {
+	var req openapi.APIDeleteStructMigrateJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	delMsg, err := s.deleteStructMigrateTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusNoContent, openapi.Response{
+		Code: http.StatusNoContent,
+		Data: delMsg,
+	})
+}
+
+func (s *Server) APIListStructMigrate(c *gin.Context) {
+	var req openapi.APIListStructMigrateJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	listMsg, err := s.listStructMigrateTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, openapi.Response{
+		Code: http.StatusCreated,
+		Data: listMsg,
+	})
+}
+
+func (s *Server) APIPutStructMigrate(c *gin.Context) {
+	var req openapi.APIPutStructMigrateJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	upsertMsg, err := s.upsertStructMigrateTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: upsertMsg,
+	})
+}
+
+func (s *Server) APIPostTask(c *gin.Context) {
+	var req openapi.APIPostTaskJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	task, err := s.operateTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: task,
+	})
 }

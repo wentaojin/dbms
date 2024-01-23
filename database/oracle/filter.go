@@ -26,18 +26,12 @@ import (
 	"go.uber.org/zap"
 )
 
-func (d *Database) FilterDatabaseSchema(sourceSchemas []string) error {
+func (d *Database) FilterDatabaseSchema() ([]string, error) {
 	allOraSchemas, err := d.GetDatabaseSchema()
 	if err != nil {
-		return err
+		return allOraSchemas, err
 	}
-
-	for _, s := range sourceSchemas {
-		if !stringutil.IsContainedString(allOraSchemas, stringutil.StringUpper(s)) {
-			return fmt.Errorf("oracle schema isn't contained in the database, failed schemas: [%v]", s)
-		}
-	}
-	return nil
+	return allOraSchemas, nil
 }
 
 func (d *Database) FilterDatabaseTable(sourceSchema string, sourceIncludeTables, sourceExcludeTables []string) ([]string, error) {
@@ -48,7 +42,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, sourceIncludeTables,
 		err                error
 	)
 
-	allTables, err := d.GetDatabaseTable(stringutil.StringUpper(sourceSchema))
+	allTables, err := d.GetDatabaseTable(sourceSchema)
 	if err != nil {
 		return exporterTableSlice, err
 	}
@@ -90,7 +84,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, sourceIncludeTables,
 	}
 
 	endTime := time.Now()
-	zap.L().Info("get oracle tables",
+	zap.L().Info("filter oracle database table",
 		zap.String("schema", sourceSchema),
 		zap.Strings("exporter tables list", exporterTableSlice),
 		zap.Int("include table counts", len(exporterTableSlice)),

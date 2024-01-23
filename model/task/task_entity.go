@@ -16,68 +16,64 @@ limitations under the License.
 package task
 
 import (
+	"time"
+
 	"github.com/wentaojin/dbms/model/common"
 )
 
 type Task struct {
-	ID           uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string `gorm:"type:varchar(100);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
-	TaskMode     string `gorm:"type:varchar(100);not null;comment:task mode" json:"taskMode"`
-	TaskRuleName string `gorm:"type:varchar(100);not null;comment:task rule name" json:"taskRuleName"`
-	WorkerAddr   string `gorm:"type:varchar(30);comment:worker addr" json:"workerAddr"`
-	TaskStatus   string `gorm:"type:varchar(30);comment:task status" json:"taskStatus"`
+	ID           uint64     `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName     string     `gorm:"type:varchar(100);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
+	TaskMode     string     `gorm:"type:varchar(100);not null;comment:task mode" json:"taskMode"`
+	TaskRuleName string     `gorm:"type:varchar(100);not null;comment:task rule name" json:"taskRuleName"`
+	WorkerAddr   string     `gorm:"type:varchar(30);comment:worker addr" json:"workerAddr"`
+	TaskStatus   string     `gorm:"type:varchar(30);comment:task status" json:"taskStatus"`
+	StartTime    *time.Time `gorm:"default:null;comment:task start running time" json:"startTime"`
+	EndTime      *time.Time `gorm:"default:null;comment:task end running time" json:"endTime"`
 	*common.Entity
 }
 
 type Log struct {
-	ID                   uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName             string `gorm:"type:varchar(100);not null;uniqueIndex:idx_task_name;comment:parent task name" json:"taskName"`
-	Express              string `gorm:"type:varchar(100);comment:sub task cron express" json:"express"`
-	WorkerAddr           string `gorm:"type:varchar(30);comment:worker addr" json:"workerAddr"`
-	TaskStatus           string `gorm:"type:varchar(30);comment:task status" json:"taskStatus"`
-	NextScheduledTime    string `gorm:"type:varchar(30);comment:task next scheduled time" json:"nextScheduledTime"`
-	ExpectedScheduleTime string `gorm:"type:varchar(30);comment:task expected scheduled time" json:"expectedScheduleTime"`
-	RealScheduledTime    string `gorm:"type:varchar(30);comment:task real scheduled time" json:"realScheduledTime"`
-	TaskStartTime        string `gorm:"type:varchar(30);comment:task start running time" json:"taskStartTime"`
-	TaskEndTime          string `gorm:"type:varchar(30);comment:task end running time" json:"TaskEndTime"`
-	Error                string `gorm:"type:longtext;comment:task error" json:"error"`
+	ID        uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName  string `gorm:"type:varchar(100);not null;uniqueIndex:idx_task_name;comment:parent task name" json:"taskName"`
+	LogDetail string `gorm:"type:longtext;comment:task running log" json:"logDetail"`
 	*common.Entity
 }
 
 type StructMigrateTask struct {
-	ID              uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName        string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name"`
-	SchemaNameS     string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
-	TableNameS      string `gorm:"type:varchar(120);uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
-	TableTypeS      string `gorm:"type:varchar(120);comment:source table type" json:"tableTypeS"`
-	SchemaNameT     string `gorm:"type:varchar(120);comment:target schema name" json:"schemaNameT"`
-	TableNameT      string `gorm:"type:varchar(120);comment:target table name" json:"tableNameT"`
-	TaskStatus      string `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
-	SourceSqlDigest string `gorm:"type:varchar(1200);comment:origin sql digest" json:"sourceSqlDigest"`
-	IncompSqlDigest string `gorm:"type:varchar(1200);comment:incompatible sql digest" json:"incompSqlDigest"`
-	TargetSqlDigest string `gorm:"type:varchar(1200);comment:target sql digest" json:"targetSqlDigest"`
-	TableAttrOption string `gorm:"type:varchar(100);comment:source column datatype" json:"tableAttrOption"`
-	ErrorDetail     string `gorm:"type:varchar(300);comment:error detail" json:"errorDetail"`
-	IsSchemaCreate  string `gorm:"type:varchar(10);default:NO;comment:is schema create sql" json:"isSchemaCreate"`
-	Duration        string `gorm:"type:int;comment:run duration, size: seconds" json:"duration"`
+	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName        string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name"`
+	SchemaNameS     string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
+	TableNameS      string  `gorm:"type:varchar(120);uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
+	TableTypeS      string  `gorm:"type:varchar(120);comment:source table type" json:"tableTypeS"`
+	SchemaNameT     string  `gorm:"type:varchar(120);comment:target schema name" json:"schemaNameT"`
+	TableNameT      string  `gorm:"type:varchar(120);comment:target table name" json:"tableNameT"`
+	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
+	SourceSqlDigest string  `gorm:"type:varchar(1200);comment:origin sql digest" json:"sourceSqlDigest"`
+	IncompSqlDigest string  `gorm:"type:varchar(1200);comment:incompatible sql digest" json:"incompSqlDigest"`
+	TargetSqlDigest string  `gorm:"type:varchar(1200);comment:target sql digest" json:"targetSqlDigest"`
+	TableAttrOption string  `gorm:"type:varchar(100);comment:source column datatype" json:"tableAttrOption"`
+	ErrorDetail     string  `gorm:"type:varchar(300);comment:error detail" json:"errorDetail"`
+	IsSchemaCreate  string  `gorm:"type:varchar(10);default:NO;comment:is schema create sql" json:"isSchemaCreate"`
+	Duration        float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }
 
 type DataMigrateTask struct {
-	ID            uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName      string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name"`
-	SchemaNameS   string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
-	TableNameS    string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
-	SchemaNameT   string `gorm:"type:varchar(120);not null;comment:target schema name" json:"schemaNameT"`
-	TableNameT    string `gorm:"type:varchar(120);not null;comment:target table name" json:"tableNameT"`
-	ColumnDetailS string `gorm:"type:text;comment:source column information" json:"columnDetailS"`
-	ColumnDetailT string `gorm:"type:text;comment:source column information" json:"columnDetailT"`
-	SqlHintS      string `gorm:"type:text;comment:source sql hint" json:"sqlHintS"`
-	SqlHintT      string `gorm:"type:text;comment:target sql hint" json:"sqlHintT"`
-	ChunkDetailS  string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
-	TaskStatus    string `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
-	CSVFile       string `gorm:"type:varchar(300);comment:csv exporter file path" json:"csvFile"`
-	ErrorDetail   string `gorm:"type:varchar(300);comment:error detail" json:"errorDetail"`
-	Duration      string `gorm:"type:int;comment:run duration, size: seconds" json:"duration"`
+	ID            uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName      string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name"`
+	SchemaNameS   string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
+	TableNameS    string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
+	SchemaNameT   string  `gorm:"type:varchar(120);not null;comment:target schema name" json:"schemaNameT"`
+	TableNameT    string  `gorm:"type:varchar(120);not null;comment:target table name" json:"tableNameT"`
+	ColumnDetailS string  `gorm:"type:text;comment:source column information" json:"columnDetailS"`
+	ColumnDetailT string  `gorm:"type:text;comment:source column information" json:"columnDetailT"`
+	SqlHintS      string  `gorm:"type:text;comment:source sql hint" json:"sqlHintS"`
+	SqlHintT      string  `gorm:"type:text;comment:target sql hint" json:"sqlHintT"`
+	ChunkDetailS  string  `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
+	TaskStatus    string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
+	CSVFile       string  `gorm:"type:varchar(300);comment:csv exporter file path" json:"csvFile"`
+	ErrorDetail   string  `gorm:"type:varchar(300);comment:error detail" json:"errorDetail"`
+	Duration      float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }

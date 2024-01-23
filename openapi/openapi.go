@@ -17,6 +17,7 @@ package openapi
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -31,8 +32,9 @@ const (
 const (
 	APIDatabasePath      = "database"
 	APIDatasourcePath    = "datasource"
+	APITaskPath          = "task"
 	APIStructMigratePath = "structMigrate"
-	APITaskRulePath      = "taskRule"
+	APITaskRulePath      = "rule"
 )
 
 const (
@@ -40,6 +42,11 @@ const (
 	RequestPOSTMethod   = "POST"
 	RequestGETMethod    = "GET"
 	RequestDELETEMethod = "DELETE"
+)
+
+const (
+	ResponseResultStatusSuccess = "success"
+	ResponseResultStatusFailed  = "failed"
 )
 
 func Request(method, url string, body []byte) ([]byte, error) {
@@ -57,9 +64,14 @@ func Request(method, url string, body []byte) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request http status [%d] not ok, please check server status or logs", resp.StatusCode)
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
 	return respBody, nil
 }

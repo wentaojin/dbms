@@ -24,27 +24,29 @@ import (
 )
 
 type RuleConfig struct {
-	TaskRuleName    string `json:"taskRuleName"`
-	DatasourceNameS string `json:"datasourceNameS"`
-	DatasourceNameT string `json:"datasourceNameT"`
-	Comment         string `json:"comment"`
+	TaskRuleName    string `toml:"task-rule-name" json:"taskRuleName"`
+	DatasourceNameS string `toml:"datasource-name-s" json:"datasourceNameS"`
+	DatasourceNameT string `toml:"datasource-name-t" json:"datasourceNameT"`
+	Comment         string `toml:"comment" json:"comment"`
 
-	SchemaRouteRules []SchemaRouteRule `json:"schemaRouteRules"`
+	SchemaRouteRules []SchemaRouteRule `toml:"schema-route-rules" json:"schemaRouteRules"`
 }
 
 type SchemaRouteRule struct {
-	SourceSchema       string   `json:"sourceSchema"`
-	TargetSchema       string   `json:"targetSchema"`
-	SourceIncludeTable []string `json:"sourceIncludeTable"`
-	SourceExcludeTable []string `json:"sourceExcludeTable"`
+	SourceSchema       string   `toml:"source-schema" json:"sourceSchema"`
+	TargetSchema       string   `toml:"target-schema" json:"targetSchema"`
+	CaseFieldRule      string   `toml:"case-field-rule" json:"caseFieldRule" `
+	SourceIncludeTable []string `toml:"source-include-table" json:"sourceIncludeTable"`
+	SourceExcludeTable []string `toml:"source-exclude-table" json:"sourceExcludeTable"`
 
-	TableRouteRules []TableRouteRule `json:"tableRouteRules"`
+	TableRouteRules []TableRouteRule `toml:"table-route-rules" json:"tableRouteRules"`
 }
 
 type TableRouteRule struct {
-	SourceTable      string            `json:"sourceTable"`
-	TargetTable      string            `json:"targetTable"`
-	ColumnRouteRules map[string]string `json:"columnRouteRules"`
+	SourceTable      string            `toml:"source-table" json:"sourceTable"`
+	TargetTable      string            `toml:"target-table" json:"targetTable"`
+	CaseFieldRule    string            `toml:"case-field-rule" json:"caseFieldRule" `
+	ColumnRouteRules map[string]string `toml:"column-route-rules" json:"columnRouteRules"`
 }
 
 func (s *RuleConfig) String() string {
@@ -53,37 +55,64 @@ func (s *RuleConfig) String() string {
 }
 
 func UpsertTaskRule(serverAddr string, file string) error {
-	var cfg = &StructConfig{}
+	var cfg = &RuleConfig{}
 	if _, err := toml.DecodeFile(file, cfg); err != nil {
 		return fmt.Errorf("failed decode toml config file %s: %v", file, err)
 	}
-
-	_, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskRulePath), []byte(cfg.String()))
+	resp, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskRulePath), []byte(cfg.String()))
 	if err != nil {
 		return err
 	}
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	if err != nil {
+		return fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
 
 	return nil
 }
 
 func DeleteTaskRule(serverAddr string, name string) error {
-	_, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskRulePath), []byte(name))
+	resp, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskRulePath), []byte(name))
 	if err != nil {
 		return err
 	}
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	if err != nil {
+		return fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
 	return nil
 }
 
-func GetTaskRule(serverAddr string, name string) (string, error) {
+func GetTaskRule(serverAddr string, name string) error {
 	resp, err := openapi.Request(openapi.RequestGETMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskRulePath), []byte(name))
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	jsonStr, err := stringutil.MarshalIndentJSON(resp)
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("error decoding JSON: %v", err)
 	}
 
-	return jsonStr, nil
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
+
+	return nil
 }

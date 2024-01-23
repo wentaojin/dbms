@@ -20,19 +20,20 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/wentaojin/dbms/model/common"
+
 	"github.com/wentaojin/dbms/database/oracle"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/model"
-	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/rule"
 	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func UpsertMigrateTaskRule(ctx context.Context, req *pb.UpsertMigrateTaskRuleRequest) (string, error) {
-	sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(ctx, req.MigrateTaskRule.DatasourceNameS)
+func UpsertRule(ctx context.Context, req *pb.UpsertRuleRequest) (string, error) {
+	sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(ctx, req.Rule.DatasourceNameS)
 	if err != nil {
 		return "", err
 	}
@@ -44,9 +45,16 @@ func UpsertMigrateTaskRule(ctx context.Context, req *pb.UpsertMigrateTaskRuleReq
 
 	// exclude table and include table is whether conflict
 	var sourceSchemas []string
-	for _, sr := range req.MigrateTaskRule.SchemaRouteRules {
-		sourceSchemas = append(sourceSchemas, sr.SourceSchema)
-
+	for _, sr := range req.Rule.SchemaRouteRules {
+		if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameOrigin) {
+			sourceSchemas = append(sourceSchemas, sr.SourceSchema)
+		}
+		if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameUpper) {
+			sourceSchemas = append(sourceSchemas, stringutil.StringUpper(sr.SourceSchema))
+		}
+		if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameLower) {
+			sourceSchemas = append(sourceSchemas, stringutil.StringLower(sr.SourceSchema))
+		}
 		interSection := stringutil.StringItemsFilterIntersection(sr.SourceIncludeTable, sr.SourceExcludeTable)
 		if len(interSection) > 0 {
 			return "", fmt.Errorf("there is the same table within source include and exclude table, please check and remove")
@@ -55,9 +63,14 @@ func UpsertMigrateTaskRule(ctx context.Context, req *pb.UpsertMigrateTaskRuleReq
 
 	switch {
 	case strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle):
-		err = sourceDB.(*oracle.Database).FilterDatabaseSchema(sourceSchemas)
+		allOraSchemas, err := sourceDB.(*oracle.Database).FilterDatabaseSchema()
 		if err != nil {
 			return "", err
+		}
+		for _, s := range sourceSchemas {
+			if !stringutil.IsContainedString(allOraSchemas, s) {
+				return "", fmt.Errorf("oracle schema isn't contained in the database with the case field rule, failed schemas: [%v]", s)
+			}
 		}
 	default:
 		return "", fmt.Errorf("the current datasource type [%s] isn't support, please remove and reruning", sourceDatasource.DbType)
@@ -68,94 +81,204 @@ func UpsertMigrateTaskRule(ctx context.Context, req *pb.UpsertMigrateTaskRuleReq
 		return "", err
 	}
 
-	for _, sr := range req.MigrateTaskRule.SchemaRouteRules {
-		err = model.Transaction(ctx, func(txnCtx context.Context) error {
-			_, err = model.GetIMigrateTaskRuleRW().CreateMigrateTaskRule(txnCtx, &rule.MigrateTaskRule{
-				TaskRuleName:    req.MigrateTaskRule.TaskRuleName,
-				DatasourceNameS: req.MigrateTaskRule.DatasourceNameS,
-				DatasourceNameT: req.MigrateTaskRule.DatasourceNameT,
-				Entity:          &common.Entity{Comment: req.MigrateTaskRule.Comment},
-			})
-			if err != nil {
-				return err
-			}
-
-			_, err = model.GetIMigrateSchemaRouteRW().CreateSchemaRouteRule(txnCtx, &rule.SchemaRouteRule{
-				TaskRuleName: req.MigrateTaskRule.TaskRuleName,
-				SchemaNameS:  stringutil.StringUpper(sr.SourceSchema),
-				SchemaNameT:  stringutil.StringUpper(sr.TargetSchema),
-				Entity:       &common.Entity{Comment: req.MigrateTaskRule.Comment},
-			})
-			if err != nil {
-				return err
-			}
-
-			for _, t := range sr.SourceIncludeTable {
-				_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
-					TaskRuleName: req.MigrateTaskRule.TaskRuleName,
-					SchemaNameS:  stringutil.StringUpper(sr.SourceSchema),
-					TableNameS:   stringutil.StringUpper(t),
-					IsExclude:    constant.MigrateTaskTableIsNotExclude,
+	for _, sr := range req.Rule.SchemaRouteRules {
+		if !strings.EqualFold(sr.String(), "") {
+			err = model.Transaction(ctx, func(txnCtx context.Context) error {
+				_, err = model.GetIRuleRW().CreateRule(txnCtx, &rule.Rule{
+					TaskRuleName:    req.Rule.TaskRuleName,
+					DatasourceNameS: req.Rule.DatasourceNameS,
+					DatasourceNameT: req.Rule.DatasourceNameT,
+					Entity:          &common.Entity{Comment: req.Rule.Comment},
 				})
-			}
-
-			for _, t := range sr.SourceExcludeTable {
-				_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
-					TaskRuleName: req.MigrateTaskRule.TaskRuleName,
-					SchemaNameS:  stringutil.StringUpper(sr.SourceSchema),
-					TableNameS:   stringutil.StringUpper(t),
-					IsExclude:    constant.MigrateTaskTableIsExclude,
-				})
-			}
-
-			var (
-				tableRules  []*rule.TableRouteRule
-				columnRules []*rule.ColumnRouteRule
-			)
-			for _, st := range sr.TableRouteRules {
-				if strings.EqualFold(st.TargetTable, "") {
-					st.TargetTable = st.SourceTable
+				if err != nil {
+					return err
 				}
-				tableRules = append(tableRules, &rule.TableRouteRule{
-					TaskRuleName: req.MigrateTaskRule.TaskRuleName,
-					SchemaNameS:  stringutil.StringUpper(sr.SourceSchema),
-					TableNameS:   stringutil.StringUpper(st.SourceTable),
-					SchemaNameT:  stringutil.StringUpper(sr.TargetSchema),
-					TableNameT:   stringutil.StringUpper(st.TargetTable),
-					Entity:       &common.Entity{Comment: req.MigrateTaskRule.Comment},
-				})
-				if st.ColumnRouteRules != nil {
-					for k, v := range st.ColumnRouteRules {
-						columnRules = append(columnRules, &rule.ColumnRouteRule{
-							TaskRuleName: req.MigrateTaskRule.TaskRuleName,
-							SchemaNameS:  stringutil.StringUpper(sr.SourceSchema),
-							TableNameS:   stringutil.StringUpper(st.SourceTable),
-							SchemaNameT:  stringutil.StringUpper(sr.TargetSchema),
-							TableNameT:   stringutil.StringUpper(st.TargetTable),
-							ColumnNameS:  stringutil.StringUpper(k),
-							ColumnNameT:  stringutil.StringUpper(v),
-							Entity:       &common.Entity{Comment: req.MigrateTaskRule.Comment},
+
+				var (
+					sourceSchema string
+					targetSchema string
+				)
+				if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameOrigin) {
+					sourceSchema = sr.SourceSchema
+					targetSchema = sr.TargetSchema
+					for _, t := range sr.SourceIncludeTable {
+						_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
+							TaskRuleName:  req.Rule.TaskRuleName,
+							SchemaNameS:   sourceSchema,
+							TableNameS:    t,
+							CaseFieldRule: sr.CaseFieldRule,
+							IsExclude:     constant.MigrateTaskTableIsNotExclude,
+						})
+					}
+
+					for _, t := range sr.SourceExcludeTable {
+						_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
+							TaskRuleName:  req.Rule.TaskRuleName,
+							SchemaNameS:   sourceSchema,
+							TableNameS:    t,
+							CaseFieldRule: sr.CaseFieldRule,
+							IsExclude:     constant.MigrateTaskTableIsExclude,
 						})
 					}
 				}
-			}
+				if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameUpper) {
+					sourceSchema = stringutil.StringUpper(sr.SourceSchema)
+					targetSchema = stringutil.StringUpper(sr.TargetSchema)
+					for _, t := range sr.SourceIncludeTable {
+						_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
+							TaskRuleName:  req.Rule.TaskRuleName,
+							SchemaNameS:   sourceSchema,
+							TableNameS:    stringutil.StringUpper(t),
+							CaseFieldRule: sr.CaseFieldRule,
+							IsExclude:     constant.MigrateTaskTableIsNotExclude,
+						})
+					}
 
-			_, err = model.GetIMigrateTableRouteRW().CreateInBatchTableRouteRule(ctx, tableRules, constant.DefaultRecordCreateBatchSize)
+					for _, t := range sr.SourceExcludeTable {
+						_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
+							TaskRuleName:  req.Rule.TaskRuleName,
+							SchemaNameS:   sourceSchema,
+							TableNameS:    stringutil.StringUpper(t),
+							CaseFieldRule: sr.CaseFieldRule,
+							IsExclude:     constant.MigrateTaskTableIsExclude,
+						})
+					}
+				}
+				if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameLower) {
+					sourceSchema = stringutil.StringLower(sr.SourceSchema)
+					targetSchema = stringutil.StringLower(sr.TargetSchema)
+					for _, t := range sr.SourceIncludeTable {
+						_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
+							TaskRuleName:  req.Rule.TaskRuleName,
+							SchemaNameS:   sourceSchema,
+							TableNameS:    stringutil.StringLower(t),
+							CaseFieldRule: sr.CaseFieldRule,
+							IsExclude:     constant.MigrateTaskTableIsNotExclude,
+						})
+					}
+
+					for _, t := range sr.SourceExcludeTable {
+						_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
+							TaskRuleName:  req.Rule.TaskRuleName,
+							SchemaNameS:   sourceSchema,
+							TableNameS:    stringutil.StringLower(t),
+							CaseFieldRule: sr.CaseFieldRule,
+							IsExclude:     constant.MigrateTaskTableIsExclude,
+						})
+					}
+				}
+
+				_, err = model.GetIMigrateSchemaRouteRW().CreateSchemaRouteRule(txnCtx, &rule.SchemaRouteRule{
+					TaskRuleName:  req.Rule.TaskRuleName,
+					SchemaNameS:   sourceSchema,
+					SchemaNameT:   targetSchema,
+					CaseFieldRule: sr.CaseFieldRule,
+					Entity:        &common.Entity{Comment: req.Rule.Comment},
+				})
+				if err != nil {
+					return err
+				}
+
+				var (
+					tableRules  []*rule.TableRouteRule
+					columnRules []*rule.ColumnRouteRule
+				)
+				for _, st := range sr.TableRouteRules {
+					if !strings.EqualFold(st.String(), "") {
+						if strings.EqualFold(st.TargetTable, "") {
+							st.TargetTable = st.SourceTable
+						}
+
+						var (
+							sourceTable string
+							targetTable string
+						)
+						if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameOrigin) {
+							sourceTable = st.SourceTable
+							targetTable = st.TargetTable
+							if st.ColumnRouteRules != nil {
+								for k, v := range st.ColumnRouteRules {
+									columnRules = append(columnRules, &rule.ColumnRouteRule{
+										TaskRuleName:  req.Rule.TaskRuleName,
+										SchemaNameS:   sourceSchema,
+										TableNameS:    sourceTable,
+										SchemaNameT:   targetSchema,
+										TableNameT:    targetTable,
+										ColumnNameS:   k,
+										ColumnNameT:   v,
+										CaseFieldRule: st.CaseFieldRule,
+										Entity:        &common.Entity{Comment: req.Rule.Comment},
+									})
+								}
+							}
+						}
+						if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameUpper) {
+							sourceTable = stringutil.StringUpper(st.SourceTable)
+							targetTable = stringutil.StringUpper(st.TargetTable)
+							if st.ColumnRouteRules != nil {
+								for k, v := range st.ColumnRouteRules {
+									columnRules = append(columnRules, &rule.ColumnRouteRule{
+										TaskRuleName:  req.Rule.TaskRuleName,
+										SchemaNameS:   sourceSchema,
+										TableNameS:    sourceTable,
+										SchemaNameT:   targetSchema,
+										TableNameT:    targetTable,
+										ColumnNameS:   stringutil.StringUpper(k),
+										ColumnNameT:   stringutil.StringUpper(v),
+										CaseFieldRule: st.CaseFieldRule,
+										Entity:        &common.Entity{Comment: req.Rule.Comment},
+									})
+								}
+							}
+						}
+						if strings.EqualFold(sr.CaseFieldRule, constant.ParamValueRuleCaseFieldNameLower) {
+							sourceTable = stringutil.StringLower(st.SourceTable)
+							targetTable = stringutil.StringLower(st.TargetTable)
+							if st.ColumnRouteRules != nil {
+								for k, v := range st.ColumnRouteRules {
+									columnRules = append(columnRules, &rule.ColumnRouteRule{
+										TaskRuleName:  req.Rule.TaskRuleName,
+										SchemaNameS:   sourceSchema,
+										TableNameS:    sourceTable,
+										SchemaNameT:   targetSchema,
+										TableNameT:    targetTable,
+										ColumnNameS:   stringutil.StringLower(k),
+										ColumnNameT:   stringutil.StringLower(v),
+										CaseFieldRule: st.CaseFieldRule,
+										Entity:        &common.Entity{Comment: req.Rule.Comment},
+									})
+								}
+							}
+						}
+
+						tableRules = append(tableRules, &rule.TableRouteRule{
+							TaskRuleName:  req.Rule.TaskRuleName,
+							SchemaNameS:   sourceSchema,
+							TableNameS:    sourceTable,
+							SchemaNameT:   targetSchema,
+							TableNameT:    targetTable,
+							CaseFieldRule: st.CaseFieldRule,
+							Entity:        &common.Entity{Comment: req.Rule.Comment},
+						})
+					}
+				}
+
+				_, err = model.GetIMigrateTableRouteRW().CreateInBatchTableRouteRule(ctx, tableRules, constant.DefaultRecordCreateBatchSize)
+				if err != nil {
+					return err
+				}
+
+				_, err = model.GetIMigrateColumnRouteRW().CreateInBatchColumnRouteRule(ctx, columnRules, constant.DefaultRecordCreateBatchSize)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
 			if err != nil {
-				return err
+				return "", err
 			}
-
-			_, err = model.GetIMigrateColumnRouteRW().CreateInBatchColumnRouteRule(ctx, columnRules, constant.DefaultRecordCreateBatchSize)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
-		if err != nil {
-			return "", err
 		}
-
 	}
 
 	jsonStr, err := stringutil.MarshalJSON(req)
@@ -165,9 +288,9 @@ func UpsertMigrateTaskRule(ctx context.Context, req *pb.UpsertMigrateTaskRuleReq
 	return jsonStr, nil
 }
 
-func DeleteMigrateTaskRule(ctx context.Context, req *pb.DeleteMigrateTaskRuleRequest) error {
+func DeleteRule(ctx context.Context, req *pb.DeleteRuleRequest) error {
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
-		err := model.GetIMigrateTaskRuleRW().DeleteMigrateTaskRule(txnCtx, req.TaskRuleName)
+		err := model.GetIRuleRW().DeleteRule(txnCtx, req.TaskRuleName)
 		if err != nil {
 			return err
 		}
@@ -199,11 +322,9 @@ func DeleteMigrateTaskRule(ctx context.Context, req *pb.DeleteMigrateTaskRuleReq
 	return nil
 }
 
-func ShowMigrateTaskRule(ctx context.Context, req *pb.ShowMigrateTaskRuleRequest) (string, error) {
-	var (
-		opRules       *pb.MigrateTaskRule
-		opSchemaRules []*pb.SchemaRouteRule
-	)
+func ShowRule(ctx context.Context, req *pb.ShowRuleRequest) (string, error) {
+	var opSchemaRules []*pb.SchemaRouteRule
+	opRules := &pb.Rule{}
 
 	tables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(ctx, &rule.MigrateTaskTable{TaskRuleName: req.TaskRuleName})
 	if err != nil {
@@ -212,7 +333,7 @@ func ShowMigrateTaskRule(ctx context.Context, req *pb.ShowMigrateTaskRuleRequest
 
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 
-		taskRule, err := model.GetIMigrateTaskRuleRW().GetMigrateTaskRule(txnCtx, &rule.MigrateTaskRule{TaskRuleName: req.TaskRuleName})
+		taskRule, err := model.GetIRuleRW().GetRule(txnCtx, &rule.Rule{TaskRuleName: req.TaskRuleName})
 		if err != nil {
 			return err
 		}
@@ -228,23 +349,22 @@ func ShowMigrateTaskRule(ctx context.Context, req *pb.ShowMigrateTaskRuleRequest
 
 		for _, sr := range schemaRules {
 			var (
-				opSchemaRule *pb.SchemaRouteRule
-				opColumnRule *pb.TableRouteRule
-
 				opColumnRules []*pb.TableRouteRule
 
 				includeTables []string
 				excludeTables []string
 			)
+			opSchemaRule := &pb.SchemaRouteRule{}
+			opColumnRule := &pb.TableRouteRule{}
 
 			opSchemaRule.SourceSchema = sr.SchemaNameS
 			opSchemaRule.TargetSchema = sr.SchemaNameT
 
 			for _, t := range tables {
-				if strings.EqualFold(t.SchemaNameS, sr.SchemaNameS) && strings.EqualFold(t.IsExclude, constant.MigrateTaskTableIsNotExclude) {
+				if t.SchemaNameS == sr.SchemaNameS && t.IsExclude == constant.MigrateTaskTableIsNotExclude {
 					includeTables = append(includeTables, t.TableNameS)
 				}
-				if strings.EqualFold(t.SchemaNameS, sr.SchemaNameS) && !strings.EqualFold(t.IsExclude, constant.MigrateTaskTableIsExclude) {
+				if t.SchemaNameS == sr.SchemaNameS && t.IsExclude != constant.MigrateTaskTableIsExclude {
 					excludeTables = append(excludeTables, t.TableNameS)
 				}
 			}
@@ -260,6 +380,7 @@ func ShowMigrateTaskRule(ctx context.Context, req *pb.ShowMigrateTaskRuleRequest
 			for _, st := range tableRules {
 				opColumnRule.SourceTable = st.TableNameS
 				opColumnRule.TargetTable = st.TableNameT
+				opColumnRule.CaseFieldRule = st.CaseFieldRule
 
 				columnRules, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(txnCtx, &rule.ColumnRouteRule{TaskRuleName: req.TaskRuleName, SchemaNameS: st.SchemaNameS, TableNameS: st.TableNameS})
 				if err != nil {

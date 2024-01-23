@@ -160,11 +160,10 @@ func (a *AppStructGet) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	resp, err := migrate.GetStructMigrate(a.Server, a.name)
+	err := migrate.GetStructMigrate(a.Server, a.name)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(resp)
 	return nil
 }

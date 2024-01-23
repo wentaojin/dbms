@@ -16,52 +16,75 @@ limitations under the License.
 package stringutil
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"encoding/base64"
-	"io"
+	"errors"
 )
 
 func Encrypt(text string, key []byte) (string, error) {
-	block, err := aes.NewCipher(key)
+	ciphertext, err := aesEncrypt([]byte(text), key)
 	if err != nil {
 		return "", err
 	}
-
-	plaintext := []byte(text)
-	ciphertext := make([]byte, aes.BlockSize+len(plaintext))
-
-	iv := ciphertext[:aes.BlockSize]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return "", err
-	}
-
-	// encrypt block
-	mode := cipher.NewCBCEncrypter(block, iv)
-	mode.CryptBlocks(ciphertext[aes.BlockSize:], plaintext)
-
 	// Base64 encode
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
 func Decrypt(ciphertext string, key []byte) (string, error) {
+	pwdByte, err := base64.StdEncoding.DecodeString(ciphertext)
+	if err != nil {
+		return "", err
+	}
+	crypt, err := aesDeCrypt(pwdByte, key)
+	if err != nil {
+		return "", err
+	}
+	return string(crypt), nil
+}
+
+func aesEncrypt(origData []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	blockSize := block.BlockSize()
+	origData = PKCS7Padding(origData, blockSize)
+	blocMode := cipher.NewCBCEncrypter(block, key[:blockSize])
+	crypted := make([]byte, len(origData))
+	blocMode.CryptBlocks(crypted, origData)
+	return crypted, nil
+}
 
-	// decode Base64 data
-	decodedText, err := base64.StdEncoding.DecodeString(ciphertext)
+func aesDeCrypt(cypted []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	blockSize := block.BlockSize()
+	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])
+	origData := make([]byte, len(cypted))
+	blockMode.CryptBlocks(origData, cypted)
+	origData, err = PKCS7UnPadding(origData)
+	if err != nil {
+		return nil, err
+	}
+	return origData, err
+}
 
-	iv := decodedText[:aes.BlockSize]
-	decodedText = decodedText[aes.BlockSize:]
+func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
+	padding := blockSize - len(ciphertext)%blockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
+}
 
-	mode := cipher.NewCBCDecrypter(block, iv)
-	mode.CryptBlocks(decodedText, decodedText)
-
-	return string(decodedText), nil
+func PKCS7UnPadding(origData []byte) ([]byte, error) {
+	length := len(origData)
+	if length == 0 {
+		return nil, errors.New("pkcs7 origin data length can't be 0")
+	} else {
+		unpadding := int(origData[length-1])
+		return origData[:(length - unpadding)], nil
+	}
 }

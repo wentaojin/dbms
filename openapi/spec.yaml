@@ -161,13 +161,13 @@ paths:
       tags:
         - rule
       description: Put task migrate rule information
-      operationId: APIPutTaskMigrateRule
+      operationId: APIPutRule
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskMigrateRule'
+              $ref: '#/components/schemas/Rule'
       responses:
         '200':
           description: task migrate rule create success response
@@ -185,7 +185,7 @@ paths:
       tags:
         - rule
       description: List task migrate rule connect information
-      operationId: APIListTaskMigrateRule
+      operationId: APIListRule
       requestBody:
         required: true
         content:
@@ -209,7 +209,7 @@ paths:
       tags:
         - rule
       description: Delete task migrate rule connection information
-      operationId: APIDeleteTaskMigrateRule
+      operationId: APIDeleteRule
       requestBody:
         required: true
         content:
@@ -229,12 +229,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Response'
-  /task/structMigrateTask:
+  /task/structMigrate:
     put:
       tags:
-        - structMigrateTask
+        - structMigrate
       description: Put struct migrate task information
-      operationId: APIPutStructMigrateTask
+      operationId: APIPutStructMigrate
       requestBody:
         required: true
         content:
@@ -256,9 +256,9 @@ paths:
                 $ref: '#/components/schemas/Response'
     post:
       tags:
-        - rule
+        - structMigrate
       description: List struct migrate task connect information
-      operationId: APIListStructMigrateTask
+      operationId: APIListStructMigrate
       requestBody:
         required: true
         content:
@@ -280,9 +280,9 @@ paths:
                 $ref: '#/components/schemas/Response'
     delete:
       tags:
-        - rule
+        - structMigrate
       description: Delete struct migrate rule connection information
-      operationId: APIDeleteStructMigrateTask
+      operationId: APIDeleteStructMigrate
       requestBody:
         required: true
         content:
@@ -303,35 +303,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Response'
   /task:
-    put:
-      tags:
-        - task
-      description: Put task operate
-      operationId: APIPutTask
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Task'
-      responses:
-        '200':
-          description: task create success response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
     post:
       tags:
         - task
-      description: Kill task operate
-      operationId: APIKillTask
+      description: post task operate
+      operationId: APIPostTask
       requestBody:
         required: true
         content:
@@ -340,31 +316,7 @@ paths:
               $ref: '#/components/schemas/Task'
       responses:
         '201':
-          description: kill task
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-    delete:
-      tags:
-        - task
-      description: Delete task
-      operationId: APIDeleteTask
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Task'
-      responses:
-        '204':
-          description: rule delete success response
+          description: post task
           content:
             application/json:
               schema:
@@ -444,7 +396,7 @@ components:
         comment:
           type: string
           format: string
-    TaskMigrateRule:
+    Rule:
       type: object
       properties:
         taskRuleName:
@@ -459,17 +411,20 @@ components:
         comment:
           type: string
           format: string
-        migrateSchemaRules:
+        schemaRouteRules:
           type: array
           items:
-            $ref: '#/components/schemas/MigrateSchemaRule'
-    MigrateSchemaRule:
+            $ref: '#/components/schemas/SchemaRouteRule'
+    SchemaRouteRule:
       type: object
       properties:
         sourceSchema:
           type: string
           format: string
         targetSchema:
+          type: string
+          format: string
+        caseFieldRule:
           type: string
           format: string
         sourceIncludeTable:
@@ -482,11 +437,11 @@ components:
           items:
             type: string
             format: string
-        sourceTableRoutes:
+        tableRouteRules:
           type: array
           items:
-            $ref: '#/components/schemas/SourceTableRoute'
-    SourceTableRoute:
+            $ref: '#/components/schemas/TableRouteRule'
+    TableRouteRule:
       type: object
       properties:
         sourceTable:
@@ -495,12 +450,14 @@ components:
         targetTable:
           type: string
           format: string
-        sourceColumnRoutes:
+        caseFieldRule:
+          type: string
+          format: string
+        columnRouteRules:
           type: object
           additionalProperties:
             type: string
             format: string
-
     StructMigrateTask:
       type: object
       properties:
@@ -510,9 +467,6 @@ components:
         taskRuleName:
           type: string
           format: string
-        subTaskNums:
-          type: integer
-          format: uint64
         structMigrateParam:
           $ref: '#/components/schemas/StructMigrateParam'
         structMigrateRule:
@@ -520,10 +474,13 @@ components:
     StructMigrateParam:
       type: object
       properties:
-        lowerCaseFieldName:
+        caseFieldRule:
           type: string
           format: string
         migrateThread:
+          type: integer
+          format: uint64
+        taskQueueSize:
           type: integer
           format: uint64
         directWrite:
@@ -671,10 +628,13 @@ components:
           type: integer
           format: uint64
     RequestDeleteParam:
-      type: array
-      items:
-        type: string
-        format: string
+      type: object
+      properties:
+        param:
+          type: array
+          items:
+            type: string
+            format: string
     Response:
       type: object
       required:

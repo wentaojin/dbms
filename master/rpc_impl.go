@@ -18,6 +18,7 @@ package master
 import (
 	"context"
 
+	"github.com/wentaojin/dbms/openapi"
 	"github.com/wentaojin/dbms/service"
 
 	"github.com/wentaojin/dbms/utils/constant"
@@ -30,13 +31,13 @@ func (s *Server) UpsertDatabase(ctx context.Context, req *pb.UpsertDatabaseReque
 	upsertMsg, err := service.UpsertDatabase(s.etcdClient, constant.DefaultMasterDatabaseDBMSKey, req)
 	if err != nil {
 		return &pb.UpsertDatabaseResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 
 	return &pb.UpsertDatabaseResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: upsertMsg,
 	}}, nil
 }
@@ -45,12 +46,12 @@ func (s *Server) DeleteDatabase(ctx context.Context, req *pb.DeleteDatabaseReque
 	err := service.DeleteDatabase(s.etcdClient, constant.DefaultMasterDatabaseDBMSKey)
 	if err != nil {
 		return &pb.DeleteDatabaseResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 	return &pb.DeleteDatabaseResponse{Response: &pb.Response{
-		Result: constant.ResponseResultStatusSuccess,
+		Result: openapi.ResponseResultStatusSuccess,
 	}}, nil
 }
 
@@ -58,12 +59,12 @@ func (s *Server) ShowDatabase(ctx context.Context, req *pb.ShowDatabaseRequest) 
 	showMsg, err := service.ShowDatabase(s.etcdClient, constant.DefaultMasterDatabaseDBMSKey)
 	if err != nil {
 		return &pb.ShowDatabaseResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 	return &pb.ShowDatabaseResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: showMsg,
 	}}, nil
 }
@@ -73,12 +74,12 @@ func (s *Server) UpsertDatasource(ctx context.Context, req *pb.UpsertDatasourceR
 	createMsg, err := service.UpsertDatasource(ctx, req)
 	if err != nil {
 		return &pb.UpsertDatasourceResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 	return &pb.UpsertDatasourceResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: createMsg,
 	}}, nil
 }
@@ -87,12 +88,12 @@ func (s *Server) DeleteDatasource(ctx context.Context, req *pb.DeleteDatasourceR
 	err := service.DeleteDatasource(ctx, req)
 	if err != nil {
 		return &pb.DeleteDatasourceResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 	return &pb.DeleteDatasourceResponse{Response: &pb.Response{
-		Result: constant.ResponseResultStatusSuccess,
+		Result: openapi.ResponseResultStatusSuccess,
 	}}, nil
 }
 
@@ -100,55 +101,55 @@ func (s *Server) ShowDatasource(ctx context.Context, req *pb.ShowDatasourceReque
 	listMsg, err := service.ShowDatasource(ctx, req)
 	if err != nil {
 		return &pb.ShowDatasourceResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 	return &pb.ShowDatasourceResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: listMsg,
 	}}, nil
 }
 
-// UpsertTaskMigrateRule implements MasterServer.UpsertTaskMigrateRule
-func (s *Server) UpsertTaskMigrateRule(ctx context.Context, req *pb.UpsertMigrateTaskRuleRequest) (*pb.UpsertMigrateTaskRuleResponse, error) {
-	createMsg, err := service.UpsertMigrateTaskRule(ctx, req)
+// UpsertRule implements MasterServer.UpsertTaskMigrateRule
+func (s *Server) UpsertRule(ctx context.Context, req *pb.UpsertRuleRequest) (*pb.UpsertRuleResponse, error) {
+	createMsg, err := service.UpsertRule(ctx, req)
 	if err != nil {
-		return &pb.UpsertMigrateTaskRuleResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+		return &pb.UpsertRuleResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 
-	return &pb.UpsertMigrateTaskRuleResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+	return &pb.UpsertRuleResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: createMsg,
 	}}, nil
 }
 
-func (s *Server) DeleteTaskMigrateRule(ctx context.Context, req *pb.DeleteMigrateTaskRuleRequest) (*pb.DeleteMigrateTaskRuleResponse, error) {
-	err := service.DeleteMigrateTaskRule(ctx, req)
+func (s *Server) DeleteRule(ctx context.Context, req *pb.DeleteRuleRequest) (*pb.DeleteRuleResponse, error) {
+	err := service.DeleteRule(ctx, req)
 	if err != nil {
-		return &pb.DeleteMigrateTaskRuleResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+		return &pb.DeleteRuleResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
-	return &pb.DeleteMigrateTaskRuleResponse{Response: &pb.Response{
-		Result: constant.ResponseResultStatusSuccess,
+	return &pb.DeleteRuleResponse{Response: &pb.Response{
+		Result: openapi.ResponseResultStatusSuccess,
 	}}, nil
 }
 
-func (s *Server) ShowTaskMigrateRule(ctx context.Context, req *pb.ShowMigrateTaskRuleRequest) (*pb.ShowMigrateTaskRuleResponse, error) {
-	showMsg, err := service.ShowMigrateTaskRule(ctx, req)
+func (s *Server) ShowRule(ctx context.Context, req *pb.ShowRuleRequest) (*pb.ShowRuleResponse, error) {
+	showMsg, err := service.ShowRule(ctx, req)
 	if err != nil {
-		return &pb.ShowMigrateTaskRuleResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+		return &pb.ShowRuleResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
-	return &pb.ShowMigrateTaskRuleResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+	return &pb.ShowRuleResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: showMsg,
 	}}, nil
 }
@@ -157,12 +158,12 @@ func (s *Server) UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStru
 	showMsg, err := service.UpsertStructMigrateTask(ctx, req)
 	if err != nil {
 		return &pb.UpsertStructMigrateTaskResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 	return &pb.UpsertStructMigrateTaskResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: showMsg,
 	}}, nil
 }
@@ -171,12 +172,12 @@ func (s *Server) DeleteStructMigrateTask(ctx context.Context, req *pb.DeleteStru
 	delMsg, err := service.DeleteStructMigrateTask(ctx, req)
 	if err != nil {
 		return &pb.DeleteStructMigrateTaskResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 	return &pb.DeleteStructMigrateTaskResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: delMsg,
 	}}, nil
 }
@@ -185,12 +186,12 @@ func (s *Server) ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMi
 	delMsg, err := service.ShowStructMigrateTask(ctx, req)
 	if err != nil {
 		return &pb.ShowStructMigrateTaskResponse{Response: &pb.Response{
-			Result:  constant.ResponseResultStatusFailed,
+			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
 	return &pb.ShowStructMigrateTaskResponse{Response: &pb.Response{
-		Result:  constant.ResponseResultStatusSuccess,
+		Result:  openapi.ResponseResultStatusSuccess,
 		Message: delMsg,
 	}}, nil
 }

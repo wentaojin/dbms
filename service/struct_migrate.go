@@ -20,9 +20,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/database/oracle"
+	"github.com/wentaojin/dbms/logger"
 
 	"github.com/wentaojin/dbms/database/oracle/taskflow"
 
@@ -54,7 +58,7 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 			return err
 		}
 
-		fieldInfos := stringutil.GetJSONTagFieldValue(&req.StructMigrateParam)
+		fieldInfos := stringutil.GetJSONTagFieldValue(req.StructMigrateParam)
 		for jsonTag, fieldValue := range fieldInfos {
 			_, err = model.GetIParamsRW().CreateTaskCustomParam(txnCtx, &params.TaskCustomParam{
 				TaskName:   req.TaskName,
@@ -68,68 +72,78 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 		}
 
 		for _, r := range req.StructMigrateRule.TaskStructRules {
-			_, err = model.GetIStructMigrateTaskRuleRW().CreateTaskStructRule(txnCtx, &migrate.TaskStructRule{
-				TaskName:      req.TaskName,
-				ColumnTypeS:   r.ColumnTypeS,
-				ColumnTypeT:   r.ColumnTypeT,
-				DefaultValueS: r.DefaultValueS,
-				DefaultValueT: r.DefaultValueT,
-			})
-			if err != nil {
-				return err
+			if !strings.EqualFold(r.String(), "") {
+				_, err = model.GetIStructMigrateTaskRuleRW().CreateTaskStructRule(txnCtx, &migrate.TaskStructRule{
+					TaskName:      req.TaskName,
+					ColumnTypeS:   r.ColumnTypeS,
+					ColumnTypeT:   r.ColumnTypeT,
+					DefaultValueS: r.DefaultValueS,
+					DefaultValueT: r.DefaultValueT,
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 		for _, r := range req.StructMigrateRule.SchemaStructRules {
-			_, err = model.GetIStructMigrateSchemaRuleRW().CreateSchemaStructRule(txnCtx, &migrate.SchemaStructRule{
-				TaskName:      req.TaskName,
-				SchemaNameS:   r.SourceSchema,
-				ColumnTypeS:   r.ColumnTypeS,
-				ColumnTypeT:   r.ColumnTypeT,
-				DefaultValueS: r.DefaultValueS,
-				DefaultValueT: r.DefaultValueT,
-			})
-			if err != nil {
-				return err
+			if !strings.EqualFold(r.String(), "") {
+				_, err = model.GetIStructMigrateSchemaRuleRW().CreateSchemaStructRule(txnCtx, &migrate.SchemaStructRule{
+					TaskName:      req.TaskName,
+					SchemaNameS:   r.SourceSchema,
+					ColumnTypeS:   r.ColumnTypeS,
+					ColumnTypeT:   r.ColumnTypeT,
+					DefaultValueS: r.DefaultValueS,
+					DefaultValueT: r.DefaultValueT,
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 		for _, r := range req.StructMigrateRule.TableStructRules {
-			_, err = model.GetIStructMigrateTableRuleRW().CreateTableStructRule(txnCtx, &migrate.TableStructRule{
-				TaskName:      req.TaskName,
-				SchemaNameS:   r.SourceSchema,
-				TableNameS:    r.SourceTable,
-				ColumnTypeS:   r.ColumnTypeS,
-				ColumnTypeT:   r.ColumnTypeT,
-				DefaultValueS: r.DefaultValueS,
-				DefaultValueT: r.DefaultValueT,
-			})
-			if err != nil {
-				return err
+			if !strings.EqualFold(r.String(), "") {
+				_, err = model.GetIStructMigrateTableRuleRW().CreateTableStructRule(txnCtx, &migrate.TableStructRule{
+					TaskName:      req.TaskName,
+					SchemaNameS:   r.SourceSchema,
+					TableNameS:    r.SourceTable,
+					ColumnTypeS:   r.ColumnTypeS,
+					ColumnTypeT:   r.ColumnTypeT,
+					DefaultValueS: r.DefaultValueS,
+					DefaultValueT: r.DefaultValueT,
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 		for _, r := range req.StructMigrateRule.ColumnStructRules {
-			_, err = model.GetIStructMigrateColumnRuleRW().CreateColumnStructRule(txnCtx, &migrate.ColumnStructRule{
-				TaskName:      req.TaskName,
-				SchemaNameS:   r.SourceSchema,
-				TableNameS:    r.SourceTable,
-				ColumnNameS:   r.SourceColumn,
-				ColumnTypeS:   r.ColumnTypeS,
-				ColumnTypeT:   r.ColumnTypeT,
-				DefaultValueS: r.DefaultValueS,
-				DefaultValueT: r.DefaultValueT,
-			})
-			if err != nil {
-				return err
+			if !strings.EqualFold(r.String(), "") {
+				_, err = model.GetIStructMigrateColumnRuleRW().CreateColumnStructRule(txnCtx, &migrate.ColumnStructRule{
+					TaskName:      req.TaskName,
+					SchemaNameS:   r.SourceSchema,
+					TableNameS:    r.SourceTable,
+					ColumnNameS:   r.SourceColumn,
+					ColumnTypeS:   r.ColumnTypeS,
+					ColumnTypeT:   r.ColumnTypeT,
+					DefaultValueS: r.DefaultValueS,
+					DefaultValueT: r.DefaultValueT,
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 
 		for _, r := range req.StructMigrateRule.TableAttrsRules {
-			for _, t := range r.SourceTables {
-				_, err = model.GetIStructMigrateTableAttrsRuleRW().CreateTableAttrsRule(txnCtx, &migrate.TableAttrsRule{
-					TaskName:    req.TaskName,
-					SchemaNameS: r.SourceSchema,
-					TableNameS:  t,
-					TableAttrT:  r.TableAttrsT,
-				})
+			if !strings.EqualFold(r.String(), "") {
+				for _, t := range r.SourceTables {
+					_, err = model.GetIStructMigrateTableAttrsRuleRW().CreateTableAttrsRule(txnCtx, &migrate.TableAttrsRule{
+						TaskName:    req.TaskName,
+						SchemaNameS: r.SourceSchema,
+						TableNameS:  t,
+						TableAttrT:  r.TableAttrsT,
+					})
+				}
 			}
 		}
 		return nil
@@ -231,7 +245,7 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 		}
 
 		param = &pb.StructMigrateParam{
-			CaseFieldRule: paramMap[constant.ParamNameStructMigrateLowerCaseFieldName],
+			CaseFieldRule: paramMap[constant.ParamNameStructMigrateCaseFieldRule],
 			MigrateThread: uint64(migrateThread),
 			TaskQueueSize: uint64(taskQueueSize),
 			DirectWrite:   directWrite,
@@ -347,28 +361,36 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 }
 
 func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) error {
-	var migrateTasks []*task.StructMigrateTask
+	startTime := time.Now()
+	logger.Info("struct migrate task start", zap.String("task_name", taskName))
 
+	_, err := model.GetITaskRW().UpdateTask(ctx, &task.Task{
+		TaskName: taskName,
+	}, map[string]interface{}{
+		"WorkerAddr": workerAddr,
+		"TaskStatus": constant.TaskDatabaseStatusRunning,
+		"StartTime":  startTime,
+	})
+	if err != nil {
+		return err
+	}
+
+	paramsTime := time.Now()
 	taskParams, err := getStructMigrateTasKParams(ctx, taskName)
 	if err != nil {
 		return err
 	}
+	logger.Info("struct migrate task get params", zap.String("task_name", taskName), zap.String("cost", time.Now().Sub(paramsTime).String()))
+
+	logger.Info("struct migrate task init task", zap.String("task_name", taskName))
 	err = initStructMigrateTask(ctx, taskName, taskParams.CaseFieldRule)
 	if err != nil {
 		return err
 	}
 
+	logger.Info("struct migrate task get tasks", zap.String("task_name", taskName))
+	var migrateTasks []*task.StructMigrateTask
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
-		_, err := model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
-			TaskName: taskName,
-		}, map[string]string{
-			"WorkerAddr": workerAddr,
-			"TaskStatus": constant.TaskDatabaseStatusRunning,
-		})
-		if err != nil {
-			return err
-		}
-
 		// get migrate task tables
 		migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName, TaskStatus: constant.TaskDatabaseStatusWaiting, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
 		if err != nil {
@@ -391,16 +413,17 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		sourceDatasource *datasource.Datasource
 		targetDatasource *datasource.Datasource
 	)
+	logger.Info("struct migrate task get datasource", zap.String("task_name", taskName))
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName})
 		if err != nil {
 			return err
 		}
-		taskRule, err := model.GetIMigrateTaskRuleRW().GetMigrateTaskRule(txnCtx, &rule.MigrateTaskRule{TaskRuleName: taskInfo.TaskRuleName})
+		taskRule, err := model.GetIRuleRW().GetRule(txnCtx, &rule.Rule{TaskRuleName: taskInfo.TaskRuleName})
 		if err != nil {
 			return err
 		}
-		sourceDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskRule.DatasourceNameT)
+		sourceDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskRule.DatasourceNameS)
 		if err != nil {
 			return err
 		}
@@ -414,10 +437,11 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		return err
 	}
 
-	taskFlow := stringutil.StringBuilder(stringutil.StringUpper(sourceDatasource.DbType), "@", stringutil.StringUpper(targetDatasource.DbType))
+	taskFlow := stringutil.StringBuilder(stringutil.StringUpper(sourceDatasource.DbType), constant.StringSeparatorAite, stringutil.StringUpper(targetDatasource.DbType))
 
-	switch {
-	case strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle):
+	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
+		logger.Info("struct migrate task process task", zap.String("task_name", taskName))
+		startTime := time.Now()
 		taskStruct := &taskflow.StructMigrateTask{
 			Ctx:          ctx,
 			TaskName:     taskName,
@@ -432,14 +456,141 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		if err != nil {
 			return err
 		}
-		return nil
-	default:
+		logger.Info("struct migrate task process task",
+			zap.String("task_name", taskName),
+			zap.String("cost", time.Now().Sub(startTime).String()))
+	} else {
 		return fmt.Errorf("current struct migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}
+
+	// status
+	var migrateFailedResults []*task.StructMigrateTask
+
+	err = model.Transaction(ctx, func(txnCtx context.Context) error {
+		// get migrate task tables
+		migrateSchemaFails, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName,
+			TaskStatus: constant.TaskDatabaseStatusFailed, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlYES})
+		if err != nil {
+			return err
+		}
+		migrateTaskFails, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName, TaskStatus: constant.TaskDatabaseStatusFailed, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+		if err != nil {
+			return err
+		}
+		migrateFailedResults = append(migrateFailedResults, migrateSchemaFails...)
+		migrateFailedResults = append(migrateFailedResults, migrateTaskFails...)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(migrateFailedResults) > 0 {
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			taskInfo, err := model.GetITaskRW().GetTask(txnCtx, &task.Task{
+				TaskName: taskName,
+			})
+			if err != nil {
+				return err
+			}
+			_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
+				TaskName: taskName,
+			}, map[string]interface{}{
+				"TaskStatus": constant.TaskDatabaseStatusFailed,
+				"EndTime":    time.Now(),
+			})
+			if err != nil {
+				return err
+			}
+			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+				TaskName: taskName,
+				LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] are exist failed record [%d] during running operation, please see [struct_migrate_task] detail",
+					stringutil.CurrentTimeFormatString(),
+					stringutil.StringLower(constant.TaskModeStructMigrate),
+					taskInfo.WorkerAddr,
+					taskName,
+					len(migrateFailedResults)),
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+	err = model.Transaction(ctx, func(txnCtx context.Context) error {
+		taskInfo, err := model.GetITaskRW().GetTask(txnCtx, &task.Task{
+			TaskName: taskName,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
+			TaskName: taskName,
+		}, map[string]interface{}{
+			"TaskStatus": constant.TaskDatabaseStatusSuccess,
+			"EndTime":    time.Now(),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+			TaskName: taskName,
+			LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] running success, cost: [%v]",
+				stringutil.CurrentTimeFormatString(),
+				stringutil.StringLower(constant.TaskModeStructMigrate),
+				taskInfo.WorkerAddr,
+				taskName,
+				time.Now().Sub(startTime).String()),
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	logger.Info("struct migrate task success",
+		zap.String("task_name", taskName),
+		zap.String("cost", time.Now().Sub(startTime).String()))
+	return nil
+}
+
+func StopStructMigrateTask(ctx context.Context, taskName string) error {
+	err := model.Transaction(ctx, func(txnCtx context.Context) error {
+		_, err := model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
+			TaskName: taskName,
+		}, map[string]interface{}{
+			"TaskStatus": constant.TaskDatabaseStatusStopped,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = model.GetIStructMigrateTaskRW().BatchUpdateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+			TaskName:   taskName,
+			TaskStatus: constant.TaskDatabaseStatusRunning,
+		}, map[string]string{
+			"TaskStatus": constant.TaskDatabaseStatusStopped,
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.StructMigrateParam, error) {
-	var taskParam *pb.StructMigrateParam
+	taskParam := &pb.StructMigrateParam{}
 
 	migrateParams, err := model.GetIParamsRW().QueryTaskCustomParam(ctx, &params.TaskCustomParam{
 		TaskName: taskName,
@@ -449,7 +600,7 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 		return taskParam, err
 	}
 	for _, p := range migrateParams {
-		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateLowerCaseFieldName) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateCaseFieldRule) {
 			taskParam.CaseFieldRule = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateOutputDir) {
@@ -493,7 +644,7 @@ func initStructMigrateTask(ctx context.Context, taskName string, caseFieldRule s
 
 	for _, schemaRoute := range schemaRoutes {
 		// get datasource
-		taskRule, err := model.GetIMigrateTaskRuleRW().GetMigrateTaskRule(ctx, &rule.MigrateTaskRule{TaskRuleName: schemaRoute.TaskRuleName})
+		taskRule, err := model.GetIRuleRW().GetRule(ctx, &rule.Rule{TaskRuleName: schemaRoute.TaskRuleName})
 		if err != nil {
 			return err
 		}
@@ -566,7 +717,6 @@ func initStructMigrateTask(ctx context.Context, taskName string, caseFieldRule s
 
 		// database tables
 		// init database table
-
 		// get table column route rule
 		for _, sourceTable := range databaseTables {
 			var (

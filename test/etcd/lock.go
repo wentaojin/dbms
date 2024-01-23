@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package worker
+package etcd
 
 import (
 	"context"
@@ -22,7 +22,6 @@ import (
 	"github.com/wentaojin/dbms/logger"
 	"go.uber.org/zap"
 
-	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -38,7 +37,7 @@ type Locker struct {
 
 func NewLocker(name string, etcdClient *clientv3.Client) *Locker {
 	return &Locker{
-		lockPath:   stringutil.StringBuilder(constant.DefaultScheduledTaskLockPrefixKey, name),
+		lockPath:   stringutil.StringBuilder(DefaultScheduledTaskLockPrefixKey, name),
 		etcdClient: etcdClient}
 }
 
@@ -51,7 +50,7 @@ func (l *Locker) Lock() (err error) {
 	)
 
 	// automatic renewal
-	if grantResp, err = l.etcdClient.Lease.Grant(context.TODO(), constant.DefaultDistributedLockLease); err != nil {
+	if grantResp, err = l.etcdClient.Lease.Grant(context.TODO(), DefaultDistributedLockLease); err != nil {
 		return
 	}
 	keepCtx, keepCancel := context.WithCancel(context.TODO())

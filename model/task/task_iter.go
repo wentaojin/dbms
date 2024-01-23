@@ -19,7 +19,7 @@ import "context"
 
 type ITask interface {
 	CreateTask(ctx context.Context, task *Task) (*Task, error)
-	UpdateTask(ctx context.Context, task *Task, updates map[string]string) (*Task, error)
+	UpdateTask(ctx context.Context, task *Task, updates map[string]interface{}) (*Task, error)
 	GetTask(ctx context.Context, task *Task) (*Task, error)
 	ListTask(ctx context.Context, page uint64, pageSize uint64) ([]*Task, error)
 	DeleteTask(ctx context.Context, taskName []string) error
@@ -35,8 +35,9 @@ type ILog interface {
 
 type IStructMigrateTask interface {
 	CreateStructMigrateTask(ctx context.Context, task *StructMigrateTask) (*StructMigrateTask, error)
-	GetStructMigrateTask(ctx context.Context, task *StructMigrateTask) (*StructMigrateTask, error)
+	GetStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	UpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]string) (*StructMigrateTask, error)
+	BatchUpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]string) (*StructMigrateTask, error)
 	FindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	ListStructMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*StructMigrateTask, error)

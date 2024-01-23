@@ -21,11 +21,10 @@ import (
 	"strings"
 
 	"github.com/wentaojin/dbms/database/mysql"
-
 	"github.com/wentaojin/dbms/database/oracle"
+	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/utils/constant"
 
-	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -81,55 +80,59 @@ func UpsertDatasource(ctx context.Context, req *pb.UpsertDatasourceRequest) (str
 	var ds []*datasource.Datasource
 
 	for _, r := range req.Datasource {
+		if !strings.EqualFold(r.String(), "") {
+			dataS := &datasource.Datasource{
+				DatasourceName: r.DatasourceName,
+				DbType:         r.DbType,
+				Username:       r.Username,
+				Password:       r.Password,
+				Host:           r.Host,
+				Port:           r.Port,
+				ConnectParams:  r.ConnectParams,
+				ConnectCharset: r.ConnectCharset,
+				ConnectStatus:  r.ConnectStatus,
+				ServiceName:    r.ServiceName,
+				PdbName:        r.PdbName,
+				Entity:         &common.Entity{Comment: r.Comment},
+			}
+			switch {
+			case strings.EqualFold(r.DbType, constant.DatabaseTypeOracle):
+				err := oracle.PingDatabaseConnection(dataS, "")
+				if err != nil {
+					return "", err
+				}
+			case strings.EqualFold(r.DbType, constant.DatabaseTypeMySQL):
+				err := mysql.PingDatabaseConnection(dataS)
+				if err != nil {
+					return "", err
+				}
+			case strings.EqualFold(r.DbType, constant.DatabaseTypeTiDB):
+				err := mysql.PingDatabaseConnection(dataS)
+				if err != nil {
+					return "", err
+				}
+			default:
+				return "", fmt.Errorf("datasource [%v] database type [%v] is not support, please contact author or reselect", r.DatasourceName, r.DbType)
+			}
 
-		dataS := &datasource.Datasource{
-			DatasourceName: r.DatasourceName,
-			DbType:         r.DbType,
-			Username:       r.Username,
-			Password:       r.Password,
-			Host:           r.Host,
-			Port:           r.Port,
-			ConnectParams:  r.ConnectParams,
-			ConnectCharset: r.ConnectCharset,
-			ConnectStatus:  r.ConnectStatus,
-			ServiceName:    r.ServiceName,
-			PdbName:        r.PdbName,
-			Entity:         &common.Entity{Comment: r.Comment},
+			ds = append(ds, dataS)
 		}
-		switch strings.ToUpper(r.DbType) {
-		case constant.DatabaseTypeOracle:
-			err := oracle.PingDatabaseConnection(dataS, "")
-			if err != nil {
-				return "", err
-			}
-		case constant.DatabaseTypeMySQL:
-			err := mysql.PingDatabaseConnection(dataS)
-			if err != nil {
-				return "", err
-			}
-		case constant.DatabaseTypeTiDB:
-			err := mysql.PingDatabaseConnection(dataS)
-			if err != nil {
-				return "", err
-			}
-		default:
-			return "", fmt.Errorf("datasource [%v] database type is not support, please contact author or reselect", r.DatasourceName)
+	}
+
+	if len(ds) > 0 {
+		dataS, err := model.GetIDatasourceRW().CreateDatasource(ctx, ds)
+		if err != nil {
+			return "", err
 		}
 
-		ds = append(ds, dataS)
-	}
+		jsonStr, err := stringutil.MarshalJSON(dataS)
+		if err != nil {
+			return jsonStr, err
+		}
 
-	dataS, err := model.GetIDatasourceRW().CreateDatasource(ctx, ds)
-	if err != nil {
-		return "", err
+		return jsonStr, nil
 	}
-
-	jsonStr, err := stringutil.MarshalJSON(dataS)
-	if err != nil {
-		return jsonStr, err
-	}
-
-	return jsonStr, nil
+	return "", fmt.Errorf("the datasource can't be null, please configure datasource")
 }
 
 func ShowDatasource(ctx context.Context, req *pb.ShowDatasourceRequest) (string, error) {

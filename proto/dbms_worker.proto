@@ -1,0 +1,23 @@
+syntax = "proto3";
+package proto;
+option go_package = "proto/pb";
+
+import "google/api/annotations.proto";
+import "response.proto";
+
+service Worker {
+  rpc OperateWorker (OperateWorkerRequest) returns (OperateWorkerResponse) {
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/task"
+      body: "*"
+    };
+  }
+}
+
+message OperateWorkerRequest {
+  string operate = 1;
+  string taskName = 2;
+}
+message OperateWorkerResponse {
+  Response response = 1;
+}

@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wentaojin/dbms/utils/constant"
+
 	"github.com/wentaojin/dbms/model/buildin"
 
 	"github.com/wentaojin/dbms/model/migrate"
@@ -52,7 +54,7 @@ var DefaultDB *database
 type database struct {
 	base                          *gorm.DB
 	datasourceRW                  datasource.IDatasource
-	migrateTaskRuleRW             rule.IMigrateTaskRule
+	migrateRuleRW                 rule.IRule
 	migrateSchemaRouteRW          rule.ISchemaRouteRule
 	migrateTableRouteRW           rule.ITableRouteRule
 	migrateColumnRouteRW          rule.IColumnRouteRule
@@ -68,6 +70,9 @@ type database struct {
 	structMigrateColumnRuleRW     migrate.IStructMigrateColumnRule
 	structMigrateTableAttrsRuleRW migrate.IStructMigrateTableAttrsRule
 	buildinDatatypeRuleRW         buildin.IBuildInDatatypeRule
+	buildinRuleRecordRW           buildin.IBuildInRuleRecord
+	buildinDefaultValueRW         buildin.IBuildInDefaultValueRule
+	buildinCompatibleRW           buildin.IBuildInCompatibleRule
 }
 
 // Database is database configuration.
@@ -81,7 +86,7 @@ type Database struct {
 }
 
 // CreateDatabaseConnection create database connection
-func CreateDatabaseConnection(cfg *Database, logLevel string) error {
+func CreateDatabaseConnection(cfg *Database, addRole, logLevel string) error {
 	dsn := buildMysqlDSN(cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Schema)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
@@ -102,15 +107,36 @@ func CreateDatabaseConnection(cfg *Database, logLevel string) error {
 
 	DefaultDB.initReaderWriters()
 
-	startTime := time.Now()
-	logger.Info("database table migrate starting", zap.String("database", cfg.Schema), zap.String("startTime", startTime.String()))
-	err = DefaultDB.migrateTables()
-	if err != nil {
-		return fmt.Errorf("database [%s] migrate tables failed, database error: [%v]", cfg.Schema, err)
-	}
+	if strings.EqualFold(addRole, constant.DefaultInstanceRoleMaster) {
+		startTime := time.Now()
+		logger.Info("database table migrate starting", zap.String("database", cfg.Schema), zap.String("startTime", startTime.String()))
+		err = DefaultDB.migrateTables()
+		if err != nil {
+			return fmt.Errorf("database [%s] migrate tables failed, database error: [%v]", cfg.Schema, err)
+		}
+		endTime := time.Now()
+		logger.Info("database table migrate end", zap.String("database", cfg.Schema), zap.String("endTime", endTime.String()), zap.String("cost", endTime.Sub(startTime).String()))
 
-	endTime := time.Now()
-	logger.Info("database table migrate end", zap.String("database", cfg.Schema), zap.String("endTime", endTime.String()), zap.String("cost", time.Now().Sub(startTime).String()))
+		startTime = time.Now()
+		logger.Info("database table init starting", zap.String("database", cfg.Schema), zap.String("startTime", startTime.String()))
+		err = DefaultDB.migrateTables()
+		ctx := context.Background()
+		err = DefaultDB.initDatatypeRule(ctx)
+		if err != nil {
+			return err
+		}
+		err = DefaultDB.initDefaultValueRule(ctx)
+		if err != nil {
+			return err
+		}
+		err = DefaultDB.initCompatibleRule(ctx)
+		if err != nil {
+			return err
+		}
+		endTime = time.Now()
+		logger.Info("database table init end", zap.String("database", cfg.Schema), zap.String("endTime", endTime.String()), zap.String("cost", endTime.Sub(startTime).String()))
+	}
+	logger.Info("database connection success", zap.String("database", cfg.Schema))
 	return nil
 }
 
@@ -142,39 +168,42 @@ func buildMysqlDSN(user, password, host string, port uint64, schema string) stri
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=utf8mb4&parseTime=true&loc=Local", user, password, host, port)
 }
 
-func (p *database) initReaderWriters() {
-	DefaultDB.datasourceRW = datasource.NewDatasourceRW(p.base)
-	DefaultDB.migrateTaskRuleRW = rule.NewMigrateTaskRuleRW(p.base)
-	DefaultDB.migrateSchemaRouteRW = rule.NewSchemaRouteRuleRW(p.base)
-	DefaultDB.migrateTableRouteRW = rule.NewTableRouteRuleRW(p.base)
-	DefaultDB.migrateColumnRouteRW = rule.NewColumnRouteRuleRW(p.base)
-	DefaultDB.migrateTaskTableRW = rule.NewMigrateTaskTableRW(p.base)
-	DefaultDB.taskRW = task.NewTaskRW(p.base)
-	DefaultDB.taskLogRW = task.NewLogRW(p.base)
-	DefaultDB.structMigrateTaskRW = task.NewStructMigrateTaskRW(p.base)
-	DefaultDB.dataMigrateTaskRW = task.NewDataMigrateTaskRW(p.base)
-	DefaultDB.paramsRW = params.NewTaskParamsRW(p.base)
-	DefaultDB.structMigrateTaskRuleRW = migrate.NewStructMigrateTaskRuleRW(p.base)
-	DefaultDB.structMigrateSchemaRuleRW = migrate.NewStructMigrateSchemaRuleRW(p.base)
-	DefaultDB.structMigrateTableRuleRW = migrate.NewStructMigrateTableRuleRW(p.base)
-	DefaultDB.structMigrateColumnRuleRW = migrate.NewStructMigrateColumnRuleRW(p.base)
-	DefaultDB.structMigrateTableAttrsRuleRW = migrate.NewStructMigrateTableAttrsRuleRW(p.base)
-	DefaultDB.buildinDatatypeRuleRW = buildin.NewBuildinDatatypeRuleRW(p.base)
+func (d *database) initReaderWriters() {
+	DefaultDB.datasourceRW = datasource.NewDatasourceRW(d.base)
+	DefaultDB.migrateRuleRW = rule.NewMigrateTaskRuleRW(d.base)
+	DefaultDB.migrateSchemaRouteRW = rule.NewSchemaRouteRuleRW(d.base)
+	DefaultDB.migrateTableRouteRW = rule.NewTableRouteRuleRW(d.base)
+	DefaultDB.migrateColumnRouteRW = rule.NewColumnRouteRuleRW(d.base)
+	DefaultDB.migrateTaskTableRW = rule.NewMigrateTaskTableRW(d.base)
+	DefaultDB.taskRW = task.NewTaskRW(d.base)
+	DefaultDB.taskLogRW = task.NewLogRW(d.base)
+	DefaultDB.structMigrateTaskRW = task.NewStructMigrateTaskRW(d.base)
+	DefaultDB.dataMigrateTaskRW = task.NewDataMigrateTaskRW(d.base)
+	DefaultDB.paramsRW = params.NewTaskParamsRW(d.base)
+	DefaultDB.structMigrateTaskRuleRW = migrate.NewStructMigrateTaskRuleRW(d.base)
+	DefaultDB.structMigrateSchemaRuleRW = migrate.NewStructMigrateSchemaRuleRW(d.base)
+	DefaultDB.structMigrateTableRuleRW = migrate.NewStructMigrateTableRuleRW(d.base)
+	DefaultDB.structMigrateColumnRuleRW = migrate.NewStructMigrateColumnRuleRW(d.base)
+	DefaultDB.structMigrateTableAttrsRuleRW = migrate.NewStructMigrateTableAttrsRuleRW(d.base)
+	DefaultDB.buildinDatatypeRuleRW = buildin.NewBuildinDatatypeRuleRW(d.base)
+	DefaultDB.buildinRuleRecordRW = buildin.NewBuildinRuleRecordRW(d.base)
+	DefaultDB.buildinDefaultValueRW = buildin.NewBuildinDefaultValueRuleRW(d.base)
+	DefaultDB.buildinCompatibleRW = buildin.NewBuildinCompatibleRuleRW(d.base)
 }
 
-func (p *database) migrateStream(models ...interface{}) (err error) {
+func (d *database) migrateStream(models ...interface{}) (err error) {
 	for _, m := range models {
-		if err = p.base.Set("gorm:table_options", " ENGINE=InnoDB DEFAULT CHARACTER SET UTF8MB4 COLLATE UTF8MB4_GENERAL_CI").AutoMigrate(m); err != nil {
+		if err = d.base.Set("gorm:table_options", " ENGINE=InnoDB DEFAULT CHARACTER SET UTF8MB4 COLLATE UTF8MB4_GENERAL_CI").AutoMigrate(m); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (p *database) migrateTables() (err error) {
-	return p.migrateStream(
+func (d *database) migrateTables() (err error) {
+	return d.migrateStream(
 		new(datasource.Datasource),
-		new(rule.MigrateTaskRule),
+		new(rule.Rule),
 		new(rule.MigrateTaskTable),
 		new(rule.SchemaRouteRule),
 		new(rule.TableRouteRule),
@@ -191,7 +220,111 @@ func (p *database) migrateTables() (err error) {
 		new(migrate.ColumnStructRule),
 		new(migrate.TableAttrsRule),
 		new(buildin.BuildinDatatypeRule),
+		new(buildin.BuildinRuleRecord),
+		new(buildin.BuildinDefaultvalRule),
+		new(buildin.BuildinCompatibleRule),
 	)
+}
+
+func (d *database) initDatatypeRule(ctx context.Context) error {
+	err := Transaction(ctx, func(txnCtx context.Context) error {
+		record, err := GetBuildInRuleRecordRW().GetBuildInRuleRecord(ctx, constant.BuildInRuleNameColumnDatatype)
+		if err != nil {
+			return err
+		}
+		if !strings.EqualFold(record.RuleInit, constant.BuildInRuleInitSuccess) {
+			_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(ctx, buildin.InitO2MBuildinDatatypeRule())
+			if err != nil {
+				return err
+			}
+			_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(ctx, buildin.InitO2TBuildinDatatypeRule())
+			if err != nil {
+				return err
+			}
+			_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(ctx, buildin.InitM2OBuildinDatatypeRule())
+			if err != nil {
+				return err
+			}
+			_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(ctx, buildin.InitT2OBuildinDatatypeRule())
+			if err != nil {
+				return err
+			}
+			_, err = GetBuildInRuleRecordRW().CreateBuildInRuleRecord(ctx, &buildin.BuildinRuleRecord{
+				RuleName: constant.BuildInRuleNameColumnDatatype,
+				RuleInit: constant.BuildInRuleInitSuccess,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *database) initDefaultValueRule(ctx context.Context) error {
+	err := Transaction(ctx, func(txnCtx context.Context) error {
+		record, err := GetBuildInRuleRecordRW().GetBuildInRuleRecord(ctx, constant.BuildInRuleNameColumnDefaultValue)
+		if err != nil {
+			return err
+		}
+		if !strings.EqualFold(record.RuleInit, constant.BuildInRuleInitSuccess) {
+			_, err = GetBuildInDefaultValueRuleRW().CreateBuildInDefaultValueRule(ctx, buildin.InitO2MTBuildinDefaultValue())
+			if err != nil {
+				return err
+			}
+			_, err = GetBuildInDefaultValueRuleRW().CreateBuildInDefaultValueRule(ctx, buildin.InitMT2OBuildinDefaultValue())
+			if err != nil {
+				return err
+			}
+			_, err = GetBuildInRuleRecordRW().CreateBuildInRuleRecord(ctx, &buildin.BuildinRuleRecord{
+				RuleName: constant.BuildInRuleNameColumnDefaultValue,
+				RuleInit: constant.BuildInRuleInitSuccess,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *database) initCompatibleRule(ctx context.Context) error {
+	err := Transaction(ctx, func(txnCtx context.Context) error {
+		record, err := GetBuildInRuleRecordRW().GetBuildInRuleRecord(ctx, constant.BuildInRuleNameObjectCompatible)
+		if err != nil {
+			return err
+		}
+		if !strings.EqualFold(record.RuleInit, constant.BuildInRuleInitSuccess) {
+			_, err = GetBuildInCompatibleRuleRW().CreateBuildInCompatibleRule(ctx, buildin.InitO2MBuildinCompatibleRule())
+			if err != nil {
+				return err
+			}
+			_, err = GetBuildInCompatibleRuleRW().CreateBuildInCompatibleRule(ctx, buildin.InitO2TBuildinCompatibleRule())
+			if err != nil {
+				return err
+			}
+			_, err = GetBuildInRuleRecordRW().CreateBuildInRuleRecord(ctx, &buildin.BuildinRuleRecord{
+				RuleName: constant.BuildInRuleNameObjectCompatible,
+				RuleInit: constant.BuildInRuleInitSuccess,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *Database) String() string {
@@ -219,8 +352,8 @@ func GetIDatasourceRW() datasource.IDatasource {
 	return DefaultDB.datasourceRW
 }
 
-func GetIMigrateTaskRuleRW() rule.IMigrateTaskRule {
-	return DefaultDB.migrateTaskRuleRW
+func GetIRuleRW() rule.IRule {
+	return DefaultDB.migrateRuleRW
 }
 
 func GetIMigrateSchemaRouteRW() rule.ISchemaRouteRule {
@@ -279,6 +412,18 @@ func GetIStructMigrateTableAttrsRuleRW() migrate.IStructMigrateTableAttrsRule {
 	return DefaultDB.structMigrateTableAttrsRuleRW
 }
 
+func GetBuildInRuleRecordRW() buildin.IBuildInRuleRecord {
+	return DefaultDB.buildinRuleRecordRW
+}
+
 func GetIBuildInDatatypeRuleRW() buildin.IBuildInDatatypeRule {
 	return DefaultDB.buildinDatatypeRuleRW
+}
+
+func GetBuildInDefaultValueRuleRW() buildin.IBuildInDefaultValueRule {
+	return DefaultDB.buildinDefaultValueRW
+}
+
+func GetBuildInCompatibleRuleRW() buildin.IBuildInCompatibleRule {
+	return DefaultDB.buildinCompatibleRW
 }

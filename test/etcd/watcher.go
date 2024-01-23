@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package worker
+package etcd
 
 import (
 	"context"
@@ -24,10 +24,30 @@ import (
 	"github.com/wentaojin/dbms/utils/etcdutil"
 
 	"github.com/wentaojin/dbms/logger"
-	"github.com/wentaojin/dbms/utils/constant"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
+)
+
+// Task
+const (
+	DefaultScheduledTaskSubmitPrefixKey = "/task/submit/"
+	DefaultScheduledTaskKillPrefixKey   = "/task/kill/"
+	DefaultScheduledTaskLockPrefixKey   = "/task/lock/"
+
+	DefaultDistributedLockLease = 5
+
+	DefaultTaskActionSubmitEvent = 0
+	DefaultTaskActionDeleteEvent = 1
+	DefaultTaskActionKillEvent   = 2
+
+	TaskDatabaseStatusWaiting = "WAITING"
+	TaskDatabaseStatusRunning = "RUNNING"
+	TaskDatabaseStatusStopped = "STOPPED"
+	TaskDatabaseStatusFailed  = "FAILED"
+	TaskDatabaseStatusSuccess = "SUCCESS"
+
+	TaskModeStructMigrate = "STRUCT_MIGRATE"
 )
 
 type Task struct {
@@ -59,12 +79,12 @@ func (w *Watcher) Watch() {
 
 func (w *Watcher) watchSubmit() {
 	logger.Info("worker watch scheduled task event starting",
-		zap.String("key with prefix", constant.DefaultScheduledTaskSubmitPrefixKey))
+		zap.String("key with prefix", DefaultScheduledTaskSubmitPrefixKey))
 
 	// get current all task
-	resps, err := etcdutil.GetKey(w.etcdClient, constant.DefaultScheduledTaskSubmitPrefixKey, clientv3.WithPrefix())
+	resps, err := etcdutil.GetKey(w.etcdClient, DefaultScheduledTaskSubmitPrefixKey, clientv3.WithPrefix())
 	if err != nil {
-		logger.Warn("worker get scheduled task event revision failed", zap.String("key with prefix", constant.DefaultScheduledTaskSubmitPrefixKey), zap.Error(err))
+		logger.Warn("worker get scheduled task event revision failed", zap.String("key with prefix", DefaultScheduledTaskSubmitPrefixKey), zap.Error(err))
 		return
 	}
 	for _, kv := range resps.Kvs {
@@ -74,17 +94,17 @@ func (w *Watcher) watchSubmit() {
 			continue
 		}
 		w.scheduler.PushTaskEvent(&Event{
-			Opt:  constant.DefaultTaskActionSubmitEvent,
+			Opt:  DefaultTaskActionSubmitEvent,
 			Addr: w.addr,
 			Task: task,
 		})
 	}
 
-	watchCh := etcdutil.WatchKey(w.etcdClient, constant.DefaultScheduledTaskSubmitPrefixKey, clientv3.WithRev(resps.Header.Revision+1), clientv3.WithPrefix())
+	watchCh := etcdutil.WatchKey(w.etcdClient, DefaultScheduledTaskSubmitPrefixKey, clientv3.WithRev(resps.Header.Revision+1), clientv3.WithPrefix())
 	for {
 		select {
 		case <-w.ctx.Done():
-			logger.Error("worker watch scheduled task event cancel", zap.String("key prefix", constant.DefaultScheduledTaskSubmitPrefixKey))
+			logger.Error("worker watch scheduled task event cancel", zap.String("key prefix", DefaultScheduledTaskSubmitPrefixKey))
 			return
 		default:
 			for wresp := range watchCh {
@@ -93,10 +113,10 @@ func (w *Watcher) watchSubmit() {
 					// modify or add
 					case mvccpb.PUT:
 						// move to scheduler
-						w.scheduler.PushTaskEvent(w.pushTaskEvent(constant.DefaultTaskActionSubmitEvent, ev))
+						w.scheduler.PushTaskEvent(w.pushTaskEvent(DefaultTaskActionSubmitEvent, ev))
 					// delete
 					case mvccpb.DELETE:
-						w.scheduler.PushTaskEvent(w.pushTaskEvent(constant.DefaultTaskActionDeleteEvent, ev))
+						w.scheduler.PushTaskEvent(w.pushTaskEvent(DefaultTaskActionDeleteEvent, ev))
 					}
 				}
 			}
@@ -106,11 +126,11 @@ func (w *Watcher) watchSubmit() {
 
 func (w *Watcher) watchKill() {
 	// the all keys are existed lease within the kill dir,so current worker start, kill dir is null and don't need configuring version
-	watchCh := etcdutil.WatchKey(w.etcdClient, constant.DefaultScheduledTaskKillPrefixKey, clientv3.WithPrefix())
+	watchCh := etcdutil.WatchKey(w.etcdClient, DefaultScheduledTaskKillPrefixKey, clientv3.WithPrefix())
 	for {
 		select {
 		case <-w.ctx.Done():
-			logger.Error("worker watch scheduled task kill event cancel", zap.String("key prefix", constant.DefaultScheduledTaskKillPrefixKey))
+			logger.Error("worker watch scheduled task kill event cancel", zap.String("key prefix", DefaultScheduledTaskKillPrefixKey))
 			return
 		default:
 			for wresp := range watchCh {
@@ -119,7 +139,7 @@ func (w *Watcher) watchKill() {
 					// modify or add
 					case mvccpb.PUT:
 						// move to scheduler
-						w.scheduler.PushTaskEvent(w.pushTaskEvent(constant.DefaultTaskActionKillEvent, ev))
+						w.scheduler.PushTaskEvent(w.pushTaskEvent(DefaultTaskActionKillEvent, ev))
 					// delete
 					case mvccpb.DELETE:
 						// the all keys are existed lease within the kill dir,so don't need processing delete event
@@ -134,7 +154,7 @@ func (w *Watcher) pushTaskEvent(opt int, eve *clientv3.Event) *Event {
 	var event *Event
 
 	switch opt {
-	case constant.DefaultTaskActionSubmitEvent:
+	case DefaultTaskActionSubmitEvent:
 		task := &Task{}
 		err := stringutil.UnmarshalJSON(eve.Kv.Value, task)
 		if err != nil {
@@ -145,20 +165,20 @@ func (w *Watcher) pushTaskEvent(opt int, eve *clientv3.Event) *Event {
 			Addr: w.addr,
 			Task: task,
 		}
-	case constant.DefaultTaskActionDeleteEvent:
+	case DefaultTaskActionDeleteEvent:
 		event = &Event{
 			Opt:  opt,
 			Addr: w.addr,
 			Task: &Task{
-				Name: strings.TrimPrefix(string(eve.Kv.Key), constant.DefaultScheduledTaskSubmitPrefixKey),
+				Name: strings.TrimPrefix(string(eve.Kv.Key), DefaultScheduledTaskSubmitPrefixKey),
 			},
 		}
-	case constant.DefaultTaskActionKillEvent:
+	case DefaultTaskActionKillEvent:
 		event = &Event{
 			Opt:  opt,
 			Addr: w.addr,
 			Task: &Task{
-				Name: strings.TrimPrefix(string(eve.Kv.Key), constant.DefaultScheduledTaskKillPrefixKey),
+				Name: strings.TrimPrefix(string(eve.Kv.Key), DefaultScheduledTaskKillPrefixKey),
 			},
 		}
 	}

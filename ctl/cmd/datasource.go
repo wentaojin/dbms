@@ -93,7 +93,7 @@ func (a *AppDatasourceUpsert) RunE(cmd *cobra.Command, args []string) error {
 
 type AppDatasourceDelete struct {
 	*AppDatasource
-	name string
+	name []string
 }
 
 func (a *AppDatasource) AppDatasourceDelete() Cmder {
@@ -109,12 +109,12 @@ func (a *AppDatasourceDelete) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-	cmd.Flags().StringVarP(&a.name, "name", "n", "xxx", "delete datasource name")
+	cmd.Flags().StringSliceVarP(&a.name, "name", "n", []string{}, "delete datasource name")
 	return cmd
 }
 
 func (a *AppDatasourceDelete) RunE(cmd *cobra.Command, args []string) error {
-	if strings.EqualFold(a.name, "") {
+	if len(a.name) == 0 {
 		return fmt.Errorf("flag parameter [name] is requirement, can not null")
 	}
 
@@ -134,7 +134,9 @@ func (a *AppDatasourceDelete) RunE(cmd *cobra.Command, args []string) error {
 
 type AppDatasourceGet struct {
 	*AppDatasource
-	name string
+	name     string
+	page     uint64
+	pageSize uint64
 }
 
 func (a *AppDatasource) AppDatasourceGet() Cmder {
@@ -150,6 +152,7 @@ func (a *AppDatasourceGet) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
+	cmd.Flags().StringVarP(&a.name, "name", "n", "xxx", "get datasource name")
 	return cmd
 }
 
@@ -160,7 +163,11 @@ func (a *AppDatasourceGet) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := datasource.Get(a.Server, a.name)
+	if strings.EqualFold(a.name, "") {
+		return fmt.Errorf("flag parameter [name] is requirement, can not null")
+	}
+
+	err := datasource.Get(a.Server, a.name, a.page, a.pageSize)
 	if err != nil {
 		return err
 	}

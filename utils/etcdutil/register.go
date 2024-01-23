@@ -17,9 +17,10 @@ package etcdutil
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/wentaojin/dbms/utils/stringutil"
 
 	"github.com/wentaojin/dbms/utils/constant"
 	"go.uber.org/zap"
@@ -29,11 +30,24 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-// Worker register service information, used for etcd key -> value
-type Worker struct {
+type Node struct {
 	Addr string
 	// the Role column represent the node role
 	Role string
+}
+
+func (n *Node) String() string {
+	jsonByte, _ := stringutil.MarshalJSON(n)
+	return jsonByte
+}
+
+// Worker register service information, used for etcd key -> value
+type Worker struct {
+	Addr string
+	// the State column represent the node state, options: BOUND、FREE
+	State string
+	// the TaskName column represent the node bound task
+	TaskName string
 }
 
 type Register struct {
@@ -125,6 +139,6 @@ func (r *Register) keepAlive(ctx context.Context) {
 }
 
 func (w *Worker) String() string {
-	jsonByte, _ := json.Marshal(w)
-	return string(jsonByte)
+	jsonByte, _ := stringutil.MarshalJSON(w)
+	return jsonByte
 }

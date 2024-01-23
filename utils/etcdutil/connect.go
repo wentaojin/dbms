@@ -35,14 +35,16 @@ import (
 // if the database conn information occur change, then modify database conn
 type Connect struct {
 	etcdClient *clientv3.Client
+	addrRole   string
 	logLevel   string
 	// the used for database connection ready
 	dbConnReady *atomic.Bool
 }
 
-func NewServiceConnect(etcdCli *clientv3.Client, logLevel string, dbConnReady *atomic.Bool) *Connect {
+func NewServiceConnect(etcdCli *clientv3.Client, addrRole, logLevel string, dbConnReady *atomic.Bool) *Connect {
 	return &Connect{
 		etcdClient:  etcdCli,
+		addrRole:    addrRole,
 		logLevel:    logLevel,
 		dbConnReady: dbConnReady,
 	}
@@ -57,7 +59,7 @@ func (c *Connect) Connect(prefixKey string) error {
 
 	switch {
 	case len(keyResp.Kvs) > 1:
-		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", prefixKey, keyResp.Kvs)
 	case len(keyResp.Kvs) == 1:
 		// open database conn
 		var dbCfg *model.Database
@@ -66,7 +68,7 @@ func (c *Connect) Connect(prefixKey string) error {
 			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", string(keyResp.Kvs[0].Value), err)
 		}
 
-		err = model.CreateDatabaseConnection(dbCfg, c.logLevel)
+		err = model.CreateDatabaseConnection(dbCfg, c.addrRole, c.logLevel)
 		if err != nil {
 			return err
 		}
@@ -76,7 +78,7 @@ func (c *Connect) Connect(prefixKey string) error {
 
 		logger.Info("database open init connect", zap.String("dbconn", dbCfg.String()))
 	default:
-		logger.Warn("database conn info is not exist, watch starting", zap.String("key prefix", prefixKey))
+		logger.Warn("database conn info is not exist, watch starting", zap.String("database key prefix", prefixKey))
 	}
 	return nil
 }
@@ -95,12 +97,12 @@ func (c *Connect) Watch(prefixKey string) error {
 	for {
 		select {
 		case <-c.etcdClient.Ctx().Done():
-			logger.Error("database conn watch cancel", zap.String("key prefix", prefixKey))
+			logger.Error("database conn watch cancel", zap.String("database key prefix", prefixKey))
 			return nil
 		default:
 			for wresp := range watchCh {
 				if wresp.Err() != nil {
-					logger.Error("database conn watch failed", zap.String("key prefix", prefixKey), zap.Error(wresp.Err()))
+					logger.Error("database conn watch failed", zap.String("database key prefix", prefixKey), zap.Error(wresp.Err()))
 					// skip, only log
 					//return fmt.Errorf("discovery node watch failed, error: [%v]", wresp.Err())
 				}
@@ -127,7 +129,7 @@ func (c *Connect) Watch(prefixKey string) error {
 								}
 							}
 
-							err = model.CreateDatabaseConnection(dbCfg, c.logLevel)
+							err = model.CreateDatabaseConnection(dbCfg, c.addrRole, c.logLevel)
 							if err != nil && i == constant.DefaultInstanceServiceRetryCounts {
 								return err
 							} else if err == nil {

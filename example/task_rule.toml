@@ -4,8 +4,9 @@ datasource-name-t = "tidb145"
 comment = "测试数据源"
 
 [[schema-route-rules]]
-source-schema = "findpt"
-target-schema = "steven"
+source-schema = "FINDPT"
+target-schema = "STEVEN"
+case-field-rule = "0"
 
 source-include-table = []
 source-exclude-table = []
@@ -13,8 +14,10 @@ source-exclude-table = []
 [[schema-route-rules.table-route-rules]]
 source-table = "marvin00"
 target-table = "steven00"
+case-field-rule = "0"
 column-route-rules = {"name" = "s_name00"}
 [[schema-route-rules.table-route-rules]]
 source-table = "marvin01"
-target-table = "steven02"
+target-table = "steven01"
+case-field-rule = "0"
 column-route-rules = {"i01" = "s_i01", "i02" = "s_i02"}

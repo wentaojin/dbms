@@ -71,7 +71,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	}
 
 	if !strings.EqualFold(datasource.Username, currentSchema) && !strings.EqualFold(currentSchema, "") {
-		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CURRENT_SCHEMA = %s`, currentSchema))
+		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CURRENT_SCHEMA = "%s"`, currentSchema))
 	}
 
 	if !strings.EqualFold(datasource.SessionParams, "") {
@@ -122,7 +122,7 @@ func PingDatabaseConnection(datasource *datasource.Datasource, currentSchema str
 	}
 
 	if !strings.EqualFold(datasource.Username, currentSchema) && !strings.EqualFold(currentSchema, "") {
-		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CURRENT_SCHEMA = %s`, currentSchema))
+		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CURRENT_SCHEMA = "%s"`, currentSchema))
 	}
 
 	if !strings.EqualFold(datasource.SessionParams, "") {
@@ -156,7 +156,7 @@ func (d *Database) QueryContext(query string) (*sql.Rows, error) {
 }
 
 func (d *Database) ExecContext(query string, args ...any) (sql.Result, error) {
-	return d.DBConn.ExecContext(d.Ctx, query, args)
+	return d.DBConn.ExecContext(d.Ctx, query, args...)
 }
 
 func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, error) {
@@ -226,7 +226,7 @@ func (d *Database) GetDatabaseSchema() ([]string, error) {
 	}
 	for _, col := range columns {
 		for _, r := range res {
-			schemas = append(schemas, stringutil.StringUpper(r[col]))
+			schemas = append(schemas, r[col])
 		}
 	}
 	return schemas, nil
@@ -237,18 +237,18 @@ func (d *Database) GetDatabaseTable(schemaName string) ([]string, error) {
 		tables []string
 		err    error
 	)
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT TABLE_NAME FROM DBA_TABLES WHERE UPPER(owner) = UPPER('%s') AND (IOT_TYPE IS NUll OR IOT_TYPE='IOT')`, schemaName))
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT TABLE_NAME FROM DBA_TABLES WHERE OWNER = '%s' AND (IOT_TYPE IS NUll OR IOT_TYPE='IOT')`, schemaName))
 	if err != nil {
 		return tables, err
 	}
 	for _, r := range res {
-		tables = append(tables, strings.ToUpper(r["TABLE_NAME"]))
+		tables = append(tables, r["TABLE_NAME"])
 	}
 	return tables, nil
 }
 
 func (d *Database) GetDatabaseTableColumnNameWithoutFormat(schemaName, tableName string, columnDelimiter ...string) ([]string, error) {
-	columns, _, err := d.GeneralQuery(fmt.Sprintf("SELECT * FROM %s.%s WHERE ROWNUM = 1", schemaName, tableName))
+	columns, _, err := d.GeneralQuery(fmt.Sprintf(`SELECT * FROM "%s"."%s" WHERE ROWNUM = 1`, schemaName, tableName))
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (d *Database) GetDatabaseTableColumnNameWithoutFormat(schemaName, tableName
 		}
 		return newColumns, nil
 	} else if len(columnDelimiter) > 1 {
-		return nil, fmt.Errorf("column delimiter params [%] values is over one, it should be one", columnDelimiter)
+		return nil, fmt.Errorf("column delimiter params [%v] values is over one, it should be one", columnDelimiter)
 	}
 	return columns, nil
 }

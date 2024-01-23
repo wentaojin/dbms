@@ -28,9 +28,9 @@ type MasterClient interface {
 	UpsertDatasource(ctx context.Context, in *UpsertDatasourceRequest, opts ...grpc.CallOption) (*UpsertDatasourceResponse, error)
 	DeleteDatasource(ctx context.Context, in *DeleteDatasourceRequest, opts ...grpc.CallOption) (*DeleteDatasourceResponse, error)
 	ShowDatasource(ctx context.Context, in *ShowDatasourceRequest, opts ...grpc.CallOption) (*ShowDatasourceResponse, error)
-	UpsertTaskMigrateRule(ctx context.Context, in *UpsertMigrateTaskRuleRequest, opts ...grpc.CallOption) (*UpsertMigrateTaskRuleResponse, error)
-	DeleteTaskMigrateRule(ctx context.Context, in *DeleteMigrateTaskRuleRequest, opts ...grpc.CallOption) (*DeleteMigrateTaskRuleResponse, error)
-	ShowTaskMigrateRule(ctx context.Context, in *ShowMigrateTaskRuleRequest, opts ...grpc.CallOption) (*ShowMigrateTaskRuleResponse, error)
+	UpsertRule(ctx context.Context, in *UpsertRuleRequest, opts ...grpc.CallOption) (*UpsertRuleResponse, error)
+	DeleteRule(ctx context.Context, in *DeleteRuleRequest, opts ...grpc.CallOption) (*DeleteRuleResponse, error)
+	ShowRule(ctx context.Context, in *ShowRuleRequest, opts ...grpc.CallOption) (*ShowRuleResponse, error)
 	UpsertStructMigrateTask(ctx context.Context, in *UpsertStructMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertStructMigrateTaskResponse, error)
 	DeleteStructMigrateTask(ctx context.Context, in *DeleteStructMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteStructMigrateTaskResponse, error)
 	ShowStructMigrateTask(ctx context.Context, in *ShowStructMigrateTaskRequest, opts ...grpc.CallOption) (*ShowStructMigrateTaskResponse, error)
@@ -99,27 +99,27 @@ func (c *masterClient) ShowDatasource(ctx context.Context, in *ShowDatasourceReq
 	return out, nil
 }
 
-func (c *masterClient) UpsertTaskMigrateRule(ctx context.Context, in *UpsertMigrateTaskRuleRequest, opts ...grpc.CallOption) (*UpsertMigrateTaskRuleResponse, error) {
-	out := new(UpsertMigrateTaskRuleResponse)
-	err := c.cc.Invoke(ctx, "/proto.Master/UpsertTaskMigrateRule", in, out, opts...)
+func (c *masterClient) UpsertRule(ctx context.Context, in *UpsertRuleRequest, opts ...grpc.CallOption) (*UpsertRuleResponse, error) {
+	out := new(UpsertRuleResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/UpsertRule", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *masterClient) DeleteTaskMigrateRule(ctx context.Context, in *DeleteMigrateTaskRuleRequest, opts ...grpc.CallOption) (*DeleteMigrateTaskRuleResponse, error) {
-	out := new(DeleteMigrateTaskRuleResponse)
-	err := c.cc.Invoke(ctx, "/proto.Master/DeleteTaskMigrateRule", in, out, opts...)
+func (c *masterClient) DeleteRule(ctx context.Context, in *DeleteRuleRequest, opts ...grpc.CallOption) (*DeleteRuleResponse, error) {
+	out := new(DeleteRuleResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/DeleteRule", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *masterClient) ShowTaskMigrateRule(ctx context.Context, in *ShowMigrateTaskRuleRequest, opts ...grpc.CallOption) (*ShowMigrateTaskRuleResponse, error) {
-	out := new(ShowMigrateTaskRuleResponse)
-	err := c.cc.Invoke(ctx, "/proto.Master/ShowTaskMigrateRule", in, out, opts...)
+func (c *masterClient) ShowRule(ctx context.Context, in *ShowRuleRequest, opts ...grpc.CallOption) (*ShowRuleResponse, error) {
+	out := new(ShowRuleResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/ShowRule", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -172,9 +172,9 @@ type MasterServer interface {
 	UpsertDatasource(context.Context, *UpsertDatasourceRequest) (*UpsertDatasourceResponse, error)
 	DeleteDatasource(context.Context, *DeleteDatasourceRequest) (*DeleteDatasourceResponse, error)
 	ShowDatasource(context.Context, *ShowDatasourceRequest) (*ShowDatasourceResponse, error)
-	UpsertTaskMigrateRule(context.Context, *UpsertMigrateTaskRuleRequest) (*UpsertMigrateTaskRuleResponse, error)
-	DeleteTaskMigrateRule(context.Context, *DeleteMigrateTaskRuleRequest) (*DeleteMigrateTaskRuleResponse, error)
-	ShowTaskMigrateRule(context.Context, *ShowMigrateTaskRuleRequest) (*ShowMigrateTaskRuleResponse, error)
+	UpsertRule(context.Context, *UpsertRuleRequest) (*UpsertRuleResponse, error)
+	DeleteRule(context.Context, *DeleteRuleRequest) (*DeleteRuleResponse, error)
+	ShowRule(context.Context, *ShowRuleRequest) (*ShowRuleResponse, error)
 	UpsertStructMigrateTask(context.Context, *UpsertStructMigrateTaskRequest) (*UpsertStructMigrateTaskResponse, error)
 	DeleteStructMigrateTask(context.Context, *DeleteStructMigrateTaskRequest) (*DeleteStructMigrateTaskResponse, error)
 	ShowStructMigrateTask(context.Context, *ShowStructMigrateTaskRequest) (*ShowStructMigrateTaskResponse, error)
@@ -204,14 +204,14 @@ func (UnimplementedMasterServer) DeleteDatasource(context.Context, *DeleteDataso
 func (UnimplementedMasterServer) ShowDatasource(context.Context, *ShowDatasourceRequest) (*ShowDatasourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowDatasource not implemented")
 }
-func (UnimplementedMasterServer) UpsertTaskMigrateRule(context.Context, *UpsertMigrateTaskRuleRequest) (*UpsertMigrateTaskRuleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpsertTaskMigrateRule not implemented")
+func (UnimplementedMasterServer) UpsertRule(context.Context, *UpsertRuleRequest) (*UpsertRuleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpsertRule not implemented")
 }
-func (UnimplementedMasterServer) DeleteTaskMigrateRule(context.Context, *DeleteMigrateTaskRuleRequest) (*DeleteMigrateTaskRuleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteTaskMigrateRule not implemented")
+func (UnimplementedMasterServer) DeleteRule(context.Context, *DeleteRuleRequest) (*DeleteRuleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteRule not implemented")
 }
-func (UnimplementedMasterServer) ShowTaskMigrateRule(context.Context, *ShowMigrateTaskRuleRequest) (*ShowMigrateTaskRuleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShowTaskMigrateRule not implemented")
+func (UnimplementedMasterServer) ShowRule(context.Context, *ShowRuleRequest) (*ShowRuleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShowRule not implemented")
 }
 func (UnimplementedMasterServer) UpsertStructMigrateTask(context.Context, *UpsertStructMigrateTaskRequest) (*UpsertStructMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpsertStructMigrateTask not implemented")
@@ -346,56 +346,56 @@ func _Master_ShowDatasource_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Master_UpsertTaskMigrateRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpsertMigrateTaskRuleRequest)
+func _Master_UpsertRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertRuleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterServer).UpsertTaskMigrateRule(ctx, in)
+		return srv.(MasterServer).UpsertRule(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Master/UpsertTaskMigrateRule",
+		FullMethod: "/proto.Master/UpsertRule",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).UpsertTaskMigrateRule(ctx, req.(*UpsertMigrateTaskRuleRequest))
+		return srv.(MasterServer).UpsertRule(ctx, req.(*UpsertRuleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Master_DeleteTaskMigrateRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteMigrateTaskRuleRequest)
+func _Master_DeleteRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteRuleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterServer).DeleteTaskMigrateRule(ctx, in)
+		return srv.(MasterServer).DeleteRule(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Master/DeleteTaskMigrateRule",
+		FullMethod: "/proto.Master/DeleteRule",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).DeleteTaskMigrateRule(ctx, req.(*DeleteMigrateTaskRuleRequest))
+		return srv.(MasterServer).DeleteRule(ctx, req.(*DeleteRuleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Master_ShowTaskMigrateRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ShowMigrateTaskRuleRequest)
+func _Master_ShowRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShowRuleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterServer).ShowTaskMigrateRule(ctx, in)
+		return srv.(MasterServer).ShowRule(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Master/ShowTaskMigrateRule",
+		FullMethod: "/proto.Master/ShowRule",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).ShowTaskMigrateRule(ctx, req.(*ShowMigrateTaskRuleRequest))
+		return srv.(MasterServer).ShowRule(ctx, req.(*ShowRuleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -504,16 +504,16 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Master_ShowDatasource_Handler,
 		},
 		{
-			MethodName: "UpsertTaskMigrateRule",
-			Handler:    _Master_UpsertTaskMigrateRule_Handler,
+			MethodName: "UpsertRule",
+			Handler:    _Master_UpsertRule_Handler,
 		},
 		{
-			MethodName: "DeleteTaskMigrateRule",
-			Handler:    _Master_DeleteTaskMigrateRule_Handler,
+			MethodName: "DeleteRule",
+			Handler:    _Master_DeleteRule_Handler,
 		},
 		{
-			MethodName: "ShowTaskMigrateRule",
-			Handler:    _Master_ShowTaskMigrateRule_Handler,
+			MethodName: "ShowRule",
+			Handler:    _Master_ShowRule_Handler,
 		},
 		{
 			MethodName: "UpsertStructMigrateTask",

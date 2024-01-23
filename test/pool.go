@@ -30,13 +30,13 @@ func main() {
 		pool.WithTaskQueueSize(1024),
 		pool.WithResultCallback(func(r pool.Result) {
 			if r.Error != nil {
-				panic(fmt.Errorf("task attr [%s] task stage [%v] workerID [%v] job [%v] failed [%v]", r.Task.Group, r.Task.Stage, r.Thread, r.Task.Job, r.Error))
+				panic(fmt.Errorf("task attr [%s] task stage [%v] workerID [%v] job [%v] failed [%v]", r.Task.Group, r.Thread, r.Task.Job, r.Error))
 			} else {
-				fmt.Printf("task attr [%s] task stage [%v] workerID [%v] job [%v] success.\n", r.Task.Group, r.Task.Stage, r.Thread, r.Task.Job)
+				fmt.Printf("task attr [%s] task stage [%v] workerID [%v] job [%v] success.\n", r.Task.Group, r.Thread, r.Task.Job)
 			}
 		}),
 		pool.WithExecuteTimeout(1*time.Second),
-		pool.WithExecuteTask(func(t pool.Task) error {
+		pool.WithExecuteTask(func(ctx context.Context, t pool.Task) error {
 			if t.Job.(int) == 5 {
 				//time.Sleep(2 * time.Second)
 				//fmt.Println(111)
@@ -51,7 +51,6 @@ func main() {
 		p.AddTask(pool.Task{
 			Name:  fmt.Sprintf("task%d", i),
 			Group: "test",
-			Stage: "test",
 			Job:   i,
 		})
 	}

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package worker
+package etcd
 
 import (
 	"context"
@@ -21,8 +21,6 @@ import (
 	"time"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
-
-	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/logger"
 	"go.uber.org/zap"
@@ -115,31 +113,31 @@ func (s *Scheduler) TryScheduling() (interval time.Duration) {
 
 func (s *Scheduler) HandleTaskEvent(eve *Event) {
 	switch eve.Opt {
-	case constant.DefaultTaskActionSubmitEvent:
+	case DefaultTaskActionSubmitEvent:
 		plan, err := s.CreateTaskPlan(eve)
 		if err != nil {
 			logger.Error("worker task schedule event create plan failed", zap.String("worker", eve.Addr), zap.String("task", eve.Task.Name), zap.String("status", "failed"))
 			return
 		}
 		s.TaskPlans[eve.Task.Name] = plan
-	case constant.DefaultTaskActionDeleteEvent:
+	case DefaultTaskActionDeleteEvent:
 		tp, ok := s.TaskPlans[eve.Task.Name]
 		if ok {
-			if strings.EqualFold(tp.Status, constant.TaskDatabaseStatusRunning) {
+			if strings.EqualFold(tp.Status, TaskDatabaseStatusRunning) {
 				logger.Warn("worker task schedule event plan running, but current prepare deleted", zap.String("worker", eve.Addr), zap.String("task", eve.Task.Name), zap.String("status", "deleted"))
 				tp.CancelFunc()
-				tp.Status = constant.TaskDatabaseStatusKilled
+				tp.Status = TaskDatabaseStatusStopped
 				tp.CancelCtx, tp.CancelFunc = context.WithCancel(context.Background())
 			}
 		}
 		delete(s.TaskPlans, eve.Task.Name)
-	case constant.DefaultTaskActionKillEvent:
+	case DefaultTaskActionKillEvent:
 		tp, ok := s.TaskPlans[eve.Task.Name]
 		if ok {
-			if strings.EqualFold(tp.Status, constant.TaskDatabaseStatusRunning) {
+			if strings.EqualFold(tp.Status, TaskDatabaseStatusRunning) {
 				logger.Warn("worker task schedule event plan killed", zap.String("worker", eve.Addr), zap.String("task", eve.Task.Name), zap.String("status", "killed"))
 				tp.CancelFunc()
-				tp.Status = constant.TaskDatabaseStatusKilled
+				tp.Status = TaskDatabaseStatusStopped
 				tp.CancelCtx, tp.CancelFunc = context.WithCancel(context.Background())
 			}
 		} else {

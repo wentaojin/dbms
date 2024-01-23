@@ -19,7 +19,7 @@ package constant
 const (
 	TaskModeObjectAssess  = "OBJECT_ASSESS"
 	TaskModeStructMigrate = "STRUCT_MIGRATE"
-	TaskModeDATAMigrate   = "DATA_MIGRATE"
+	TaskModeDataMigrate   = "DATA_MIGRATE"
 	TaskModeCSVMigrate    = "CSV_MIGRATE"
 
 	TaskModeDataCompare   = "DATA_COMPARE"
@@ -39,7 +39,7 @@ const (
 const (
 	TaskDatabaseStatusWaiting = "WAITING"
 	TaskDatabaseStatusRunning = "RUNNING"
-	TaskDatabaseStatusKilled  = "KILLED"
+	TaskDatabaseStatusStopped = "STOPPED"
 	TaskDatabaseStatusFailed  = "FAILED"
 	TaskDatabaseStatusSuccess = "SUCCESS"
 )
@@ -49,4 +49,13 @@ const (
 	TaskFlowOracleToTiDB  = "ORACLE@TIDB"
 	TaskFlowMySQLToOracle = "MYSQL@ORACLE"
 	TaskFlowTiDBToOracle  = "TIDB@ORACLE"
+)
+
+const (
+	TaskOperationStart   = "START"
+	TaskOperationStop    = "STOP"
+	TaskOperationCrontab = "CRONTAB"
+	TaskOperationClear   = "CLEAR"
+	TaskOperationDelete  = "DELETE"
+	TaskOperationGet     = "GET"
 )

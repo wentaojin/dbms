@@ -17,14 +17,14 @@ package rule
 
 import "context"
 
-type IMigrateTaskRule interface {
-	CreateMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error)
-	UpdateMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error)
-	GetMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) (*MigrateTaskRule, error)
-	ListMigrateTaskRule(ctx context.Context, page uint64, pageSize uint64) ([]*MigrateTaskRule, error)
-	DeleteMigrateTaskRule(ctx context.Context, taskRuleName []string) error
-	IsContainedMigrateTaskRuleRecord(ctx context.Context, rule *MigrateTaskRule) (bool, error)
-	FindMigrateTaskRule(ctx context.Context, rule *MigrateTaskRule) ([]*MigrateTaskRule, error)
+type IRule interface {
+	CreateRule(ctx context.Context, rule *Rule) (*Rule, error)
+	UpdateRule(ctx context.Context, rule *Rule) (*Rule, error)
+	GetRule(ctx context.Context, rule *Rule) (*Rule, error)
+	ListRule(ctx context.Context, page uint64, pageSize uint64) ([]*Rule, error)
+	DeleteRule(ctx context.Context, taskRuleName []string) error
+	IsContainedRuleRecord(ctx context.Context, rule *Rule) (bool, error)
+	FindRule(ctx context.Context, rule *Rule) ([]*Rule, error)
 }
 
 type ISchemaRouteRule interface {

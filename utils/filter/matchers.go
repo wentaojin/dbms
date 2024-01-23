@@ -18,7 +18,6 @@ package filter
 import (
 	"fmt"
 	"regexp"
-	"strings"
 )
 
 // table matcher rule
@@ -36,8 +35,8 @@ type matcher interface {
 type stringMatcher string
 
 func (m stringMatcher) matchString(name string) bool {
-	// ignore string case
-	return strings.ToUpper(string(m)) == strings.ToUpper(name)
+	// case field rule
+	return string(m) == name
 }
 
 // trueMatcher match all the `*` pattern

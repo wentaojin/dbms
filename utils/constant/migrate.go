@@ -352,14 +352,20 @@ var MigrateTableStructureDatabaseCollationMap = map[string]map[string]map[string
 	},
 }
 
+const (
+	ParamValueRuleCaseFieldNameOrigin = "0"
+	ParamValueRuleCaseFieldNameLower  = "1"
+	ParamValueRuleCaseFieldNameUpper  = "2"
+)
+
 // migrate parameters
 // struct migrate parameters
 const (
-	ParamNameStructMigrateLowerCaseFieldName = "lowerCaseFieldName"
-	ParamNameStructMigrateMigrateThread      = "migrateThread"
-	ParamNameStructMigrateTaskQueueSize      = "taskQueueSize"
-	ParamNameStructMigrateDirectWrite        = "directWrite"
-	ParamNameStructMigrateOutputDir          = "outputDir"
+	ParamNameStructMigrateCaseFieldRule = "caseFieldRule"
+	ParamNameStructMigrateMigrateThread = "migrateThread"
+	ParamNameStructMigrateTaskQueueSize = "taskQueueSize"
+	ParamNameStructMigrateDirectWrite   = "directWrite"
+	ParamNameStructMigrateOutputDir     = "outputDir"
 
 	// ParamValueStructMigrateCaseFieldNameOrigin case-field-name params value
 	// - 0 represent keeping origin

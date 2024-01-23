@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/wentaojin/dbms/model/buildin"
+
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/migrate"
@@ -30,19 +32,21 @@ import (
 )
 
 type Rule struct {
-	Ctx              context.Context     `json:"-"`
-	TaskName         string              `json:"taskName"`
-	TaskFlow         string              `json:"taskFlow"`
-	TaskRuleName     string              `json:"taskRuleName"`
-	SchemaNameS      string              `json:"schemaNameS"`
-	TableNameS       string              `json:"tableNameS"`
-	TablePrimaryKeyS []map[string]string `json:"tablePrimaryKeyS"`
-	TableColumnsS    []map[string]string `json:"tableColumnsS"`
-	TableCommentS    []map[string]string `json:"tableCommentS"`
-	CaseFieldRule    string              `json:"caseFieldRule"`
-	DBCollationS     bool                `json:"DBCollationS"`
-	DBCharsetS       string              `json:"dbCharsetS"`
-	DBCharsetT       string              `json:"dbCharsetT"`
+	Ctx                      context.Context                  `json:"-"`
+	TaskName                 string                           `json:"taskName"`
+	TaskFlow                 string                           `json:"taskFlow"`
+	TaskRuleName             string                           `json:"taskRuleName"`
+	SchemaNameS              string                           `json:"schemaNameS"`
+	TableNameS               string                           `json:"tableNameS"`
+	TablePrimaryKeyS         []map[string]string              `json:"tablePrimaryKeyS"`
+	TableColumnsS            []map[string]string              `json:"tableColumnsS"`
+	TableCommentS            []map[string]string              `json:"tableCommentS"`
+	CaseFieldRule            string                           `json:"caseFieldRule"`
+	DBCollationS             bool                             `json:"DBCollationS"`
+	DBCharsetS               string                           `json:"dbCharsetS"`
+	DBCharsetT               string                           `json:"dbCharsetT"`
+	BuildinDatatypeRules     []*buildin.BuildinDatatypeRule   `json:"buildinDatatypeRule"`
+	BuildinDefaultValueRules []*buildin.BuildinDefaultvalRule `json:"buildinDefaultValueRules"`
 }
 
 func (r *Rule) GetTableNameRule() (map[string]string, map[string]string, error) {
@@ -101,10 +105,6 @@ func (r *Rule) GetTableColumnRule() (map[string]string, map[string]string, map[s
 	if err != nil {
 		return columnRules, columnDatatypeRules, columnDefaultValueRules, err
 	}
-	buildInDatatypeRules, err := model.GetIBuildInDatatypeRuleRW().QueryBuildInDatatypeRule(r.Ctx, r.TaskFlow)
-	if err != nil {
-		return nil, nil, nil, err
-	}
 
 	for _, c := range r.TableColumnsS {
 		columnName := c["COLUMN_NAME"]
@@ -127,7 +127,7 @@ func (r *Rule) GetTableColumnRule() (map[string]string, map[string]string, map[s
 				DataDefault:   c["DATA_DEFAULT"],
 				Nullable:      c["NULLABLE"],
 				Comment:       c["COMMENTS"],
-			}, buildInDatatypeRules)
+			}, r.BuildinDatatypeRules)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -138,6 +138,7 @@ func (r *Rule) GetTableColumnRule() (map[string]string, map[string]string, map[s
 				c["DATA_DEFAULT"],
 				r.DBCharsetS,
 				r.DBCharsetT,
+				r.BuildinDefaultValueRules,
 				structTaskRules,
 				structSchemaRules,
 				structTableRules,

@@ -29,31 +29,25 @@ type ServerInterface interface {
 	APIPutDatasource(c *gin.Context)
 
 	// (DELETE /rule)
-	APIDeleteTaskMigrateRule(c *gin.Context)
+	APIDeleteRule(c *gin.Context)
 
 	// (POST /rule)
-	APIListTaskMigrateRule(c *gin.Context)
+	APIListRule(c *gin.Context)
 
 	// (PUT /rule)
-	APIPutTaskMigrateRule(c *gin.Context)
-
-	// (DELETE /task)
-	APIDeleteTask(c *gin.Context)
+	APIPutRule(c *gin.Context)
 
 	// (POST /task)
-	APIKillTask(c *gin.Context)
+	APIPostTask(c *gin.Context)
 
-	// (PUT /task)
-	APIPutTask(c *gin.Context)
+	// (DELETE /task/structMigrate)
+	APIDeleteStructMigrate(c *gin.Context)
 
-	// (DELETE /task/structMigrateTask)
-	APIDeleteStructMigrateTask(c *gin.Context)
+	// (POST /task/structMigrate)
+	APIListStructMigrate(c *gin.Context)
 
-	// (POST /task/structMigrateTask)
-	APIListStructMigrateTask(c *gin.Context)
-
-	// (PUT /task/structMigrateTask)
-	APIPutStructMigrateTask(c *gin.Context)
+	// (PUT /task/structMigrate)
+	APIPutStructMigrate(c *gin.Context)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -143,8 +137,8 @@ func (siw *ServerInterfaceWrapper) APIPutDatasource(c *gin.Context) {
 	siw.Handler.APIPutDatasource(c)
 }
 
-// APIDeleteTaskMigrateRule operation middleware
-func (siw *ServerInterfaceWrapper) APIDeleteTaskMigrateRule(c *gin.Context) {
+// APIDeleteRule operation middleware
+func (siw *ServerInterfaceWrapper) APIDeleteRule(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -153,11 +147,11 @@ func (siw *ServerInterfaceWrapper) APIDeleteTaskMigrateRule(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIDeleteTaskMigrateRule(c)
+	siw.Handler.APIDeleteRule(c)
 }
 
-// APIListTaskMigrateRule operation middleware
-func (siw *ServerInterfaceWrapper) APIListTaskMigrateRule(c *gin.Context) {
+// APIListRule operation middleware
+func (siw *ServerInterfaceWrapper) APIListRule(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -166,11 +160,11 @@ func (siw *ServerInterfaceWrapper) APIListTaskMigrateRule(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIListTaskMigrateRule(c)
+	siw.Handler.APIListRule(c)
 }
 
-// APIPutTaskMigrateRule operation middleware
-func (siw *ServerInterfaceWrapper) APIPutTaskMigrateRule(c *gin.Context) {
+// APIPutRule operation middleware
+func (siw *ServerInterfaceWrapper) APIPutRule(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -179,11 +173,11 @@ func (siw *ServerInterfaceWrapper) APIPutTaskMigrateRule(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIPutTaskMigrateRule(c)
+	siw.Handler.APIPutRule(c)
 }
 
-// APIDeleteTask operation middleware
-func (siw *ServerInterfaceWrapper) APIDeleteTask(c *gin.Context) {
+// APIPostTask operation middleware
+func (siw *ServerInterfaceWrapper) APIPostTask(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -192,11 +186,11 @@ func (siw *ServerInterfaceWrapper) APIDeleteTask(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIDeleteTask(c)
+	siw.Handler.APIPostTask(c)
 }
 
-// APIKillTask operation middleware
-func (siw *ServerInterfaceWrapper) APIKillTask(c *gin.Context) {
+// APIDeleteStructMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIDeleteStructMigrate(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -205,11 +199,11 @@ func (siw *ServerInterfaceWrapper) APIKillTask(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIKillTask(c)
+	siw.Handler.APIDeleteStructMigrate(c)
 }
 
-// APIPutTask operation middleware
-func (siw *ServerInterfaceWrapper) APIPutTask(c *gin.Context) {
+// APIListStructMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIListStructMigrate(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -218,11 +212,11 @@ func (siw *ServerInterfaceWrapper) APIPutTask(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIPutTask(c)
+	siw.Handler.APIListStructMigrate(c)
 }
 
-// APIDeleteStructMigrateTask operation middleware
-func (siw *ServerInterfaceWrapper) APIDeleteStructMigrateTask(c *gin.Context) {
+// APIPutStructMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIPutStructMigrate(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -231,33 +225,7 @@ func (siw *ServerInterfaceWrapper) APIDeleteStructMigrateTask(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIDeleteStructMigrateTask(c)
-}
-
-// APIListStructMigrateTask operation middleware
-func (siw *ServerInterfaceWrapper) APIListStructMigrateTask(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.APIListStructMigrateTask(c)
-}
-
-// APIPutStructMigrateTask operation middleware
-func (siw *ServerInterfaceWrapper) APIPutStructMigrateTask(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.APIPutStructMigrateTask(c)
+	siw.Handler.APIPutStructMigrate(c)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -293,13 +261,11 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/datasource", wrapper.APIDeleteDatasource)
 	router.POST(options.BaseURL+"/datasource", wrapper.APIListDatasource)
 	router.PUT(options.BaseURL+"/datasource", wrapper.APIPutDatasource)
-	router.DELETE(options.BaseURL+"/rule", wrapper.APIDeleteTaskMigrateRule)
-	router.POST(options.BaseURL+"/rule", wrapper.APIListTaskMigrateRule)
-	router.PUT(options.BaseURL+"/rule", wrapper.APIPutTaskMigrateRule)
-	router.DELETE(options.BaseURL+"/task", wrapper.APIDeleteTask)
-	router.POST(options.BaseURL+"/task", wrapper.APIKillTask)
-	router.PUT(options.BaseURL+"/task", wrapper.APIPutTask)
-	router.DELETE(options.BaseURL+"/task/structMigrateTask", wrapper.APIDeleteStructMigrateTask)
-	router.POST(options.BaseURL+"/task/structMigrateTask", wrapper.APIListStructMigrateTask)
-	router.PUT(options.BaseURL+"/task/structMigrateTask", wrapper.APIPutStructMigrateTask)
+	router.DELETE(options.BaseURL+"/rule", wrapper.APIDeleteRule)
+	router.POST(options.BaseURL+"/rule", wrapper.APIListRule)
+	router.PUT(options.BaseURL+"/rule", wrapper.APIPutRule)
+	router.POST(options.BaseURL+"/task", wrapper.APIPostTask)
+	router.DELETE(options.BaseURL+"/task/structMigrate", wrapper.APIDeleteStructMigrate)
+	router.POST(options.BaseURL+"/task/structMigrate", wrapper.APIListStructMigrate)
+	router.PUT(options.BaseURL+"/task/structMigrate", wrapper.APIPutStructMigrate)
 }

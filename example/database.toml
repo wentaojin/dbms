@@ -3,6 +3,6 @@ host = "120.92.77.145"
 port = 4000
 username = "root"
 password = ""
-schema = "marvin"
+schema = "dbms"
 # slow threshold
-slow-threshold = 100
+slow-threshold = 300

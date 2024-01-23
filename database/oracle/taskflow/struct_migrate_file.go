@@ -74,7 +74,7 @@ func (s *StructMigrateFile) InitOutputFile() error {
 }
 
 func (s *StructMigrateFile) SyncStructFile() error {
-	taskFlowDBs := strings.Split(s.TaskFlow, "@")
+	taskFlowDBs := strings.Split(s.TaskFlow, constant.StringSeparatorAite)
 	sourceDBType := taskFlowDBs[0]
 	targetDBType := taskFlowDBs[1]
 
@@ -98,19 +98,19 @@ func (s *StructMigrateFile) SyncStructFile() error {
 	wt.SetStyle(table.StyleLight)
 	wt.AppendHeader(table.Row{"#", sourceDBType, targetDBType, "SUGGEST"})
 	wt.AppendRows([]table.Row{
-		{"Schema", migrateSchema.SchemaNameS, migrateSchema.SchemaNameT, "Create Schema"},
+		{"Schema", migrateSchema[0].SchemaNameS, migrateSchema[0].SchemaNameT, "Create Schema"},
 	})
 	sqlComp.WriteString(wt.Render() + "\n")
 	sqlComp.WriteString("*/\n")
 
-	schemaDigest, err := stringutil.Decrypt(migrateSchema.TargetSqlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
+	schemaDigest, err := stringutil.Decrypt(migrateSchema[0].TargetSqlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
 	if err != nil {
 		return err
 	}
 	sqlComp.WriteString(schemaDigest + "\n")
 
 	// tables
-	migrateTables, err := model.GetIStructMigrateTaskRW().FindStructMigrateTask(s.Ctx, &task.StructMigrateTask{
+	migrateTables, err := model.GetIStructMigrateTaskRW().GetStructMigrateTask(s.Ctx, &task.StructMigrateTask{
 		TaskName:       s.TaskName,
 		SchemaNameS:    s.SchemaNameS,
 		TaskStatus:     constant.TaskDatabaseStatusSuccess,

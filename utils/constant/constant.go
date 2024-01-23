@@ -28,7 +28,7 @@ const DefaultRecordCreateBatchSize = 50
 // StringSeparatorComma used for build-in string data separator
 const StringSeparatorComma = ","
 const StringSeparatorSlash = "/"
-
+const StringSeparatorAite = "@"
 const (
 	MigrateTaskTableIsExclude    = "YES"
 	MigrateTaskTableIsNotExclude = "NO"
@@ -38,4 +38,4 @@ const (
 const DefaultTaskQueueChannelSize = 1024
 
 // DefaultDataEncryptDecryptKey used for data encrypt and decrypt key
-const DefaultDataEncryptDecryptKey = "marvin@jwt!#$&123"
+const DefaultDataEncryptDecryptKey = "marvin@jwt!#$123qwer9797"

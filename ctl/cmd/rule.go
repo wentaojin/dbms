@@ -159,11 +159,10 @@ func (a *AppRuleGet) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	resp, err := migrate.GetTaskRule(a.Server, a.name)
+	err := migrate.GetTaskRule(a.Server, a.name)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(resp)
 	return nil
 }

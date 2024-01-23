@@ -16,6 +16,8 @@ limitations under the License.
 package etcdutil
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/wentaojin/dbms/utils/constant"
@@ -62,19 +64,19 @@ func (d *Discovery) Discovery(prefixKey string) error {
 // 1, watch service register, and initial node list
 // 2, watch prefix, modify the occurring change's node
 func (d *Discovery) Watch(prefixKey string) {
-	logger.Info("discovery node watching", zap.String("key prefix", prefixKey))
+	logger.Info("discovery node watching", zap.String("discovery key prefix", prefixKey))
 
 	watchCh := WatchKey(d.etcdClient, prefixKey, clientv3.WithPrefix())
 
 	for {
 		select {
 		case <-d.etcdClient.Ctx().Done():
-			logger.Error("discovery node watch cancel", zap.String("key prefix", prefixKey))
+			logger.Error("discovery node watch cancel", zap.String("discovery key prefix", prefixKey))
 			return
 		default:
 			for wresp := range watchCh {
 				if wresp.Err() != nil {
-					logger.Error("discovery node watch failed", zap.String("key prefix", prefixKey), zap.Error(wresp.Err()))
+					logger.Error("discovery node watch failed", zap.String("discovery key prefix", prefixKey), zap.Error(wresp.Err()))
 					// skip, only log
 					//return fmt.Errorf("discovery node watch failed, error: [%v]", wresp.Err())
 				}
@@ -126,6 +128,69 @@ func (d *Discovery) GetAllNodeAddr() map[string]string {
 	}
 
 	return d.nodes
+}
+
+// GetFreeWorker used for get free service node addr
+func (d *Discovery) GetFreeWorker() (string, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	keyResp, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey), clientv3.WithPrefix())
+	if err != nil {
+		return "", err
+	}
+
+	nodeAddr := make(map[string]string)
+	for k, v := range d.nodes {
+		keyS := stringutil.StringSplit(k, constant.StringSeparatorSlash)
+		instAddr := keyS[len(keyS)-1]
+		nodeAddr[instAddr] = v
+	}
+
+	var freeWorkers []string
+	for k, v := range nodeAddr {
+		switch {
+		case len(keyResp.Kvs) == 0:
+			return k, nil
+		default:
+			var n *Node
+			err = stringutil.UnmarshalJSON([]byte(v), &n)
+			if err != nil {
+				return "", err
+			}
+			for _, ev := range keyResp.Kvs {
+				addr := string(ev.Key)
+				if strings.EqualFold(addr, k) {
+					var w *Worker
+					err = stringutil.UnmarshalJSON(ev.Value, &w)
+					if err != nil {
+						return "", err
+					}
+					if strings.EqualFold(w.State, constant.DefaultWorkerFreeState) {
+						freeWorkers = append(freeWorkers, k)
+					}
+					if strings.EqualFold(w.State, constant.DefaultWorkerBoundState) && strings.EqualFold(w.TaskName, "") {
+						freeWorkers = append(freeWorkers, k)
+					}
+					if strings.EqualFold(w.State, constant.DefaultWorkerStoppedState) && !strings.EqualFold(w.TaskName, "") {
+						return k, nil
+					}
+				}
+			}
+
+			freeWorkers = append(freeWorkers, k)
+		}
+	}
+
+	if len(freeWorkers) == 0 {
+		return "", fmt.Errorf("there are not free node currently, please waiting or scale-out worker node")
+	}
+
+	elem, err := stringutil.GetRandomElem(freeWorkers)
+	if err != nil {
+		return "", err
+	}
+	return elem, nil
 }
 
 // Close used for close service

@@ -73,8 +73,16 @@ func Upsert(serverAddr string, file string) error {
 	return nil
 }
 
-func Delete(serverAddr string, name string) error {
-	resp, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(name))
+func Delete(serverAddr string, name []string) error {
+	bodyReq := make(map[string]interface{})
+	bodyReq["param"] = name
+
+	jsonStr, err := stringutil.MarshalJSON(bodyReq)
+	if err != nil {
+		return err
+	}
+
+	resp, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(jsonStr))
 	if err != nil {
 		return err
 	}
@@ -94,8 +102,17 @@ func Delete(serverAddr string, name string) error {
 	return nil
 }
 
-func Get(serverAddr string, name string) error {
-	resp, err := openapi.Request(openapi.RequestGETMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(name))
+func Get(serverAddr string, name string, page uint64, pageSize uint64) error {
+	bodyReq := make(map[string]interface{})
+	bodyReq["param"] = name
+	bodyReq["page"] = page
+	bodyReq["pageSize"] = pageSize
+
+	jsonStr, err := stringutil.MarshalJSON(bodyReq)
+	if err != nil {
+		return err
+	}
+	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatasourcePath), []byte(jsonStr))
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package worker
+package etcd
 
 import (
 	"context"
@@ -28,8 +28,6 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-
-	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/logger"
 	"go.uber.org/zap"
@@ -64,24 +62,14 @@ func (e *Executor) Execute() {
 				return
 			default:
 				for p := range e.planChan {
-					startTime := time.Now()
 					err := e.run(p)
-					endTime := time.Now()
 					if err != nil {
 						// task status
-						p.Status = constant.TaskDatabaseStatusFailed
+						p.Status = TaskDatabaseStatusFailed
 					}
 					_, err = model.GetITaskLogRW().CreateLog(e.ctx, &task.Log{
-						TaskName:             p.Task.Name,
-						Express:              p.Task.Express,
-						WorkerAddr:           p.Addr,
-						TaskStatus:           p.Status,
-						NextScheduledTime:    p.Next.Format("2006-01-02 15:04:05"),
-						ExpectedScheduleTime: p.Expected.Format("2006-01-02 15:04:05"),
-						RealScheduledTime:    p.Real.Format("2006-01-02 15:04:05"),
-						TaskStartTime:        startTime.Format("2006-01-02 15:04:05"),
-						TaskEndTime:          endTime.Format("2006-01-02 15:04:05"),
-						Error:                err.Error(),
+						TaskName:   p.Task.Name,
+						WorkerAddr: p.Addr,
 					})
 					if err != nil {
 						panic(err)
@@ -93,7 +81,7 @@ func (e *Executor) Execute() {
 }
 
 func (e *Executor) run(p *Plan) error {
-	if strings.EqualFold(p.Status, constant.TaskDatabaseStatusWaiting) {
+	if strings.EqualFold(p.Status, TaskDatabaseStatusWaiting) {
 		// There are micro-level differences in the clock verification of different machines. For the sake of task queue scheduling, when a slight delay in task scheduling is allowed, random sleep 0-1000ms // When the minimum execution time of a task is less than the sleep time, it will cause different nodes to Repeat
 		time.Sleep(time.Duration(rand.Int63n(e.balanceSleepTime)) * time.Millisecond)
 
@@ -102,7 +90,7 @@ func (e *Executor) run(p *Plan) error {
 		if err := lock.Lock(); err != nil {
 			return err
 		}
-		p.Status = constant.TaskDatabaseStatusWaiting
+		p.Status = TaskDatabaseStatusWaiting
 		logger.Info("worker task event execute start", zap.String("task", p.String()))
 
 		// execute
@@ -111,7 +99,7 @@ func (e *Executor) run(p *Plan) error {
 			return err
 		}
 		switch stringutil.StringUpper(t.TaskMode) {
-		case constant.TaskModeStructMigrate:
+		case TaskModeStructMigrate:
 			err := service.StartStructMigrateTask(p.CancelCtx, p.Task.Name, p.Addr)
 			if err != nil {
 				return err
@@ -126,7 +114,7 @@ func (e *Executor) run(p *Plan) error {
 			return err
 		}
 
-		p.Status = constant.TaskDatabaseStatusSuccess
+		p.Status = TaskDatabaseStatusSuccess
 		logger.Info("worker task event execute finished", zap.String("worker", p.Addr), zap.String("task", p.Task.Name), zap.String("task", p.String()))
 		return nil
 	}

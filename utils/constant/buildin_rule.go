@@ -16,6 +16,16 @@ limitations under the License.
 package constant
 
 /*
+Database init
+*/
+const (
+	BuildInRuleNameColumnDatatype     = "COLUMN_DATA_TYPE"
+	BuildInRuleNameColumnDefaultValue = "COLUMN_DEFAULT_VALUE"
+	BuildInRuleNameObjectCompatible   = "OBJECT_COMPATIBLE"
+	BuildInRuleInitSuccess            = "Y"
+)
+
+/*
 	Database Default Value Map
 */
 // ORACLE TO MYSQL column default value mapping rule
@@ -365,4 +375,60 @@ const (
 
 	BuildInOracleTemporaryTypeSession     = "SYS$SESSION"
 	BuildInOracleTemporaryTypeTransaction = "SYS$TRANSACTION"
+)
+
+// Assess Status
+const (
+	AssessYesCompatible  = "Y"
+	AssessNoCompatible   = "N"
+	AssessYesConvertible = "Y"
+	AssessNoConvertible  = "N"
+	AssessYesEquivalent  = "Y"
+	AssessNoEquivalent   = "N"
+)
+
+// Assess Type
+const (
+	AssessTypeDatabaseOverview     = "DATABASE_OVERVIEW"
+	AssessTypeObjectTypeCompatible = "OBJECT_TYPE_COMPATIBLE"
+	AssessTypeObjectTypeCheck      = "OBJECT_TYPE_CHECK"
+	AssessTypeObjectTypeRelated    = "OBJECT_TYPE_RELATED"
+)
+
+// Assess Name
+const (
+	AssessNameDBOverview = "DB_OVERVIEW"
+
+	AssessNameTableTypeCompatible          = "TABLE_TYPE_COMPATIBLE"
+	AssessNameColumnTypeCompatible         = "COLUMN_TYPE_COMPATIBLE"
+	AssessNameConstraintTypeCompatible     = "CONSTRAINT_TYPE_COMPATIBLE"
+	AssessNameIndexTypeCompatible          = "INDEX_TYPE_COMPATIBLE"
+	AssessNameDefaultValueCompatible       = "DEFAULT_VALUE_COMPATIBLE"
+	AssessNameViewTypeCompatible           = "VIEW_TYPE_COMPATIBLE"
+	AssessNameObjectTypeCompatible         = "OBJECT_TYPE_COMPATIBLE"
+	AssessNamePartitionTypeCompatible      = "PARTITION_TYPE_COMPATIBLE"
+	AssessNameSubPartitionTypeCompatible   = "SUBPARTITION_TYPE_COMPATIBLE"
+	AssessNameTemporaryTableTypeCompatible = "TEMPORARY_TABLE_TYPE_COMPATIBLE"
+
+	AssessNamePartitionTableCountsCheck = "PARTITION_TABLE_COUNTS_CHECK"
+	AssessNameTableColumnCountsCheck    = "TABLE_COLUMN_COUNTS_CHECK"
+	AssessNameTableIndexCountsCheck     = "TABLE_INDEX_COUNTS_CHECK"
+
+	AssessNameTableRowLengthCheck     = "TABLE_ROW_LENGTH_CHECK"
+	AssessNameIndexRowLengthCheck     = "INDEX_ROW_LENGTH_CHECK"
+	AssessNameUsernameLengthCheck     = "USERNAME_LENGTH_CHECK"
+	AssessNameTableNameLengthCheck    = "TABLE_NAME_LENGTH_CHECK"
+	AssessNameColumnNameLengthCheck   = "COLUMN_NAME_LENGTH_CHECK"
+	AssessNameIndexNameLengthCheck    = "INDEX_NAME_LENGTH_CHECK"
+	AssessNameViewNameLengthCheck     = "VIEW_NAME_LENGTH_CHECK"
+	AssessNameSequenceNameLengthCheck = "SEQUENCE_NAME_LENGTH_CHECK"
+
+	AssessNameSchemaDataSizeRelated             = "SCHEMA_DATA_SIZE_RELATED"
+	AssessNameSchemaActiveSessionRelated        = "SCHEMA_ACTIVE_SESSION_RELATED"
+	AssessNameSchemaTableRowsTopRelated         = "SCHEMA_TABLE_ROWS_TOP_RELATED"
+	AssessNameSchemaCodeObjectRelated           = "SCHEMA_CODE_OBJECT_RELATED"
+	AssessNameSchemaSynonymObjectRelated        = "SCHEMA_SYNONYM_OBJECT_RELATED"
+	AssessNameSchemaMaterializedViewRelated     = "SCHEMA_MATERIALIZED_VIEW_OBJECT_RELATED"
+	AssessNameSchemaTableAvgRowLengthTopRelated = "SCHEMA_TABLE_AVG_ROW_LENGTH_TOP_RELATED"
+	AssessNameSchemaTableNumberTypeEqual0       = "SCHEMA_TABLE_NUMBER_TYPE_EQUAL0"
 )

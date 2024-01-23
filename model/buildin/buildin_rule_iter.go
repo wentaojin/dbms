@@ -17,6 +17,22 @@ package buildin
 
 import "context"
 
+type IBuildInRuleRecord interface {
+	CreateBuildInRuleRecord(ctx context.Context, rec *BuildinRuleRecord) (*BuildinRuleRecord, error)
+	GetBuildInRuleRecord(ctx context.Context, ruleName string) (*BuildinRuleRecord, error)
+}
+
 type IBuildInDatatypeRule interface {
-	QueryBuildInDatatypeRule(ctx context.Context, taskFlow string) ([]*BuildinDatatypeRule, error)
+	CreateBuildInDatatypeRule(ctx context.Context, rec []*BuildinDatatypeRule) ([]*BuildinDatatypeRule, error)
+	QueryBuildInDatatypeRule(ctx context.Context, dbTypeS, dbTypeT string) ([]*BuildinDatatypeRule, error)
+}
+
+type IBuildInDefaultValueRule interface {
+	CreateBuildInDefaultValueRule(ctx context.Context, rec []*BuildinDefaultvalRule) ([]*BuildinDefaultvalRule, error)
+	QueryBuildInDefaultValueRule(ctx context.Context, dbTypeS, dbTypeT string) ([]*BuildinDefaultvalRule, error)
+}
+
+type IBuildInCompatibleRule interface {
+	CreateBuildInCompatibleRule(ctx context.Context, rec []*BuildinCompatibleRule) ([]*BuildinCompatibleRule, error)
+	QueryBuildInCompatibleRule(ctx context.Context, dbTypeS, dbTypeT string) ([]*BuildinCompatibleRule, error)
 }

@@ -142,7 +142,7 @@ func (w *worker) handleResult(thread int, t Task, p *pool, err error) {
 		if p.panicHandle {
 			defer func() {
 				if r := recover(); r != nil {
-					logger.Panic("panic", zap.Any("error", r), zap.Stack("recovered"))
+					logger.Error("the worker running the task panic", zap.String("task", t.String()), zap.Any("error", r))
 				}
 			}()
 		}

@@ -52,7 +52,7 @@ func (rw *RWTask) CreateTask(ctx context.Context, task *Task) (*Task, error) {
 	return task, nil
 }
 
-func (rw *RWTask) UpdateTask(ctx context.Context, task *Task, updates map[string]string) (*Task, error) {
+func (rw *RWTask) UpdateTask(ctx context.Context, task *Task, updates map[string]interface{}) (*Task, error) {
 	err := rw.DB(ctx).Model(&Task{}).Where("task_name = ?", task.TaskName).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
@@ -62,7 +62,7 @@ func (rw *RWTask) UpdateTask(ctx context.Context, task *Task, updates map[string
 
 func (rw *RWTask) GetTask(ctx context.Context, task *Task) (*Task, error) {
 	var dataS *Task
-	err := rw.DB(ctx).Model(&Task{}).Where("task_name = ?", task.TaskName).Find(&dataS)
+	err := rw.DB(ctx).Model(&Task{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -122,7 +122,7 @@ func (rw *RWLog) UpdateLog(ctx context.Context, task *Log, updates map[string]st
 
 func (rw *RWLog) QueryLog(ctx context.Context, task *Log) ([]*Log, error) {
 	var dataS []*Log
-	err := rw.DB(ctx).Model(&Log{}).Where("task_name = ?", task.TaskName).Find(&dataS)
+	err := rw.DB(ctx).Model(&Log{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -172,9 +172,9 @@ func (rw *RWStructMigrateTask) CreateStructMigrateTask(ctx context.Context, task
 	return task, nil
 }
 
-func (rw *RWStructMigrateTask) GetStructMigrateTask(ctx context.Context, task *StructMigrateTask) (*StructMigrateTask, error) {
-	var dataS *StructMigrateTask
-	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ? AND is_schema_create = ?", task.TaskName, task.SchemaNameS, task.TaskStatus, task.IsSchemaCreate).Find(&dataS)
+func (rw *RWStructMigrateTask) GetStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error) {
+	var dataS []*StructMigrateTask
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ? AND is_schema_create = ?", task.TaskName, task.SchemaNameS, task.TaskStatus, task.IsSchemaCreate).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -189,9 +189,17 @@ func (rw *RWStructMigrateTask) UpdateStructMigrateTask(ctx context.Context, task
 	return task, nil
 }
 
+func (rw *RWStructMigrateTask) BatchUpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]string) (*StructMigrateTask, error) {
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
 func (rw *RWStructMigrateTask) QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error) {
 	var dataS []*StructMigrateTask
-	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status = ? AND is_schema_create = ?", task.TaskName, task.TaskStatus, task.IsSchemaCreate).Find(&dataS)
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status = ? AND is_schema_create = ?", task.TaskName, task.TaskStatus, task.IsSchemaCreate).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -200,9 +208,9 @@ func (rw *RWStructMigrateTask) QueryStructMigrateTask(ctx context.Context, task 
 
 func (rw *RWStructMigrateTask) FindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error) {
 	var dataS []*StructMigrateTask
-	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ? AND is_schema_create = ?", task.TaskName, task.SchemaNameS, task.TaskStatus, task.IsSchemaCreate).Find(&dataS)
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
 	if err != nil {
-		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }
@@ -260,7 +268,7 @@ func (rw *RWDataMigrateTask) UpdateDataMigrateTask(ctx context.Context, task *Da
 
 func (rw *RWDataMigrateTask) QueryDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error) {
 	var dataS []*DataMigrateTask
-	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ?", task.TaskName).Find(&dataS)
+	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

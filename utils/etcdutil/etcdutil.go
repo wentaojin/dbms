@@ -96,3 +96,10 @@ func WatchKey(client *clientv3.Client, key string, opts ...clientv3.OpOption) cl
 	// ctx, cancel := context.WithTimeout(client.Ctx(), DefaultRequestTimeout)
 	return client.Watch(client.Ctx(), key, opts...)
 }
+
+// TxnKey put key txn
+func TxnKey(client *clientv3.Client, ops ...clientv3.Op) (*clientv3.TxnResponse, error) {
+	txn := client.Txn(client.Ctx())
+	txn.Then(ops...)
+	return txn.Commit()
+}

@@ -483,14 +483,14 @@ func DatabaseTableColumnMapMYSQLDatatypeRule(c *Column, buildinDatatypes []*buil
 
 // HandleColumnRuleWithPriority priority, return column datatype and default value
 // column > table > schema > task
-func HandleColumnRuleWithPriority(columnName string, originDatatype, buildInDatatype, originDefaultValue, sourceCharset, targetCharset string, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule, columnRules []*migrate.ColumnStructRule) (string, string, error) {
+func HandleColumnRuleWithPriority(columnName string, originDatatype, buildInDatatype, originDefaultValue, sourceCharset, targetCharset string, buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule, columnRules []*migrate.ColumnStructRule) (string, string, error) {
 	var (
 		datatype, defaultValue string
 		err                    error
 	)
 	columnDatatypes, columnDefaultValues := handleColumnRuleWithColumnHighPriority(columnRules)
 
-	globalDatatypes, globalDefaultValues := handelColumnRuleWithTableSchemaTaskPriority(taskRules, schemaRules, tableRules)
+	globalDatatypes, globalDefaultValues := handelColumnRuleWithTableSchemaTaskPriority(buildinDefaultValueRules, taskRules, schemaRules, tableRules)
 
 	// column default value
 	defaultValue, err = handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, sourceCharset, targetCharset, columnDefaultValues, globalDefaultValues)
@@ -661,17 +661,19 @@ func handleColumnRuleWithDatatypeCompare(originColumnType, ruleColumnTypeS, rule
 }
 
 // handelColumnRuleWithTableSchemaTaskPriority priority
-// table > schema > task
-func handelColumnRuleWithTableSchemaTaskPriority(taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
-	taskColumnDatatype, taskColumnDefaultVal := handleColumnRuleWithTaskLevel(taskRules)
+// table > schema > task -> server
+func handelColumnRuleWithTableSchemaTaskPriority(buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
+	taskDatatype, taskDefaultVal := handleColumnRuleWithTaskLevel(taskRules)
 
-	schemaColumnDatatype, schemaColumnDefaultVal := handleColumnRuleWithSchemaLevel(schemaRules)
+	schemaDatatype, schemaDefaultVal := handleColumnRuleWithSchemaLevel(schemaRules)
 
-	tableColumnDatatype, tableColumnDefaultVal := handleColumnRuleWithTableLevel(tableRules)
+	tableDatatype, tableDefaultVal := handleColumnRuleWithTableLevel(tableRules)
 
-	globalColumnDatatype := stringutil.ExchangeStringDict(stringutil.ExchangeStringDict(tableColumnDatatype, schemaColumnDatatype), taskColumnDatatype)
+	buildinDefaultValues := handleColumnDefaultValueRuleWithServerLevel(buildinDefaultValueRules)
 
-	globalColumnDefaultVal := stringutil.ExchangeStringDict(stringutil.ExchangeStringDict(tableColumnDefaultVal, schemaColumnDefaultVal), taskColumnDefaultVal)
+	globalColumnDatatype := stringutil.ExchangeStringDict(tableDatatype, stringutil.ExchangeStringDict(schemaDatatype, taskDatatype))
+
+	globalColumnDefaultVal := stringutil.ExchangeStringDict(tableDefaultVal, stringutil.ExchangeStringDict(schemaDefaultVal, stringutil.ExchangeStringDict(taskDefaultVal, buildinDefaultValues)))
 
 	return globalColumnDatatype, globalColumnDefaultVal
 }
@@ -713,6 +715,21 @@ func handleColumnRuleWithColumnHighPriority(columnRules []*migrate.ColumnStructR
 		}
 	}
 	return columnDatatypeMap, columnDefaultValMap
+}
+
+func handleColumnDefaultValueRuleWithServerLevel(buildinRules []*buildin.BuildinDefaultvalRule) map[string]string {
+	columnDefaultValMap := make(map[string]string)
+
+	if len(buildinRules) == 0 {
+		return columnDefaultValMap
+	}
+
+	for _, t := range buildinRules {
+		if !strings.EqualFold(t.DefaultValueS, "") && !strings.EqualFold(t.DefaultValueT, "") {
+			columnDefaultValMap[t.DefaultValueS] = t.DefaultValueT
+		}
+	}
+	return columnDefaultValMap
 }
 
 func handleColumnRuleWithTaskLevel(taskRules []*migrate.TaskStructRule) (map[string]string, map[string]string) {

@@ -17,10 +17,13 @@ package stringutil
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"io"
+	"math/big"
 	"reflect"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/wentaojin/dbms/utils/constant"
@@ -59,15 +62,38 @@ func StringUpper(str string) string {
 	return strings.ToUpper(str)
 }
 
+// StringLower used for string lower, and returns lower string
+func StringLower(str string) string {
+	return strings.ToLower(str)
+}
+
+// StringUpperSlice used for string slice upper, and returns upper string
+func StringUpperSlice(strs []string) []string {
+	var newStrs []string
+	for _, s := range strs {
+		newStrs = append(newStrs, StringUpper(s))
+	}
+	return newStrs
+}
+
+// StringLowerSlice used for string slice lower, and returns lower string
+func StringLowerSlice(strs []string) []string {
+	var newStrs []string
+	for _, s := range strs {
+		newStrs = append(newStrs, StringLower(s))
+	}
+	return newStrs
+}
+
 // StringItemsFilterDifference used for filter difference items, and returns new array string
 func StringItemsFilterDifference(originItems, excludeItems []string) []string {
 	s1 := set.NewStringSet()
 	for _, t := range originItems {
-		s1.Add(strings.ToUpper(t))
+		s1.Add(t)
 	}
 	s2 := set.NewStringSet()
 	for _, t := range excludeItems {
-		s2.Add(strings.ToUpper(t))
+		s2.Add(t)
 	}
 	return strset.Difference(s1, s2).List()
 }
@@ -76,11 +102,11 @@ func StringItemsFilterDifference(originItems, excludeItems []string) []string {
 func StringItemsFilterIntersection(originItems, newItems []string) []string {
 	s1 := set.NewStringSet()
 	for _, t := range originItems {
-		s1.Add(strings.ToUpper(t))
+		s1.Add(t)
 	}
 	s2 := set.NewStringSet()
 	for _, t := range newItems {
-		s2.Add(strings.ToUpper(t))
+		s2.Add(t)
 	}
 	return strset.Intersection(s1, s2).List()
 }
@@ -213,6 +239,25 @@ func ExchangeStringDict(highPriority, lowPriority map[string]string) map[string]
 	}
 
 	return result
+}
+
+// GetRandomElem used for get random element
+func GetRandomElem(slice []string) (string, error) {
+	if len(slice) == 0 {
+		return "", fmt.Errorf("empty slice")
+	}
+
+	randomIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
+	if err != nil {
+		return "", err
+	}
+
+	return slice[randomIndex.Int64()], nil
+}
+
+// CurrentTimeFormatString used for format time string
+func CurrentTimeFormatString() string {
+	return time.Now().Format("2006-01-02 15:04:05.000000")
 }
 
 // CharsetConvert used for string data charset convert

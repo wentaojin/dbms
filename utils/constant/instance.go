@@ -20,12 +20,18 @@ import "time"
 // Master
 const (
 	// DefaultMasterDatabaseDBMSKey is used for saving dbms meta database infos
-	DefaultMasterDatabaseDBMSKey = "/dbms-master/database"
+	DefaultMasterDatabaseDBMSKey         = "/dbms-master/database"
+	DefaultMasterCrontabExpressPrefixKey = "/dbms-master/crontab/express"
+	DefaultMasterCrontabEntryPrefixKey   = "/dbms-master/crontab/entry"
 )
 
 // Worker
 const (
-	DefaultWorkerRegisterPrefixKey     = "/dbms-worker/"
+	DefaultWorkerRegisterPrefixKey     = "/dbms-worker/register/"
+	DefaultWorkerStatePrefixKey        = "/dbms-worker/state/"
+	DefaultWorkerBoundState            = "BOUND"
+	DefaultWorkerFreeState             = "FREE"
+	DefaultWorkerStoppedState          = "STOPPED"
 	DefaultWorkerServerDialTimeout     = 5 * time.Second
 	DefaultWorkerServerBackoffMaxDelay = 5 * time.Second
 )
@@ -37,17 +43,4 @@ const (
 
 	DefaultInstanceServiceRetryCounts   = 5
 	DefaultInstanceServiceRetryInterval = 5 * time.Second
-)
-
-// Task
-const (
-	DefaultScheduledTaskSubmitPrefixKey = "/task/submit/"
-	DefaultScheduledTaskKillPrefixKey   = "/task/kill/"
-	DefaultScheduledTaskLockPrefixKey   = "/task/lock/"
-
-	DefaultDistributedLockLease = 5
-
-	DefaultTaskActionSubmitEvent = 0
-	DefaultTaskActionDeleteEvent = 1
-	DefaultTaskActionKillEvent   = 2
 )
