@@ -315,11 +315,12 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 		TaskName:     *req.TaskName,
 		TaskRuleName: *req.TaskRuleName,
 		StructMigrateParam: &pb.StructMigrateParam{
-			CaseFieldRule: *req.StructMigrateParam.CaseFieldRule,
-			MigrateThread: *req.StructMigrateParam.MigrateThread,
-			TaskQueueSize: *req.StructMigrateParam.TaskQueueSize,
-			DirectWrite:   *req.StructMigrateParam.DirectWrite,
-			OutputDir:     *req.StructMigrateParam.OutputDir,
+			CaseFieldRule:    *req.StructMigrateParam.CaseFieldRule,
+			MigrateThread:    *req.StructMigrateParam.MigrateThread,
+			TaskQueueSize:    *req.StructMigrateParam.TaskQueueSize,
+			DirectWrite:      *req.StructMigrateParam.DirectWrite,
+			CreateIfNotExist: *req.StructMigrateParam.CreateIfNotExist,
+			OutputDir:        *req.StructMigrateParam.OutputDir,
 		},
 		StructMigrateRule: &pb.StructMigrateRule{
 			TaskStructRules:   taskLevelRules,

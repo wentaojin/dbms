@@ -28,8 +28,8 @@ import (
 )
 
 type IDatabase interface {
-	QueryContext(sqlStr string) (*sql.Rows, error)
-	ExecContext(sqlStr string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, sqlStr string) (*sql.Rows, error)
+	ExecContext(ctx context.Context, sqlStr string, args ...any) (sql.Result, error)
 	GeneralQuery(sqlStr string) ([]string, []map[string]string, error)
 	Close() error
 }

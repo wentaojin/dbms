@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unsafe"
 
 	"github.com/wentaojin/dbms/utils/constant"
 
@@ -321,56 +322,51 @@ func CharsetConvert(data []byte, fromCharset, toCharset string) ([]byte, error) 
 	}
 }
 
-// 如果存在特殊字符，直接在特殊字符前添加 \
+// BytesToString used for bytes to string, reduce memory
+func BytesToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+// If there are special characters, add \ directly before the special characters.
 /**
-判断是否为字母： unicode.IsLetter(v)
-判断是否为十进制数字： unicode.IsDigit(v)
-判断是否为数字： unicode.IsNumber(v)
-判断是否为空白符号： unicode.IsSpace(v)
-判断是否为特殊符号：unicode.IsSymbol(v)
-判断是否为Unicode标点字符 :unicode.IsPunct(v)
-判断是否为中文：unicode.Han(v)
+Determine whether it is a letter: unicode.IsLetter(v)
+Determine whether it is a decimal number: unicode.IsDigit(v)
+Determine whether it is a number: unicode.IsNumber(v)
+Determine whether it is a white space symbol: unicode.IsSpace(v)
+Determine whether it is a special symbol: unicode.IsSymbol(v)
+Determine whether it is a Unicode punctuation character: unicode.IsPunct(v)
+Determine whether it is Chinese: unicode.Han(v)
 */
 func SpecialLettersMySQLCompatibleDatabase(bs []byte) string {
+	var b strings.Builder
 
-	var (
-		b     strings.Builder
-		chars []rune
-	)
 	for _, r := range bytes.Runes(bs) {
 		if unicode.IsPunct(r) || unicode.IsSymbol(r) || unicode.IsSpace(r) {
-			// mysql/tidb % 字符, /% 代表 /%，% 代表 % ,无需转义
-			// mysql/tidb _ 字符, /_ 代表 /_，_ 代表 _ ,无需转义
+			// mysql/tidb % character, /% represents /%, % represents %, no need to escape
+			// mysql/tidb _ character, /_ represents /_, _ represents _, no need to escape
 			if r == '%' || r == '_' {
-				chars = append(chars, r)
+				b.WriteRune(r)
 			} else {
-				chars = append(chars, '\\', r)
+				b.WriteRune('\\')
+				b.WriteRune(r)
 			}
 		} else {
-			chars = append(chars, r)
+			b.WriteRune(r)
 		}
 	}
-
-	b.WriteString(string(chars))
-
 	return b.String()
 }
 
 func SpecialLettersOracleCompatibleDatabase(bs []byte) string {
+	var b strings.Builder
 
-	var (
-		b     strings.Builder
-		chars []rune
-	)
 	for _, r := range bytes.Runes(bs) {
 		if r == '\'' {
-			chars = append(chars, '\'', r)
+			b.WriteRune('\\')
+			b.WriteRune(r)
 		} else {
-			chars = append(chars, r)
+			b.WriteRune(r)
 		}
 	}
-
-	b.WriteString(string(chars))
-
 	return b.String()
 }

@@ -827,19 +827,9 @@ WHERE
 }
 
 func (d *Database) GetDatabaseTableOriginStruct(schemaName, tableName, tableType string) (string, error) {
-	_, err := d.ExecContext(`BEGIN
-	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', TRUE);
-	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'PRETTY', TRUE);
-	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', FALSE);
-	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'TABLESPACE', FALSE);
-	DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', FALSE);
-	END;`)
-	if err != nil {
-		return "", nil
-	}
 	ddlSql := fmt.Sprintf(`SELECT REGEXP_REPLACE(REPLACE(DBMS_METADATA.GET_DDL('%s','%s','%s'),'"'), ',\s*''NLS_CALENDAR=GREGORIAN''', '') ORIGIN_DDL FROM DUAL`, tableType, tableName, schemaName)
 
-	rows, err := d.QueryContext(ddlSql)
+	rows, err := d.QueryContext(d.Ctx, ddlSql)
 	if err != nil {
 		return "", err
 	}

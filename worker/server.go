@@ -242,10 +242,20 @@ func (s *Server) operateStructMigrateTask(ctx context.Context, t *task.Task, req
 	switch strings.ToUpper(req.Operate) {
 	case constant.TaskOperationStart:
 		go func() {
-			defer handlePanicRecover(ctx, t)
+			defer s.handlePanicRecover(ctx, t)
 			err := service.StartStructMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
 			if err != nil {
-				panic(err)
+				w := &etcdutil.Worker{
+					Addr:     s.WorkerOptions.WorkerAddr,
+					State:    constant.DefaultWorkerFailedState,
+					TaskName: t.TaskName,
+				}
+				_, errPut := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+				if errPut != nil {
+					panic(fmt.Errorf("the worker task [%v] failed, there are two errors, one is the worker write [%v] value failed: [%v], two is the worker task running failed: [%v]", t.TaskName, w.String(), errPut, err))
+				} else {
+					panic(fmt.Errorf("the worker task [%v] failed: [%v]", t.TaskName, err))
+				}
 			}
 			w := &etcdutil.Worker{
 				Addr:     s.WorkerOptions.WorkerAddr,
@@ -254,7 +264,7 @@ func (s *Server) operateStructMigrateTask(ctx context.Context, t *task.Task, req
 			}
 			_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
 			if err != nil {
-				panic(err)
+				panic(fmt.Errorf("the worker task [%v] success, but the worker status wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
 			}
 			s.cancelFunc()
 		}()
@@ -300,7 +310,7 @@ func (s *Server) operateStructMigrateTask(ctx context.Context, t *task.Task, req
 	}
 }
 
-func handlePanicRecover(ctx context.Context, t *task.Task) {
+func (s *Server) handlePanicRecover(ctx context.Context, t *task.Task) {
 	if r := recover(); r != nil {
 		err := model.Transaction(ctx, func(txnCtx context.Context) error {
 			_, err := model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
@@ -329,7 +339,7 @@ func handlePanicRecover(ctx context.Context, t *task.Task) {
 			return nil
 		})
 		logger.Error("the worker running task panic",
-			zap.String("task", t.TaskName),
+			zap.String("task_name", t.TaskName),
 			zap.Any("panic", r),
 			zap.Any("stack", string(debug.Stack())),
 			zap.Error(err))

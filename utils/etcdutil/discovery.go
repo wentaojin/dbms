@@ -175,6 +175,12 @@ func (d *Discovery) GetFreeWorker() (string, error) {
 					if strings.EqualFold(w.State, constant.DefaultWorkerStoppedState) && !strings.EqualFold(w.TaskName, "") {
 						return k, nil
 					}
+					if strings.EqualFold(w.State, constant.DefaultWorkerFailedState) && !strings.EqualFold(w.TaskName, "") {
+						return k, nil
+					}
+					if strings.EqualFold(w.State, constant.DefaultWorkerFailedState) && strings.EqualFold(w.TaskName, "") {
+						freeWorkers = append(freeWorkers, k)
+					}
 				}
 			}
 

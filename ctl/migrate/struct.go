@@ -32,11 +32,12 @@ type StructConfig struct {
 }
 
 type StructMigrateParam struct {
-	CaseFieldRule string `toml:"case-field-rule" json:"caseFieldRule"`
-	MigrateThread int64  `toml:"migrate-thread" json:"migrateThread"`
-	TaskQueueSize int64  `toml:"task-queue-size" json:"taskQueueSize"`
-	DirectWrite   bool   `toml:"direct-write" json:"directWrite"`
-	OutputDir     string `toml:"output-dir" json:"outputDir"`
+	CaseFieldRule    string `toml:"case-field-rule" json:"caseFieldRule"`
+	MigrateThread    int64  `toml:"migrate-thread" json:"migrateThread"`
+	TaskQueueSize    int64  `toml:"task-queue-size" json:"taskQueueSize"`
+	DirectWrite      bool   `toml:"direct-write" json:"directWrite"`
+	CreateIfNotExist bool   `toml:"create-if-not-exist" json:"createIfNotExist"`
+	OutputDir        string `toml:"output-dir" json:"outputDir"`
 }
 
 type StructMigrateRule struct {

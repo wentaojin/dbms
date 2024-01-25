@@ -102,17 +102,14 @@ func (rw *RWLog) TableName(ctx context.Context) string {
 }
 
 func (rw *RWLog) CreateLog(ctx context.Context, task *Log) (*Log, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}},
-		UpdateAll: true,
-	}).Create(task).Error
+	err := rw.DB(ctx).Create(task).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return task, nil
 }
 
-func (rw *RWLog) UpdateLog(ctx context.Context, task *Log, updates map[string]string) (*Log, error) {
+func (rw *RWLog) UpdateLog(ctx context.Context, task *Log, updates map[string]interface{}) (*Log, error) {
 	err := rw.DB(ctx).Model(&Log{}).Where("task_name = ?", task.ID).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
@@ -122,7 +119,7 @@ func (rw *RWLog) UpdateLog(ctx context.Context, task *Log, updates map[string]st
 
 func (rw *RWLog) QueryLog(ctx context.Context, task *Log) ([]*Log, error) {
 	var dataS []*Log
-	err := rw.DB(ctx).Model(&Log{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&Log{}).Where("task_name = ? order by created_at desc", task.TaskName).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -181,7 +178,7 @@ func (rw *RWStructMigrateTask) GetStructMigrateTask(ctx context.Context, task *S
 	return dataS, nil
 }
 
-func (rw *RWStructMigrateTask) UpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]string) (*StructMigrateTask, error) {
+func (rw *RWStructMigrateTask) UpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]interface{}) (*StructMigrateTask, error) {
 	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
@@ -189,7 +186,17 @@ func (rw *RWStructMigrateTask) UpdateStructMigrateTask(ctx context.Context, task
 	return task, nil
 }
 
-func (rw *RWStructMigrateTask) BatchUpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]string) (*StructMigrateTask, error) {
+func (rw *RWStructMigrateTask) GetStructMigrateTaskTable(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error) {
+	var dataS []*StructMigrateTask
+
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] table record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWStructMigrateTask) BatchUpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]interface{}) (*StructMigrateTask, error) {
 	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
@@ -258,7 +265,7 @@ func (rw *RWDataMigrateTask) CreateDataMigrateTask(ctx context.Context, task *Da
 	return task, nil
 }
 
-func (rw *RWDataMigrateTask) UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]string) (*DataMigrateTask, error) {
+func (rw *RWDataMigrateTask) UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error) {
 	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_detail_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkDetailS).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)

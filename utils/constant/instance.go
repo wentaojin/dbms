@@ -32,6 +32,7 @@ const (
 	DefaultWorkerBoundState            = "BOUND"
 	DefaultWorkerFreeState             = "FREE"
 	DefaultWorkerStoppedState          = "STOPPED"
+	DefaultWorkerFailedState           = "FAILED"
 	DefaultWorkerServerDialTimeout     = 5 * time.Second
 	DefaultWorkerServerBackoffMaxDelay = 5 * time.Second
 )

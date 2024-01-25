@@ -27,7 +27,7 @@ type ITask interface {
 
 type ILog interface {
 	CreateLog(ctx context.Context, l *Log) (*Log, error)
-	UpdateLog(ctx context.Context, l *Log, updates map[string]string) (*Log, error)
+	UpdateLog(ctx context.Context, l *Log, updates map[string]interface{}) (*Log, error)
 	QueryLog(ctx context.Context, l *Log) ([]*Log, error)
 	ListLog(ctx context.Context, page uint64, pageSize uint64) ([]*Log, error)
 	DeleteLog(ctx context.Context, taskName []string) error
@@ -36,8 +36,9 @@ type ILog interface {
 type IStructMigrateTask interface {
 	CreateStructMigrateTask(ctx context.Context, task *StructMigrateTask) (*StructMigrateTask, error)
 	GetStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
-	UpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]string) (*StructMigrateTask, error)
-	BatchUpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]string) (*StructMigrateTask, error)
+	GetStructMigrateTaskTable(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
+	UpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]interface{}) (*StructMigrateTask, error)
+	BatchUpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]interface{}) (*StructMigrateTask, error)
 	FindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	ListStructMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*StructMigrateTask, error)
@@ -46,7 +47,7 @@ type IStructMigrateTask interface {
 
 type IDataMigrateTask interface {
 	CreateDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error)
-	UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]string) (*DataMigrateTask, error)
+	UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
 	QueryDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
 	ListDataMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataMigrateTask, error)
 	DeleteDataMigrateTask(ctx context.Context, taskID uint64) error

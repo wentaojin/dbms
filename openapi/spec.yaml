@@ -485,6 +485,8 @@ components:
           format: uint64
         directWrite:
           type: boolean
+        createIfNotExist:
+          type: boolean
         outputDir:
           type: string
           format: string

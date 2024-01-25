@@ -245,8 +245,9 @@ message StructMigrateParam {
   string caseFieldRule = 1;
   uint64 migrateThread = 2;
   uint64 taskQueueSize = 3;
-  bool directWrite = 4;
-  string outputDir = 5;
+  bool createIfNotExist = 4;
+  bool directWrite = 5;
+  string outputDir = 6;
 }
 
 message StructMigrateRule {

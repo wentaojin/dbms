@@ -95,16 +95,20 @@ func IDatabaseTableAttributes(t ITableAttributesReader) (*TableAttributes, error
 }
 
 type ITableAttributesRuleReader interface {
-	GetTableNameRule() (map[string]string, map[string]string, error)
+	GetCreatePrefixRule() string
+	GetCaseFieldRule() string
+	GetSchemaNameRule() (map[string]string, error)
+	GetTableNameRule() (map[string]string, error)
 	GetTableColumnRule() (map[string]string, map[string]string, map[string]string, error)
 	GetTableAttributesRule() (string, error)
 	GetTableCommentRule() (string, error)
 	GetTableColumnCollationRule() (map[string]string, error)
 	GetTableColumnCommentRule() (map[string]string, error)
-	GetTableCaseFieldRule() string
 }
 
 type TableAttributesRule struct {
+	CreatePrefixRule       string            `json:"createPrefixRule"`
+	CaseFieldRule          string            `json:"caseFieldRule"`
 	SchemaNameRule         map[string]string `json:"schemaNameRule"`
 	TableNameRule          map[string]string `json:"tableNameRule"`
 	ColumnNameRule         map[string]string `json:"columnNameRule"`
@@ -113,16 +117,19 @@ type TableAttributesRule struct {
 	ColumnCollationRule    map[string]string `json:"columnCollationRule"`
 	ColumnCommentRule      map[string]string `json:"columnCommentRule"`
 	TableAttrRule          string            `json:"tableAttrRule"`
-	CaseFieldRule          string            `json:"caseFieldRule"`
 	TableCommentRule       string            `json:"tableCommentRule"`
 }
 
 func IDatabaseTableAttributesRule(t ITableAttributesRuleReader) (*TableAttributesRule, error) {
-	schemaNameRule, tableNameRule, err := t.GetTableNameRule()
+	schemaNameRule, err := t.GetSchemaNameRule()
 	if err != nil {
 		return &TableAttributesRule{}, err
 	}
-	nameRule, datatypeRule, defaultValRule, err := t.GetTableColumnRule()
+	tableNameRule, err := t.GetTableNameRule()
+	if err != nil {
+		return &TableAttributesRule{}, err
+	}
+	columnNameRule, datatypeRule, defaultValRule, err := t.GetTableColumnRule()
 	if err != nil {
 		return &TableAttributesRule{}, err
 	}
@@ -138,17 +145,22 @@ func IDatabaseTableAttributesRule(t ITableAttributesRuleReader) (*TableAttribute
 	if err != nil {
 		return &TableAttributesRule{}, err
 	}
-
+	commentRule, err := t.GetTableColumnCommentRule()
+	if err != nil {
+		return &TableAttributesRule{}, err
+	}
 	return &TableAttributesRule{
+			CreatePrefixRule:       t.GetCreatePrefixRule(),
+			CaseFieldRule:          t.GetCaseFieldRule(),
 			SchemaNameRule:         schemaNameRule,
 			TableNameRule:          tableNameRule,
-			ColumnNameRule:         nameRule,
+			ColumnNameRule:         columnNameRule,
 			ColumnDatatypeRule:     datatypeRule,
 			ColumnDefaultValueRule: defaultValRule,
 			ColumnCollationRule:    collationRule,
+			ColumnCommentRule:      commentRule,
 			TableAttrRule:          attr,
 			TableCommentRule:       rule,
-			CaseFieldRule:          t.GetTableCaseFieldRule(),
 		},
 		nil
 }
@@ -158,8 +170,9 @@ type ITableAttributesProcessor interface {
 	GenTableNameS() string
 	GenTableTypeS() string
 	GenTableOriginDDlS() string
-	GenSchemaNameT() string
-	GenTableNameT() string
+	GenSchemaNameT() (string, error)
+	GenTableNameT() (string, error)
+	GenTableCreatePrefixT() string
 	GenTableSuffix() (string, error)
 	GenTablePrimaryKey() (string, error)
 	GenTableUniqueKey() ([]string, error)
@@ -179,6 +192,7 @@ type TableStruct struct {
 	OriginDdlS           string   `json:"originDdlS"`
 	SchemaNameT          string   `json:"schemaNameT"`
 	TableNameT           string   `json:"tableNameT"`
+	TableCreatePrefixT   string   `json:"tableCreatePrefixT"`
 	TablePrimaryKey      string   `json:"tablePrimaryKey"`
 	TableColumns         []string `json:"tableColumns"`
 	TableUniqueKeys      []string `json:"tableUniqueKeys"`
@@ -186,14 +200,22 @@ type TableStruct struct {
 	TableUniqueIndexes   []string `json:"tableUniqueIndexes"`
 	TableSuffix          string   `json:"tableSuffix"`
 	TableComment         string   `json:"tableComment"`
-	TableCheckKeys       []string `json:"tableCheckKeys""`
+	TableColumnComment   []string `json:"tableColumnComment"`
+	TableCheckKeys       []string `json:"tableCheckKeys"`
 	TableForeignKeys     []string `json:"tableForeignKeys"`
 	TableIncompatibleDDL []string `json:"tableIncompatibleDDL"`
 }
 
 func IDatabaseTableStruct(p ITableAttributesProcessor) (*TableStruct, error) {
 	var incompatibleSqls []string
-
+	schemaNameT, err := p.GenSchemaNameT()
+	if err != nil {
+		return &TableStruct{}, err
+	}
+	tableNameT, err := p.GenTableNameT()
+	if err != nil {
+		return &TableStruct{}, err
+	}
 	columns, err := p.GenTableColumns()
 	if err != nil {
 		return &TableStruct{}, err
@@ -226,8 +248,11 @@ func IDatabaseTableStruct(p ITableAttributesProcessor) (*TableStruct, error) {
 	if err != nil {
 		return &TableStruct{}, err
 	}
-
 	foreignKeys, err := p.GenTableForeignKey()
+	if err != nil {
+		return &TableStruct{}, err
+	}
+	columnComments, err := p.GenTableColumnComment()
 	if err != nil {
 		return &TableStruct{}, err
 	}
@@ -244,8 +269,9 @@ func IDatabaseTableStruct(p ITableAttributesProcessor) (*TableStruct, error) {
 		TableNameS:           p.GenTableNameS(),
 		TableTypeS:           p.GenTableTypeS(),
 		OriginDdlS:           p.GenTableOriginDDlS(),
-		SchemaNameT:          p.GenSchemaNameT(),
-		TableNameT:           p.GenTableNameT(),
+		SchemaNameT:          schemaNameT,
+		TableNameT:           tableNameT,
+		TableCreatePrefixT:   p.GenTableCreatePrefixT(),
 		TablePrimaryKey:      primaryKey,
 		TableColumns:         columns,
 		TableUniqueKeys:      uniqueKeys,
@@ -253,6 +279,7 @@ func IDatabaseTableStruct(p ITableAttributesProcessor) (*TableStruct, error) {
 		TableUniqueIndexes:   uniqueIndexes,
 		TableSuffix:          tableSuffix,
 		TableComment:         tableComment,
+		TableColumnComment:   columnComments,
 		TableCheckKeys:       checkKeys,
 		TableForeignKeys:     foreignKeys,
 		TableIncompatibleDDL: incompatibleSqls,

@@ -20,22 +20,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wentaojin/dbms/utils/stringutil"
-
 	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
 type IPool interface {
-	// AddTask adds a task to the pool
-	AddTask(t Task)
+	// SubmitTask adds a task to the pool
+	SubmitTask(t Task)
 	// Wait waits for all tasks to be dispatched and completed.
 	Wait()
 	// Release releases the pool and all its workers.
 	Release()
-	// RunningWorkerCount returns the number of running workers.
+	// RunningWorkerCount returns the number of workers that are currently working
 	RunningWorkerCount() int
-	// GetPoolWorkerCount returns the number of workers.
-	GetPoolWorkerCount() int
+	// FreeWorkerCount returns the number of workers that are currently free
+	FreeWorkerCount() int
 }
 
 type Task struct {
@@ -45,9 +44,8 @@ type Task struct {
 }
 
 type Result struct {
-	Thread int
-	Task   Task
-	Error  error
+	Task  Task
+	Error error
 }
 
 type pool struct {
@@ -64,15 +62,14 @@ type pool struct {
 	resultCallback func(r Result)
 	// Set by WithRetryCount(), used to retry the error of a task, Default is 1
 	retryCount int
-	// Set by WithExecuteTimeout(), used to set a timeout for a task. Default is 0, which means no timeout.
-	executeTimeout time.Duration
 	// Set by WithPanicHandle(), used to set a method for a task, Default is false, which means meet panic report error
 	panicHandle bool
 	// Set by WithExecuteTask(), used to represent the worker need process task.
-	executeTaskFn func(ctx context.Context, t Task) error
-	ctx           context.Context
-	cancelFn      context.CancelFunc
+	executeHandleFn func(ctx context.Context, t Task) error
+	// Set by canceledHandleFn(), used ti represent the worker need process canceled task
+	canceledHandleFn func(ctx context.Context, t Task) error
 
+	ctx  context.Context
 	lock sync.Locker
 	// Conditional signals are a type of blocking wait between multiple goroutines. sync.Cond can be used to wait and notify goroutine mechanisms so that they can wait or continue execution under specific conditions
 	cond *sync.Cond
@@ -80,8 +77,6 @@ type pool struct {
 
 // NewPool creates a new pool of workers.
 func NewPool(ctx context.Context, maxWorkers int, opts ...Option) IPool {
-	cancelCtx, cancelFn := context.WithCancel(ctx)
-
 	p := &pool{
 		maxWorkers:     maxWorkers,
 		retryCount:     0,
@@ -91,9 +86,9 @@ func NewPool(ctx context.Context, maxWorkers int, opts ...Option) IPool {
 		lock:           new(sync.Mutex),
 		panicHandle:    false,
 
-		executeTaskFn: nil,
-		ctx:           cancelCtx,
-		cancelFn:      cancelFn,
+		ctx:              ctx,
+		executeHandleFn:  nil,
+		canceledHandleFn: nil,
 	}
 	// options
 	for _, opt := range opts {
@@ -110,7 +105,7 @@ func NewPool(ctx context.Context, maxWorkers int, opts ...Option) IPool {
 
 	// Create workers with the minimum number
 	for i := 0; i < p.maxWorkers; i++ {
-		w := newWorker(cancelCtx)
+		w := newWorker()
 		p.workers[i] = w
 		p.workerStack[i] = i
 		w.start(p, i)
@@ -121,7 +116,7 @@ func NewPool(ctx context.Context, maxWorkers int, opts ...Option) IPool {
 	return p
 }
 
-func (p *pool) AddTask(t Task) {
+func (p *pool) SubmitTask(t Task) {
 	p.taskQueue <- t
 }
 
@@ -137,23 +132,20 @@ func (p *pool) Wait() {
 	}
 }
 
-// RunningWorkerCount returns the number of workers that are currently working.
 func (p *pool) RunningWorkerCount() int {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	return len(p.workers) - len(p.workerStack)
 }
 
-// GetPoolWorkerCount returns the number of workers in the pool.
-func (p *pool) GetPoolWorkerCount() int {
+func (p *pool) FreeWorkerCount() int {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	return len(p.workers)
+	return len(p.workerStack)
 }
 
 func (p *pool) Release() {
 	close(p.taskQueue)
-	p.cancelFn()
 	p.cond.L.Lock()
 	for len(p.workerStack) != p.maxWorkers {
 		p.cond.Wait()

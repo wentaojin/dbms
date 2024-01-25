@@ -33,7 +33,7 @@ func main() {
 	go func() {
 		select {
 		case <-ctx.Done():
-			fmt.Println("Task canceled due ")
+			fmt.Println("Task canceled due to outer context cancel")
 		case <-time.After(2 * time.Second):
 			fmt.Println("Task completed successfully")
 		}

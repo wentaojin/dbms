@@ -68,8 +68,7 @@ func (e *Executor) Execute() {
 						p.Status = TaskDatabaseStatusFailed
 					}
 					_, err = model.GetITaskLogRW().CreateLog(e.ctx, &task.Log{
-						TaskName:   p.Task.Name,
-						WorkerAddr: p.Addr,
+						TaskName: p.Task.Name,
 					})
 					if err != nil {
 						panic(err)

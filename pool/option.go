@@ -17,23 +17,15 @@ package pool
 
 import (
 	"context"
-	"time"
 )
 
 // Option represents an option for the pool.
 type Option func(*pool)
 
-// WithExecuteTimeout sets the timeout for the pool.
-func WithExecuteTimeout(timeout time.Duration) Option {
+// WithExecuteHandle sets the task func for the pool.
+func WithExecuteHandle(taskFn func(ctx context.Context, t Task) error) Option {
 	return func(p *pool) {
-		p.executeTimeout = timeout
-	}
-}
-
-// WithExecuteTask sets the task func for the pool.
-func WithExecuteTask(taskFn func(ctx context.Context, t Task) error) Option {
-	return func(p *pool) {
-		p.executeTaskFn = taskFn
+		p.executeHandleFn = taskFn
 	}
 }
 
@@ -62,5 +54,12 @@ func WithTaskQueueSize(size int) Option {
 func WithPanicHandle(panicH bool) Option {
 	return func(p *pool) {
 		p.panicHandle = panicH
+	}
+}
+
+// WithCanceledHandle sets the method of the task canceled for the pool
+func WithCanceledHandle(cancelH func(ctx context.Context, t Task) error) Option {
+	return func(p *pool) {
+		p.canceledHandleFn = cancelH
 	}
 }

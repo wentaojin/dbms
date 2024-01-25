@@ -17,6 +17,7 @@ package taskflow
 
 import (
 	"github.com/wentaojin/dbms/database/oracle"
+	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
 type Datasource struct {
@@ -26,6 +27,7 @@ type Datasource struct {
 	TableTypeS       string           `json:"tableTypeS"`
 	CollationS       bool             `json:"collationS"`
 	DBCharsetS       string           `json:"dbCharsetS"`
+	DBCharsetT       string           `json:"dbCharsetT"`
 	SchemaCollationS string           `json:"schemaCollationS"`
 	TableCollationS  string           `json:"tableCollationS"`
 	DBNlsCompS       string           `json:"dbNlsCompS"`
@@ -69,4 +71,9 @@ func (d *Datasource) GetTableColumnComment() ([]map[string]string, error) {
 
 func (d *Datasource) GetTableOriginStruct() (string, error) {
 	return d.DatabaseS.GetDatabaseTableOriginStruct(d.SchemaNameS, d.TableNameS, d.TableTypeS)
+}
+
+func (d *Datasource) String() string {
+	jsonStr, _ := stringutil.MarshalJSON(d)
+	return jsonStr
 }

@@ -144,13 +144,21 @@ func (st *StructMigrateTask) Start() error {
 				if !ok {
 					return fmt.Errorf("oracle current task [%s] taskflow [%s] schema [%s] collation [%s] isn't support", st.TaskName, st.TaskFlow, schema, schemaCollationS)
 				}
-				createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", schemaNameT, dbCharsetT, targetSchemaCollation)
+				if st.TaskParams.CreateIfNotExist {
+					createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", schemaNameT, dbCharsetT, targetSchemaCollation)
+				} else {
+					createSchema = fmt.Sprintf("CREATE DATABASE `%s` DEFAULT CHARACTER SET %s COLLATE %s;", schemaNameT, dbCharsetT, targetSchemaCollation)
+				}
 			} else {
 				targetSchemaCollation, ok := constant.MigrateTableStructureDatabaseCollationMap[st.TaskFlow][stringutil.StringUpper(nlsComp)][dbCharsetT]
 				if !ok {
 					return fmt.Errorf("oracle current task [%s] taskflow [%s] schema [%s] nls_comp collation [%s] isn't support", st.TaskName, st.TaskFlow, schema, nlsComp)
 				}
-				createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", schemaNameT, dbCharsetT, targetSchemaCollation)
+				if st.TaskParams.CreateIfNotExist {
+					createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", schemaNameT, dbCharsetT, targetSchemaCollation)
+				} else {
+					createSchema = fmt.Sprintf("CREATE DATABASE `%s` DEFAULT CHARACTER SET %s COLLATE %s;", schemaNameT, dbCharsetT, targetSchemaCollation)
+				}
 			}
 		default:
 			return fmt.Errorf("oracle current task [%s] taskflow [%s] schema [%s] isn't support, please contact author or reselect", st.TaskName, st.TaskFlow, schema)
@@ -178,7 +186,7 @@ func (st *StructMigrateTask) Start() error {
 
 		// direct write database -> schema
 		if st.TaskParams.DirectWrite {
-			_, err = targetSource.ExecContext(createSchema)
+			_, err = targetSource.ExecContext(st.Ctx, createSchema)
 			if err != nil {
 				return err
 			}
@@ -203,7 +211,7 @@ func (st *StructMigrateTask) Start() error {
 					errW := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(txnCtx,
 							&task.StructMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS},
-							map[string]string{
+							map[string]interface{}{
 								"TaskStatus":  constant.TaskDatabaseStatusFailed,
 								"ErrorDetail": r.Error.Error(),
 							})
@@ -211,11 +219,14 @@ func (st *StructMigrateTask) Start() error {
 							return err
 						}
 						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-							TaskName: smt.TaskName,
-							LogDetail: fmt.Sprintf("%v [%v] struct migrate task [%v] source table [%v.%v] failed, please see [struct_migrate_task] detail",
-								time.Now(),
+							TaskName:    smt.TaskName,
+							SchemaNameS: smt.SchemaNameS,
+							TableNameS:  smt.TableNameS,
+							LogDetail: fmt.Sprintf("%v [%v] struct migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [struct_migrate_task] detail",
+								stringutil.CurrentTimeFormatString(),
 								constant.TaskModeStructMigrate,
 								smt.TaskName,
+								st.TaskFlow,
 								smt.SchemaNameS,
 								smt.TableNameS),
 						})
@@ -225,11 +236,57 @@ func (st *StructMigrateTask) Start() error {
 						return nil
 					})
 					if errW != nil {
-						panic(fmt.Sprintf("oracle current task [%s] taskflow [%s] schema [%s] table [%s] struct migrate task panic: %v", r.Task.Group, st.TaskFlow, smt.SchemaNameS, smt.TableNameS, errW))
+						panic(errW)
 					}
 				}
 			}),
-			pool.WithExecuteTask(func(ctx context.Context, t pool.Task) error {
+			pool.WithCanceledHandle(func(ctx context.Context, t pool.Task) error {
+				smt := t.Job.(*task.StructMigrateTask)
+				errW := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
+					tableS, err := model.GetIStructMigrateTaskRW().GetStructMigrateTaskTable(txnCtx,
+						&task.StructMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS})
+					if err != nil {
+						return err
+					}
+					if len(tableS) > 0 {
+						return fmt.Errorf("the table [struct_migrate_task] task_name [%v] schema_name_s [%v] and table_name_s [%s] records can't be over one", smt.TaskName, smt.SchemaNameS, smt.TableNameS)
+					}
+
+					if strings.EqualFold(tableS[0].TaskStatus, constant.TaskDatabaseStatusStopped) {
+						return nil
+					}
+
+					_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(txnCtx,
+						&task.StructMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS},
+						map[string]interface{}{
+							"TaskStatus":  constant.TaskDatabaseStatusStopped,
+							"ErrorDetail": fmt.Sprintf("the struct migrate task [%v] source table [%v.%v] had be canceled", smt.TaskName, smt.SchemaNameS, smt.TableNameS),
+						})
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    smt.TaskName,
+						SchemaNameS: smt.SchemaNameS,
+						TableNameS:  smt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] struct migrate task [%v] source table [%v.%v] had be canceled, please see [struct_migrate_task] detail",
+							stringutil.CurrentTimeFormatString(),
+							constant.TaskModeStructMigrate,
+							smt.TaskName,
+							smt.SchemaNameS,
+							smt.TableNameS),
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+				if errW != nil {
+					return errW
+				}
+				return nil
+			}),
+			pool.WithExecuteHandle(func(ctx context.Context, t pool.Task) error {
 				startTime := time.Now()
 				smt := t.Job.(*task.StructMigrateTask)
 
@@ -262,14 +319,16 @@ func (st *StructMigrateTask) Start() error {
 						TaskName:    t.Name,
 						SchemaNameS: smt.SchemaNameS,
 						TableNameS:  smt.TableNameS},
-						map[string]string{
+						map[string]interface{}{
 							"TaskStatus": constant.TaskDatabaseStatusRunning,
 						})
 					if err != nil {
 						return err
 					}
 					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-						TaskName: t.Name,
+						TaskName:    t.Name,
+						SchemaNameS: smt.SchemaNameS,
+						TableNameS:  smt.TableNameS,
 						LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] source table [%v.%v] starting",
 							stringutil.CurrentTimeFormatString(),
 							stringutil.StringLower(constant.TaskModeStructMigrate),
@@ -294,12 +353,13 @@ func (st *StructMigrateTask) Start() error {
 					TableTypeS:       smt.TableTypeS,
 					CollationS:       dbCollationS,
 					DBCharsetS:       dbCharsetS,
+					DBCharsetT:       dbCharsetT,
 					SchemaCollationS: schemaCollationS,
 					TableCollationS:  tableCollationS[smt.TableNameS],
 					DBNlsCompS:       nlsComp,
 				}
 
-				attributes, err := database.IDatabaseTableAttributes(dataSource)
+				attrs, err := database.IDatabaseTableAttributes(dataSource)
 				if err != nil {
 					return err
 				}
@@ -308,7 +368,8 @@ func (st *StructMigrateTask) Start() error {
 					zap.String("task_flow", st.TaskFlow),
 					zap.String("schema_name_s", smt.SchemaNameS),
 					zap.String("table_name_s", smt.TableNameS),
-					zap.String("task_stage", "datasource reader"),
+					zap.String("task_stage", "datasource"),
+					zap.String("datasource", dataSource.String()),
 					zap.String("cost", time.Now().Sub(sourceTime).String()))
 				ruleTime := time.Now()
 				dataRule := &Rule{
@@ -318,10 +379,11 @@ func (st *StructMigrateTask) Start() error {
 					TaskRuleName:             st.TaskRuleName,
 					SchemaNameS:              smt.SchemaNameS,
 					TableNameS:               smt.TableNameS,
-					TablePrimaryKeyS:         attributes.PrimaryKey,
-					TableColumnsS:            attributes.TableColumns,
-					TableCommentS:            attributes.TableComment,
+					TablePrimaryAttrs:        attrs.PrimaryKey,
+					TableColumnsAttrs:        attrs.TableColumns,
+					TableCommentAttrs:        attrs.TableComment,
 					CaseFieldRule:            st.TaskParams.CaseFieldRule,
+					CreateIfNotExist:         st.TaskParams.CreateIfNotExist,
 					DBCollationS:             dbCollationS,
 					DBCharsetS:               dbCharsetS,
 					DBCharsetT:               dbCharsetT,
@@ -338,7 +400,8 @@ func (st *StructMigrateTask) Start() error {
 					zap.String("task_flow", st.TaskFlow),
 					zap.String("schema_name_s", smt.SchemaNameS),
 					zap.String("table_name_s", smt.TableNameS),
-					zap.String("task_stage", "rule generate"),
+					zap.String("task_stage", "rule"),
+					zap.String("rule", dataRule.String()),
 					zap.String("cost", time.Now().Sub(ruleTime).String()))
 
 				tableTime := time.Now()
@@ -346,7 +409,7 @@ func (st *StructMigrateTask) Start() error {
 					TaskName:            st.TaskName,
 					TaskFlow:            st.TaskFlow,
 					Datasource:          dataSource,
-					TableAttributes:     attributes,
+					TableAttributes:     attrs,
 					TableAttributesRule: rules,
 				}
 
@@ -360,8 +423,8 @@ func (st *StructMigrateTask) Start() error {
 					zap.String("task_flow", st.TaskFlow),
 					zap.String("schema_name_s", smt.SchemaNameS),
 					zap.String("table_name_s", smt.TableNameS),
-					zap.String("task_stage", "struct generate"),
-					zap.String("table detail", dataTable.String()),
+					zap.String("task_stage", "struct"),
+					zap.String("struct", dataTable.String()),
 					zap.String("cost", time.Now().Sub(tableTime).String()))
 
 				writerTime := time.Now()
@@ -380,33 +443,27 @@ func (st *StructMigrateTask) Start() error {
 						zap.String("table_name_s", smt.TableNameS),
 						zap.String("task_stage", "struct sync database"),
 						zap.String("cost", time.Now().Sub(writerTime).String()))
-				} else {
-					err = w.WriteStructDatabase()
-					if err != nil {
-						return err
-					}
-					logger.Info("struct migrate task",
-						zap.String("task_name", st.TaskName),
-						zap.String("task_flow", st.TaskFlow),
-						zap.String("schema_name_s", smt.SchemaNameS),
-						zap.String("table_name_s", smt.TableNameS),
-						zap.String("task_stage", "struct write database"),
-						zap.String("cost", time.Now().Sub(writerTime).String()))
+
+					return nil
 				}
 
+				err = w.WriteStructDatabase()
+				if err != nil {
+					return err
+				}
 				logger.Info("struct migrate task",
 					zap.String("task_name", st.TaskName),
 					zap.String("task_flow", st.TaskFlow),
 					zap.String("schema_name_s", smt.SchemaNameS),
 					zap.String("table_name_s", smt.TableNameS),
-					zap.String("task_status", constant.TaskDatabaseStatusSuccess),
-					zap.String("cost", time.Now().Sub(startTime).String()))
+					zap.String("task_stage", "struct write database"),
+					zap.String("cost", time.Now().Sub(writerTime).String()))
 
 				return nil
 			}))
 
 		for _, taskJob := range tasks {
-			p.AddTask(pool.Task{
+			p.SubmitTask(pool.Task{
 				Name:  st.TaskName,
 				Group: st.TaskName,
 				Job:   taskJob,
@@ -420,27 +477,6 @@ func (st *StructMigrateTask) Start() error {
 		err = sourceSource.Close()
 		if err != nil {
 			return err
-		}
-
-		// write file
-		if !st.TaskParams.DirectWrite {
-			writerTime := time.Now()
-			var w database.ITableStructFileWriter
-			w = NewStructMigrateFile(st.Ctx, st.TaskName, st.TaskFlow, schema, st.TaskParams.OutputDir)
-			err = w.InitOutputFile()
-			if err != nil {
-				return err
-			}
-			err = w.SyncStructFile()
-			if err != nil {
-				return err
-			}
-			logger.Info("struct migrate task",
-				zap.String("task_name", st.TaskName),
-				zap.String("task_flow", st.TaskFlow),
-				zap.String("schema_name_s", schema),
-				zap.String("task_stage", "struct sync file"),
-				zap.String("cost", time.Now().Sub(writerTime).String()))
 		}
 		logger.Info("struct migrate task",
 			zap.String("task_name", st.TaskName),

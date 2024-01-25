@@ -81,12 +81,12 @@ func PingDatabaseConnection(datasource *datasource.Datasource) error {
 	return nil
 }
 
-func (d *Database) QueryContext(query string) (*sql.Rows, error) {
-	return d.DBConn.QueryContext(d.Ctx, query)
+func (d *Database) QueryContext(ctx context.Context, query string) (*sql.Rows, error) {
+	return d.DBConn.QueryContext(ctx, query)
 }
 
-func (d *Database) ExecContext(query string, args ...any) (sql.Result, error) {
-	return d.DBConn.ExecContext(d.Ctx, query, args...)
+func (d *Database) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return d.DBConn.ExecContext(ctx, query, args...)
 }
 
 func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, error) {
@@ -94,7 +94,7 @@ func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, er
 		columns []string
 		results []map[string]string
 	)
-	rows, err := d.QueryContext(query)
+	rows, err := d.QueryContext(d.Ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}

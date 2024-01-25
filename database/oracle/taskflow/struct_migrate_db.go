@@ -63,8 +63,8 @@ func (s *StructMigrateDatabase) WriteStructDatabase() error {
 		_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(txnCtx, &task.StructMigrateTask{
 			TaskName:    s.TaskName,
 			SchemaNameS: s.TableStruct.SchemaNameS,
-			TableNameS:  s.TableStruct.TableNameT,
-		}, map[string]string{
+			TableNameS:  s.TableStruct.TableNameS,
+		}, map[string]interface{}{
 			"TaskStatus":      constant.TaskDatabaseStatusSuccess,
 			"SourceSqlDigest": originSqlDigest,
 			"TargetSqlDigest": compDigest,
@@ -75,7 +75,9 @@ func (s *StructMigrateDatabase) WriteStructDatabase() error {
 			return err
 		}
 		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-			TaskName: s.TaskName,
+			TaskName:    s.TaskName,
+			SchemaNameS: s.TableStruct.SchemaNameS,
+			TableNameS:  s.TableStruct.TableNameS,
 			LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] source table [%v.%v] success, cost [%v]",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeStructMigrate),
@@ -106,19 +108,20 @@ func (s *StructMigrateDatabase) SyncStructDatabase() error {
 		return err
 	}
 
-	for _, ddl := range strings.Split(ddlSql, "\n") {
-		_, err = s.DatasourceT.ExecContext(ddl)
-		if err != nil {
-			return err
-		}
-	}
 	err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+		for _, d := range strings.Split(ddlSql, "\t\n") {
+			ddl := strings.ReplaceAll(d, "\n", "")
+			_, err = s.DatasourceT.ExecContext(txnCtx, ddl)
+			if err != nil {
+				return fmt.Errorf("the datasource exec ddl sql [%v] failed: [%v]", ddl, err)
+			}
+		}
 		duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
 		_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(txnCtx, &task.StructMigrateTask{
 			TaskName:    s.TaskName,
 			SchemaNameS: s.TableStruct.SchemaNameS,
-			TableNameS:  s.TableStruct.TableNameT,
-		}, map[string]string{
+			TableNameS:  s.TableStruct.TableNameS,
+		}, map[string]interface{}{
 			"TaskStatus":      constant.TaskDatabaseStatusSuccess,
 			"SourceSqlDigest": originSqlDigest,
 			"TargetSqlDigest": compDigest,
@@ -129,7 +132,9 @@ func (s *StructMigrateDatabase) SyncStructDatabase() error {
 			return err
 		}
 		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-			TaskName: s.TaskName,
+			TaskName:    s.TaskName,
+			SchemaNameS: s.TableStruct.SchemaNameS,
+			TableNameS:  s.TableStruct.TableNameS,
 			LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] source table [%v.%v] success, cost [%v]",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeStructMigrate),
@@ -176,7 +181,7 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		compatibleSql   []string
 	)
 
-	bf.WriteString(fmt.Sprintf("CREATE TABLE %s.%s (\n", s.TableStruct.SchemaNameT, s.TableStruct.TableNameT))
+	bf.WriteString(fmt.Sprintf("%s %s.%s (\n", s.TableStruct.TableCreatePrefixT, s.TableStruct.SchemaNameT, s.TableStruct.TableNameT))
 	bf.WriteString(strings.Join(s.TableStruct.TableColumns, ",\n"))
 
 	switch {
@@ -198,7 +203,7 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		}
 
 		if len(tableKeys) > 0 {
-			bf.WriteString(strings.Join(tableKeys, ",\n"))
+			bf.WriteString(", " + strings.Join(tableKeys, ",\n"))
 		}
 
 		if strings.EqualFold(s.TableStruct.TableComment, "") {
@@ -216,9 +221,13 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		compatibleSql = append(compatibleSql, bf.String())
 
 		zap.L().Info("migrate oracle table struct",
-			zap.String("schema", s.TableStruct.SchemaNameT),
-			zap.String("table", s.TableStruct.TableNameT),
-			zap.String("struct sql", bf.String()))
+			zap.String("task_name", s.TaskName),
+			zap.String("task_flow", s.TaskFlow),
+			zap.String("schema_name_s", s.TableStruct.SchemaNameS),
+			zap.String("table_name_s", s.TableStruct.TableNameS),
+			zap.String("schema_name_t", s.TableStruct.SchemaNameT),
+			zap.String("table_name_t", s.TableStruct.TableNameT),
+			zap.String("table_struct_sql", strings.ReplaceAll(bf.String(), "\n", "")))
 
 		// not support ddl sql
 		if len(s.TableStruct.TableIncompatibleDDL) > 0 {
@@ -230,9 +239,13 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 				fkSQL := fmt.Sprintf("ALTER TABLE `%s`.`%s` ADD %s;",
 					s.TableStruct.SchemaNameT, s.TableStruct.TableNameT, fk)
 				zap.L().Info("migrate oracle table foreign key",
-					zap.String("schema", s.TableStruct.SchemaNameT),
-					zap.String("table", s.TableStruct.TableNameT),
-					zap.String("fk sql", fkSQL))
+					zap.String("task_name", s.TaskName),
+					zap.String("task_flow", s.TaskFlow),
+					zap.String("schema_name_s", s.TableStruct.SchemaNameS),
+					zap.String("table_name_s", s.TableStruct.TableNameS),
+					zap.String("schema_name_t", s.TableStruct.SchemaNameT),
+					zap.String("table_name_t", s.TableStruct.TableNameT),
+					zap.String("foreign_key_sql", fkSQL))
 				foreignKeySql = append(foreignKeySql, fkSQL)
 			}
 		}
@@ -241,9 +254,13 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 				ckSQL := fmt.Sprintf("ALTER TABLE `%s`.`%s` ADD %s;",
 					s.TableStruct.SchemaNameT, s.TableStruct.SchemaNameT, ck)
 				zap.L().Info("migrate oracle table check key",
-					zap.String("schema", s.TableStruct.SchemaNameT),
-					zap.String("table", s.TableStruct.TableNameT),
-					zap.String("ck sql", ckSQL))
+					zap.String("task_name", s.TaskName),
+					zap.String("task_flow", s.TaskFlow),
+					zap.String("schema_name_s", s.TableStruct.SchemaNameS),
+					zap.String("table_name_s", s.TableStruct.TableNameS),
+					zap.String("schema_name_t", s.TableStruct.SchemaNameT),
+					zap.String("table_name_t", s.TableStruct.TableNameT),
+					zap.String("check_key_sql", ckSQL))
 				checkKeySql = append(checkKeySql, ckSQL)
 			}
 		}

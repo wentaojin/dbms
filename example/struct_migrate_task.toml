@@ -6,6 +6,7 @@ case-field-rule = "1"
 migrate-thread = 10
 task-queue-size = 1024
 direct-write = true
+create-if-not-exist = true
 output-dir = ""
 
 [struct-migrate-rule]

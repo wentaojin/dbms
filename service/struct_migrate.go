@@ -244,12 +244,18 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 			return err
 		}
 
+		createIfNotExist, err := strconv.ParseBool(paramMap[constant.ParamNameStructMigrateCreateIfNotExist])
+		if err != nil {
+			return err
+		}
+
 		param = &pb.StructMigrateParam{
-			CaseFieldRule: paramMap[constant.ParamNameStructMigrateCaseFieldRule],
-			MigrateThread: uint64(migrateThread),
-			TaskQueueSize: uint64(taskQueueSize),
-			DirectWrite:   directWrite,
-			OutputDir:     paramMap[constant.ParamNameStructMigrateOutputDir],
+			CaseFieldRule:    paramMap[constant.ParamNameStructMigrateCaseFieldRule],
+			MigrateThread:    uint64(migrateThread),
+			TaskQueueSize:    uint64(taskQueueSize),
+			DirectWrite:      directWrite,
+			CreateIfNotExist: createIfNotExist,
+			OutputDir:        paramMap[constant.ParamNameStructMigrateOutputDir],
 		}
 
 		taskRules, err := model.GetIStructMigrateTaskRuleRW().QueryTaskStructRule(txnCtx, &migrate.TaskStructRule{TaskName: req.TaskName})
@@ -375,12 +381,11 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		return err
 	}
 
-	paramsTime := time.Now()
+	logger.Info("struct migrate task get params", zap.String("task_name", taskName))
 	taskParams, err := getStructMigrateTasKParams(ctx, taskName)
 	if err != nil {
 		return err
 	}
-	logger.Info("struct migrate task get params", zap.String("task_name", taskName), zap.String("cost", time.Now().Sub(paramsTime).String()))
 
 	logger.Info("struct migrate task init task", zap.String("task_name", taskName))
 	err = initStructMigrateTask(ctx, taskName, taskParams.CaseFieldRule)
@@ -464,35 +469,38 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 	}
 
 	// status
-	var migrateFailedResults []*task.StructMigrateTask
+	var (
+		migrateFailedResults []*task.StructMigrateTask
+		migrateWaitResults   []*task.StructMigrateTask
+		migrateRunResults    []*task.StructMigrateTask
+	)
 
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		// get migrate task tables
-		migrateSchemaFails, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName,
-			TaskStatus: constant.TaskDatabaseStatusFailed, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlYES})
+		migrateFailedResults, err = model.GetIStructMigrateTaskRW().FindStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName,
+			TaskStatus: constant.TaskDatabaseStatusFailed})
 		if err != nil {
 			return err
 		}
-		migrateTaskFails, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName, TaskStatus: constant.TaskDatabaseStatusFailed, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+
+		migrateWaitResults, err = model.GetIStructMigrateTaskRW().FindStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName,
+			TaskStatus: constant.TaskDatabaseStatusWaiting})
 		if err != nil {
 			return err
 		}
-		migrateFailedResults = append(migrateFailedResults, migrateSchemaFails...)
-		migrateFailedResults = append(migrateFailedResults, migrateTaskFails...)
+		migrateRunResults, err = model.GetIStructMigrateTaskRW().FindStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName,
+			TaskStatus: constant.TaskDatabaseStatusRunning})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	if len(migrateFailedResults) > 0 {
+	if len(migrateFailedResults) > 0 || len(migrateWaitResults) > 0 || len(migrateRunResults) > 0 {
 		err = model.Transaction(ctx, func(txnCtx context.Context) error {
-			taskInfo, err := model.GetITaskRW().GetTask(txnCtx, &task.Task{
-				TaskName: taskName,
-			})
-			if err != nil {
-				return err
-			}
 			_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
 				TaskName: taskName,
 			}, map[string]interface{}{
@@ -504,12 +512,14 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 			}
 			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 				TaskName: taskName,
-				LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] are exist failed record [%d] during running operation, please see [struct_migrate_task] detail",
+				LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] are exist failed [%d] or waiting [%d] or running [%d] status records during running operation, please see [struct_migrate_task] detail",
 					stringutil.CurrentTimeFormatString(),
 					stringutil.StringLower(constant.TaskModeStructMigrate),
 					taskInfo.WorkerAddr,
 					taskName,
-					len(migrateFailedResults)),
+					len(migrateFailedResults),
+					len(migrateWaitResults),
+					len(migrateRunResults)),
 			})
 			if err != nil {
 				return err
@@ -520,15 +530,17 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 			return err
 		}
 
+		logger.Info("struct migrate task failed",
+			zap.String("task_name", taskName),
+			zap.Int("total records", len(migrateTasks)),
+			zap.Int("failed records", len(migrateFailedResults)),
+			zap.Int("wait records", len(migrateWaitResults)),
+			zap.Int("running records", len(migrateRunResults)),
+			zap.String("detail tips", "please see [struct_migrate_task] detail"),
+			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
 	}
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
-		taskInfo, err := model.GetITaskRW().GetTask(txnCtx, &task.Task{
-			TaskName: taskName,
-		})
-		if err != nil {
-			return err
-		}
 		_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
 			TaskName: taskName,
 		}, map[string]interface{}{
@@ -558,6 +570,8 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 
 	logger.Info("struct migrate task success",
 		zap.String("task_name", taskName),
+		zap.Int("total records", len(migrateTasks)),
+		zap.String("detail tips", "please see [struct_migrate_task] detail"),
 		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
 }
@@ -575,7 +589,7 @@ func StopStructMigrateTask(ctx context.Context, taskName string) error {
 		_, err = model.GetIStructMigrateTaskRW().BatchUpdateStructMigrateTask(txnCtx, &task.StructMigrateTask{
 			TaskName:   taskName,
 			TaskStatus: constant.TaskDatabaseStatusRunning,
-		}, map[string]string{
+		}, map[string]interface{}{
 			"TaskStatus": constant.TaskDatabaseStatusStopped,
 		})
 		if err != nil {
@@ -619,6 +633,13 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 				return taskParam, err
 			}
 			taskParam.TaskQueueSize = taskQueueSize
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateCreateIfNotExist) {
+			createIfNotExist, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.CreateIfNotExist = createIfNotExist
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateDirectWrite) {
 			directBool, err := strconv.ParseBool(p.ParamValue)
