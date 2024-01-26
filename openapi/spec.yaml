@@ -156,79 +156,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Response'
-  /rule:
-    put:
-      tags:
-        - rule
-      description: Put task migrate rule information
-      operationId: APIPutRule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Rule'
-      responses:
-        '200':
-          description: task migrate rule create success response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-    post:
-      tags:
-        - rule
-      description: List task migrate rule connect information
-      operationId: APIListRule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestPostParam'
-      responses:
-        '201':
-          description: page array of datasource list success responses
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-    delete:
-      tags:
-        - rule
-      description: Delete task migrate rule connection information
-      operationId: APIDeleteRule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestDeleteParam'
-      responses:
-        '204':
-          description: rule delete success response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
   /task/structMigrate:
     put:
       tags:
@@ -396,43 +323,21 @@ components:
         comment:
           type: string
           format: string
-    Rule:
-      type: object
-      properties:
-        taskRuleName:
-          type: string
-          format: string
-        datasourceNameS:
-          type: string
-          format: string
-        datasourceNameT:
-          type: string
-          format: string
-        comment:
-          type: string
-          format: string
-        schemaRouteRules:
-          type: array
-          items:
-            $ref: '#/components/schemas/SchemaRouteRule'
     SchemaRouteRule:
       type: object
       properties:
-        sourceSchema:
+        schemaNameS:
           type: string
           format: string
-        targetSchema:
+        schemaNameT:
           type: string
           format: string
-        caseFieldRule:
-          type: string
-          format: string
-        sourceIncludeTable:
+        includeTableS:
           type: array
           items:
             type: string
             format: string
-        sourceExcludeTable:
+        excludeTableS:
           type: array
           items:
             type: string
@@ -444,13 +349,10 @@ components:
     TableRouteRule:
       type: object
       properties:
-        sourceTable:
+        tableNameS:
           type: string
           format: string
-        targetTable:
-          type: string
-          format: string
-        caseFieldRule:
+        tableNameT:
           type: string
           format: string
         columnRouteRules:
@@ -464,9 +366,21 @@ components:
         taskName:
           type: string
           format: string
-        taskRuleName:
+        datasourceNameS:
           type: string
           format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        schemaRouteRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaRouteRule'
         structMigrateParam:
           $ref: '#/components/schemas/StructMigrateParam'
         structMigrateRule:
@@ -474,9 +388,6 @@ components:
     StructMigrateParam:
       type: object
       properties:
-        caseFieldRule:
-          type: string
-          format: string
         migrateThread:
           type: integer
           format: uint64
@@ -488,6 +399,15 @@ components:
         createIfNotExist:
           type: boolean
         outputDir:
+          type: string
+          format: string
+    CaseFieldRule:
+      type: object
+      properties:
+        caseFieldRuleS:
+          type: string
+          format: string
+        caseFieldRuleT:
           type: string
           format: string
     StructMigrateRule:
@@ -531,7 +451,7 @@ components:
     SchemaStructRule:
       type: object
       properties:
-        sourceSchema:
+        schemaNameS:
           type: string
           format: string
         columnTypeS:
@@ -549,10 +469,10 @@ components:
     TableStructRule:
       type: object
       properties:
-        sourceSchema:
+        schemaNameS:
           type: string
           format: string
-        sourceTable:
+        tableNameS:
           type: string
           format: string
         columnTypeS:
@@ -570,13 +490,13 @@ components:
     ColumnStructRule:
       type: object
       properties:
-        sourceSchema:
+        schemaNameS:
           type: string
           format: string
-        sourceTable:
+        tableNameS:
           type: string
           format: string
-        sourceColumn:
+        columnNameS:
           type: string
           format: string
         columnTypeS:
@@ -594,10 +514,10 @@ components:
     TableAttrsRule:
       type: object
       properties:
-        sourceSchema:
+        schemaNameS:
           type: string
           format: string
-        sourceTables:
+        tableNamesS:
           type: array
           items:
             type: string

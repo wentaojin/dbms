@@ -34,7 +34,6 @@ const (
 	APIDatasourcePath    = "datasource"
 	APITaskPath          = "task"
 	APIStructMigratePath = "structMigrate"
-	APITaskRulePath      = "rule"
 )
 
 const (

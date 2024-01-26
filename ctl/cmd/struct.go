@@ -16,8 +16,11 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	"github.com/wentaojin/dbms/service"
 
 	"github.com/wentaojin/dbms/ctl/migrate"
 
@@ -93,7 +96,7 @@ func (a *AppStructUpsert) RunE(cmd *cobra.Command, args []string) error {
 
 type AppStructDelete struct {
 	*AppStruct
-	name string
+	task string
 }
 
 func (a *AppStruct) AppStructDelete() Cmder {
@@ -109,13 +112,13 @@ func (a *AppStructDelete) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-	cmd.Flags().StringVarP(&a.name, "name", "n", "xxx", "delete struct task name")
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "delete struct task task")
 	return cmd
 }
 
 func (a *AppStructDelete) RunE(cmd *cobra.Command, args []string) error {
-	if strings.EqualFold(a.name, "") {
-		return fmt.Errorf("flag parameter [name] is requirement, can not null")
+	if strings.EqualFold(a.task, "") {
+		return fmt.Errorf("flag parameter [task] is requirement, can not null")
 	}
 
 	if len(args) > 0 {
@@ -124,17 +127,17 @@ func (a *AppStructDelete) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.DeleteStructMigrate(a.Server, a.name)
+	err := migrate.DeleteStructMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete Struct Migrate Task [%v]！！！\n", a.name)
+	fmt.Printf("Success Delete Struct Migrate Task [%v]！！！\n", a.task)
 	return nil
 }
 
 type AppStructGet struct {
 	*AppStruct
-	name string
+	task string
 }
 
 func (a *AppStruct) AppStructGet() Cmder {
@@ -160,10 +163,53 @@ func (a *AppStructGet) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.GetStructMigrate(a.Server, a.name)
+	err := migrate.GetStructMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+type AppStructGen struct {
+	*AppStruct
+	task      string
+	outputDir string
+}
+
+func (a *AppStruct) AppStructGen() Cmder {
+	return &AppStructGen{AppStruct: a}
+}
+
+func (a *AppStructGen) Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:              "gen",
+		Short:            "gen cluster struct migrate task file",
+		Long:             `gen cluster struct migrate task file`,
+		RunE:             a.RunE,
+		TraverseChildren: true,
+		SilenceUsage:     true,
+	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the struct migrate task")
+	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the struct migrate task output file dir")
+	return cmd
+}
+
+func (a *AppStructGen) RunE(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		if err := cmd.Help(); err != nil {
+			return err
+		}
+	}
+	if strings.EqualFold(a.task, "") || strings.EqualFold(a.outputDir, "") {
+		return fmt.Errorf("flag parameter [task] and [outputDir] are requirement, can not null")
+	}
+
+	err := service.GenStructMigrateTask(context.Background(), a.Server, a.task, a.outputDir)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(fmt.Sprintf("the struct migrate task ddl sql file output [%v], please forward to view", a.outputDir))
 	return nil
 }

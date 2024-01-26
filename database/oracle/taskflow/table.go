@@ -335,12 +335,12 @@ func (t *Table) GenTableForeignKey() ([]string, error) {
 		}
 		consName = string(convertUtf8Raw)
 
-		if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
+		if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
 			rOwner = strings.ToLower(rOwner)
 			rTable = strings.ToLower(rTable)
 			consName = strings.ToLower(consName)
 		}
-		if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+		if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
 			rOwner = strings.ToUpper(rOwner)
 			rTable = strings.ToUpper(rTable)
 			consName = strings.ToUpper(consName)
@@ -479,10 +479,10 @@ func (t *Table) GenTableCheckKey() ([]string, error) {
 			}
 			if val, ok := t.TableAttributesRule.ColumnNameRule[columnName]; ok {
 				searchCond = replaceRex.ReplaceAllString(searchCond, val)
-				if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
+				if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
 					constraintName = strings.ToLower(constraintName)
 				}
-				if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+				if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
 					constraintName = strings.ToUpper(constraintName)
 				}
 			} else {
@@ -611,10 +611,10 @@ func (t *Table) GenTableUniqueIndex() ([]string, []string, error) {
 		}
 		indexName = string(convertUtf8Raw)
 
-		if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
+		if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
 			indexName = strings.ToLower(indexName)
 		}
-		if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+		if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
 			indexName = strings.ToUpper(indexName)
 		}
 
@@ -746,12 +746,12 @@ func (t *Table) GenTableNormalIndex() ([]string, []string, error) {
 		}
 		itypName = string(convertUtf8Raw)
 
-		if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
+		if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
 			itypOwner = strings.ToLower(itypOwner)
 			itypName = strings.ToLower(itypName)
 			indexName = strings.ToLower(indexName)
 		}
-		if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+		if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
 			itypOwner = strings.ToUpper(itypOwner)
 			itypName = strings.ToUpper(itypName)
 			indexName = strings.ToUpper(indexName)
@@ -1025,10 +1025,10 @@ func (t *Table) GenTableColumns() ([]string, error) {
 		switch {
 		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
 			// column name
-			if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
+			if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
 				columnName = strings.ToLower(columnName)
 			}
-			if strings.EqualFold(t.TableAttributesRule.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+			if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
 				columnName = strings.ToUpper(columnName)
 			}
 

@@ -24,15 +24,23 @@ import (
 )
 
 type StructConfig struct {
-	TaskName     string `toml:"task-name" json:"taskName"`
-	TaskRuleName string `toml:"task-rule-name" json:"taskRuleName"`
+	TaskName        string `toml:"task-name" json:"taskName"`
+	DatasourceNameS string `toml:"datasource-name-s" json:"datasourceNameS"`
+	DatasourceNameT string `toml:"datasource-name-t" json:"datasourceNameT"`
+	Comment         string `toml:"comment" json:"comment"`
 
+	CaseFieldRule      CaseFieldRule      `toml:"case-field-rule" json:"caseFieldRule"`
+	SchemaRouteRules   []SchemaRouteRule  `toml:"schema-route-rules" json:"schemaRouteRules"`
 	StructMigrateParam StructMigrateParam `toml:"struct-migrate-param" json:"structMigrateParam"`
 	StructMigrateRule  StructMigrateRule  `toml:"struct-migrate-rule" json:"structMigrateRule"`
 }
 
+type CaseFieldRule struct {
+	CaseFieldRuleS string `toml:"case-field-rule-s" json:"caseFieldRuleS"`
+	CaseFieldRuleT string `toml:"case-field-rule-t" json:"CaseFieldRuleT"`
+}
+
 type StructMigrateParam struct {
-	CaseFieldRule    string `toml:"case-field-rule" json:"caseFieldRule"`
 	MigrateThread    int64  `toml:"migrate-thread" json:"migrateThread"`
 	TaskQueueSize    int64  `toml:"task-queue-size" json:"taskQueueSize"`
 	DirectWrite      bool   `toml:"direct-write" json:"directWrite"`
@@ -56,7 +64,7 @@ type TaskStructRule struct {
 }
 
 type SchemaStructRule struct {
-	SourceSchema  string `toml:"source-schema" json:"sourceSchema"`
+	SchemaNameS   string `toml:"schema-name-s" json:"schemaNameS"`
 	ColumnTypeS   string `toml:"column-type-s" json:"columnTypeS"`
 	ColumnTypeT   string `toml:"column-type-t" json:"columnTypeT"`
 	DefaultValueS string `toml:"default-value-s" json:"defaultValueS"`
@@ -64,8 +72,8 @@ type SchemaStructRule struct {
 }
 
 type TableStructRule struct {
-	SourceSchema  string `toml:"source-schema" json:"sourceSchema"`
-	SourceTable   string `toml:"source-table" json:"sourceTable"`
+	SchemaNameS   string `toml:"schema-name-s" json:"schemaNameS"`
+	TableNameS    string `toml:"table-name-s" json:"tableNameS"`
 	ColumnTypeS   string `toml:"column-type-s" json:"columnTypeS"`
 	ColumnTypeT   string `toml:"column-type-t" json:"columnTypeT"`
 	DefaultValueS string `toml:"default-value-s" json:"defaultValueS"`
@@ -73,9 +81,9 @@ type TableStructRule struct {
 }
 
 type ColumnStructRule struct {
-	SourceSchema  string `toml:"source-schema" json:"sourceSchema"`
-	SourceTable   string `toml:"source-table" json:"sourceTable"`
-	SourceColumn  string `toml:"source-column" json:"sourceColumn"`
+	SchemaNameS   string `toml:"schema-name-s" json:"schemaNameS"`
+	TableNameS    string `toml:"table-name-s" json:"tableNameS"`
+	ColumnNameS   string `toml:"column-name-s" json:"columnNameS"`
 	ColumnTypeS   string `toml:"column-type-s" json:"columnTypeS"`
 	ColumnTypeT   string `toml:"column-type-t" json:"columnTypeT"`
 	DefaultValueS string `toml:"default-value-s" json:"defaultValueS"`
@@ -83,9 +91,9 @@ type ColumnStructRule struct {
 }
 
 type TableAttrsRule struct {
-	SourceSchema string   `toml:"source-schema" json:"sourceSchema"`
-	SourceTables []string `toml:"source-tables" json:"sourceTables"`
-	TableAttrsT  string   `toml:"table-attrs-t" json:"tableAttrsT"`
+	SchemaNameS string   `toml:"schema-name-s" json:"schemaNameS"`
+	TableNamesS []string `toml:"table-names-s" json:"TableNamesS"`
+	TableAttrsT string   `toml:"table-attrs-t" json:"tableAttrsT"`
 }
 
 func (s *StructConfig) String() string {
@@ -98,7 +106,6 @@ func UpsertStructMigrate(serverAddr string, file string) error {
 	if _, err := toml.DecodeFile(file, cfg); err != nil {
 		return fmt.Errorf("failed decode toml config file %s: %v", file, err)
 	}
-
 	resp, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APIStructMigratePath), []byte(cfg.String()))
 	if err != nil {
 		return err

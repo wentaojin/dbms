@@ -22,14 +22,17 @@ import (
 )
 
 type Task struct {
-	ID           uint64     `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string     `gorm:"type:varchar(100);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
-	TaskMode     string     `gorm:"type:varchar(100);not null;comment:task mode" json:"taskMode"`
-	TaskRuleName string     `gorm:"type:varchar(100);not null;comment:task rule name" json:"taskRuleName"`
-	WorkerAddr   string     `gorm:"type:varchar(30);comment:worker addr" json:"workerAddr"`
-	TaskStatus   string     `gorm:"type:varchar(30);comment:task status" json:"taskStatus"`
-	StartTime    *time.Time `gorm:"default:null;comment:task start running time" json:"startTime"`
-	EndTime      *time.Time `gorm:"default:null;comment:task end running time" json:"endTime"`
+	ID              uint64     `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName        string     `gorm:"type:varchar(100);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
+	TaskMode        string     `gorm:"type:varchar(100);not null;comment:task mode" json:"taskMode"`
+	DatasourceNameS string     `gorm:"type:varchar(300);not null;comment:source datasource of task" json:"datasourceNameS"`
+	DatasourceNameT string     `gorm:"type:varchar(300);not null;comment:target datasource of task" json:"datasourceNameT"`
+	WorkerAddr      string     `gorm:"type:varchar(30);comment:worker addr" json:"workerAddr"`
+	CaseFieldRuleS  string     `gorm:"type:varchar(30);comment:source case field rule" json:"caseFieldRuleS"`
+	CaseFieldRuleT  string     `gorm:"type:varchar(30);comment:target case field rule" json:"CaseFieldRuleT"`
+	TaskStatus      string     `gorm:"type:varchar(30);comment:task status" json:"taskStatus"`
+	StartTime       *time.Time `gorm:"default:null;comment:task start running time" json:"startTime"`
+	EndTime         *time.Time `gorm:"default:null;comment:task end running time" json:"endTime"`
 	*common.Entity
 }
 

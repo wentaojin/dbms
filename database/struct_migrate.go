@@ -108,7 +108,7 @@ type ITableAttributesRuleReader interface {
 
 type TableAttributesRule struct {
 	CreatePrefixRule       string            `json:"createPrefixRule"`
-	CaseFieldRule          string            `json:"caseFieldRule"`
+	CaseFieldRuleT         string            `json:"caseFieldRule"`
 	SchemaNameRule         map[string]string `json:"schemaNameRule"`
 	TableNameRule          map[string]string `json:"tableNameRule"`
 	ColumnNameRule         map[string]string `json:"columnNameRule"`
@@ -151,7 +151,7 @@ func IDatabaseTableAttributesRule(t ITableAttributesRuleReader) (*TableAttribute
 	}
 	return &TableAttributesRule{
 			CreatePrefixRule:       t.GetCreatePrefixRule(),
-			CaseFieldRule:          t.GetCaseFieldRule(),
+			CaseFieldRuleT:         t.GetCaseFieldRule(),
 			SchemaNameRule:         schemaNameRule,
 			TableNameRule:          tableNameRule,
 			ColumnNameRule:         columnNameRule,

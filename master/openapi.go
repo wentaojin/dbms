@@ -18,12 +18,7 @@ package master
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
-
-	"github.com/wentaojin/dbms/utils/stringutil"
-
-	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/proto/pb"
 
@@ -129,134 +124,6 @@ func (s *Server) listDatasource(ctx context.Context, req openapi.APIListDatasour
 	return "", errors.New(resp.Response.Message)
 }
 
-func (s *Server) upsertRule(ctx context.Context, req openapi.APIPutRuleJSONRequestBody) (string, error) {
-	var migrateSchemaRs []*pb.SchemaRouteRule
-
-	for _, r := range *req.SchemaRouteRules {
-		var (
-			sourceSchema string
-			targetSchema string
-			includes     []string
-			excludes     []string
-			tableRoutes  []*pb.TableRouteRule
-		)
-
-		switch *r.CaseFieldRule {
-		case constant.ParamValueRuleCaseFieldNameOrigin:
-			sourceSchema = *r.SourceSchema
-			targetSchema = *r.TargetSchema
-			includes = *r.SourceIncludeTable
-			excludes = *r.SourceExcludeTable
-		case constant.ParamValueRuleCaseFieldNameLower:
-			sourceSchema = stringutil.StringLower(*r.SourceSchema)
-			targetSchema = stringutil.StringLower(*r.TargetSchema)
-			for _, t := range *r.SourceIncludeTable {
-				includes = append(includes, stringutil.StringLower(t))
-			}
-			for _, t := range *r.SourceExcludeTable {
-				excludes = append(excludes, stringutil.StringLower(t))
-			}
-		case constant.ParamValueRuleCaseFieldNameUpper:
-			sourceSchema = stringutil.StringUpper(*r.SourceSchema)
-			targetSchema = stringutil.StringUpper(*r.TargetSchema)
-			for _, t := range *r.SourceIncludeTable {
-				includes = append(includes, stringutil.StringUpper(t))
-			}
-			for _, t := range *r.SourceExcludeTable {
-				excludes = append(excludes, stringutil.StringUpper(t))
-			}
-		default:
-			return "", fmt.Errorf("current task request [schema-route-rules] params [case-field-rule] value is not correct, should be 0 or 1 or 2")
-		}
-
-		for _, t := range *r.TableRouteRules {
-			var (
-				sourceTable string
-				targetTable string
-			)
-			columnRoutes := make(map[string]string)
-
-			switch *t.CaseFieldRule {
-			case constant.ParamValueRuleCaseFieldNameOrigin:
-				sourceTable = *t.SourceTable
-				targetTable = *t.TargetTable
-				columnRoutes = *t.ColumnRouteRules
-			case constant.ParamValueRuleCaseFieldNameLower:
-				sourceTable = stringutil.StringLower(*t.SourceTable)
-				targetTable = stringutil.StringLower(*t.TargetTable)
-				for k, v := range *t.ColumnRouteRules {
-					columnRoutes[stringutil.StringLower(k)] = stringutil.StringLower(v)
-				}
-			case constant.ParamValueRuleCaseFieldNameUpper:
-				sourceTable = stringutil.StringUpper(*t.SourceTable)
-				targetTable = stringutil.StringUpper(*t.TargetTable)
-				for k, v := range *t.ColumnRouteRules {
-					columnRoutes[stringutil.StringUpper(k)] = stringutil.StringUpper(v)
-				}
-			default:
-				return "", fmt.Errorf("current task request [table-route-rules] params [case-field-rule] value is not correct, should be 0 or 1 or 2")
-			}
-
-			tableRoutes = append(tableRoutes, &pb.TableRouteRule{
-				SourceTable:      sourceTable,
-				TargetTable:      targetTable,
-				CaseFieldRule:    *t.CaseFieldRule,
-				ColumnRouteRules: columnRoutes,
-			})
-		}
-		migrateSchemaRs = append(migrateSchemaRs, &pb.SchemaRouteRule{
-			SourceSchema:       sourceSchema,
-			TargetSchema:       targetSchema,
-			CaseFieldRule:      *r.CaseFieldRule,
-			SourceIncludeTable: includes,
-			SourceExcludeTable: excludes,
-			TableRouteRules:    tableRoutes,
-		})
-	}
-
-	resp, err := s.UpsertRule(ctx, &pb.UpsertRuleRequest{
-		Rule: &pb.Rule{
-			TaskRuleName:     *req.TaskRuleName,
-			DatasourceNameS:  *req.DatasourceNameS,
-			DatasourceNameT:  *req.DatasourceNameT,
-			Comment:          *req.Comment,
-			SchemaRouteRules: migrateSchemaRs,
-		}})
-	if err != nil {
-		return "", err
-	}
-	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
-		return resp.Response.Message, nil
-	}
-	return "", errors.New(resp.Response.Message)
-}
-
-func (s *Server) deleteRule(ctx context.Context, req openapi.APIDeleteRuleJSONRequestBody) (string, error) {
-	resp, err := s.DeleteRule(ctx, &pb.DeleteRuleRequest{TaskRuleName: *req.Param})
-	if err != nil {
-		return resp.String(), err
-	}
-	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
-		return resp.Response.Message, nil
-	}
-	return "", errors.New(resp.Response.Message)
-}
-
-func (s *Server) listRule(ctx context.Context, req openapi.APIListRuleJSONRequestBody) (string, error) {
-	resp, err := s.ShowRule(ctx, &pb.ShowRuleRequest{
-		TaskRuleName: *req.Param,
-		Page:         *req.Page,
-		PageSize:     *req.PageSize,
-	})
-	if err != nil {
-		return resp.String(), err
-	}
-	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
-		return resp.Response.Message, nil
-	}
-	return "", errors.New(resp.Response.Message)
-}
-
 func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPutStructMigrateJSONRequestBody) (string, error) {
 	var (
 		taskLevelRules   []*pb.TaskStructRule
@@ -264,7 +131,27 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 		tableLevelRules  []*pb.TableStructRule
 		columnLevelRules []*pb.ColumnStructRule
 		tableAttrsRules  []*pb.TableAttrsRule
+		migrateSchemaRs  []*pb.SchemaRouteRule
 	)
+
+	for _, r := range *req.SchemaRouteRules {
+		var tableRoutes []*pb.TableRouteRule
+
+		for _, t := range *r.TableRouteRules {
+			tableRoutes = append(tableRoutes, &pb.TableRouteRule{
+				TableNameS:       *t.TableNameS,
+				TableNameT:       *t.TableNameT,
+				ColumnRouteRules: *t.ColumnRouteRules,
+			})
+		}
+		migrateSchemaRs = append(migrateSchemaRs, &pb.SchemaRouteRule{
+			SchemaNameS:     *r.SchemaNameS,
+			SchemaNameT:     *r.SchemaNameT,
+			IncludeTableS:   *r.IncludeTableS,
+			ExcludeTableS:   *r.ExcludeTableS,
+			TableRouteRules: tableRoutes,
+		})
+	}
 
 	for _, l := range *req.StructMigrateRule.TaskStructRules {
 		taskLevelRules = append(taskLevelRules, &pb.TaskStructRule{
@@ -276,7 +163,7 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 	}
 	for _, l := range *req.StructMigrateRule.SchemaStructRules {
 		schemaLevelRules = append(schemaLevelRules, &pb.SchemaStructRule{
-			SourceSchema:  *l.SourceSchema,
+			SchemaNameS:   *l.SchemaNameS,
 			ColumnTypeS:   *l.ColumnTypeS,
 			ColumnTypeT:   *l.ColumnTypeT,
 			DefaultValueS: *l.DefaultValueS,
@@ -285,8 +172,8 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 	}
 	for _, l := range *req.StructMigrateRule.TableStructRules {
 		tableLevelRules = append(tableLevelRules, &pb.TableStructRule{
-			SourceSchema:  *l.SourceSchema,
-			SourceTable:   *l.SourceTable,
+			SchemaNameS:   *l.SchemaNameS,
+			TableNameS:    *l.TableNameS,
 			ColumnTypeS:   *l.ColumnTypeS,
 			ColumnTypeT:   *l.ColumnTypeT,
 			DefaultValueS: *l.DefaultValueS,
@@ -295,9 +182,9 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 	}
 	for _, l := range *req.StructMigrateRule.ColumnStructRules {
 		columnLevelRules = append(columnLevelRules, &pb.ColumnStructRule{
-			SourceSchema:  *l.SourceSchema,
-			SourceTable:   *l.SourceTable,
-			SourceColumn:  *l.SourceColumn,
+			SchemaNameS:   *l.SchemaNameS,
+			TableNameS:    *l.TableNameS,
+			ColumnNameS:   *l.ColumnNameS,
 			ColumnTypeS:   *l.ColumnTypeS,
 			ColumnTypeT:   *l.ColumnTypeT,
 			DefaultValueS: *l.DefaultValueS,
@@ -306,16 +193,22 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 	}
 	for _, l := range *req.StructMigrateRule.TableAttrsRules {
 		tableAttrsRules = append(tableAttrsRules, &pb.TableAttrsRule{
-			SourceSchema: *l.SourceSchema,
-			SourceTables: *l.SourceTables,
-			TableAttrsT:  *l.TableAttrsT,
+			SchemaNameS: *l.SchemaNameS,
+			TableNamesS: *l.TableNamesS,
+			TableAttrsT: *l.TableAttrsT,
 		})
 	}
 	resp, err := s.UpsertStructMigrateTask(ctx, &pb.UpsertStructMigrateTaskRequest{
-		TaskName:     *req.TaskName,
-		TaskRuleName: *req.TaskRuleName,
+		TaskName:        *req.TaskName,
+		DatasourceNameS: *req.DatasourceNameS,
+		DatasourceNameT: *req.DatasourceNameT,
+		Comment:         *req.Comment,
+		CaseFieldRule: &pb.CaseFieldRule{
+			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
+			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
+		},
+		SchemaRouteRules: migrateSchemaRs,
 		StructMigrateParam: &pb.StructMigrateParam{
-			CaseFieldRule:    *req.StructMigrateParam.CaseFieldRule,
 			MigrateThread:    *req.StructMigrateParam.MigrateThread,
 			TaskQueueSize:    *req.StructMigrateParam.TaskQueueSize,
 			DirectWrite:      *req.StructMigrateParam.DirectWrite,

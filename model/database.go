@@ -54,7 +54,6 @@ var DefaultDB *database
 type database struct {
 	base                          *gorm.DB
 	datasourceRW                  datasource.IDatasource
-	migrateRuleRW                 rule.IRule
 	migrateSchemaRouteRW          rule.ISchemaRouteRule
 	migrateTableRouteRW           rule.ITableRouteRule
 	migrateColumnRouteRW          rule.IColumnRouteRule
@@ -140,6 +139,28 @@ func CreateDatabaseConnection(cfg *Database, addRole, logLevel string) error {
 	return nil
 }
 
+func CreateDatabaseReadWrite(cfg *Database) error {
+	dsn := buildMysqlDSN(cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Schema)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		PrepareStmt:                              true,
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	})
+
+	if err != nil || db.Error != nil {
+		return fmt.Errorf("database open failed, database error: [%v]", err)
+	}
+
+	DefaultDB = &database{
+		base: db,
+	}
+
+	DefaultDB.initReaderWriters()
+	return nil
+}
+
 func CreateDatabaseSchema(cfg *Database) error {
 	dsn := buildMysqlDSN(cfg.Username, cfg.Password, cfg.Host, cfg.Port, "")
 
@@ -170,7 +191,6 @@ func buildMysqlDSN(user, password, host string, port uint64, schema string) stri
 
 func (d *database) initReaderWriters() {
 	DefaultDB.datasourceRW = datasource.NewDatasourceRW(d.base)
-	DefaultDB.migrateRuleRW = rule.NewMigrateTaskRuleRW(d.base)
 	DefaultDB.migrateSchemaRouteRW = rule.NewSchemaRouteRuleRW(d.base)
 	DefaultDB.migrateTableRouteRW = rule.NewTableRouteRuleRW(d.base)
 	DefaultDB.migrateColumnRouteRW = rule.NewColumnRouteRuleRW(d.base)
@@ -203,7 +223,6 @@ func (d *database) migrateStream(models ...interface{}) (err error) {
 func (d *database) migrateTables() (err error) {
 	return d.migrateStream(
 		new(datasource.Datasource),
-		new(rule.Rule),
 		new(rule.MigrateTaskTable),
 		new(rule.SchemaRouteRule),
 		new(rule.TableRouteRule),
@@ -350,10 +369,6 @@ func Transaction(ctx context.Context, fc func(txnCtx context.Context) error) (er
 
 func GetIDatasourceRW() datasource.IDatasource {
 	return DefaultDB.datasourceRW
-}
-
-func GetIRuleRW() rule.IRule {
-	return DefaultDB.migrateRuleRW
 }
 
 func GetIMigrateSchemaRouteRW() rule.ISchemaRouteRule {

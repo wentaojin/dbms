@@ -1,13 +1,44 @@
 task-name = "oracle33totidb145_task"
-task-rule-name = "oracle33totidb145_rule"
+datasource-name-s = "oracle33"
+datasource-name-t = "tidb145"
+comment = "测试数据源"
 
 [struct-migrate-param]
-case-field-rule = "1"
 migrate-thread = 10
 task-queue-size = 1024
 direct-write = true
 create-if-not-exist = true
 output-dir = ""
+
+[case-field-rule]
+# 控制 strict-migrate-task 配置文件内所有 *-s 参数配置值（default-value-s 除外）以及 column-route-rules 中的 key 值
+# 1，参数值是 0 代表以当前配置文件为准，与源端对比
+# 2，参数值是 1 代表统一转换值为小写，与源端对比，default-value-s 参数配置始终以参数配置以及源端为准
+# 3，参数值是 2 代表统一转换值为大写，与源端对比，default-value-s 参数配置始终以参数配置以及源端为准
+case-field-rule-s = "0"
+# 控制 strict-migrate-task 配置文件 schema-name-t、table-name-t 以及 column-route-rules 中的 value 值，、column-type-t 不受控制默认大写
+# 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准，非配置文件配置的以上游为准
+# 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写，default-value-t/table-attrs-t 参数配置始终以参数配置以及源端为准
+# 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写，default-value-t/table-attrs-t 参数配置始终以参数配置以及源端为准
+case-field-rule-t = "1"
+
+
+# schema-route-rules 内所有参数区分大小写，请合理设置
+[[schema-route-rules]]
+schema-name-s = "FINDPT"
+schema-name-t = "STEVEN"
+include-table-s = []
+exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
+
+[[schema-route-rules.table-route-rules]]
+table-name-s = "MARVIN00"
+table-name-t = "STEVEN00"
+column-route-rules = {"NAME" = "S_NAME00"}
+[[schema-route-rules.table-route-rules]]
+table-name-s = "MARVIN01"
+table-name-t = "STEVEN01"
+column-route-rules = {"i01" = "s_i01", "i02" = "s_i02"}
+
 
 [struct-migrate-rule]
 [[struct-migrate-rule.task-struct-rules]]
@@ -16,29 +47,29 @@ column-type-t = ""
 default-value-s = ""
 default-value-t = ""
 [[struct-migrate-rule.schema-struct-rules]]
-source-schema = ""
+schema-name-s = ""
 column-type-s = ""
 column-type-t = ""
 default-value-s = ""
 default-value-t = ""
 [[struct-migrate-rule.table-struct-rules]]
-source-schema = ""
+schema-name-s = ""
 source-table = ""
 column-type-s = ""
 column-type-t = ""
 default-value-s = ""
 default-value-t = ""
 [[struct-migrate-rule.column-struct-rules]]
-source-schema = ""
-source-table = ""
-source-column = ""
+schema-name-s = ""
+table-name-s = ""
+column-name-s = ""
 column-type-s = ""
 column-type-t = ""
 default-value-s = ""
 default-value-t = ""
 [[struct-migrate-rule.table-attrs-rules]]
-source-schema = ""
-source-tables = []
+schema-name-s = ""
+table-names-s = []
 table-attrs-t = ""
 
 

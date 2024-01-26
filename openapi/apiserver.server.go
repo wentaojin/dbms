@@ -28,15 +28,6 @@ type ServerInterface interface {
 	// (PUT /datasource)
 	APIPutDatasource(c *gin.Context)
 
-	// (DELETE /rule)
-	APIDeleteRule(c *gin.Context)
-
-	// (POST /rule)
-	APIListRule(c *gin.Context)
-
-	// (PUT /rule)
-	APIPutRule(c *gin.Context)
-
 	// (POST /task)
 	APIPostTask(c *gin.Context)
 
@@ -137,45 +128,6 @@ func (siw *ServerInterfaceWrapper) APIPutDatasource(c *gin.Context) {
 	siw.Handler.APIPutDatasource(c)
 }
 
-// APIDeleteRule operation middleware
-func (siw *ServerInterfaceWrapper) APIDeleteRule(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.APIDeleteRule(c)
-}
-
-// APIListRule operation middleware
-func (siw *ServerInterfaceWrapper) APIListRule(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.APIListRule(c)
-}
-
-// APIPutRule operation middleware
-func (siw *ServerInterfaceWrapper) APIPutRule(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.APIPutRule(c)
-}
-
 // APIPostTask operation middleware
 func (siw *ServerInterfaceWrapper) APIPostTask(c *gin.Context) {
 
@@ -261,9 +213,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/datasource", wrapper.APIDeleteDatasource)
 	router.POST(options.BaseURL+"/datasource", wrapper.APIListDatasource)
 	router.PUT(options.BaseURL+"/datasource", wrapper.APIPutDatasource)
-	router.DELETE(options.BaseURL+"/rule", wrapper.APIDeleteRule)
-	router.POST(options.BaseURL+"/rule", wrapper.APIListRule)
-	router.PUT(options.BaseURL+"/rule", wrapper.APIPutRule)
 	router.POST(options.BaseURL+"/task", wrapper.APIPostTask)
 	router.DELETE(options.BaseURL+"/task/structMigrate", wrapper.APIDeleteStructMigrate)
 	router.POST(options.BaseURL+"/task/structMigrate", wrapper.APIListStructMigrate)

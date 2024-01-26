@@ -483,17 +483,17 @@ func DatabaseTableColumnMapMYSQLDatatypeRule(c *Column, buildinDatatypes []*buil
 
 // HandleColumnRuleWithPriority priority, return column datatype and default value
 // column > table > schema > task
-func HandleColumnRuleWithPriority(columnName string, originDatatype, buildInDatatype, originDefaultValue, sourceCharset, targetCharset string, buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule, columnRules []*migrate.ColumnStructRule) (string, string, error) {
+func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, originDatatype, buildInDatatype, originDefaultValue, sourceCharset, targetCharset string, buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule, columnRules []*migrate.ColumnStructRule) (string, string, error) {
 	var (
 		datatype, defaultValue string
 		err                    error
 	)
 	columnDatatypes, columnDefaultValues := handleColumnRuleWithColumnHighPriority(columnRules)
 
-	globalDatatypes, globalDefaultValues := handelColumnRuleWithTableSchemaTaskPriority(buildinDefaultValueRules, taskRules, schemaRules, tableRules)
+	globalDatatypes, globalDefaultValues := handelColumnRuleWithTableSchemaTaskPriority(originSourceTable, buildinDefaultValueRules, taskRules, schemaRules, tableRules)
 
 	// column default value
-	defaultValue, err = handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, sourceCharset, targetCharset, columnDefaultValues, globalDefaultValues)
+	defaultValue, err = handleColumnRuleWitheDefaultValuePriority(originColumnName, originDefaultValue, sourceCharset, targetCharset, columnDefaultValues, globalDefaultValues)
 	if err != nil {
 		return datatype, defaultValue, err
 	}
@@ -502,7 +502,7 @@ func HandleColumnRuleWithPriority(columnName string, originDatatype, buildInData
 	if columnDatatypes == nil && columnDefaultValues == nil {
 		// global priority
 		for ruleColumnTypeS, ruleColumnTypeT := range globalDatatypes {
-			datatype = handleColumnRuleWithDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
+			datatype = handleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
 			if !strings.EqualFold(datatype, constant.OracleDatabaseColumnDatatypeMatchRuleNotFound) {
 				return datatype, defaultValue, nil
 			}
@@ -512,10 +512,11 @@ func HandleColumnRuleWithPriority(columnName string, originDatatype, buildInData
 		return datatype, defaultValue, nil
 	}
 
-	for colName, columnRuleMap := range columnDatatypes {
-		if strings.EqualFold(columnName, colName) {
+	for customColName, columnRuleMap := range columnDatatypes {
+		// case field rule
+		if originColumnName == customColName {
 			for ruleColumnTypeS, ruleColumnTypeT := range columnRuleMap {
-				datatype = handleColumnRuleWithDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
+				datatype = handleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
 				if !strings.EqualFold(datatype, constant.OracleDatabaseColumnDatatypeMatchRuleNotFound) {
 					return datatype, defaultValue, nil
 				}
@@ -619,7 +620,7 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 	return dataDefault, nil
 }
 
-func handleColumnRuleWithDatatypeCompare(originColumnType, ruleColumnTypeS, ruleColumnTypeT string) string {
+func handleColumnRuleWithNumberDatatypeCompare(originColumnType, ruleColumnTypeS, ruleColumnTypeT string) string {
 	/*
 		number datatype：function ->  GetDatabaseTableColumn
 		- number(*,10) -> number(38,10)
@@ -634,26 +635,26 @@ func handleColumnRuleWithDatatypeCompare(originColumnType, ruleColumnTypeS, rule
 		case strings.Contains(stringutil.StringUpper(ruleColumnTypeS), "*") && strings.Contains(stringutil.StringUpper(ruleColumnTypeS), ","):
 			if strings.EqualFold(strings.Replace(ruleColumnTypeS, "*", "38", -1), originColumnType) &&
 				ruleColumnTypeT != "" {
-				return stringutil.StringUpper(ruleColumnTypeT)
+				return ruleColumnTypeT
 			}
 		case strings.Contains(stringutil.StringUpper(ruleColumnTypeS), "*") && !strings.Contains(stringutil.StringUpper(ruleColumnTypeS), ","):
 			if strings.EqualFold("NUMBER(38,127)", originColumnType) &&
 				ruleColumnTypeT != "" {
-				return stringutil.StringUpper(ruleColumnTypeT)
+				return ruleColumnTypeT
 			}
 		case !strings.Contains(stringutil.StringUpper(ruleColumnTypeS), "(") && !strings.Contains(stringutil.StringUpper(ruleColumnTypeS), ")"):
 			if strings.EqualFold("NUMBER(38,127)", originColumnType) &&
 				ruleColumnTypeT != "" {
-				return stringutil.StringUpper(ruleColumnTypeT)
+				return ruleColumnTypeT
 			}
 		default:
 			if strings.EqualFold(ruleColumnTypeS, originColumnType) && ruleColumnTypeT != "" {
-				return stringutil.StringUpper(ruleColumnTypeT)
+				return ruleColumnTypeT
 			}
 		}
 	} else {
 		if strings.EqualFold(ruleColumnTypeS, originColumnType) && ruleColumnTypeT != "" {
-			return stringutil.StringUpper(ruleColumnTypeT)
+			return ruleColumnTypeT
 		}
 	}
 	// datatype rule isn't match
@@ -662,12 +663,12 @@ func handleColumnRuleWithDatatypeCompare(originColumnType, ruleColumnTypeS, rule
 
 // handelColumnRuleWithTableSchemaTaskPriority priority
 // table > schema > task -> server
-func handelColumnRuleWithTableSchemaTaskPriority(buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
+func handelColumnRuleWithTableSchemaTaskPriority(sourceTable string, buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
 	taskDatatype, taskDefaultVal := handleColumnRuleWithTaskLevel(taskRules)
 
 	schemaDatatype, schemaDefaultVal := handleColumnRuleWithSchemaLevel(schemaRules)
 
-	tableDatatype, tableDefaultVal := handleColumnRuleWithTableLevel(tableRules)
+	tableDatatype, tableDefaultVal := handleColumnRuleWithTableLevel(sourceTable, tableRules)
 
 	buildinDefaultValues := handleColumnDefaultValueRuleWithServerLevel(buildinDefaultValueRules)
 
@@ -772,7 +773,7 @@ func handleColumnRuleWithSchemaLevel(schemaRules []*migrate.SchemaStructRule) (m
 	return columnDatatypeMap, columnDefaultValMap
 }
 
-func handleColumnRuleWithTableLevel(tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
+func handleColumnRuleWithTableLevel(sourceTable string, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
 	columnDatatypeMap := make(map[string]string)
 	columnDefaultValMap := make(map[string]string)
 
@@ -781,12 +782,14 @@ func handleColumnRuleWithTableLevel(tableRules []*migrate.TableStructRule) (map[
 	}
 
 	for _, t := range tableRules {
-		// exclude columnType "", represent it's not configure column datatype rule
-		if !strings.EqualFold(t.ColumnTypeS, "") && !strings.EqualFold(t.ColumnTypeT, "") {
-			columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
-		}
-		if !strings.EqualFold(t.DefaultValueS, "") && !strings.EqualFold(t.DefaultValueT, "") {
-			columnDefaultValMap[t.DefaultValueS] = t.DefaultValueT
+		if sourceTable == t.TableNameS {
+			// exclude columnType "", represent it's not configure column datatype rule
+			if !strings.EqualFold(t.ColumnTypeS, "") && !strings.EqualFold(t.ColumnTypeT, "") {
+				columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+			}
+			if !strings.EqualFold(t.DefaultValueS, "") && !strings.EqualFold(t.DefaultValueT, "") {
+				columnDefaultValMap[t.DefaultValueS] = t.DefaultValueT
+			}
 		}
 	}
 	return columnDatatypeMap, columnDefaultValMap

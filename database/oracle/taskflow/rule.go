@@ -35,13 +35,12 @@ type Rule struct {
 	Ctx                      context.Context                  `json:"-"`
 	TaskName                 string                           `json:"taskName"`
 	TaskFlow                 string                           `json:"taskFlow"`
-	TaskRuleName             string                           `json:"taskRuleName"`
 	SchemaNameS              string                           `json:"schemaNameS"`
 	TableNameS               string                           `json:"tableNameS"`
 	TablePrimaryAttrs        []map[string]string              `json:"tablePrimaryAttrs"`
 	TableColumnsAttrs        []map[string]string              `json:"tableColumnsAttrs"`
 	TableCommentAttrs        []map[string]string              `json:"tableCommentAttrs"`
-	CaseFieldRule            string                           `json:"caseFieldRule"`
+	CaseFieldRuleT           string                           `json:"caseFieldRuleT"`
 	CreateIfNotExist         bool                             `json:"createIfNotExist"`
 	DBCollationS             bool                             `json:"DBCollationS"`
 	DBCharsetS               string                           `json:"dbCharsetS"`
@@ -66,7 +65,7 @@ func (r *Rule) GetSchemaNameRule() (map[string]string, error) {
 	schemaRoute := make(map[string]string)
 
 	routeRule, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(r.Ctx, &rule.SchemaRouteRule{
-		TaskRuleName: r.TaskRuleName, SchemaNameS: r.SchemaNameS})
+		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS})
 	if err != nil {
 		return schemaRoute, err
 	}
@@ -84,10 +83,10 @@ func (r *Rule) GetSchemaNameRule() (map[string]string, error) {
 		schemaNameSNew = schemaNameS
 	}
 
-	if strings.EqualFold(r.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
 		schemaNameSNew = strings.ToLower(schemaNameSNew)
 	}
-	if strings.EqualFold(r.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
 		schemaNameSNew = strings.ToUpper(schemaNameSNew)
 	}
 
@@ -99,7 +98,7 @@ func (r *Rule) GetSchemaNameRule() (map[string]string, error) {
 func (r *Rule) GetTableNameRule() (map[string]string, error) {
 	tableRoute := make(map[string]string)
 	routeRule, err := model.GetIMigrateTableRouteRW().GetTableRouteRule(r.Ctx, &rule.TableRouteRule{
-		TaskRuleName: r.TaskRuleName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
+		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
 	if err != nil {
 		return tableRoute, err
 	}
@@ -111,13 +110,13 @@ func (r *Rule) GetTableNameRule() (map[string]string, error) {
 	tableNameS := string(convertUtf8Raw)
 
 	var tableNameSNew string
-	if strings.EqualFold(r.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
 		tableNameSNew = strings.ToLower(tableNameS)
 	}
-	if strings.EqualFold(r.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
 		tableNameSNew = strings.ToUpper(tableNameS)
 	}
-	if strings.EqualFold(r.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameOrigin) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameOrigin) {
 		tableNameSNew = tableNameS
 	}
 
@@ -130,7 +129,7 @@ func (r *Rule) GetTableNameRule() (map[string]string, error) {
 }
 
 func (r *Rule) GetCaseFieldRule() string {
-	return r.CaseFieldRule
+	return r.CaseFieldRuleT
 }
 
 // GetTableColumnRule used for get custom table column rule
@@ -145,9 +144,9 @@ func (r *Rule) GetTableColumnRule() (map[string]string, map[string]string, map[s
 	columnDefaultValueRules := make(map[string]string)
 
 	columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(r.Ctx, &rule.ColumnRouteRule{
-		TaskRuleName: r.TaskRuleName,
-		SchemaNameS:  r.SchemaNameS,
-		TableNameS:   r.TableNameS,
+		TaskName:    r.TaskName,
+		SchemaNameS: r.SchemaNameS,
+		TableNameS:  r.TableNameS,
 	})
 	if err != nil {
 		return columnRules, columnDatatypeRules, columnDefaultValueRules, err
@@ -188,13 +187,13 @@ func (r *Rule) GetTableColumnRule() (map[string]string, map[string]string, map[s
 		// column name caseFieldRule
 		var columnNameNew string
 
-		if strings.EqualFold(r.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
 			columnNameNew = strings.ToLower(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
 			columnNameNew = strings.ToUpper(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRule, constant.ParamValueStructMigrateCaseFieldNameOrigin) {
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameOrigin) {
 			columnNameNew = columnName
 		}
 
@@ -235,6 +234,7 @@ func (r *Rule) GetTableColumnRule() (map[string]string, map[string]string, map[s
 			}
 			// priority, return target database table column datatype
 			convertColumnDatatype, convertColumnDefaultValue, err := HandleColumnRuleWithPriority(
+				c["TABLE_NAME"],
 				columnName,
 				originColumnType,
 				buildInColumnType,
@@ -250,7 +250,8 @@ func (r *Rule) GetTableColumnRule() (map[string]string, map[string]string, map[s
 				return nil, nil, nil, err
 			}
 
-			columnDatatypeRules[columnName] = convertColumnDatatype
+			// column datatype upper case field rule
+			columnDatatypeRules[columnName] = stringutil.StringUpper(convertColumnDatatype)
 			columnDefaultValueRules[columnName] = convertColumnDefaultValue
 		default:
 			return nil, nil, nil, fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
@@ -318,8 +319,8 @@ func (r *Rule) GetTableColumnCollationRule() (map[string]string, error) {
 		// the oracle 12.2 and the above version support column collation
 		if r.DBCollationS {
 			// check column sort collation
-			if collationMapVal, ok := constant.MigrateTableStructureDatabaseCollationMap[r.TaskFlow][strings.ToUpper(rowCol["COLLATION"])][constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][r.DBCharsetS]]; ok {
-				columnCollation = collationMapVal
+			if val, ok := constant.MigrateTableStructureDatabaseCollationMap[r.TaskFlow][strings.ToUpper(rowCol["COLLATION"])][constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][r.DBCharsetS]]; ok {
+				columnCollation = val
 			} else {
 				// exclude the column with the integer datatype
 				if !strings.EqualFold(rowCol["COLLATION"], "") {
@@ -328,7 +329,7 @@ func (r *Rule) GetTableColumnCollationRule() (map[string]string, error) {
 				columnCollation = ""
 			}
 		} else {
-			// the oracle 12.2 and the above version isn't support column collation, and set ""
+			// the oracle 12.2 and the below version isn't support column collation, and set ""
 			columnCollation = ""
 		}
 

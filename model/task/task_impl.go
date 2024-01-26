@@ -222,6 +222,15 @@ func (rw *RWStructMigrateTask) FindStructMigrateTask(ctx context.Context, task *
 	return dataS, nil
 }
 
+func (rw *RWStructMigrateTask) BatchFindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error) {
+	var dataS []*StructMigrateTask
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("batch find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 func (rw *RWStructMigrateTask) ListStructMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*StructMigrateTask, error) {
 	var dataS []*StructMigrateTask
 	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&StructMigrateTask{}).Find(&dataS).Error

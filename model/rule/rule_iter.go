@@ -17,22 +17,12 @@ package rule
 
 import "context"
 
-type IRule interface {
-	CreateRule(ctx context.Context, rule *Rule) (*Rule, error)
-	UpdateRule(ctx context.Context, rule *Rule) (*Rule, error)
-	GetRule(ctx context.Context, rule *Rule) (*Rule, error)
-	ListRule(ctx context.Context, page uint64, pageSize uint64) ([]*Rule, error)
-	DeleteRule(ctx context.Context, taskRuleName []string) error
-	IsContainedRuleRecord(ctx context.Context, rule *Rule) (bool, error)
-	FindRule(ctx context.Context, rule *Rule) ([]*Rule, error)
-}
-
 type ISchemaRouteRule interface {
 	CreateSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error)
 	UpdateSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error)
 	GetSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error)
 	ListSchemaRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*SchemaRouteRule, error)
-	DeleteSchemaRouteRule(ctx context.Context, taskRuleName []string) error
+	DeleteSchemaRouteRule(ctx context.Context, taskNames []string) error
 	IsContainedSchemaRouteRuleRecord(ctx context.Context, rule *SchemaRouteRule) (bool, error)
 	FindSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) ([]*SchemaRouteRule, error)
 }
@@ -42,7 +32,7 @@ type IMigrateTaskTable interface {
 	UpdateMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) (*MigrateTaskTable, error)
 	GetMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) (*MigrateTaskTable, error)
 	ListMigrateTaskTable(ctx context.Context, page uint64, pageSize uint64) ([]*MigrateTaskTable, error)
-	DeleteMigrateTaskTable(ctx context.Context, taskRuleName []string) error
+	DeleteMigrateTaskTable(ctx context.Context, taskNames []string) error
 	IsContainedMigrateTaskTableRecord(ctx context.Context, rule *MigrateTaskTable) (bool, error)
 	FindMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) ([]*MigrateTaskTable, error)
 }
@@ -53,7 +43,7 @@ type ITableRouteRule interface {
 	UpdateTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
 	GetTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
 	ListTableRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*TableRouteRule, error)
-	DeleteTableRouteRule(ctx context.Context, taskRuleName []string) error
+	DeleteTableRouteRule(ctx context.Context, taskNames []string) error
 	IsContainedTableRouteRuleRecord(ctx context.Context, rule *TableRouteRule) (bool, error)
 	FindTableRouteRule(ctx context.Context, rule *TableRouteRule) ([]*TableRouteRule, error)
 }
@@ -64,7 +54,7 @@ type IColumnRouteRule interface {
 	UpdateColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
 	GetColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
 	ListColumnRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*ColumnRouteRule, error)
-	DeleteColumnRouteRule(ctx context.Context, taskRuleName []string) error
+	DeleteColumnRouteRule(ctx context.Context, taskNames []string) error
 	IsContainedColumnRouteRuleRecord(ctx context.Context, rule *ColumnRouteRule) (bool, error)
 	FindColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) ([]*ColumnRouteRule, error)
 }

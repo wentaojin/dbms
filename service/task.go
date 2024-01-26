@@ -249,7 +249,7 @@ func ClearTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskReq
 			Result: openapi.ResponseResultStatusSuccess,
 		}}, nil
 	} else {
-		errMsg := fmt.Errorf("the crontab task [%s] has scheduled, the operation cann't [%v], the current task status is [%v], running worker addr is [%v], running rule name is [%v]", req.TaskName, req.Operate, t.TaskStatus, t.WorkerAddr, t.TaskRuleName)
+		errMsg := fmt.Errorf("the crontab task [%s] has scheduled, the operation cann't [%v], the current task status is [%v], running worker addr is [%v]", req.TaskName, req.Operate, t.TaskStatus, t.WorkerAddr)
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
 			Message: errMsg.Error(),
@@ -275,7 +275,7 @@ func DeleteTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTas
 
 	switch strings.ToUpper(t.TaskStatus) {
 	case constant.TaskDatabaseStatusRunning:
-		errMsg := fmt.Errorf("the task [%s] has running, the operation cann't [%v], the current task status is [%v], running worker addr is [%v], running rule name is [%v]", req.TaskName, req.Operate, t.TaskStatus, t.WorkerAddr, t.TaskRuleName)
+		errMsg := fmt.Errorf("the task [%s] has running, the operation cann't [%v], the current task status is [%v], running worker addr is [%v]", req.TaskName, req.Operate, t.TaskStatus, t.WorkerAddr)
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
 			Message: errMsg.Error(),
@@ -337,12 +337,13 @@ func DeleteTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTas
 
 func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
 	resp := struct {
-		TaskName     string `json:"taskName"`
-		TaskRuleName string `json:"taskRuleName"`
-		TaskMode     string `json:"taskMode"`
-		TaskStatus   string `json:"taskStatus"`
-		WorkerAddr   string `json:"workerAddr"`
-		LogDetail    string `json:"logDetail"`
+		TaskName        string `json:"taskName"`
+		TaskMode        string `json:"taskMode"`
+		DatasourceNameS string `json:"datasourceNameS"`
+		DatasourceNameT string `json:"datasourceNameT"`
+		TaskStatus      string `json:"taskStatus"`
+		WorkerAddr      string `json:"workerAddr"`
+		LogDetail       string `json:"logDetail"`
 	}{}
 
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
@@ -351,8 +352,9 @@ func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskRe
 			return err
 		}
 		resp.TaskName = t.TaskName
-		resp.TaskRuleName = t.TaskRuleName
 		resp.TaskMode = t.TaskMode
+		resp.DatasourceNameS = t.DatasourceNameS
+		resp.DatasourceNameT = t.DatasourceNameT
 		resp.TaskStatus = t.TaskStatus
 		resp.WorkerAddr = t.WorkerAddr
 

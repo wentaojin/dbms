@@ -158,6 +158,8 @@ func (s *StructMigrateFile) SyncStructFile() error {
 		tw.AppendRows(tableRows)
 		sqlInComp.WriteString(tw.Render() + "\n")
 		sqlInComp.WriteString("*/\n\n")
+	default:
+		return fmt.Errorf("current taskflow [%s] isn't support, please contact author or reselect", s.TaskFlow)
 	}
 
 	for _, t := range migrateTables {

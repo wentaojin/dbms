@@ -111,49 +111,6 @@ func (s *Server) ShowDatasource(ctx context.Context, req *pb.ShowDatasourceReque
 	}}, nil
 }
 
-// UpsertRule implements MasterServer.UpsertTaskMigrateRule
-func (s *Server) UpsertRule(ctx context.Context, req *pb.UpsertRuleRequest) (*pb.UpsertRuleResponse, error) {
-	createMsg, err := service.UpsertRule(ctx, req)
-	if err != nil {
-		return &pb.UpsertRuleResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
-
-	return &pb.UpsertRuleResponse{Response: &pb.Response{
-		Result:  openapi.ResponseResultStatusSuccess,
-		Message: createMsg,
-	}}, nil
-}
-
-func (s *Server) DeleteRule(ctx context.Context, req *pb.DeleteRuleRequest) (*pb.DeleteRuleResponse, error) {
-	err := service.DeleteRule(ctx, req)
-	if err != nil {
-		return &pb.DeleteRuleResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
-	return &pb.DeleteRuleResponse{Response: &pb.Response{
-		Result: openapi.ResponseResultStatusSuccess,
-	}}, nil
-}
-
-func (s *Server) ShowRule(ctx context.Context, req *pb.ShowRuleRequest) (*pb.ShowRuleResponse, error) {
-	showMsg, err := service.ShowRule(ctx, req)
-	if err != nil {
-		return &pb.ShowRuleResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
-	return &pb.ShowRuleResponse{Response: &pb.Response{
-		Result:  openapi.ResponseResultStatusSuccess,
-		Message: showMsg,
-	}}, nil
-}
-
 func (s *Server) UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTaskRequest) (*pb.UpsertStructMigrateTaskResponse, error) {
 	showMsg, err := service.UpsertStructMigrateTask(ctx, req)
 	if err != nil {

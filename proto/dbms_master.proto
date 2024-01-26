@@ -42,24 +42,6 @@ service Master {
       body: "*"
     };
   }
-  rpc UpsertRule(UpsertRuleRequest) returns (UpsertRuleResponse){
-    option (google.api.http) = {
-      put: "/apis/v1alpha1/rule"
-      body: "*"
-    };
-  }
-  rpc DeleteRule(DeleteRuleRequest) returns (DeleteRuleResponse){
-    option (google.api.http) = {
-      delete: "/apis/v1alpha1/rule"
-      body: "*"
-    };
-  }
-  rpc ShowRule(ShowRuleRequest) returns (ShowRuleResponse){
-    option (google.api.http) = {
-      post: "/apis/v1alpha1/rule"
-      body: "*"
-    };
-  }
   rpc UpsertStructMigrateTask(UpsertStructMigrateTaskRequest) returns (UpsertStructMigrateTaskResponse){
     option (google.api.http) = {
       put: "/apis/v1alpha1/structMigrateTask"
@@ -129,34 +111,16 @@ message ShowDatasourceResponse{
   Response response = 1;
 }
 
-message UpsertRuleRequest{
-  Rule rule = 1;
-}
-message UpsertRuleResponse{
-  Response response = 1;
-}
-
-message DeleteRuleRequest{
- repeated string taskRuleName = 1;
-}
-message DeleteRuleResponse{
-  Response response = 1;
-}
-
-message ShowRuleRequest{
-  string taskRuleName = 1;
-  uint64 page = 2;
-  uint64 pageSize = 3;
-}
-message ShowRuleResponse{
-  Response response = 1;
-}
-
 message UpsertStructMigrateTaskRequest{
   string taskName = 1;
-  string taskRuleName = 2;
-  StructMigrateParam structMigrateParam = 3;
-  StructMigrateRule structMigrateRule = 4;
+  string datasourceNameS = 2;
+  string datasourceNameT = 3;
+  string comment = 4;
+
+  CaseFieldRule caseFieldRule = 5;
+  repeated SchemaRouteRule schemaRouteRules = 6;
+  StructMigrateParam structMigrateParam = 7;
+  StructMigrateRule structMigrateRule = 8;
 }
 message UpsertStructMigrateTaskResponse{
   Response response = 1;
@@ -215,34 +179,27 @@ message Datasource {
   string comment = 12;
 }
 
-message Rule {
-  string taskRuleName = 1;
-  string datasourceNameS = 2;
-  string datasourceNameT = 3;
-  string comment = 4;
+message SchemaRouteRule{
+  string schemaNameS = 1;
+  string schemaNameT = 2;
+  repeated string includeTableS = 3;
+  repeated string excludeTableS = 4;
 
-  repeated SchemaRouteRule schemaRouteRules = 5;
+  repeated TableRouteRule tableRouteRules = 5;
 }
 
-message SchemaRouteRule{
-  string sourceSchema = 1;
-  string targetSchema = 2;
-  string caseFieldRule = 3;
-  repeated string sourceIncludeTable = 4;
-  repeated string sourceExcludeTable = 5;
-
-  repeated TableRouteRule tableRouteRules = 6;
+message CaseFieldRule {
+  string caseFieldRuleS = 1;
+  string caseFieldRuleT = 2;
 }
 
 message TableRouteRule {
-  string sourceTable = 1;
-  string targetTable = 2;
-  string caseFieldRule = 3;
-  map<string,string> columnRouteRules = 4;
+  string tableNameS = 1;
+  string tableNameT = 2;
+  map<string,string> columnRouteRules = 3;
 }
 
 message StructMigrateParam {
-  string caseFieldRule = 1;
   uint64 migrateThread = 2;
   uint64 taskQueueSize = 3;
   bool createIfNotExist = 4;
@@ -267,7 +224,7 @@ message TaskStructRule {
 }
 
 message SchemaStructRule {
-  string sourceSchema = 1;
+  string schemaNameS = 1;
   string columnTypeS = 2;
   string columnTypeT = 3;
   string defaultValueS = 4;
@@ -275,8 +232,8 @@ message SchemaStructRule {
 }
 
 message TableStructRule {
-  string sourceSchema = 1;
-  string sourceTable = 2;
+  string schemaNameS = 1;
+  string tableNameS = 2;
   string columnTypeS = 3;
   string columnTypeT = 4;
   string defaultValueS = 5;
@@ -284,9 +241,9 @@ message TableStructRule {
 }
 
 message ColumnStructRule {
-  string sourceSchema = 1;
-  string sourceTable = 2;
-  string sourceColumn = 3;
+  string schemaNameS = 1;
+  string tableNameS = 2;
+  string columnNameS = 3;
   string columnTypeS = 4;
   string columnTypeT = 5;
   string defaultValueS = 6;
@@ -294,7 +251,7 @@ message ColumnStructRule {
 }
 
 message TableAttrsRule {
-  string sourceSchema = 1;
-  repeated string sourceTables = 2;
+  string schemaNameS = 1;
+  repeated string tableNamesS = 2;
   string tableAttrsT = 3;
 }

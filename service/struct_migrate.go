@@ -17,10 +17,17 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/wentaojin/dbms/model/common"
+
+	"github.com/wentaojin/dbms/utils/etcdutil"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"go.uber.org/zap"
 
@@ -49,11 +56,20 @@ import (
 func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTaskRequest) (string, error) {
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
 		_, err := model.GetITaskRW().CreateTask(txnCtx, &task.Task{
-			TaskName:     req.TaskName,
-			TaskMode:     constant.TaskModeStructMigrate,
-			TaskRuleName: req.TaskRuleName,
-			TaskStatus:   constant.TaskDatabaseStatusWaiting,
+			TaskName:        req.TaskName,
+			TaskMode:        constant.TaskModeStructMigrate,
+			DatasourceNameS: req.DatasourceNameS,
+			DatasourceNameT: req.DatasourceNameT,
+			CaseFieldRuleS:  req.CaseFieldRule.CaseFieldRuleS,
+			CaseFieldRuleT:  req.CaseFieldRule.CaseFieldRuleT,
+			TaskStatus:      constant.TaskDatabaseStatusWaiting,
+			Entity:          &common.Entity{Comment: req.Comment},
 		})
+		if err != nil {
+			return err
+		}
+
+		err = UpsertRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRules)
 		if err != nil {
 			return err
 		}
@@ -73,10 +89,33 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 
 		for _, r := range req.StructMigrateRule.TaskStructRules {
 			if !strings.EqualFold(r.String(), "") {
+				var (
+					sourceColumnType string
+					targetColumnType string
+				)
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
+					sourceColumnType = r.ColumnTypeS
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameOrigin) {
+					targetColumnType = r.ColumnTypeT
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
+					sourceColumnType = stringutil.StringLower(r.ColumnTypeS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameLower) {
+					targetColumnType = stringutil.StringLower(r.ColumnTypeT)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
+					sourceColumnType = stringutil.StringUpper(r.ColumnTypeS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
+					targetColumnType = stringutil.StringUpper(r.ColumnTypeT)
+				}
+
 				_, err = model.GetIStructMigrateTaskRuleRW().CreateTaskStructRule(txnCtx, &migrate.TaskStructRule{
 					TaskName:      req.TaskName,
-					ColumnTypeS:   r.ColumnTypeS,
-					ColumnTypeT:   r.ColumnTypeT,
+					ColumnTypeS:   sourceColumnType,
+					ColumnTypeT:   targetColumnType,
 					DefaultValueS: r.DefaultValueS,
 					DefaultValueT: r.DefaultValueT,
 				})
@@ -87,11 +126,37 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 		}
 		for _, r := range req.StructMigrateRule.SchemaStructRules {
 			if !strings.EqualFold(r.String(), "") {
+				var (
+					sourceColumnType string
+					sourceSchema     string
+					targetColumnType string
+				)
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
+					sourceSchema = r.SchemaNameS
+					sourceColumnType = r.ColumnTypeS
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameOrigin) {
+					targetColumnType = r.ColumnTypeT
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
+					sourceSchema = stringutil.StringLower(r.SchemaNameS)
+					sourceColumnType = stringutil.StringLower(r.ColumnTypeS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameLower) {
+					targetColumnType = stringutil.StringLower(r.ColumnTypeT)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
+					sourceSchema = stringutil.StringUpper(r.SchemaNameS)
+					sourceColumnType = stringutil.StringUpper(r.ColumnTypeS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
+					targetColumnType = stringutil.StringUpper(r.ColumnTypeT)
+				}
 				_, err = model.GetIStructMigrateSchemaRuleRW().CreateSchemaStructRule(txnCtx, &migrate.SchemaStructRule{
 					TaskName:      req.TaskName,
-					SchemaNameS:   r.SourceSchema,
-					ColumnTypeS:   r.ColumnTypeS,
-					ColumnTypeT:   r.ColumnTypeT,
+					SchemaNameS:   sourceSchema,
+					ColumnTypeS:   sourceColumnType,
+					ColumnTypeT:   targetColumnType,
 					DefaultValueS: r.DefaultValueS,
 					DefaultValueT: r.DefaultValueT,
 				})
@@ -102,12 +167,42 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 		}
 		for _, r := range req.StructMigrateRule.TableStructRules {
 			if !strings.EqualFold(r.String(), "") {
+				var (
+					sourceColumnType string
+					sourceSchema     string
+					sourceTable      string
+					targetColumnType string
+				)
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
+					sourceSchema = r.SchemaNameS
+					sourceTable = r.TableNameS
+					sourceColumnType = r.ColumnTypeS
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameOrigin) {
+					targetColumnType = r.ColumnTypeT
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
+					sourceSchema = stringutil.StringLower(r.SchemaNameS)
+					sourceTable = stringutil.StringLower(r.TableNameS)
+					sourceColumnType = stringutil.StringLower(r.ColumnTypeS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameLower) {
+					targetColumnType = stringutil.StringLower(r.ColumnTypeT)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
+					sourceSchema = stringutil.StringUpper(r.SchemaNameS)
+					sourceTable = stringutil.StringUpper(r.TableNameS)
+					sourceColumnType = stringutil.StringUpper(r.ColumnTypeS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
+					targetColumnType = stringutil.StringUpper(r.ColumnTypeT)
+				}
 				_, err = model.GetIStructMigrateTableRuleRW().CreateTableStructRule(txnCtx, &migrate.TableStructRule{
 					TaskName:      req.TaskName,
-					SchemaNameS:   r.SourceSchema,
-					TableNameS:    r.SourceTable,
-					ColumnTypeS:   r.ColumnTypeS,
-					ColumnTypeT:   r.ColumnTypeT,
+					SchemaNameS:   sourceSchema,
+					TableNameS:    sourceTable,
+					ColumnTypeS:   sourceColumnType,
+					ColumnTypeT:   targetColumnType,
 					DefaultValueS: r.DefaultValueS,
 					DefaultValueT: r.DefaultValueT,
 				})
@@ -118,13 +213,47 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 		}
 		for _, r := range req.StructMigrateRule.ColumnStructRules {
 			if !strings.EqualFold(r.String(), "") {
+				var (
+					sourceColumnType string
+					sourceSchema     string
+					sourceTable      string
+					sourceColumn     string
+					targetColumnType string
+				)
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
+					sourceSchema = r.SchemaNameS
+					sourceTable = r.TableNameS
+					sourceColumn = r.ColumnNameS
+					sourceColumnType = r.ColumnTypeS
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameOrigin) {
+					targetColumnType = r.ColumnTypeT
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
+					sourceSchema = stringutil.StringLower(r.SchemaNameS)
+					sourceTable = stringutil.StringLower(r.TableNameS)
+					sourceColumn = stringutil.StringLower(r.ColumnNameS)
+					sourceColumnType = stringutil.StringLower(r.ColumnTypeS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameLower) {
+					targetColumnType = stringutil.StringLower(r.ColumnTypeT)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
+					sourceSchema = stringutil.StringUpper(r.SchemaNameS)
+					sourceTable = stringutil.StringUpper(r.TableNameS)
+					sourceColumn = stringutil.StringUpper(r.ColumnNameS)
+					sourceColumnType = stringutil.StringUpper(r.ColumnTypeS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
+					targetColumnType = stringutil.StringUpper(r.ColumnTypeT)
+				}
 				_, err = model.GetIStructMigrateColumnRuleRW().CreateColumnStructRule(txnCtx, &migrate.ColumnStructRule{
 					TaskName:      req.TaskName,
-					SchemaNameS:   r.SourceSchema,
-					TableNameS:    r.SourceTable,
-					ColumnNameS:   r.SourceColumn,
-					ColumnTypeS:   r.ColumnTypeS,
-					ColumnTypeT:   r.ColumnTypeT,
+					SchemaNameS:   sourceSchema,
+					TableNameS:    sourceTable,
+					ColumnNameS:   sourceColumn,
+					ColumnTypeS:   sourceColumnType,
+					ColumnTypeT:   targetColumnType,
 					DefaultValueS: r.DefaultValueS,
 					DefaultValueT: r.DefaultValueT,
 				})
@@ -136,11 +265,33 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 
 		for _, r := range req.StructMigrateRule.TableAttrsRules {
 			if !strings.EqualFold(r.String(), "") {
-				for _, t := range r.SourceTables {
+				var sourceSchema string
+
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
+					sourceSchema = r.SchemaNameS
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
+					sourceSchema = stringutil.StringLower(r.SchemaNameS)
+				}
+				if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
+					sourceSchema = stringutil.StringUpper(r.SchemaNameS)
+				}
+				for _, t := range r.TableNamesS {
+					var sourceTable string
+
+					if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
+						sourceTable = t
+					}
+					if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
+						sourceTable = stringutil.StringLower(t)
+					}
+					if strings.EqualFold(req.CaseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
+						sourceTable = stringutil.StringUpper(t)
+					}
 					_, err = model.GetIStructMigrateTableAttrsRuleRW().CreateTableAttrsRule(txnCtx, &migrate.TableAttrsRule{
 						TaskName:    req.TaskName,
-						SchemaNameS: r.SourceSchema,
-						TableNameS:  t,
+						SchemaNameS: sourceSchema,
+						TableNameS:  sourceTable,
 						TableAttrT:  r.TableAttrsT,
 					})
 				}
@@ -162,6 +313,10 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 func DeleteStructMigrateTask(ctx context.Context, req *pb.DeleteStructMigrateTaskRequest) (string, error) {
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
 		err := model.GetITaskRW().DeleteTask(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
+		err = DeleteRule(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}
@@ -250,7 +405,6 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 		}
 
 		param = &pb.StructMigrateParam{
-			CaseFieldRule:    paramMap[constant.ParamNameStructMigrateCaseFieldRule],
 			MigrateThread:    uint64(migrateThread),
 			TaskQueueSize:    uint64(taskQueueSize),
 			DirectWrite:      directWrite,
@@ -279,7 +433,7 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 
 		for _, d := range schemaRules {
 			rules.SchemaStructRules = append(rules.SchemaStructRules, &pb.SchemaStructRule{
-				SourceSchema:  d.SchemaNameS,
+				SchemaNameS:   d.SchemaNameS,
 				ColumnTypeS:   d.ColumnTypeS,
 				ColumnTypeT:   d.ColumnTypeT,
 				DefaultValueS: d.DefaultValueS,
@@ -294,8 +448,8 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 
 		for _, d := range tableRules {
 			rules.TableStructRules = append(rules.TableStructRules, &pb.TableStructRule{
-				SourceSchema:  d.SchemaNameS,
-				SourceTable:   d.TableNameS,
+				SchemaNameS:   d.SchemaNameS,
+				TableNameS:    d.TableNameS,
 				ColumnTypeS:   d.ColumnTypeS,
 				ColumnTypeT:   d.ColumnTypeT,
 				DefaultValueS: d.DefaultValueS,
@@ -309,9 +463,9 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 		}
 		for _, d := range columnRules {
 			rules.ColumnStructRules = append(rules.ColumnStructRules, &pb.ColumnStructRule{
-				SourceSchema:  d.SchemaNameS,
-				SourceTable:   d.TableNameS,
-				SourceColumn:  d.ColumnNameS,
+				SchemaNameS:   d.SchemaNameS,
+				TableNameS:    d.TableNameS,
+				ColumnNameS:   d.ColumnNameS,
 				ColumnTypeS:   d.ColumnTypeS,
 				ColumnTypeT:   d.ColumnTypeT,
 				DefaultValueS: d.DefaultValueS,
@@ -341,14 +495,27 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 				tableAttrT = t.TableAttrT
 			}
 			rules.TableAttrsRules = append(rules.TableAttrsRules, &pb.TableAttrsRule{
-				SourceSchema: s,
-				SourceTables: sourceTables,
-				TableAttrsT:  tableAttrT,
+				SchemaNameS: s,
+				TableNamesS: sourceTables,
+				TableAttrsT: tableAttrT,
 			})
 		}
+
+		schemaRouteRules, err := ShowRule(txnCtx, taskInfo.TaskName)
+		if err != nil {
+			return err
+		}
+
 		resp = &pb.UpsertStructMigrateTaskRequest{
-			TaskName:           taskInfo.TaskName,
-			TaskRuleName:       taskInfo.TaskRuleName,
+			TaskName:        taskInfo.TaskName,
+			DatasourceNameS: taskInfo.DatasourceNameS,
+			DatasourceNameT: taskInfo.DatasourceNameT,
+			CaseFieldRule: &pb.CaseFieldRule{
+				CaseFieldRuleS: taskInfo.CaseFieldRuleS,
+				CaseFieldRuleT: taskInfo.CaseFieldRuleT,
+			},
+			Comment:            taskInfo.Comment,
+			SchemaRouteRules:   schemaRouteRules,
 			StructMigrateParam: param,
 			StructMigrateRule:  rules,
 		}
@@ -364,6 +531,93 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 		return jsonStr, err
 	}
 	return jsonStr, nil
+}
+
+func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir string) error {
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
+	if err != nil {
+		return err
+	}
+	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		// open database conn
+		var dbCfg *model.Database
+		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+		if err != nil {
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", string(keyResp.Kvs[0].Value), err)
+		}
+		err = model.CreateDatabaseReadWrite(dbCfg)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	}
+	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName})
+	if err != nil {
+		return err
+	}
+
+	if !strings.EqualFold(taskInfo.TaskStatus, constant.TaskDatabaseStatusSuccess) {
+		return fmt.Errorf("the [%v] task [%v] status [%v] is running in the worker [%v], please waiting success and retry", stringutil.StringLower(taskInfo.TaskMode),
+			taskInfo.TaskName, stringutil.StringLower(taskInfo.TaskStatus), taskInfo.WorkerAddr)
+	}
+
+	var (
+		migrateTasks []*task.StructMigrateTask
+	)
+	// get migrate task tables
+	migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(ctx, &task.StructMigrateTask{TaskName: taskInfo.TaskName, TaskStatus: constant.TaskDatabaseStatusSuccess, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+	if err != nil {
+		return err
+	}
+
+	var (
+		datasourceS, datasourceT *datasource.Datasource
+	)
+	err = model.Transaction(ctx, func(txnCtx context.Context) error {
+		datasourceS, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameS)
+		if err != nil {
+			return err
+		}
+		datasourceT, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameS)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// the according schemaName, split task group for the migrateTasks
+	groupSchemas := make(map[string]struct{})
+	for _, m := range migrateTasks {
+		groupSchemas[m.SchemaNameS] = struct{}{}
+	}
+
+	taskFlow := stringutil.StringBuilder(stringutil.StringUpper(datasourceS.DbType), constant.StringSeparatorAite, stringutil.StringUpper(datasourceT.DbType))
+
+	for schema, _ := range groupSchemas {
+		var w database.ITableStructFileWriter
+		w = taskflow.NewStructMigrateFile(ctx, taskInfo.TaskName, taskFlow, schema, outputDir)
+		err = w.InitOutputFile()
+		if err != nil {
+			return err
+		}
+		err = w.SyncStructFile()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) error {
@@ -388,7 +642,7 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 	}
 
 	logger.Info("struct migrate task init task", zap.String("task_name", taskName))
-	err = initStructMigrateTask(ctx, taskName, taskParams.CaseFieldRule)
+	err = initStructMigrateTask(ctx, taskName)
 	if err != nil {
 		return err
 	}
@@ -397,11 +651,19 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 	var migrateTasks []*task.StructMigrateTask
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		// get migrate task tables
-		migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName, TaskStatus: constant.TaskDatabaseStatusWaiting, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+		migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
+			&task.StructMigrateTask{
+				TaskName:       taskName,
+				TaskStatus:     constant.TaskDatabaseStatusWaiting,
+				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
 		if err != nil {
 			return err
 		}
-		migrateFailedTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName, TaskStatus: constant.TaskDatabaseStatusFailed, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+		migrateFailedTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
+			&task.StructMigrateTask{
+				TaskName:       taskName,
+				TaskStatus:     constant.TaskDatabaseStatusFailed,
+				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
 		if err != nil {
 			return err
 		}
@@ -424,15 +686,11 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		if err != nil {
 			return err
 		}
-		taskRule, err := model.GetIRuleRW().GetRule(txnCtx, &rule.Rule{TaskRuleName: taskInfo.TaskRuleName})
+		sourceDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameS)
 		if err != nil {
 			return err
 		}
-		sourceDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskRule.DatasourceNameS)
-		if err != nil {
-			return err
-		}
-		targetDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskRule.DatasourceNameT)
+		targetDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameT)
 		if err != nil {
 			return err
 		}
@@ -446,11 +704,10 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 
 	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
 		logger.Info("struct migrate task process task", zap.String("task_name", taskName))
-		startTime := time.Now()
+		taskTime := time.Now()
 		taskStruct := &taskflow.StructMigrateTask{
 			Ctx:          ctx,
 			TaskName:     taskName,
-			TaskRuleName: taskInfo.TaskRuleName,
 			TaskFlow:     taskFlow,
 			MigrateTasks: migrateTasks,
 			DatasourceS:  sourceDatasource,
@@ -463,7 +720,7 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		}
 		logger.Info("struct migrate task process task",
 			zap.String("task_name", taskName),
-			zap.String("cost", time.Now().Sub(startTime).String()))
+			zap.String("cost", time.Now().Sub(taskTime).String()))
 	} else {
 		return fmt.Errorf("current struct migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}
@@ -614,9 +871,6 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 		return taskParam, err
 	}
 	for _, p := range migrateParams {
-		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateCaseFieldRule) {
-			taskParam.CaseFieldRule = p.ParamValue
-		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateOutputDir) {
 			taskParam.OutputDir = p.ParamValue
 		}
@@ -652,26 +906,20 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 	return taskParam, nil
 }
 
-func initStructMigrateTask(ctx context.Context, taskName string, caseFieldRule string) error {
+func initStructMigrateTask(ctx context.Context, taskName string) error {
 	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName})
 	if err != nil {
 		return err
 	}
 
-	schemaRoutes, err := model.GetIMigrateSchemaRouteRW().FindSchemaRouteRule(ctx, &rule.SchemaRouteRule{TaskRuleName: taskInfo.TaskRuleName})
+	schemaRoutes, err := model.GetIMigrateSchemaRouteRW().FindSchemaRouteRule(ctx, &rule.SchemaRouteRule{TaskName: taskInfo.TaskName})
 	if err != nil {
 		return err
 	}
 
 	for _, schemaRoute := range schemaRoutes {
-		// get datasource
-		taskRule, err := model.GetIRuleRW().GetRule(ctx, &rule.Rule{TaskRuleName: schemaRoute.TaskRuleName})
-		if err != nil {
-			return err
-		}
-
 		// create source database conn
-		sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(ctx, taskRule.DatasourceNameS)
+		sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(ctx, taskInfo.DatasourceNameS)
 		if err != nil {
 			return err
 		}
@@ -683,8 +931,8 @@ func initStructMigrateTask(ctx context.Context, taskName string, caseFieldRule s
 
 		// filter database table
 		schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(ctx, &rule.MigrateTaskTable{
-			TaskRuleName: schemaRoute.TaskRuleName,
-			SchemaNameS:  schemaRoute.SchemaNameS,
+			TaskName:    schemaRoute.TaskName,
+			SchemaNameS: schemaRoute.SchemaNameS,
 		})
 		if err != nil {
 			return err
@@ -729,11 +977,31 @@ func initStructMigrateTask(ctx context.Context, taskName string, caseFieldRule s
 		tableRouteRule := make(map[string]string)
 
 		tableRoutes, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(ctx, &rule.TableRouteRule{
-			TaskRuleName: schemaRoute.TaskRuleName,
-			SchemaNameS:  schemaRoute.SchemaNameS,
+			TaskName:    schemaRoute.TaskName,
+			SchemaNameS: schemaRoute.SchemaNameS,
 		})
 		for _, tr := range tableRoutes {
 			tableRouteRule[tr.TableNameS] = tr.TableNameT
+		}
+
+		// clear the struct migrate task table
+		migrateTasks, err := model.GetIStructMigrateTaskRW().BatchFindStructMigrateTask(ctx, &task.StructMigrateTask{TaskName: taskName})
+		if err != nil {
+			return err
+		}
+		if len(migrateTasks) > 0 {
+			taskTablesMap := make(map[string]struct{})
+			for _, t := range databaseTables {
+				taskTablesMap[t] = struct{}{}
+			}
+			for _, smt := range migrateTasks {
+				if _, ok := taskTablesMap[smt.TableNameS]; !ok {
+					err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTask(ctx, smt.ID)
+					if err != nil {
+						return err
+					}
+				}
+			}
 		}
 
 		// database tables
@@ -741,25 +1009,21 @@ func initStructMigrateTask(ctx context.Context, taskName string, caseFieldRule s
 		// get table column route rule
 		for _, sourceTable := range databaseTables {
 			var (
-				targetSchema string
-				targetTable  string
+				targetTable string
 			)
 			if val, ok := tableRouteRule[sourceTable]; ok {
 				targetTable = val
 			} else {
-				targetTable = sourceTable
-			}
-
-			if strings.EqualFold(caseFieldRule, constant.ParamValueStructMigrateCaseFieldNameLower) {
-				targetSchema = strings.ToLower(schemaRoute.SchemaNameT)
-				targetTable = strings.ToLower(targetTable)
-			}
-			if strings.EqualFold(caseFieldRule, constant.ParamValueStructMigrateCaseFieldNameUpper) {
-				targetSchema = strings.ToUpper(schemaRoute.SchemaNameT)
-				targetTable = strings.ToUpper(targetTable)
-			}
-			if strings.EqualFold(caseFieldRule, constant.ParamValueStructMigrateCaseFieldNameOrigin) {
-				targetSchema = schemaRoute.SchemaNameT
+				// the according target case field rule covnert
+				if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
+					targetTable = stringutil.StringLower(sourceTable)
+				}
+				if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
+					targetTable = stringutil.StringUpper(sourceTable)
+				}
+				if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameOrigin) {
+					targetTable = sourceTable
+				}
 			}
 
 			_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(ctx, &task.StructMigrateTask{
@@ -767,7 +1031,7 @@ func initStructMigrateTask(ctx context.Context, taskName string, caseFieldRule s
 				SchemaNameS: schemaRoute.SchemaNameS,
 				TableNameS:  sourceTable,
 				TableTypeS:  databaseTableTypeMap[sourceTable],
-				SchemaNameT: targetSchema,
+				SchemaNameT: schemaRoute.SchemaNameT,
 				TableNameT:  targetTable,
 				TaskStatus:  constant.TaskDatabaseStatusWaiting,
 			})
