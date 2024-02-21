@@ -274,7 +274,7 @@ func (e *Etcd) Join() (err error) {
 			return fmt.Errorf("embed etcd read persistent join data failed: [%v]", err)
 		}
 	} else {
-		e.Config.InitialCluster = strings.TrimSpace(string(s))
+		e.Config.InitialCluster = strings.TrimSpace(stringutil.BytesToString(s))
 		e.Config.ClusterState = embed.ClusterStateFlagExisting
 		logger.Info("using persistent join data", zap.String("file", joinFP), zap.String("data", e.Config.InitialCluster))
 		return nil

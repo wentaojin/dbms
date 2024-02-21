@@ -22,6 +22,7 @@ import (
 	"io"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -84,6 +85,50 @@ func StringLowerSlice(strs []string) []string {
 		newStrs = append(newStrs, StringLower(s))
 	}
 	return newStrs
+}
+
+func StrconvIntBitSize(s string, bitSize int) (int64, error) {
+	i, err := strconv.ParseInt(s, 10, bitSize)
+	if err != nil {
+		return i, err
+	}
+	return i, nil
+}
+
+func StrconvUintBitSize(s string, bitSize int) (uint64, error) {
+	i, err := strconv.ParseUint(s, 10, bitSize)
+	if err != nil {
+		return i, err
+	}
+	return i, nil
+}
+
+func StrconvFloatBitSize(s string, bitSize int) (float64, error) {
+	i, err := strconv.ParseFloat(s, bitSize)
+	if err != nil {
+		return i, err
+	}
+	return i, nil
+}
+
+func StrconvRune(s string) (int32, error) {
+	r, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return rune(r), err
+	}
+	return rune(r), nil
+}
+
+func StringPairKey(res map[string]string) string {
+	var newStr []string
+	for k, _ := range res {
+		newStr = append(newStr, k)
+	}
+	return StringJoin(newStr, ",")
+}
+
+func StringTrim(originStr string, trimStr string) string {
+	return strings.Trim(originStr, trimStr)
 }
 
 // StringItemsFilterDifference used for filter difference items, and returns new array string
@@ -224,7 +269,7 @@ func VersionOrdinal(version string) string {
 		vo = append(vo, b)
 		vo[j]++
 	}
-	return string(vo)
+	return BytesToString(vo)
 }
 
 // ExchangeStringDict used for exchange string dict
@@ -323,6 +368,7 @@ func CharsetConvert(data []byte, fromCharset, toCharset string) ([]byte, error) 
 }
 
 // BytesToString used for bytes to string, reduce memory
+// https://segmentfault.com/a/1190000037679588
 func BytesToString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }

@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wentaojin/dbms/utils/stringutil"
+
 	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/model/buildin"
@@ -57,11 +59,12 @@ type database struct {
 	migrateSchemaRouteRW          rule.ISchemaRouteRule
 	migrateTableRouteRW           rule.ITableRouteRule
 	migrateColumnRouteRW          rule.IColumnRouteRule
+	migrateTableRuleRW            rule.ITableMigrateRule
+	migrateSqlRuleRW              rule.ISqlRouteRule
 	migrateTaskTableRW            rule.IMigrateTaskTable
 	taskRW                        task.ITask
 	taskLogRW                     task.ILog
 	structMigrateTaskRW           task.IStructMigrateTask
-	dataMigrateTaskRW             task.IDataMigrateTask
 	paramsRW                      params.IParams
 	structMigrateTaskRuleRW       migrate.IStructMigrateTaskRule
 	structMigrateSchemaRuleRW     migrate.IStructMigrateSchemaRule
@@ -72,6 +75,10 @@ type database struct {
 	buildinRuleRecordRW           buildin.IBuildInRuleRecord
 	buildinDefaultValueRW         buildin.IBuildInDefaultValueRule
 	buildinCompatibleRW           buildin.IBuildInCompatibleRule
+	dataMigrateTaskRW             task.IDataMigrateTask
+	dataMigrateSummaryTask        task.IDataMigrateSummary
+	sqlMigrateTaskRW              task.ISqlMigrateTask
+	sqlMigrateSummaryTask         task.ISqlMigrateSummary
 }
 
 // Database is database configuration.
@@ -195,10 +202,11 @@ func (d *database) initReaderWriters() {
 	DefaultDB.migrateTableRouteRW = rule.NewTableRouteRuleRW(d.base)
 	DefaultDB.migrateColumnRouteRW = rule.NewColumnRouteRuleRW(d.base)
 	DefaultDB.migrateTaskTableRW = rule.NewMigrateTaskTableRW(d.base)
+	DefaultDB.migrateTableRuleRW = rule.NewTableMigrateRuleRW(d.base)
+	DefaultDB.migrateSqlRuleRW = rule.NewSqlRouteRuleRW(d.base)
 	DefaultDB.taskRW = task.NewTaskRW(d.base)
 	DefaultDB.taskLogRW = task.NewLogRW(d.base)
 	DefaultDB.structMigrateTaskRW = task.NewStructMigrateTaskRW(d.base)
-	DefaultDB.dataMigrateTaskRW = task.NewDataMigrateTaskRW(d.base)
 	DefaultDB.paramsRW = params.NewTaskParamsRW(d.base)
 	DefaultDB.structMigrateTaskRuleRW = migrate.NewStructMigrateTaskRuleRW(d.base)
 	DefaultDB.structMigrateSchemaRuleRW = migrate.NewStructMigrateSchemaRuleRW(d.base)
@@ -209,6 +217,10 @@ func (d *database) initReaderWriters() {
 	DefaultDB.buildinRuleRecordRW = buildin.NewBuildinRuleRecordRW(d.base)
 	DefaultDB.buildinDefaultValueRW = buildin.NewBuildinDefaultValueRuleRW(d.base)
 	DefaultDB.buildinCompatibleRW = buildin.NewBuildinCompatibleRuleRW(d.base)
+	DefaultDB.dataMigrateTaskRW = task.NewDataMigrateTaskRW(d.base)
+	DefaultDB.dataMigrateSummaryTask = task.NewDataMigrateSummaryRW(d.base)
+	DefaultDB.sqlMigrateTaskRW = task.NewSqlMigrateTaskRW(d.base)
+	DefaultDB.sqlMigrateSummaryTask = task.NewSqlMigrateSummaryRW(d.base)
 }
 
 func (d *database) migrateStream(models ...interface{}) (err error) {
@@ -227,10 +239,11 @@ func (d *database) migrateTables() (err error) {
 		new(rule.SchemaRouteRule),
 		new(rule.TableRouteRule),
 		new(rule.ColumnRouteRule),
+		new(rule.TableMigrateRule),
+		new(rule.SqlRouteRule),
 		new(task.Task),
 		new(task.Log),
 		new(task.StructMigrateTask),
-		new(task.DataMigrateTask),
 		new(params.TaskDefaultParam),
 		new(params.TaskCustomParam),
 		new(migrate.TaskStructRule),
@@ -242,6 +255,10 @@ func (d *database) migrateTables() (err error) {
 		new(buildin.BuildinRuleRecord),
 		new(buildin.BuildinDefaultvalRule),
 		new(buildin.BuildinCompatibleRule),
+		new(task.DataMigrateTask),
+		new(task.DataMigrateSummary),
+		new(task.SqlMigrateTask),
+		new(task.SqlMigrateSummary),
 	)
 }
 
@@ -348,7 +365,7 @@ func (d *database) initCompatibleRule(ctx context.Context) error {
 
 func (d *Database) String() string {
 	jsonByte, _ := json.Marshal(d)
-	return string(jsonByte)
+	return stringutil.BytesToString(jsonByte)
 }
 
 // Transaction
@@ -387,6 +404,14 @@ func GetIMigrateColumnRouteRW() rule.IColumnRouteRule {
 	return DefaultDB.migrateColumnRouteRW
 }
 
+func GetIMigrateTableRuleRW() rule.ITableMigrateRule {
+	return DefaultDB.migrateTableRuleRW
+}
+
+func GetIMigrateSqlRuleRW() rule.ISqlRouteRule {
+	return DefaultDB.migrateSqlRuleRW
+}
+
 func GetITaskRW() task.ITask {
 	return DefaultDB.taskRW
 }
@@ -397,10 +422,6 @@ func GetITaskLogRW() task.ILog {
 
 func GetIStructMigrateTaskRW() task.IStructMigrateTask {
 	return DefaultDB.structMigrateTaskRW
-}
-
-func GetIDataMigrateTaskRW() task.IDataMigrateTask {
-	return DefaultDB.dataMigrateTaskRW
 }
 
 func GetIParamsRW() params.IParams {
@@ -441,4 +462,20 @@ func GetBuildInDefaultValueRuleRW() buildin.IBuildInDefaultValueRule {
 
 func GetBuildInCompatibleRuleRW() buildin.IBuildInCompatibleRule {
 	return DefaultDB.buildinCompatibleRW
+}
+
+func GetIDataMigrateTaskRW() task.IDataMigrateTask {
+	return DefaultDB.dataMigrateTaskRW
+}
+
+func GetIDataMigrateSummaryRW() task.IDataMigrateSummary {
+	return DefaultDB.dataMigrateSummaryTask
+}
+
+func GetISqlMigrateTaskRW() task.ISqlMigrateTask {
+	return DefaultDB.sqlMigrateTaskRW
+}
+
+func GetISqlMigrateSummaryRW() task.ISqlMigrateSummary {
+	return DefaultDB.sqlMigrateSummaryTask
 }

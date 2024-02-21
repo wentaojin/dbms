@@ -152,3 +152,87 @@ func (s *Server) ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMi
 		Message: delMsg,
 	}}, nil
 }
+
+func (s *Server) UpsertDataMigrateTask(ctx context.Context, req *pb.UpsertDataMigrateTaskRequest) (*pb.UpsertDataMigrateTaskResponse, error) {
+	showMsg, err := service.UpsertDataMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.UpsertDataMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.UpsertDataMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: showMsg,
+	}}, nil
+}
+
+func (s *Server) DeleteDataMigrateTask(ctx context.Context, req *pb.DeleteDataMigrateTaskRequest) (*pb.DeleteDataMigrateTaskResponse, error) {
+	delMsg, err := service.DeleteDataMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.DeleteDataMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.DeleteDataMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) ShowDataMigrateTask(ctx context.Context, req *pb.ShowDataMigrateTaskRequest) (*pb.ShowDataMigrateTaskResponse, error) {
+	delMsg, err := service.ShowDataMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.ShowDataMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.ShowDataMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) UpsertSqlMigrateTask(ctx context.Context, req *pb.UpsertSqlMigrateTaskRequest) (*pb.UpsertSqlMigrateTaskResponse, error) {
+	showMsg, err := service.UpsertSqlMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.UpsertSqlMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.UpsertSqlMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: showMsg,
+	}}, nil
+}
+
+func (s *Server) DeleteSqlMigrateTask(ctx context.Context, req *pb.DeleteSqlMigrateTaskRequest) (*pb.DeleteSqlMigrateTaskResponse, error) {
+	delMsg, err := service.DeleteSqlMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.DeleteSqlMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.DeleteSqlMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) (*pb.ShowSqlMigrateTaskResponse, error) {
+	delMsg, err := service.ShowSqlMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.ShowSqlMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.ShowSqlMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}

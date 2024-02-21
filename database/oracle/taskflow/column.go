@@ -819,12 +819,12 @@ func handleColumnDefaultValueCharset(columnName, defaultVal, sourceCharset, targ
 	}
 	if isTrunc {
 		// 'K'
-		dataDefault = "'" + string(convertTargetRaw) + "'"
+		dataDefault = "'" + stringutil.BytesToString(convertTargetRaw) + "'"
 	} else {
-		if strings.EqualFold(string(convertTargetRaw), constant.OracleDatabaseTableColumnDefaultValueWithStringNull) {
-			dataDefault = "'" + string(convertTargetRaw) + "'"
+		if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.OracleDatabaseTableColumnDefaultValueWithStringNull) {
+			dataDefault = "'" + stringutil.BytesToString(convertTargetRaw) + "'"
 		} else {
-			dataDefault = string(convertTargetRaw)
+			dataDefault = stringutil.BytesToString(convertTargetRaw)
 		}
 	}
 	return dataDefault, nil

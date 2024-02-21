@@ -331,7 +331,7 @@ func (s *Server) handlePanicRecover(ctx context.Context, t *task.Task) {
 					stringutil.StringLower(constant.TaskDatabaseStatusFailed),
 					t.TaskName,
 					r,
-					string(debug.Stack())),
+					stringutil.BytesToString(debug.Stack())),
 			})
 			if err != nil {
 				return err
@@ -341,7 +341,7 @@ func (s *Server) handlePanicRecover(ctx context.Context, t *task.Task) {
 		logger.Error("the worker running task panic",
 			zap.String("task_name", t.TaskName),
 			zap.Any("panic", r),
-			zap.Any("stack", string(debug.Stack())),
+			zap.Any("stack", stringutil.BytesToString(debug.Stack())),
 			zap.Error(err))
 	}
 }

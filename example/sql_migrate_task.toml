@@ -1,0 +1,39 @@
+task-name = "oracle33totidb145_task"
+datasource-name-s = "oracle33"
+datasource-name-t = "tidb145"
+comment = "测试数据源"
+
+[case-field-rule]
+# 控制 strict-migrate-task 配置文件内所有 *-s 参数配置值以及 column-route-rules 中的 key 值
+# 1，参数值是 0 代表以当前配置文件为准，与源端对比
+# 2，参数值是 1 代表统一转换值为小写，与源端对比
+# 3，参数值是 2 代表统一转换值为大写，与源端对比
+case-field-rule-s = "0"
+# 控制 strict-migrate-task 配置文件 *-t 以及 column-route-rules 中的 value 值
+# 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准
+# 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写
+# 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写
+case-field-rule-t = "1"
+
+[[sql-route-rules]]
+# 指定源端查询 sql
+sql-query-s = ''
+# 指定数据写入目标端表名，必须在当前 schema-name-t 内
+schema-name-t = ""
+table-name-t = ""
+sql-hint-t = ""
+column-route-rules = {"i01" = "s_i01", "i02" = "s_i02"}
+
+[sql-migrate-param]
+# 数据写入批量大小
+batch-size = 50
+# 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上游表数据，可动态变更
+sql-thread-s = 32
+# 表内每 sql-thread-s 线程写下游并发数，可动态变更
+sql-thread-t = 64
+# 指定 sql 写入 Hint
+sql-hint-t = ""
+# calltimeout，单位：秒
+call-timeout = 36000
+# 是否一致性读 ORA
+enable-consistent-read = false

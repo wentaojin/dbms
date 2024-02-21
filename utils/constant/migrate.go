@@ -361,22 +361,56 @@ const (
 // migrate parameters
 // struct migrate parameters
 const (
-	ParamNameStructMigrateCaseFieldRule    = "caseFieldRule"
 	ParamNameStructMigrateMigrateThread    = "migrateThread"
-	ParamNameStructMigrateTaskQueueSize    = "taskQueueSize"
 	ParamNameStructMigrateDirectWrite      = "directWrite"
 	ParamNameStructMigrateCreateIfNotExist = "createIfNotExist"
 	ParamNameStructMigrateOutputDir        = "outputDir"
 
-	// ParamValueStructMigrateCaseFieldNameOrigin case-field-name params value
+	// ParamValueStructMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin
 	// - 1 represent keeping lower
 	// - 2 represent keeping upper
-	ParamValueStructMigrateCaseFieldNameOrigin = "0"
-	ParamValueStructMigrateCaseFieldNameLower  = "1"
-	ParamValueStructMigrateCaseFieldNameUpper  = "2"
-	ParamValueStructMigrateMigrateThread       = "8"
-	ParamValueStructMigrateTaskQueueSize       = "1024"
-	ParamValueStructMigrateDirectWrite         = "true"
-	ParamValueStructMigrateOutputDir           = "/tmp/dbms/"
+	ParamValueStructMigrateCaseFieldRuleOrigin = "0"
+	ParamValueStructMigrateCaseFieldRuleLower  = "1"
+	ParamValueStructMigrateCaseFieldRuleUpper  = "2"
+)
+
+// data migrate parameters
+const (
+	ParamNameDataMigrateTableThread          = "tableThread"
+	ParamNameDataMigrateBatchSize            = "batchSize"
+	ParamNameDataMigrateChunkSize            = "chunkSize"
+	ParamNameDataMigrateSqlThreadS           = "sqlThreadS"
+	ParamNameDataMigrateSqlHintS             = "sqlHintS"
+	ParamNameDataMigrateSqlThreadT           = "sqlThreadT"
+	ParamNameDataMigrateSqlHintT             = "sqlHintT"
+	ParamNameDataMigrateCallTimeout          = "callTimeout"
+	ParamNameDataMigrateEnableCheckpoint     = "enableCheckpoint"
+	ParamNameDataMigrateEnableConsistentRead = "enableConsistentRead"
+
+	// ParamValueDataMigrateCaseFieldRuleOrigin case-field-name params value
+	// - 0 represent keeping origin
+	// - 1 represent keeping lower
+	// - 2 represent keeping upper
+	ParamValueDataMigrateCaseFieldRuleOrigin = "0"
+	ParamValueDataMigrateCaseFieldRuleLower  = "1"
+	ParamValueDataMigrateCaseFieldRuleUpper  = "2"
+)
+
+// sql migrate parameters
+const (
+	ParamNameSqlMigrateBatchSize            = "batchSize"
+	ParamNameSqlMigrateSqlThreadS           = "sqlThreadS"
+	ParamNameSqlMigrateSqlThreadT           = "sqlThreadT"
+	ParamNameSqlMigrateSqlHintT             = "sqlHintT"
+	ParamNameSqlMigrateCallTimeout          = "callTimeout"
+	ParamNameSqlMigrateEnableConsistentRead = "enableConsistentRead"
+
+	// ParamValueSqlMigrateCaseFieldRuleOrigin case-field-name params value
+	// - 0 represent keeping origin
+	// - 1 represent keeping lower
+	// - 2 represent keeping upper
+	ParamValueSqlMigrateCaseFieldRuleOrigin = "0"
+	ParamValueSqlMigrateCaseFieldRuleLower  = "1"
+	ParamValueSqlMigrateCaseFieldRuleUpper  = "2"
 )

@@ -41,7 +41,7 @@ func Decrypt(ciphertext string, key []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(crypt), nil
+	return BytesToString(crypt), nil
 }
 
 func aesEncrypt(origData []byte, key []byte) ([]byte, error) {

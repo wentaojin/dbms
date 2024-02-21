@@ -16,21 +16,21 @@ limitations under the License.
 package taskflow
 
 import (
-	"github.com/wentaojin/dbms/database/oracle"
+	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
 type Datasource struct {
-	DatabaseS        *oracle.Database `json:"-"`
-	SchemaNameS      string           `json:"schemaNameS"`
-	TableNameS       string           `json:"tableNameS"`
-	TableTypeS       string           `json:"tableTypeS"`
-	CollationS       bool             `json:"collationS"`
-	DBCharsetS       string           `json:"dbCharsetS"`
-	DBCharsetT       string           `json:"dbCharsetT"`
-	SchemaCollationS string           `json:"schemaCollationS"`
-	TableCollationS  string           `json:"tableCollationS"`
-	DBNlsCompS       string           `json:"dbNlsCompS"`
+	DatabaseS        database.IDatabase `json:"-"`
+	SchemaNameS      string             `json:"schemaNameS"`
+	TableNameS       string             `json:"tableNameS"`
+	TableTypeS       string             `json:"tableTypeS"`
+	CollationS       bool               `json:"collationS"`
+	DBCharsetS       string             `json:"dbCharsetS"`
+	DBCharsetT       string             `json:"dbCharsetT"`
+	SchemaCollationS string             `json:"schemaCollationS"`
+	TableCollationS  string             `json:"tableCollationS"`
+	DBNlsCompS       string             `json:"dbNlsCompS"`
 }
 
 func (d *Datasource) GetTablePrimaryKey() ([]map[string]string, error) {

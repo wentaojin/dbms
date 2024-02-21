@@ -184,7 +184,7 @@ paths:
     post:
       tags:
         - structMigrate
-      description: List struct migrate task connect information
+      description: List struct migrate task information
       operationId: APIListStructMigrate
       requestBody:
         required: true
@@ -208,8 +208,154 @@ paths:
     delete:
       tags:
         - structMigrate
-      description: Delete struct migrate rule connection information
+      description: Delete struct migrate rule information
       operationId: APIDeleteStructMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+  /task/dataMigrate:
+    put:
+      tags:
+        - dataMigrate
+      description: Put data migrate task information
+      operationId: APIPutDataMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataMigrateTask'
+      responses:
+        '200':
+          description: data migrate task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - dataMigrate
+      description: List data migrate task information
+      operationId: APIListDataMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of data migrate task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - dataMigrate
+      description: Delete data migrate rule information
+      operationId: APIDeleteDataMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+  /task/sqlMigrate:
+    put:
+      tags:
+        - sqlMigrate
+      description: Put sql migrate task information
+      operationId: APIPutSqlMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SqlMigrateTask'
+      responses:
+        '200':
+          description: sql migrate task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - sqlMigrate
+      description: List sql migrate task information
+      operationId: APIListSqlMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of sql migrate task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - sqlMigrate
+      description: Delete sql migrate rule information
+      operationId: APIDeleteSqlMigrate
       requestBody:
         required: true
         content:
@@ -323,6 +469,106 @@ components:
         comment:
           type: string
           format: string
+    StructMigrateTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        schemaRouteRule:
+          type: object
+          $ref: '#/components/schemas/SchemaRouteRule'
+        structMigrateParam:
+          $ref: '#/components/schemas/StructMigrateParam'
+        structMigrateRule:
+          $ref: '#/components/schemas/StructMigrateRule'
+    DataMigrateTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        schemaRouteRule:
+          type: object
+          $ref: '#/components/schemas/SchemaRouteRule'
+        dataMigrateParam:
+          $ref: '#/components/schemas/DataMigrateParam'
+    SqlMigrateTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        sqlRouteRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/SqlRouteRule'
+        sqlMigrateParam:
+          $ref: '#/components/schemas/SqlMigrateParam'
+    DataMigrateParam:
+      type: object
+      properties:
+        tableThread:
+          type: integer
+          format: uint64
+        batchSize:
+          type: integer
+          format: uint64
+        chunkSize:
+          type: integer
+          format: uint64
+        sqlThreadS:
+          type: integer
+          format: uint64
+        sqlHintS:
+          type: string
+          format: string
+        sqlThreadT:
+          type: integer
+          format: uint64
+        sqlHintT:
+          type: string
+          format: string
+        callTimeout:
+          type: integer
+          format: uint64
+        enableCheckpoint:
+          type: boolean
+        enableConsistentRead:
+          type: boolean
     SchemaRouteRule:
       type: object
       properties:
@@ -346,6 +592,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TableRouteRule'
+        TableMigrateRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableMigrateRule'
     TableRouteRule:
       type: object
       properties:
@@ -360,38 +610,67 @@ components:
           additionalProperties:
             type: string
             format: string
-    StructMigrateTask:
+    TableMigrateRule:
       type: object
       properties:
-        taskName:
+        tableNameS:
           type: string
           format: string
-        datasourceNameS:
+        enableChunkStrategy:
+          type: boolean
+        whereRange:
           type: string
           format: string
-        datasourceNameT:
+        sqlHintS:
           type: string
           format: string
-        comment:
+    SqlRouteRule:
+      type: object
+      properties:
+        sqlQueryS:
           type: string
           format: string
-        caseFieldRule:
-          $ref: '#/components/schemas/CaseFieldRule'
-        schemaRouteRules:
-          type: array
-          items:
-            $ref: '#/components/schemas/SchemaRouteRule'
-        structMigrateParam:
-          $ref: '#/components/schemas/StructMigrateParam'
-        structMigrateRule:
-          $ref: '#/components/schemas/StructMigrateRule'
+        schemaNameT:
+          type: string
+          format: string
+        tableNameT:
+          type: string
+          format: string
+        sqlHintT:
+          type: string
+          format: string
+        caseFieldRuleT:
+          type: string
+          format: string
+        columnRouteRules:
+          type: object
+          additionalProperties:
+            type: string
+            format: string
+    SqlMigrateParam:
+      type: object
+      properties:
+        batchSize:
+          type: integer
+          format: uint64
+        sqlThreadS:
+          type: integer
+          format: uint64
+        sqlThreadT:
+          type: integer
+          format: uint64
+        sqlHintT:
+          type: string
+          format: string
+        callTimeout:
+          type: integer
+          format: uint64
+        enableConsistentRead:
+          type: boolean
     StructMigrateParam:
       type: object
       properties:
         migrateThread:
-          type: integer
-          format: uint64
-        taskQueueSize:
           type: integer
           format: uint64
         directWrite:

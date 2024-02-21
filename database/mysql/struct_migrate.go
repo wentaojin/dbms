@@ -15,29 +15,97 @@ limitations under the License.
 */
 package mysql
 
-import (
-	"strings"
+func (d *Database) FilterDatabaseSchema() ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
 
-	"github.com/wentaojin/dbms/utils/constant"
-)
+func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
 
-func (d *Database) GetDatabaseVersion(dbType string) (string, error) {
-	_, res, err := d.GeneralQuery(`SELECT VERSION() AS VERSION`)
-	if err != nil {
-		return "", err
-	}
+func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) ([]string, []string, []string, []string, []string, error) {
+	//TODO implement me
+	panic("implement me")
+}
 
-	var version string
-	verinfos := strings.Split(res[0]["VERSION"], constant.MYSQLDatabaseVersionDelimiter)
+func (d *Database) GetDatabaseCharsetCollation() (string, string, error) {
+	//TODO implement me
+	panic("implement me")
+}
 
-	if strings.Contains(res[0]["VERSION"], constant.DatabaseTypeTiDB) {
-		for _, ver := range verinfos {
-			if strings.HasPrefix(ver, "v") {
-				version = strings.TrimPrefix(ver, "v")
-			}
-		}
-	} else {
-		version = verinfos[0]
-	}
-	return version, nil
+func (d *Database) GetDatabasePartitionTable(schemaName string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTemporaryTable(schemaName string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseClusteredTable(schemaName string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseMaterializedView(schemaName string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTablePrimaryKey(schemaName string, tableName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableUniqueKey(schemaName string, tableName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableForeignKey(schemaName string, tableName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableCheckKey(schemaName string, tableName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableNormalIndex(schemaName string, tableName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableUniqueIndex(schemaName string, tableName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableComment(schemaName string, tableName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableColumnComment(schemaName string, tableName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseSchemaCollation(schemaName string) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseSchemaTableCollation(schemaName, schemaCollation string) (map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableOriginStruct(schemaName, tableName, tableType string) (string, error) {
+	//TODO implement me
+	panic("implement me")
 }

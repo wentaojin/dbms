@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wentaojin/dbms/utils/stringutil"
+
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/wentaojin/dbms/model/datasource"
@@ -81,6 +83,10 @@ func PingDatabaseConnection(datasource *datasource.Datasource) error {
 	return nil
 }
 
+func (d *Database) PrepareContext(ctx context.Context, sqlStr string) (*sql.Stmt, error) {
+	return d.DBConn.PrepareContext(ctx, sqlStr)
+}
+
 func (d *Database) QueryContext(ctx context.Context, query string) (*sql.Rows, error) {
 	return d.DBConn.QueryContext(ctx, query)
 }
@@ -129,7 +135,7 @@ func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, er
 				row[columns[k]] = "NULLABLE"
 			} else {
 				// Handling empty string and other values, the return value output string
-				row[columns[k]] = string(v)
+				row[columns[k]] = stringutil.BytesToString(v)
 			}
 		}
 		results = append(results, row)

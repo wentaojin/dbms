@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/wentaojin/dbms/utils/stringutil"
+
 	"github.com/wentaojin/dbms/logger"
 	"go.uber.org/zap"
 
@@ -143,7 +145,7 @@ func (e *Election) observe(ctx context.Context) {
 				continue
 			}
 
-			leader := string(resp.Kvs[0].Value)
+			leader := stringutil.BytesToString(resp.Kvs[0].Value)
 			if leader != e.Identity {
 				go e.Callbacks.OnNewLeader(leader)
 			}
@@ -156,7 +158,7 @@ func (e *Election) Leader(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(resp.Kvs[0].Value), nil
+	return stringutil.BytesToString(resp.Kvs[0].Value), nil
 }
 
 // CurrentIsLeader judge current node whether is leader

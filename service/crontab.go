@@ -69,10 +69,10 @@ func (c *Crontab) Load(expressPrefixKey string) error {
 		logger.Warn("crontab info is not exist, watch starting", zap.String("express key prefix", expressPrefixKey))
 	default:
 		for _, resp := range expressKeyResp.Kvs {
-			keyS := stringutil.StringSplit(string(resp.Key), constant.StringSeparatorSlash)
+			keyS := stringutil.StringSplit(stringutil.BytesToString(resp.Key), constant.StringSeparatorSlash)
 			taskName := keyS[len(keyS)-1]
 
-			_, err = c.cron.AddJob(string(resp.Value), NewCronjob(c.ctx, c.etcdClient, c.discoveries, taskName))
+			_, err = c.cron.AddJob(stringutil.BytesToString(resp.Value), NewCronjob(c.ctx, c.etcdClient, c.discoveries, taskName))
 			if err != nil {
 				return err
 			}
@@ -106,11 +106,11 @@ func (c *Crontab) Watch(expressPrefixKey, entryPrefixKey string) error {
 					// modify or add
 					case mvccpb.PUT:
 						// if the value is equal between before and now, then skip
-						if strings.EqualFold(string(ev.Kv.Value), string(ev.PrevKv.Value)) {
+						if strings.EqualFold(stringutil.BytesToString(ev.Kv.Value), stringutil.BytesToString(ev.PrevKv.Value)) {
 							continue
 						}
 
-						keyS := stringutil.StringSplit(string(ev.Kv.Key), constant.StringSeparatorSlash)
+						keyS := stringutil.StringSplit(stringutil.BytesToString(ev.Kv.Key), constant.StringSeparatorSlash)
 						taskName := keyS[len(keyS)-1]
 
 						entryKeyResp, err := etcdutil.GetKey(c.etcdClient, stringutil.StringBuilder(entryPrefixKey, taskName))
@@ -128,7 +128,7 @@ func (c *Crontab) Watch(expressPrefixKey, entryPrefixKey string) error {
 							}
 							c.cron.Remove(oldEntry.EntryID)
 
-							newEntryID, err := c.cron.AddJob(string(ev.Kv.Value), NewCronjob(c.ctx, c.etcdClient, c.discoveries, taskName))
+							newEntryID, err := c.cron.AddJob(stringutil.BytesToString(ev.Kv.Value), NewCronjob(c.ctx, c.etcdClient, c.discoveries, taskName))
 							if err != nil {
 								return err
 							}
@@ -142,7 +142,7 @@ func (c *Crontab) Watch(expressPrefixKey, entryPrefixKey string) error {
 								zap.Any("old entry id", oldEntry.EntryID),
 								zap.Any("new entry id", newEntryID))
 						default:
-							newEntryID, err := c.cron.AddJob(string(ev.Kv.Value), NewCronjob(c.ctx, c.etcdClient, c.discoveries, taskName))
+							newEntryID, err := c.cron.AddJob(stringutil.BytesToString(ev.Kv.Value), NewCronjob(c.ctx, c.etcdClient, c.discoveries, taskName))
 							if err != nil {
 								return err
 							}
@@ -159,7 +159,7 @@ func (c *Crontab) Watch(expressPrefixKey, entryPrefixKey string) error {
 						}
 					// delete
 					case mvccpb.DELETE:
-						keyS := stringutil.StringSplit(string(ev.Kv.Key), constant.StringSeparatorSlash)
+						keyS := stringutil.StringSplit(stringutil.BytesToString(ev.Kv.Key), constant.StringSeparatorSlash)
 						taskName := keyS[len(keyS)-1]
 						entryKeyResp, err := etcdutil.GetKey(c.etcdClient, stringutil.StringBuilder(entryPrefixKey, taskName))
 						if err != nil {

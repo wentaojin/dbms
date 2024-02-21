@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/wentaojin/dbms/utils/stringutil"
+
 	"github.com/wentaojin/dbms/model"
 
 	"sync/atomic"
@@ -65,7 +67,7 @@ func (c *Connect) Connect(prefixKey string) error {
 		var dbCfg *model.Database
 		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
 		if err != nil {
-			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", string(keyResp.Kvs[0].Value), err)
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
 		}
 
 		err = model.CreateDatabaseConnection(dbCfg, c.addrRole, c.logLevel)
@@ -115,11 +117,11 @@ func (c *Connect) Watch(prefixKey string) error {
 							err = json.Unmarshal(ev.Kv.Value, &dbCfg)
 							if err != nil {
 								if i == constant.DefaultInstanceServiceRetryCounts {
-									return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", string(ev.Kv.Value), err)
+									return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(ev.Kv.Value), err)
 								} else {
 									// retry
 									logger.Warn("json unmarshal bytes to struct database failed, retrying",
-										zap.String("bytes", string(ev.Kv.Value)),
+										zap.String("bytes", stringutil.BytesToString(ev.Kv.Value)),
 										zap.Int("current retry counts", i),
 										zap.Int("max retry counts", constant.DefaultInstanceServiceRetryCounts),
 										zap.Duration("retry interval", constant.DefaultInstanceServiceRetryInterval))

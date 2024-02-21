@@ -63,7 +63,7 @@ func (rw *RWSchemaRouteRule) UpdateSchemaRouteRule(ctx context.Context, rule *Sc
 
 func (rw *RWSchemaRouteRule) GetSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error) {
 	var dataS *SchemaRouteRule
-	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_name = ? AND schema_name_s = ?", rule.TaskName, rule.SchemaNameS).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_name = ?", rule.TaskName).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -96,15 +96,6 @@ func (rw *RWSchemaRouteRule) IsContainedSchemaRouteRuleRecord(ctx context.Contex
 		return false, fmt.Errorf("get table [%s] record is contained failed: %v", rw.TableName(ctx), err)
 	}
 	return true, nil
-}
-
-func (rw *RWSchemaRouteRule) FindSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) ([]*SchemaRouteRule, error) {
-	var dataS []*SchemaRouteRule
-	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_name = ?", rule.TaskName).Find(&dataS).Error
-	if err != nil {
-		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
-	}
-	return dataS, nil
 }
 
 type RWMigrateTaskTable struct {
@@ -380,6 +371,183 @@ func (rw *RWColumnRouteRule) FindColumnRouteRule(ctx context.Context, rule *Colu
 	err := rw.DB(ctx).Model(&ColumnRouteRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskName, rule.SchemaNameS, rule.TableNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+type RWTableMigrateRule struct {
+	common.GormDB
+}
+
+func NewTableMigrateRuleRW(db *gorm.DB) *RWTableMigrateRule {
+	m := &RWTableMigrateRule{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWTableMigrateRule) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(TableMigrateRule{}).Name())
+}
+
+func (rw *RWTableMigrateRule) CreateTableMigrateRule(ctx context.Context, rule *TableMigrateRule) (*TableMigrateRule, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		UpdateAll: true,
+	}).Create(rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWTableMigrateRule) CreateInBatchTableMigrateRule(ctx context.Context, rule []*TableMigrateRule, batchSize int) ([]*TableMigrateRule, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		UpdateAll: true,
+	}).CreateInBatches(rule, batchSize).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWTableMigrateRule) UpdateTableMigrateRule(ctx context.Context, rule *TableMigrateRule) (*TableMigrateRule, error) {
+	err := rw.DB(ctx).Model(&TableMigrateRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).Save(&rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWTableMigrateRule) GetTableMigrateRule(ctx context.Context, rule *TableMigrateRule) (*TableMigrateRule, error) {
+	var dataS *TableMigrateRule
+	err := rw.DB(ctx).Model(&TableMigrateRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWTableMigrateRule) IsContainedTableMigrateRuleRecord(ctx context.Context, rule *TableMigrateRule) (bool, error) {
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).First(&TableMigrateRule{}).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, fmt.Errorf("get table [%s] record is contained failed: %v", rw.TableName(ctx), err)
+	}
+	return true, nil
+}
+
+func (rw *RWTableMigrateRule) DeleteTableMigrateRule(ctx context.Context, taskNames []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskNames).Delete(&TableMigrateRule{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWTableMigrateRule) FindTableMigrateRule(ctx context.Context, rule *TableMigrateRule) ([]*TableMigrateRule, error) {
+	var dataS []*TableMigrateRule
+	err := rw.DB(ctx).Model(&TableMigrateRule{}).Where("task_name = ? AND schema_name_s = ?", rule.TaskName, rule.SchemaNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+type RWSqlRouteRule struct {
+	common.GormDB
+}
+
+func NewSqlRouteRuleRW(db *gorm.DB) *RWSqlRouteRule {
+	m := &RWSqlRouteRule{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWSqlRouteRule) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(SqlRouteRule{}).Name())
+}
+
+func (rw *RWSqlRouteRule) CreateSqlRouteRule(ctx context.Context, rule *SqlRouteRule) (*SqlRouteRule, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "schema_name_t"}, {Name: "table_name_t"}},
+		UpdateAll: true,
+	}).Create(rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWSqlRouteRule) CreateInBatchSqlRouteRule(ctx context.Context, rule []*SqlRouteRule, batchSize int) ([]*SqlRouteRule, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "schema_name_t"}, {Name: "table_name_t"}},
+		UpdateAll: true,
+	}).CreateInBatches(rule, batchSize).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWSqlRouteRule) UpdateSqlRouteRule(ctx context.Context, rule *SqlRouteRule) (*SqlRouteRule, error) {
+	err := rw.DB(ctx).Model(&TableMigrateRule{}).Where("task_name = ? AND schema_name_t = ? AND table_name_t = ?",
+		rule.TaskName,
+		rule.SchemaNameT,
+		rule.TableNameT).Save(&rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWSqlRouteRule) GetSqlRouteRule(ctx context.Context, rule *SqlRouteRule) (*SqlRouteRule, error) {
+	var dataS *SqlRouteRule
+	err := rw.DB(ctx).Model(&SqlRouteRule{}).Where("task_name = ? AND schema_name_t = ? AND table_name_t = ?",
+		rule.TaskName,
+		rule.SchemaNameT,
+		rule.TableNameT).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSqlRouteRule) DeleteSqlRouteRule(ctx context.Context, taskNames []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskNames).Delete(&SqlRouteRule{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWSqlRouteRule) FindSqlRouteRule(ctx context.Context, rule *SqlRouteRule) ([]*SqlRouteRule, error) {
+	var dataS []*SqlRouteRule
+	err := rw.DB(ctx).Model(&SqlRouteRule{}).Where("task_name = ?", rule.TaskName).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSqlRouteRule) FindSqlRouteRuleGroupBySchemaTable(ctx context.Context) ([]*SqlRouteRuleGroupSchemaTableTResult, error) {
+	var dataS []*SqlRouteRuleGroupSchemaTableTResult
+	err := rw.DB(ctx).Model(&SqlRouteRule{}).Select("task_name,schema_name_t,table_name_t,count(1) as row_totals").Group("task_name,schema_name_t,table_name_t").Order("row_totals desc").Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] group by the the task_name and schema_name_t and table_name_t record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }

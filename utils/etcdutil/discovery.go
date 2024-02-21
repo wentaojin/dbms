@@ -52,7 +52,7 @@ func (d *Discovery) Discovery(prefixKey string) error {
 	}
 
 	for _, ev := range keyResp.Kvs {
-		d.Set(string(ev.Key), string(ev.Value))
+		d.Set(stringutil.BytesToString(ev.Key), stringutil.BytesToString(ev.Value))
 	}
 
 	go d.Watch(prefixKey)
@@ -84,10 +84,10 @@ func (d *Discovery) Watch(prefixKey string) {
 					switch ev.Type {
 					// modify or add
 					case mvccpb.PUT:
-						d.Set(string(ev.Kv.Key), string(ev.Kv.Value))
+						d.Set(stringutil.BytesToString(ev.Kv.Key), stringutil.BytesToString(ev.Kv.Value))
 					// delete
 					case mvccpb.DELETE:
-						d.Del(string(ev.Kv.Key))
+						d.Del(stringutil.BytesToString(ev.Kv.Key))
 					}
 				}
 			}
@@ -159,7 +159,7 @@ func (d *Discovery) GetFreeWorker() (string, error) {
 				return "", err
 			}
 			for _, ev := range keyResp.Kvs {
-				addr := string(ev.Key)
+				addr := stringutil.BytesToString(ev.Key)
 				if strings.EqualFold(addr, k) {
 					var w *Worker
 					err = stringutil.UnmarshalJSON(ev.Value, &w)

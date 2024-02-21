@@ -30,19 +30,13 @@ type StructConfig struct {
 	Comment         string `toml:"comment" json:"comment"`
 
 	CaseFieldRule      CaseFieldRule      `toml:"case-field-rule" json:"caseFieldRule"`
-	SchemaRouteRules   []SchemaRouteRule  `toml:"schema-route-rules" json:"schemaRouteRules"`
+	SchemaRouteRule    SchemaRouteRule    `toml:"schema-route-rule" json:"schemaRouteRule"`
 	StructMigrateParam StructMigrateParam `toml:"struct-migrate-param" json:"structMigrateParam"`
 	StructMigrateRule  StructMigrateRule  `toml:"struct-migrate-rule" json:"structMigrateRule"`
 }
 
-type CaseFieldRule struct {
-	CaseFieldRuleS string `toml:"case-field-rule-s" json:"caseFieldRuleS"`
-	CaseFieldRuleT string `toml:"case-field-rule-t" json:"CaseFieldRuleT"`
-}
-
 type StructMigrateParam struct {
 	MigrateThread    int64  `toml:"migrate-thread" json:"migrateThread"`
-	TaskQueueSize    int64  `toml:"task-queue-size" json:"taskQueueSize"`
 	DirectWrite      bool   `toml:"direct-write" json:"directWrite"`
 	CreateIfNotExist bool   `toml:"create-if-not-exist" json:"createIfNotExist"`
 	OutputDir        string `toml:"output-dir" json:"outputDir"`

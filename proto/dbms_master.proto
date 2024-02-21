@@ -60,6 +60,42 @@ service Master {
       body: "*"
     };
   }
+  rpc UpsertDataMigrateTask(UpsertDataMigrateTaskRequest) returns (UpsertDataMigrateTaskResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/dataMigrateTask"
+      body: "*"
+    };
+  }
+  rpc DeleteDataMigrateTask(DeleteDataMigrateTaskRequest) returns (DeleteDataMigrateTaskResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/dataMigrateTask"
+      body: "*"
+    };
+  }
+  rpc ShowDataMigrateTask(ShowDataMigrateTaskRequest) returns (ShowDataMigrateTaskResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/dataMigrateTask"
+      body: "*"
+    };
+  }
+  rpc UpsertSqlMigrateTask(UpsertSqlMigrateTaskRequest) returns (UpsertSqlMigrateTaskResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/sqlMigrateTask"
+      body: "*"
+    };
+  }
+  rpc DeleteSqlMigrateTask(DeleteSqlMigrateTaskRequest) returns (DeleteSqlMigrateTaskResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/sqlMigrateTask"
+      body: "*"
+    };
+  }
+  rpc ShowSqlMigrateTask(ShowSqlMigrateTaskRequest) returns (ShowSqlMigrateTaskResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/sqlMigrateTask"
+      body: "*"
+    };
+  }
   rpc OperateTask (OperateTaskRequest) returns (OperateTaskResponse) {
     option (google.api.http) = {
       put: "/apis/v1alpha1/task"
@@ -118,7 +154,7 @@ message UpsertStructMigrateTaskRequest{
   string comment = 4;
 
   CaseFieldRule caseFieldRule = 5;
-  repeated SchemaRouteRule schemaRouteRules = 6;
+  SchemaRouteRule schemaRouteRule = 6;
   StructMigrateParam structMigrateParam = 7;
   StructMigrateRule structMigrateRule = 8;
 }
@@ -139,6 +175,66 @@ message ShowStructMigrateTaskRequest{
   uint64 pageSize = 3;
 }
 message ShowStructMigrateTaskResponse{
+  Response response = 1;
+}
+
+message UpsertDataMigrateTaskRequest{
+  string taskName = 1;
+  string datasourceNameS = 2;
+  string datasourceNameT = 3;
+  string comment = 4;
+
+  CaseFieldRule caseFieldRule = 5;
+  SchemaRouteRule schemaRouteRule = 6;
+  DataMigrateParam dataMigrateParam = 8;
+}
+message UpsertDataMigrateTaskResponse{
+  Response response = 1;
+}
+
+message DeleteDataMigrateTaskRequest{
+  repeated string taskName = 1;
+}
+message DeleteDataMigrateTaskResponse{
+  Response response = 1;
+}
+
+message ShowDataMigrateTaskRequest{
+  string taskName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowDataMigrateTaskResponse{
+  Response response = 1;
+}
+
+message UpsertSqlMigrateTaskRequest{
+  string taskName = 1;
+  string datasourceNameS = 2;
+  string datasourceNameT = 3;
+  string comment = 4;
+
+  CaseFieldRule caseFieldRule = 5;
+  repeated SqlRouteRule sqlRouteRules = 6;
+  SqlMigrateParam sqlMigrateParam = 7;
+}
+message UpsertSqlMigrateTaskResponse{
+  Response response = 1;
+}
+
+message DeleteSqlMigrateTaskRequest{
+  repeated string taskName = 1;
+}
+message DeleteSqlMigrateTaskResponse{
+  Response response = 1;
+}
+
+message ShowSqlMigrateTaskRequest{
+  string taskName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowSqlMigrateTaskResponse{
   Response response = 1;
 }
 
@@ -186,6 +282,7 @@ message SchemaRouteRule{
   repeated string excludeTableS = 4;
 
   repeated TableRouteRule tableRouteRules = 5;
+  repeated TableMigrateRule TableMigrateRules = 6;
 }
 
 message CaseFieldRule {
@@ -200,11 +297,10 @@ message TableRouteRule {
 }
 
 message StructMigrateParam {
-  uint64 migrateThread = 2;
-  uint64 taskQueueSize = 3;
-  bool createIfNotExist = 4;
-  bool directWrite = 5;
-  string outputDir = 6;
+  uint64 migrateThread = 1;
+  bool createIfNotExist = 2;
+  bool directWrite = 3;
+  string outputDir = 4;
 }
 
 message StructMigrateRule {
@@ -254,4 +350,41 @@ message TableAttrsRule {
   string schemaNameS = 1;
   repeated string tableNamesS = 2;
   string tableAttrsT = 3;
+}
+
+message TableMigrateRule {
+  string tableNameS = 1;
+  bool enableChunkStrategy = 2;
+  string whereRange = 3;
+  string sqlHintS = 4;
+}
+
+message DataMigrateParam {
+  uint64 tableThread = 1;
+  uint64 BatchSize = 2;
+  uint64 ChunkSize = 3;
+  uint64 sqlThreadS = 4;
+  string sqlHintS = 5;
+  uint64 sqlThreadT = 6;
+  string sqlHintT = 7;
+  uint64 callTimeout = 8;
+  bool enableCheckpoint = 9;
+  bool enableConsistentRead = 10;
+}
+
+message SqlRouteRule {
+  string sqlQueryS = 1;
+  string schemaNameT = 2;
+  string tableNameT = 3;
+  string sqlHintT = 4;
+  map<string,string> columnRouteRules = 5;
+}
+
+message SqlMigrateParam {
+  uint64 BatchSize = 1;
+  uint64 sqlThreadS = 2;
+  uint64 sqlThreadT = 3;
+  string sqlHintT = 4;
+  uint64 callTimeout = 5;
+  bool enableConsistentRead = 6;
 }

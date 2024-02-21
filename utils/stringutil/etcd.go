@@ -124,7 +124,7 @@ func MarshalJSON(v any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(jsonStr), nil
+	return BytesToString(jsonStr), nil
 }
 
 // MarshalIndentJSON returns marshal indent object json
@@ -133,7 +133,7 @@ func MarshalIndentJSON(v any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(jsonStr), nil
+	return BytesToString(jsonStr), nil
 }
 
 // UnmarshalJSON returns marshal object json

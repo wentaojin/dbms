@@ -5,7 +5,6 @@ comment = "测试数据源"
 
 [struct-migrate-param]
 migrate-thread = 10
-task-queue-size = 1024
 direct-write = true
 create-if-not-exist = true
 output-dir = ""
@@ -23,8 +22,7 @@ case-field-rule-s = "0"
 case-field-rule-t = "1"
 
 
-# schema-route-rules 内所有参数区分大小写，请合理设置
-[[schema-route-rules]]
+[schema-route-rules]
 schema-name-s = "FINDPT"
 schema-name-t = "STEVEN"
 include-table-s = []

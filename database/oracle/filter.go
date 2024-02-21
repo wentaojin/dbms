@@ -34,7 +34,7 @@ func (d *Database) FilterDatabaseSchema() ([]string, error) {
 	return allOraSchemas, nil
 }
 
-func (d *Database) FilterDatabaseTable(sourceSchema string, sourceIncludeTables, sourceExcludeTables []string) ([]string, error) {
+func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error) {
 	startTime := time.Now()
 	var (
 		exporterTableSlice []string
@@ -48,8 +48,8 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, sourceIncludeTables,
 	}
 
 	switch {
-	case len(sourceIncludeTables) != 0 && len(sourceExcludeTables) == 0:
-		f, err := filter.Parse(sourceIncludeTables)
+	case len(includeTableS) != 0 && len(excludeTableS) == 0:
+		f, err := filter.Parse(includeTableS)
 		if err != nil {
 			return nil, fmt.Errorf("oracle schema filter include tables failed, error: [%v]", err)
 		}
@@ -59,8 +59,8 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, sourceIncludeTables,
 				exporterTableSlice = append(exporterTableSlice, t)
 			}
 		}
-	case len(sourceIncludeTables) == 0 && len(sourceExcludeTables) != 0:
-		f, err := filter.Parse(sourceExcludeTables)
+	case len(includeTableS) == 0 && len(excludeTableS) != 0:
+		f, err := filter.Parse(excludeTables)
 		if err != nil {
 			return nil, fmt.Errorf("oracle schema filter exclude tables failed, error: [%v]", err)
 		}
@@ -72,7 +72,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, sourceIncludeTables,
 		}
 		exporterTableSlice = stringutil.StringItemsFilterDifference(allTables, excludeTables)
 
-	case len(sourceIncludeTables) == 0 && len(sourceExcludeTables) == 0:
+	case len(includeTableS) == 0 && len(excludeTableS) == 0:
 		exporterTableSlice = allTables
 
 	default:

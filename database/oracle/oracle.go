@@ -78,11 +78,12 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 		sessionParams = stringutil.StringSplit(datasource.SessionParams, constant.StringSeparatorComma)
 	}
 
-	// 关闭外部认证
+	// close external auth
 	oraDSN.ExternalAuth = false
 	oraDSN.OnInitStmts = sessionParams
+	oraDSN.LibDir = "/Users/marvin/storehouse/oracle/instantclient_19_16"
 
-	// charset 字符集
+	// charset
 	if !strings.EqualFold(datasource.ConnectCharset, "") {
 		oraDSN.CommonParams.Charset = datasource.ConnectCharset
 	}
@@ -159,6 +160,10 @@ func PingDatabaseConnection(datasource *datasource.Datasource, currentSchema str
 	return nil
 }
 
+func (d *Database) PrepareContext(ctx context.Context, sqlStr string) (*sql.Stmt, error) {
+	return d.DBConn.PrepareContext(ctx, sqlStr)
+}
+
 func (d *Database) QueryContext(ctx context.Context, query string) (*sql.Rows, error) {
 	return d.DBConn.QueryContext(ctx, query)
 }
@@ -207,7 +212,7 @@ func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, er
 				row[columns[k]] = "NULLABLE"
 			} else {
 				// Handling empty string and other values, the return value output string
-				row[columns[k]] = string(v)
+				row[columns[k]] = stringutil.BytesToString(v)
 			}
 		}
 		results = append(results, row)

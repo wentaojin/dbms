@@ -40,16 +40,51 @@ type IStructMigrateTask interface {
 	UpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]interface{}) (*StructMigrateTask, error)
 	BatchUpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]interface{}) (*StructMigrateTask, error)
 	FindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
+	FindStructMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructMigrateGroupStatusResult, error)
 	BatchFindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	ListStructMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*StructMigrateTask, error)
-	DeleteStructMigrateTask(ctx context.Context, taskID uint64) error
+	DeleteStructMigrateTask(ctx context.Context, id uint64) error
+	DeleteStructMigrateTaskName(ctx context.Context, taskName []string) error
+}
+
+type IDataMigrateSummary interface {
+	CreateDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) (*DataMigrateSummary, error)
+	GetDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) (*DataMigrateSummary, error)
+	UpdateDataMigrateSummary(ctx context.Context, task *DataMigrateSummary, updates map[string]interface{}) (*DataMigrateSummary, error)
+	FindDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) ([]*DataMigrateSummary, error)
+	DeleteDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) error
+	DeleteDataMigrateSummaryName(ctx context.Context, taskName []string) error
 }
 
 type IDataMigrateTask interface {
 	CreateDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error)
+	CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, batchSize int) error
 	UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
-	QueryDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
+	FindDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
+	FindDataMigrateTaskBySchemaTableChunkCounts(ctx context.Context, task *DataMigrateTask) (int64, error)
+	FindDataMigrateTaskGroupByTaskSchemaTable(ctx context.Context) ([]*DataMigrateGroupChunkResult, error)
+	FindDataMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataMigrateGroupStatusResult, error)
 	ListDataMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataMigrateTask, error)
-	DeleteDataMigrateTask(ctx context.Context, taskID uint64) error
+	DeleteDataMigrateTask(ctx context.Context, task *DataMigrateTask) error
+	DeleteDataMigrateTaskName(ctx context.Context, taskName []string) error
+}
+
+type ISqlMigrateSummary interface {
+	CreateSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) (*SqlMigrateSummary, error)
+	GetSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) (*SqlMigrateSummary, error)
+	UpdateSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary, updates map[string]interface{}) (*SqlMigrateSummary, error)
+	FindSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) ([]*SqlMigrateSummary, error)
+	DeleteSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) error
+	DeleteSqlMigrateSummaryName(ctx context.Context, taskName []string) error
+}
+
+type ISqlMigrateTask interface {
+	CreateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask) (*SqlMigrateTask, error)
+	CreateInBatchSqlMigrateTask(ctx context.Context, task []*SqlMigrateTask, batchSize int) error
+	UpdateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask, updates map[string]interface{}) (*SqlMigrateTask, error)
+	FindSqlMigrateTaskByTaskStatus(ctx context.Context, task *SqlMigrateTask) ([]*SqlMigrateTask, error)
+	ListSqlMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*SqlMigrateTask, error)
+	DeleteSqlMigrateTask(ctx context.Context, task *SqlMigrateTask) error
+	DeleteSqlMigrateTaskName(ctx context.Context, taskName []string) error
 }

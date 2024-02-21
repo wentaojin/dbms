@@ -15,8 +15,32 @@ limitations under the License.
 */
 package database
 
-// ITableAttributesReader used for database table attributes
-type ITableAttributesReader interface {
+// IDatabaseStructMigrate used for database table struct migrate
+type IDatabaseStructMigrate interface {
+	GetDatabaseCharset() (string, error)
+	GetDatabaseCharsetCollation() (string, string, error)
+	GetDatabaseVersion() (string, error)
+	GetDatabasePartitionTable(schemaName string) ([]string, error)
+	GetDatabaseTemporaryTable(schemaName string) ([]string, error)
+	GetDatabaseClusteredTable(schemaName string) ([]string, error)
+	GetDatabaseMaterializedView(schemaName string) ([]string, error)
+	GetDatabaseTableType(schemaName string) (map[string]string, error)
+	GetDatabaseTableColumns(schemaName string, tableName string, collation bool) ([]map[string]string, error)
+	GetDatabaseTablePrimaryKey(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseTableUniqueKey(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseTableForeignKey(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseTableCheckKey(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseTableNormalIndex(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseTableUniqueIndex(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseTableComment(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseTableColumnComment(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseSchemaCollation(schemaName string) (string, error)
+	GetDatabaseSchemaTableCollation(schemaName, schemaCollation string) (map[string]string, error)
+	GetDatabaseTableOriginStruct(schemaName, tableName, tableType string) (string, error)
+}
+
+// IStructMigrateAttributesReader used for database table attributes
+type IStructMigrateAttributesReader interface {
 	GetTablePrimaryKey() ([]map[string]string, error)
 	GetTableUniqueKey() ([]map[string]string, error)
 	GetTableForeignKey() ([]map[string]string, error)
@@ -30,7 +54,7 @@ type ITableAttributesReader interface {
 	GetTableOriginStruct() (string, error)
 }
 
-type TableAttributes struct {
+type StructMigrateAttributes struct {
 	PrimaryKey    []map[string]string `json:"primary_key"`
 	UniqueKey     []map[string]string `json:"unique_key"`
 	ForeignKey    []map[string]string `json:"foreign_key"`
@@ -43,45 +67,45 @@ type TableAttributes struct {
 	OriginStruct  string              `json:"origin_struct"`
 }
 
-func IDatabaseTableAttributes(t ITableAttributesReader) (*TableAttributes, error) {
+func IStructMigrateAttributes(t IStructMigrateAttributesReader) (*StructMigrateAttributes, error) {
 	primaryKey, err := t.GetTablePrimaryKey()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 	uniqueKey, err := t.GetTableUniqueKey()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 	foreignKey, err := t.GetTableForeignKey()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 	checkKey, err := t.GetTableCheckKey()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 	uniqueIndex, err := t.GetTableUniqueIndex()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 	normalIndex, err := t.GetTableNormalIndex()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 	tableComment, err := t.GetTableComment()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 	tableColumns, err := t.GetTableColumns()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 	columnComment, err := t.GetTableColumnComment()
 	if err != nil {
-		return &TableAttributes{}, err
+		return &StructMigrateAttributes{}, err
 	}
 
-	return &TableAttributes{
+	return &StructMigrateAttributes{
 		PrimaryKey:    primaryKey,
 		UniqueKey:     uniqueKey,
 		ForeignKey:    foreignKey,
@@ -94,7 +118,7 @@ func IDatabaseTableAttributes(t ITableAttributesReader) (*TableAttributes, error
 	}, nil
 }
 
-type ITableAttributesRuleReader interface {
+type IStructMigrateAttributesRuleReader interface {
 	GetCreatePrefixRule() string
 	GetCaseFieldRule() string
 	GetSchemaNameRule() (map[string]string, error)
@@ -106,7 +130,7 @@ type ITableAttributesRuleReader interface {
 	GetTableColumnCommentRule() (map[string]string, error)
 }
 
-type TableAttributesRule struct {
+type StructMigrateAttributesRule struct {
 	CreatePrefixRule       string            `json:"createPrefixRule"`
 	CaseFieldRuleT         string            `json:"caseFieldRule"`
 	SchemaNameRule         map[string]string `json:"schemaNameRule"`
@@ -120,36 +144,36 @@ type TableAttributesRule struct {
 	TableCommentRule       string            `json:"tableCommentRule"`
 }
 
-func IDatabaseTableAttributesRule(t ITableAttributesRuleReader) (*TableAttributesRule, error) {
+func IStructMigrateAttributesRule(t IStructMigrateAttributesRuleReader) (*StructMigrateAttributesRule, error) {
 	schemaNameRule, err := t.GetSchemaNameRule()
 	if err != nil {
-		return &TableAttributesRule{}, err
+		return &StructMigrateAttributesRule{}, err
 	}
 	tableNameRule, err := t.GetTableNameRule()
 	if err != nil {
-		return &TableAttributesRule{}, err
+		return &StructMigrateAttributesRule{}, err
 	}
 	columnNameRule, datatypeRule, defaultValRule, err := t.GetTableColumnRule()
 	if err != nil {
-		return &TableAttributesRule{}, err
+		return &StructMigrateAttributesRule{}, err
 	}
 	rule, err := t.GetTableCommentRule()
 	if err != nil {
-		return &TableAttributesRule{}, err
+		return &StructMigrateAttributesRule{}, err
 	}
 	attr, err := t.GetTableAttributesRule()
 	if err != nil {
-		return &TableAttributesRule{}, err
+		return &StructMigrateAttributesRule{}, err
 	}
 	collationRule, err := t.GetTableColumnCollationRule()
 	if err != nil {
-		return &TableAttributesRule{}, err
+		return &StructMigrateAttributesRule{}, err
 	}
 	commentRule, err := t.GetTableColumnCommentRule()
 	if err != nil {
-		return &TableAttributesRule{}, err
+		return &StructMigrateAttributesRule{}, err
 	}
-	return &TableAttributesRule{
+	return &StructMigrateAttributesRule{
 			CreatePrefixRule:       t.GetCreatePrefixRule(),
 			CaseFieldRuleT:         t.GetCaseFieldRule(),
 			SchemaNameRule:         schemaNameRule,
@@ -165,7 +189,7 @@ func IDatabaseTableAttributesRule(t ITableAttributesRuleReader) (*TableAttribute
 		nil
 }
 
-type ITableAttributesProcessor interface {
+type IStructMigrateAttributesProcessor interface {
 	GenSchemaNameS() string
 	GenTableNameS() string
 	GenTableTypeS() string
@@ -206,7 +230,7 @@ type TableStruct struct {
 	TableIncompatibleDDL []string `json:"tableIncompatibleDDL"`
 }
 
-func IDatabaseTableStruct(p ITableAttributesProcessor) (*TableStruct, error) {
+func IStructMigrateTableStructure(p IStructMigrateAttributesProcessor) (*TableStruct, error) {
 	var incompatibleSqls []string
 	schemaNameT, err := p.GenSchemaNameT()
 	if err != nil {
@@ -286,12 +310,12 @@ func IDatabaseTableStruct(p ITableAttributesProcessor) (*TableStruct, error) {
 	}, nil
 }
 
-type ITableStructDatabaseWriter interface {
+type IStructMigrateDatabaseWriter interface {
 	WriteStructDatabase() error
 	SyncStructDatabase() error
 }
 
-type ITableStructFileWriter interface {
+type IStructMigrateFileWriter interface {
 	InitOutputFile() error
 	SyncStructFile() error
 }

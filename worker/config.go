@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/wentaojin/dbms/utils/stringutil"
+
 	"github.com/wentaojin/dbms/utils/configutil"
 
 	"github.com/BurntSushi/toml"
@@ -101,5 +103,5 @@ func (c *Config) String() string {
 		logger.Error("marshal to json", zap.Reflect("worker config", c), zap.Error(err))
 	}
 
-	return string(cfg)
+	return stringutil.BytesToString(cfg)
 }

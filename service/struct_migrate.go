@@ -69,7 +69,7 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 			return err
 		}
 
-		err = UpsertRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRules)
+		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule)
 		if err != nil {
 			return err
 		}
@@ -316,11 +316,23 @@ func DeleteStructMigrateTask(ctx context.Context, req *pb.DeleteStructMigrateTas
 		if err != nil {
 			return err
 		}
-		err = DeleteRule(txnCtx, req.TaskName)
+		err = DeleteSchemaRouteRule(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}
 		err = model.GetIParamsRW().DeleteTaskCustomParam(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
+		err = model.GetIMigrateSchemaRouteRW().DeleteSchemaRouteRule(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
+		err = model.GetIMigrateTableRouteRW().DeleteTableRouteRule(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
+		err = model.GetIMigrateColumnRouteRW().DeleteColumnRouteRule(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}
@@ -341,6 +353,10 @@ func DeleteStructMigrateTask(ctx context.Context, req *pb.DeleteStructMigrateTas
 			return err
 		}
 		err = model.GetIStructMigrateTableAttrsRuleRW().DeleteTableAttrsRule(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
+		err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTaskName(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}
@@ -389,11 +405,6 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 			return err
 		}
 
-		taskQueueSize, err := strconv.Atoi(paramMap[constant.ParamNameStructMigrateTaskQueueSize])
-		if err != nil {
-			return err
-		}
-
 		directWrite, err := strconv.ParseBool(paramMap[constant.ParamNameStructMigrateDirectWrite])
 		if err != nil {
 			return err
@@ -406,7 +417,6 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 
 		param = &pb.StructMigrateParam{
 			MigrateThread:    uint64(migrateThread),
-			TaskQueueSize:    uint64(taskQueueSize),
 			DirectWrite:      directWrite,
 			CreateIfNotExist: createIfNotExist,
 			OutputDir:        paramMap[constant.ParamNameStructMigrateOutputDir],
@@ -501,7 +511,7 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 			})
 		}
 
-		schemaRouteRules, err := ShowRule(txnCtx, taskInfo.TaskName)
+		schemaRouteRule, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
 		if err != nil {
 			return err
 		}
@@ -515,7 +525,7 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 				CaseFieldRuleT: taskInfo.CaseFieldRuleT,
 			},
 			Comment:            taskInfo.Comment,
-			SchemaRouteRules:   schemaRouteRules,
+			SchemaRouteRule:    schemaRouteRule,
 			StructMigrateParam: param,
 			StructMigrateRule:  rules,
 		}
@@ -551,7 +561,7 @@ func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir s
 		var dbCfg *model.Database
 		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
 		if err != nil {
-			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", string(keyResp.Kvs[0].Value), err)
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
 		}
 		err = model.CreateDatabaseReadWrite(dbCfg)
 		if err != nil {
@@ -606,7 +616,7 @@ func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir s
 	taskFlow := stringutil.StringBuilder(stringutil.StringUpper(datasourceS.DbType), constant.StringSeparatorAite, stringutil.StringUpper(datasourceT.DbType))
 
 	for schema, _ := range groupSchemas {
-		var w database.ITableStructFileWriter
+		var w database.IStructMigrateFileWriter
 		w = taskflow.NewStructMigrateFile(ctx, taskInfo.TaskName, taskFlow, schema, outputDir)
 		err = w.InitOutputFile()
 		if err != nil {
@@ -623,7 +633,6 @@ func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir s
 func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) error {
 	startTime := time.Now()
 	logger.Info("struct migrate task start", zap.String("task_name", taskName))
-
 	_, err := model.GetITaskRW().UpdateTask(ctx, &task.Task{
 		TaskName: taskName,
 	}, map[string]interface{}{
@@ -635,62 +644,22 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		return err
 	}
 
-	logger.Info("struct migrate task get params", zap.String("task_name", taskName))
-	taskParams, err := getStructMigrateTasKParams(ctx, taskName)
-	if err != nil {
-		return err
-	}
-
-	logger.Info("struct migrate task init task", zap.String("task_name", taskName))
-	err = initStructMigrateTask(ctx, taskName)
-	if err != nil {
-		return err
-	}
-
-	logger.Info("struct migrate task get tasks", zap.String("task_name", taskName))
-	var migrateTasks []*task.StructMigrateTask
-	err = model.Transaction(ctx, func(txnCtx context.Context) error {
-		// get migrate task tables
-		migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
-			&task.StructMigrateTask{
-				TaskName:       taskName,
-				TaskStatus:     constant.TaskDatabaseStatusWaiting,
-				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
-		if err != nil {
-			return err
-		}
-		migrateFailedTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
-			&task.StructMigrateTask{
-				TaskName:       taskName,
-				TaskStatus:     constant.TaskDatabaseStatusFailed,
-				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
-		if err != nil {
-			return err
-		}
-		migrateTasks = append(migrateTasks, migrateFailedTasks...)
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	// get datasource
-	var (
-		taskInfo         *task.Task
-		sourceDatasource *datasource.Datasource
-		targetDatasource *datasource.Datasource
-	)
 	logger.Info("struct migrate task get datasource", zap.String("task_name", taskName))
+	var (
+		taskInfo    *task.Task
+		datasourceS *datasource.Datasource
+		datasourceT *datasource.Datasource
+	)
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName})
 		if err != nil {
 			return err
 		}
-		sourceDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameS)
+		datasourceS, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameS)
 		if err != nil {
 			return err
 		}
-		targetDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameT)
+		datasourceT, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameT)
 		if err != nil {
 			return err
 		}
@@ -700,19 +669,67 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		return err
 	}
 
-	taskFlow := stringutil.StringBuilder(stringutil.StringUpper(sourceDatasource.DbType), constant.StringSeparatorAite, stringutil.StringUpper(targetDatasource.DbType))
+	taskFlow := stringutil.StringBuilder(stringutil.StringUpper(datasourceS.DbType), constant.StringSeparatorAite, stringutil.StringUpper(datasourceT.DbType))
 
-	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
-		logger.Info("struct migrate task process task", zap.String("task_name", taskName))
+	var databaseS, databaseT database.IDatabase
+
+	logger.Info("struct migrate task get route",
+		zap.String("task_name", taskName),
+		zap.String("task_flow", taskFlow))
+	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(ctx, &rule.SchemaRouteRule{TaskName: taskName})
+	if err != nil {
+		return err
+	}
+	logger.Info("struct migrate task init connection",
+		zap.String("task_name", taskName),
+		zap.String("task_flow", taskFlow))
+	databaseS, err = database.NewDatabase(ctx, datasourceS, schemaRoute.SchemaNameS)
+	if err != nil {
+		return err
+	}
+	switch {
+	case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
+		databaseT, err = database.NewDatabase(ctx, datasourceT, "")
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("oracle current taskflow [%s] isn't support, please contact author or reselect", taskFlow)
+	}
+
+	logger.Info("struct migrate task get params",
+		zap.String("task_name", taskName),
+		zap.String("task_flow", taskFlow))
+	taskParams, err := getStructMigrateTasKParams(ctx, taskName)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("struct migrate task init task",
+		zap.String("task_name", taskName),
+		zap.String("task_flow", taskFlow))
+	err = initStructMigrateTask(ctx, taskName, taskFlow)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
+		logger.Info("struct migrate task process task",
+			zap.String("task_name", taskName),
+			zap.String("task_flow", taskFlow))
 		taskTime := time.Now()
 		taskStruct := &taskflow.StructMigrateTask{
-			Ctx:          ctx,
-			TaskName:     taskName,
-			TaskFlow:     taskFlow,
-			MigrateTasks: migrateTasks,
-			DatasourceS:  sourceDatasource,
-			DatasourceT:  targetDatasource,
-			TaskParams:   taskParams,
+			Ctx:         ctx,
+			TaskName:    taskName,
+			TaskFlow:    taskFlow,
+			SchemaNameS: schemaRoute.SchemaNameS,
+			SchemaNameT: schemaRoute.SchemaNameT,
+			DatabaseS:   databaseS,
+			DatabaseT:   databaseT,
+			DBCharsetS:  datasourceS.ConnectCharset,
+			DBCharsetT:  datasourceT.ConnectCharset,
+			TaskParams:  taskParams,
 		}
 		err = taskStruct.Start()
 		if err != nil {
@@ -720,43 +737,46 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		}
 		logger.Info("struct migrate task process task",
 			zap.String("task_name", taskName),
+			zap.String("task_flow", taskFlow),
 			zap.String("cost", time.Now().Sub(taskTime).String()))
-	} else {
-		return fmt.Errorf("current struct migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
+	default:
+		return fmt.Errorf("the task [%v] taskflow [%v] isn't support, please contact auhtor or reselect", taskName, taskFlow)
 	}
 
 	// status
 	var (
-		migrateFailedResults []*task.StructMigrateTask
-		migrateWaitResults   []*task.StructMigrateTask
-		migrateRunResults    []*task.StructMigrateTask
+		migrateFailedResults  uint64
+		migrateWaitResults    uint64
+		migrateRunResults     uint64
+		migrateStopResults    uint64
+		migrateSuccessResults uint64
+		migrateTotalsResults  uint64
 	)
 
-	err = model.Transaction(ctx, func(txnCtx context.Context) error {
-		// get migrate task tables
-		migrateFailedResults, err = model.GetIStructMigrateTaskRW().FindStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName,
-			TaskStatus: constant.TaskDatabaseStatusFailed})
-		if err != nil {
-			return err
-		}
-
-		migrateWaitResults, err = model.GetIStructMigrateTaskRW().FindStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName,
-			TaskStatus: constant.TaskDatabaseStatusWaiting})
-		if err != nil {
-			return err
-		}
-		migrateRunResults, err = model.GetIStructMigrateTaskRW().FindStructMigrateTask(txnCtx, &task.StructMigrateTask{TaskName: taskName,
-			TaskStatus: constant.TaskDatabaseStatusRunning})
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	statusRecords, err := model.GetIStructMigrateTaskRW().FindStructMigrateTaskGroupByTaskStatus(ctx, taskName)
 	if err != nil {
 		return err
 	}
+	for _, rec := range statusRecords {
+		switch strings.ToUpper(rec.TaskStatus) {
+		case constant.TaskDatabaseStatusFailed:
+			migrateFailedResults = rec.StatusTotals
+		case constant.TaskDatabaseStatusWaiting:
+			migrateWaitResults = rec.StatusTotals
+		case constant.TaskDatabaseStatusStopped:
+			migrateStopResults = rec.StatusTotals
+		case constant.TaskDatabaseStatusRunning:
+			migrateRunResults = rec.StatusTotals
+		case constant.TaskDatabaseStatusSuccess:
+			migrateSuccessResults = rec.StatusTotals
+		default:
+			return fmt.Errorf("the task [%v] taskflow [%v] taskStatus [%v] panic, please contact auhtor or reselect", taskName, taskFlow, rec.TaskStatus)
+		}
+	}
 
-	if len(migrateFailedResults) > 0 || len(migrateWaitResults) > 0 || len(migrateRunResults) > 0 {
+	migrateTotalsResults = migrateFailedResults + migrateWaitResults + migrateStopResults + migrateSuccessResults + migrateRunResults
+
+	if migrateFailedResults > 0 || migrateWaitResults > 0 || migrateRunResults > 0 || migrateStopResults > 0 {
 		err = model.Transaction(ctx, func(txnCtx context.Context) error {
 			_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
 				TaskName: taskName,
@@ -769,14 +789,17 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 			}
 			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 				TaskName: taskName,
-				LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] are exist failed [%d] or waiting [%d] or running [%d] status records during running operation, please see [struct_migrate_task] detail",
+				LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] are exist failed [%d] or waiting [%d] or running [%d] or stopped [%d] status records during running operation, please see [struct_migrate_task] detail, total records [%d], success records [%d]",
 					stringutil.CurrentTimeFormatString(),
 					stringutil.StringLower(constant.TaskModeStructMigrate),
 					taskInfo.WorkerAddr,
 					taskName,
-					len(migrateFailedResults),
-					len(migrateWaitResults),
-					len(migrateRunResults)),
+					migrateFailedResults,
+					migrateWaitResults,
+					migrateRunResults,
+					migrateStopResults,
+					migrateTotalsResults,
+					migrateSuccessResults),
 			})
 			if err != nil {
 				return err
@@ -789,10 +812,12 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 
 		logger.Info("struct migrate task failed",
 			zap.String("task_name", taskName),
-			zap.Int("total records", len(migrateTasks)),
-			zap.Int("failed records", len(migrateFailedResults)),
-			zap.Int("wait records", len(migrateWaitResults)),
-			zap.Int("running records", len(migrateRunResults)),
+			zap.Uint64("total records", migrateTotalsResults),
+			zap.Uint64("failed records", migrateFailedResults),
+			zap.Uint64("wait records", migrateWaitResults),
+			zap.Uint64("running records", migrateRunResults),
+			zap.Uint64("stopped records", migrateStopResults),
+			zap.Uint64("success records", migrateSuccessResults),
 			zap.String("detail tips", "please see [struct_migrate_task] detail"),
 			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
@@ -809,11 +834,13 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		}
 		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 			TaskName: taskName,
-			LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] running success, cost: [%v]",
+			LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] running success, total records [%d], success records [%d], cost: [%v]",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeStructMigrate),
 				taskInfo.WorkerAddr,
 				taskName,
+				migrateTotalsResults,
+				migrateSuccessResults,
 				time.Now().Sub(startTime).String()),
 		})
 		if err != nil {
@@ -827,7 +854,9 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 
 	logger.Info("struct migrate task success",
 		zap.String("task_name", taskName),
-		zap.Int("total records", len(migrateTasks)),
+		zap.String("task_flow", taskFlow),
+		zap.Uint64("total records", migrateTotalsResults),
+		zap.Uint64("success records", migrateSuccessResults),
 		zap.String("detail tips", "please see [struct_migrate_task] detail"),
 		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
@@ -881,13 +910,6 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 			}
 			taskParam.MigrateThread = migrateThread
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateTaskQueueSize) {
-			taskQueueSize, err := strconv.ParseUint(p.ParamValue, 10, 64)
-			if err != nil {
-				return taskParam, err
-			}
-			taskParam.TaskQueueSize = taskQueueSize
-		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateCreateIfNotExist) {
 			createIfNotExist, err := strconv.ParseBool(p.ParamValue)
 			if err != nil {
@@ -906,138 +928,146 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 	return taskParam, nil
 }
 
-func initStructMigrateTask(ctx context.Context, taskName string) error {
+func initStructMigrateTask(ctx context.Context, taskName, taskFlow string) error {
 	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName})
 	if err != nil {
 		return err
 	}
 
-	schemaRoutes, err := model.GetIMigrateSchemaRouteRW().FindSchemaRouteRule(ctx, &rule.SchemaRouteRule{TaskName: taskInfo.TaskName})
+	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(ctx, &rule.SchemaRouteRule{TaskName: taskInfo.TaskName})
 	if err != nil {
 		return err
 	}
 
-	for _, schemaRoute := range schemaRoutes {
-		// create source database conn
-		sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(ctx, taskInfo.DatasourceNameS)
+	// create source database conn
+	sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(ctx, taskInfo.DatasourceNameS)
+	if err != nil {
+		return err
+	}
+
+	databaseS, err := database.NewDatabase(ctx, sourceDatasource, schemaRoute.SchemaNameS)
+	if err != nil {
+		return err
+	}
+
+	// filter database table
+	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(ctx, &rule.MigrateTaskTable{
+		TaskName:    schemaRoute.TaskName,
+		SchemaNameS: schemaRoute.SchemaNameS,
+	})
+	if err != nil {
+		return err
+	}
+	var (
+		includeTables  []string
+		excludeTables  []string
+		databaseTables []string // task tables
+	)
+	databaseTableTypeMap := make(map[string]string)
+
+	for _, t := range schemaTaskTables {
+		if strings.EqualFold(t.IsExclude, constant.MigrateTaskTableIsExclude) {
+			excludeTables = append(excludeTables, t.TableNameS)
+		}
+		if strings.EqualFold(t.IsExclude, constant.MigrateTaskTableIsNotExclude) {
+			includeTables = append(includeTables, t.TableNameS)
+		}
+	}
+
+	switch {
+	case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
+		oracleDB := databaseS.(*oracle.Database)
+		databaseTables, err = oracleDB.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
 		if err != nil {
 			return err
 		}
-
-		sourceDB, err := database.NewDatabase(ctx, sourceDatasource, schemaRoute.SchemaNameS)
+		databaseTableTypeMap, err = oracleDB.GetDatabaseTableType(schemaRoute.SchemaNameS)
 		if err != nil {
 			return err
 		}
+	default:
+		return fmt.Errorf("the task [%v] taskflow [%v] isn't support, please contact auhtor or reselect", taskName, taskFlow)
+	}
 
-		// filter database table
-		schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(ctx, &rule.MigrateTaskTable{
-			TaskName:    schemaRoute.TaskName,
-			SchemaNameS: schemaRoute.SchemaNameS,
-		})
-		if err != nil {
-			return err
+	err = databaseS.Close()
+	if err != nil {
+		return err
+	}
+
+	// get table route rule
+	tableRouteRule := make(map[string]string)
+
+	tableRoutes, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(ctx, &rule.TableRouteRule{
+		TaskName:    schemaRoute.TaskName,
+		SchemaNameS: schemaRoute.SchemaNameS,
+	})
+	for _, tr := range tableRoutes {
+		tableRouteRule[tr.TableNameS] = tr.TableNameT
+	}
+
+	// clear the struct migrate task table
+	migrateTasks, err := model.GetIStructMigrateTaskRW().BatchFindStructMigrateTask(ctx, &task.StructMigrateTask{TaskName: taskName})
+	if err != nil {
+		return err
+	}
+
+	// repeatInitTableMap used for store the struct_migrate_task table name has be finished, avoid repeated initialization
+	repeatInitTableMap := make(map[string]struct{})
+	if len(migrateTasks) > 0 {
+		taskTablesMap := make(map[string]struct{})
+		for _, t := range databaseTables {
+			taskTablesMap[t] = struct{}{}
+		}
+		for _, smt := range migrateTasks {
+			if _, ok := taskTablesMap[smt.TableNameS]; !ok {
+				err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTask(ctx, smt.ID)
+				if err != nil {
+					return err
+				}
+			} else {
+				repeatInitTableMap[smt.TableNameS] = struct{}{}
+			}
+		}
+	}
+
+	// database tables
+	// init database table
+	// get table column route rule
+	for _, sourceTable := range databaseTables {
+		if _, ok := repeatInitTableMap[sourceTable]; ok {
+			// skip init
+			continue
 		}
 		var (
-			includeTables  []string
-			excludeTables  []string
-			databaseTables []string // task tables
+			targetTable string
 		)
-		databaseTableTypeMap := make(map[string]string)
-
-		for _, t := range schemaTaskTables {
-			if strings.EqualFold(t.IsExclude, constant.MigrateTaskTableIsExclude) {
-				excludeTables = append(excludeTables, t.TableNameS)
+		if val, ok := tableRouteRule[sourceTable]; ok {
+			targetTable = val
+		} else {
+			// the according target case field rule convert
+			if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+				targetTable = stringutil.StringLower(sourceTable)
 			}
-			if strings.EqualFold(t.IsExclude, constant.MigrateTaskTableIsNotExclude) {
-				includeTables = append(includeTables, t.TableNameS)
+			if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+				targetTable = stringutil.StringUpper(sourceTable)
+			}
+			if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+				targetTable = sourceTable
 			}
 		}
 
-		switch {
-		case strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle):
-			oracleDB := sourceDB.(*oracle.Database)
-			databaseTables, err = oracleDB.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
-			if err != nil {
-				return err
-			}
-			databaseTableTypeMap, err = oracleDB.GetDatabaseTableType(schemaRoute.SchemaNameS)
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("the current datasource type [%s] isn't support, please remove and reruning", sourceDatasource.DbType)
-		}
-
-		err = sourceDB.Close()
-		if err != nil {
-			return err
-		}
-
-		// get table route rule
-		tableRouteRule := make(map[string]string)
-
-		tableRoutes, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(ctx, &rule.TableRouteRule{
-			TaskName:    schemaRoute.TaskName,
+		_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(ctx, &task.StructMigrateTask{
+			TaskName:    taskName,
+			TaskFlow:    taskFlow,
 			SchemaNameS: schemaRoute.SchemaNameS,
+			TableNameS:  sourceTable,
+			TableTypeS:  databaseTableTypeMap[sourceTable],
+			SchemaNameT: schemaRoute.SchemaNameT,
+			TableNameT:  targetTable,
+			TaskStatus:  constant.TaskDatabaseStatusWaiting,
 		})
-		for _, tr := range tableRoutes {
-			tableRouteRule[tr.TableNameS] = tr.TableNameT
-		}
-
-		// clear the struct migrate task table
-		migrateTasks, err := model.GetIStructMigrateTaskRW().BatchFindStructMigrateTask(ctx, &task.StructMigrateTask{TaskName: taskName})
 		if err != nil {
 			return err
-		}
-		if len(migrateTasks) > 0 {
-			taskTablesMap := make(map[string]struct{})
-			for _, t := range databaseTables {
-				taskTablesMap[t] = struct{}{}
-			}
-			for _, smt := range migrateTasks {
-				if _, ok := taskTablesMap[smt.TableNameS]; !ok {
-					err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTask(ctx, smt.ID)
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
-
-		// database tables
-		// init database table
-		// get table column route rule
-		for _, sourceTable := range databaseTables {
-			var (
-				targetTable string
-			)
-			if val, ok := tableRouteRule[sourceTable]; ok {
-				targetTable = val
-			} else {
-				// the according target case field rule covnert
-				if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameLower) {
-					targetTable = stringutil.StringLower(sourceTable)
-				}
-				if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameUpper) {
-					targetTable = stringutil.StringUpper(sourceTable)
-				}
-				if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldNameOrigin) {
-					targetTable = sourceTable
-				}
-			}
-
-			_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(ctx, &task.StructMigrateTask{
-				TaskName:    taskName,
-				SchemaNameS: schemaRoute.SchemaNameS,
-				TableNameS:  sourceTable,
-				TableTypeS:  databaseTableTypeMap[sourceTable],
-				SchemaNameT: schemaRoute.SchemaNameT,
-				TableNameT:  targetTable,
-				TaskStatus:  constant.TaskDatabaseStatusWaiting,
-			})
-			if err != nil {
-				return err
-			}
 		}
 	}
 	return nil

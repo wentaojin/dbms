@@ -32,6 +32,31 @@ type ColumnStructRule struct {
 	TableNameS    *string `json:"tableNameS,omitempty"`
 }
 
+// DataMigrateParam defines model for DataMigrateParam.
+type DataMigrateParam struct {
+	BatchSize            *uint64 `json:"batchSize,omitempty"`
+	CallTimeout          *uint64 `json:"callTimeout,omitempty"`
+	ChunkSize            *uint64 `json:"chunkSize,omitempty"`
+	EnableCheckpoint     *bool   `json:"enableCheckpoint,omitempty"`
+	EnableConsistentRead *bool   `json:"enableConsistentRead,omitempty"`
+	SqlHintS             *string `json:"sqlHintS,omitempty"`
+	SqlHintT             *string `json:"sqlHintT,omitempty"`
+	SqlThreadS           *uint64 `json:"sqlThreadS,omitempty"`
+	SqlThreadT           *uint64 `json:"sqlThreadT,omitempty"`
+	TableThread          *uint64 `json:"tableThread,omitempty"`
+}
+
+// DataMigrateTask defines model for DataMigrateTask.
+type DataMigrateTask struct {
+	CaseFieldRule    *CaseFieldRule    `json:"caseFieldRule,omitempty"`
+	Comment          *string           `json:"comment,omitempty"`
+	DataMigrateParam *DataMigrateParam `json:"dataMigrateParam,omitempty"`
+	DatasourceNameS  *string           `json:"datasourceNameS,omitempty"`
+	DatasourceNameT  *string           `json:"datasourceNameT,omitempty"`
+	SchemaRouteRule  *SchemaRouteRule  `json:"schemaRouteRule,omitempty"`
+	TaskName         *string           `json:"taskName,omitempty"`
+}
+
 // Database defines model for Database.
 type Database struct {
 	Host          *string `json:"host,omitempty"`
@@ -84,11 +109,12 @@ type Response struct {
 
 // SchemaRouteRule defines model for SchemaRouteRule.
 type SchemaRouteRule struct {
-	ExcludeTableS   *[]string         `json:"excludeTableS,omitempty"`
-	IncludeTableS   *[]string         `json:"includeTableS,omitempty"`
-	SchemaNameS     *string           `json:"schemaNameS,omitempty"`
-	SchemaNameT     *string           `json:"schemaNameT,omitempty"`
-	TableRouteRules *[]TableRouteRule `json:"tableRouteRules,omitempty"`
+	TableMigrateRules *[]TableMigrateRule `json:"TableMigrateRules,omitempty"`
+	ExcludeTableS     *[]string           `json:"excludeTableS,omitempty"`
+	IncludeTableS     *[]string           `json:"includeTableS,omitempty"`
+	SchemaNameS       *string             `json:"schemaNameS,omitempty"`
+	SchemaNameT       *string             `json:"schemaNameT,omitempty"`
+	TableRouteRules   *[]TableRouteRule   `json:"tableRouteRules,omitempty"`
 }
 
 // SchemaStructRule defines model for SchemaStructRule.
@@ -100,13 +126,43 @@ type SchemaStructRule struct {
 	SchemaNameS   *string `json:"schemaNameS,omitempty"`
 }
 
+// SqlMigrateParam defines model for SqlMigrateParam.
+type SqlMigrateParam struct {
+	BatchSize            *uint64 `json:"batchSize,omitempty"`
+	CallTimeout          *uint64 `json:"callTimeout,omitempty"`
+	EnableConsistentRead *bool   `json:"enableConsistentRead,omitempty"`
+	SqlHintT             *string `json:"sqlHintT,omitempty"`
+	SqlThreadS           *uint64 `json:"sqlThreadS,omitempty"`
+	SqlThreadT           *uint64 `json:"sqlThreadT,omitempty"`
+}
+
+// SqlMigrateTask defines model for SqlMigrateTask.
+type SqlMigrateTask struct {
+	CaseFieldRule   *CaseFieldRule   `json:"caseFieldRule,omitempty"`
+	Comment         *string          `json:"comment,omitempty"`
+	DatasourceNameS *string          `json:"datasourceNameS,omitempty"`
+	DatasourceNameT *string          `json:"datasourceNameT,omitempty"`
+	SqlMigrateParam *SqlMigrateParam `json:"sqlMigrateParam,omitempty"`
+	SqlRouteRules   *[]SqlRouteRule  `json:"sqlRouteRules,omitempty"`
+	TaskName        *string          `json:"taskName,omitempty"`
+}
+
+// SqlRouteRule defines model for SqlRouteRule.
+type SqlRouteRule struct {
+	CaseFieldRuleT   *string            `json:"caseFieldRuleT,omitempty"`
+	ColumnRouteRules *map[string]string `json:"columnRouteRules,omitempty"`
+	SchemaNameT      *string            `json:"schemaNameT,omitempty"`
+	SqlHintT         *string            `json:"sqlHintT,omitempty"`
+	SqlQueryS        *string            `json:"sqlQueryS,omitempty"`
+	TableNameT       *string            `json:"tableNameT,omitempty"`
+}
+
 // StructMigrateParam defines model for StructMigrateParam.
 type StructMigrateParam struct {
 	CreateIfNotExist *bool   `json:"createIfNotExist,omitempty"`
 	DirectWrite      *bool   `json:"directWrite,omitempty"`
 	MigrateThread    *uint64 `json:"migrateThread,omitempty"`
 	OutputDir        *string `json:"outputDir,omitempty"`
-	TaskQueueSize    *uint64 `json:"taskQueueSize,omitempty"`
 }
 
 // StructMigrateRule defines model for StructMigrateRule.
@@ -124,7 +180,7 @@ type StructMigrateTask struct {
 	Comment            *string             `json:"comment,omitempty"`
 	DatasourceNameS    *string             `json:"datasourceNameS,omitempty"`
 	DatasourceNameT    *string             `json:"datasourceNameT,omitempty"`
-	SchemaRouteRules   *[]SchemaRouteRule  `json:"schemaRouteRules,omitempty"`
+	SchemaRouteRule    *SchemaRouteRule    `json:"schemaRouteRule,omitempty"`
 	StructMigrateParam *StructMigrateParam `json:"structMigrateParam,omitempty"`
 	StructMigrateRule  *StructMigrateRule  `json:"structMigrateRule,omitempty"`
 	TaskName           *string             `json:"taskName,omitempty"`
@@ -135,6 +191,14 @@ type TableAttrsRule struct {
 	SchemaNameS *string   `json:"schemaNameS,omitempty"`
 	TableAttrsT *string   `json:"tableAttrsT,omitempty"`
 	TableNamesS *[]string `json:"tableNamesS,omitempty"`
+}
+
+// TableMigrateRule defines model for TableMigrateRule.
+type TableMigrateRule struct {
+	EnableChunkStrategy *bool   `json:"enableChunkStrategy,omitempty"`
+	SqlHintS            *string `json:"sqlHintS,omitempty"`
+	TableNameS          *string `json:"tableNameS,omitempty"`
+	WhereRange          *string `json:"whereRange,omitempty"`
 }
 
 // TableRouteRule defines model for TableRouteRule.
@@ -184,6 +248,24 @@ type APIPutDatasourceJSONRequestBody = NewDatasource
 // APIPostTaskJSONRequestBody defines body for APIPostTask for application/json ContentType.
 type APIPostTaskJSONRequestBody = Task
 
+// APIDeleteDataMigrateJSONRequestBody defines body for APIDeleteDataMigrate for application/json ContentType.
+type APIDeleteDataMigrateJSONRequestBody = RequestDeleteParam
+
+// APIListDataMigrateJSONRequestBody defines body for APIListDataMigrate for application/json ContentType.
+type APIListDataMigrateJSONRequestBody = RequestPostParam
+
+// APIPutDataMigrateJSONRequestBody defines body for APIPutDataMigrate for application/json ContentType.
+type APIPutDataMigrateJSONRequestBody = DataMigrateTask
+
+// APIDeleteSqlMigrateJSONRequestBody defines body for APIDeleteSqlMigrate for application/json ContentType.
+type APIDeleteSqlMigrateJSONRequestBody = RequestDeleteParam
+
+// APIListSqlMigrateJSONRequestBody defines body for APIListSqlMigrate for application/json ContentType.
+type APIListSqlMigrateJSONRequestBody = RequestPostParam
+
+// APIPutSqlMigrateJSONRequestBody defines body for APIPutSqlMigrate for application/json ContentType.
+type APIPutSqlMigrateJSONRequestBody = SqlMigrateTask
+
 // APIDeleteStructMigrateJSONRequestBody defines body for APIDeleteStructMigrate for application/json ContentType.
 type APIDeleteStructMigrateJSONRequestBody = RequestDeleteParam
 
@@ -196,31 +278,37 @@ type APIPutStructMigrateJSONRequestBody = StructMigrateTask
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"OT75+a3R//PinwAAAP//kNvpaIErAAA=",
+	"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",
+	"hEEAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

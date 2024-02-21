@@ -71,9 +71,9 @@ func DeleteDatabase(etcdClient *clientv3.Client, defaultDatabaseDBMSKey string) 
 func ShowDatabase(etcdClient *clientv3.Client, defaultDatabaseDBMSKey string) (string, error) {
 	kvResp, err := etcdutil.GetKey(etcdClient, defaultDatabaseDBMSKey, clientv3.WithPrefix())
 	if err != nil {
-		return string(kvResp.Kvs[0].Value), err
+		return stringutil.BytesToString(kvResp.Kvs[0].Value), err
 	}
-	return string(kvResp.Kvs[0].Value), nil
+	return stringutil.BytesToString(kvResp.Kvs[0].Value), nil
 }
 
 func UpsertDatasource(ctx context.Context, req *pb.UpsertDatasourceRequest) (string, error) {

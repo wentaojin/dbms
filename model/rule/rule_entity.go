@@ -20,7 +20,7 @@ import "github.com/wentaojin/dbms/model/common"
 type SchemaRouteRule struct {
 	ID          uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
 	TaskName    string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
-	SchemaNameS string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
+	SchemaNameS string `gorm:"type:varchar(120);not null;comment:source schema name" json:"schemaNameS"`
 	SchemaNameT string `gorm:"type:varchar(120);not null;comment:target schema name" json:"schemaNameT"`
 	//IncludeTable string `gorm:"comment:source schema include table list" json:"includeTable"` // used for task record
 	//ExcludeTable string `gorm:"comment:source schema exclude table list" json:"excludeTable"` // used for task record
@@ -56,4 +56,33 @@ type ColumnRouteRule struct {
 	TableNameT  string `gorm:"type:varchar(120);not null;comment:target table name" json:"tableNameT"`
 	ColumnNameT string `gorm:"type:varchar(120);not null;comment:source table name" json:"columnNameT"`
 	*common.Entity
+}
+
+type TableMigrateRule struct {
+	ID                  uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName            string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
+	SchemaNameS         string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
+	TableNameS          string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
+	EnableChunkStrategy string `gorm:"type:varchar(120);comment:enable chunk strategy" json:"enableChunkStrategy"`
+	WhereRange          string `gorm:"type:varchar(120);comment:source sql query where" json:"whereRange"`
+	SqlHintS            string `gorm:"type:varchar(120);comment:source sql query hint" json:"sqlHintS"`
+	*common.Entity
+}
+
+type SqlRouteRule struct {
+	ID              uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName        string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
+	SchemaNameT     string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:target schema name" json:"schemaNameT"`
+	TableNameT      string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:target table name" json:"tableNameT"`
+	SqlHintT        string `gorm:"type:varchar(120);comment:target sql hint" json:"sqlHintT"`
+	SqlQueryS       string `gorm:"type:longtext;not null;comment:migrate task sql query" json:"sqlQueryS"`
+	ColumnRouteRule string `gorm:"type:longtext;comment:schema table column route rules" json:"columnRouteRule"`
+	*common.Entity
+}
+
+type SqlRouteRuleGroupSchemaTableTResult struct {
+	TaskName    string `json:"taskName"`
+	SchemaNameT string `json:"schemaNameT"`
+	TableNameT  string `json:"tableNameT"`
+	RowTotals   uint64 `json:"RowTotals"`
 }

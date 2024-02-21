@@ -1,0 +1,164 @@
+/*
+Copyright © 2020 Marvin
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package taskflow
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/wentaojin/dbms/database"
+	"github.com/wentaojin/dbms/logger"
+	"github.com/wentaojin/dbms/model/task"
+	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/stringutil"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
+)
+
+type SqlMigrateRow struct {
+	Ctx           context.Context
+	Smt           *task.SqlMigrateTask
+	DatabaseS     database.IDatabase
+	DatabaseT     database.IDatabase
+	DatabaseTStmt *sql.Stmt
+	DBCharsetS    string
+	DBCharsetT    string
+	SqlThreadT    int
+	BatchSize     int
+	CallTimeout   int
+	SafeMode      bool
+	ReadQueue     chan []map[string]interface{}
+	WriteQueue    chan []interface{}
+}
+
+func (r *SqlMigrateRow) MigrateRead() error {
+	startTime := time.Now()
+
+	var execQuerySQL string
+
+	switch {
+	case strings.EqualFold(r.Smt.ConsistentReadS, "YES"):
+		execQuerySQL = stringutil.StringBuilder(`SELECT * FROM (`, r.Smt.SqlQueryS, `) AS OF SCN `, strconv.FormatUint(r.Smt.GlobalScnS, 10))
+	default:
+		execQuerySQL = r.Smt.SqlQueryS
+	}
+
+	logger.Info("sql migrate task rows extractor starting",
+		zap.String("task_name", r.Smt.TaskName),
+		zap.String("task_flow", r.Smt.TaskFlow),
+		zap.String("schema_name_t", r.Smt.SchemaNameT),
+		zap.String("table_name_t", r.Smt.TableNameT),
+		zap.String("sql_query_s", execQuerySQL),
+		zap.String("startTime", startTime.String()))
+
+	err := r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.ReadQueue)
+	if err != nil {
+		close(r.ReadQueue)
+		return fmt.Errorf("the task [%s] taskflow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.Smt.TaskFlow, execQuerySQL, err)
+	}
+
+	endTime := time.Now()
+	logger.Info("sql migrate task rows extractor finished",
+		zap.String("task_name", r.Smt.TaskName),
+		zap.String("task_flow", r.Smt.TaskFlow),
+		zap.String("schema_name_t", r.Smt.SchemaNameT),
+		zap.String("table_name_t", r.Smt.TableNameT),
+		zap.String("sql_query_s", execQuerySQL),
+		zap.String("cost", endTime.Sub(startTime).String()))
+
+	close(r.ReadQueue)
+	return nil
+}
+
+func (r *SqlMigrateRow) MigrateProcess() error {
+	for dataC := range r.ReadQueue {
+		var batchRows []interface{}
+		for _, dMap := range dataC {
+			// get value order by column
+			var rowTemps []interface{}
+			columnDetails := stringutil.StringSplit(r.Smt.ColumnDetailS, constant.StringSeparatorComma)
+			for _, c := range columnDetails {
+				if val, ok := dMap[stringutil.StringTrim(c, constant.StringSeparatorQuotationMarks)]; ok {
+					rowTemps = append(rowTemps, val)
+				}
+			}
+			if len(rowTemps) != len(columnDetails) {
+				close(r.WriteQueue)
+				return fmt.Errorf("oracle current task [%s] taskflow [%s] schema_name_t [%s] table_name_t [%s] data migrate column counts vs data counts isn't match, please contact author or reselect", r.Smt.TaskName, r.Smt.TaskFlow, r.Smt.SchemaNameT, r.Smt.TableNameT)
+			} else {
+				batchRows = append(batchRows, rowTemps...)
+			}
+		}
+
+		r.WriteQueue <- batchRows
+	}
+	close(r.WriteQueue)
+	return nil
+}
+
+func (r *SqlMigrateRow) MigrateApply() error {
+	startTime := time.Now()
+
+	logger.Info("sql migrate task applier starting",
+		zap.String("task_name", r.Smt.TaskName),
+		zap.String("task_flow", r.Smt.TaskFlow),
+		zap.String("schema_name_t", r.Smt.SchemaNameT),
+		zap.String("table_name_t", r.Smt.TableNameT),
+		zap.String("startTime", startTime.String()))
+
+	columnDetailSCounts := len(stringutil.StringSplit(r.Smt.ColumnDetailS, constant.StringSeparatorComma))
+	preArgNums := columnDetailSCounts * r.BatchSize
+
+	g := &errgroup.Group{}
+	g.SetLimit(r.SqlThreadT)
+
+	for dataC := range r.WriteQueue {
+		vals := dataC
+		g.Go(func() error {
+			// prepare exec
+			if len(vals) == preArgNums {
+				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
+				if err != nil {
+					return fmt.Errorf("the task [%s] taskflow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.TaskFlow, err)
+				}
+			} else {
+				bathSize := len(vals) / columnDetailSCounts
+				sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Smt.SchemaNameT, r.Smt.TableNameT, r.Smt.ColumnDetailT, bathSize, r.SafeMode)
+				_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
+				if err != nil {
+					return fmt.Errorf("the task [%s] taskflow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.TaskFlow, err)
+				}
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	logger.Info("sql migrate task applier finished",
+		zap.String("task_name", r.Smt.TaskName),
+		zap.String("task_flow", r.Smt.TaskFlow),
+		zap.String("schema_name_t", r.Smt.SchemaNameT),
+		zap.String("table_name_t", r.Smt.TableNameT),
+		zap.String("cost", time.Now().Sub(startTime).String()))
+	return nil
+}
