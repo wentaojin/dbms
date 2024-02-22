@@ -61,6 +61,7 @@ type IDataMigrateTask interface {
 	CreateDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error)
 	CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, batchSize int) error
 	UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
+	BatchUpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
 	FindDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
 	FindDataMigrateTaskBySchemaTableChunkCounts(ctx context.Context, task *DataMigrateTask) (int64, error)
 	FindDataMigrateTaskGroupByTaskSchemaTable(ctx context.Context) ([]*DataMigrateGroupChunkResult, error)
@@ -83,7 +84,9 @@ type ISqlMigrateTask interface {
 	CreateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask) (*SqlMigrateTask, error)
 	CreateInBatchSqlMigrateTask(ctx context.Context, task []*SqlMigrateTask, batchSize int) error
 	UpdateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask, updates map[string]interface{}) (*SqlMigrateTask, error)
+	BatchUpdateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask, updates map[string]interface{}) (*SqlMigrateTask, error)
 	FindSqlMigrateTaskByTaskStatus(ctx context.Context, task *SqlMigrateTask) ([]*SqlMigrateTask, error)
+	FindSqlMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataMigrateGroupStatusResult, error)
 	ListSqlMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*SqlMigrateTask, error)
 	DeleteSqlMigrateTask(ctx context.Context, task *SqlMigrateTask) error
 	DeleteSqlMigrateTaskName(ctx context.Context, taskName []string) error

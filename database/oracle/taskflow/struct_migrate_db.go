@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/wentaojin/dbms/database"
-	"github.com/wentaojin/dbms/database/mysql"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/utils/constant"
@@ -203,13 +202,13 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		}
 
 		if len(tableKeys) > 0 {
-			bf.WriteString(", " + strings.Join(tableKeys, ",\n"))
+			bf.WriteString(",\n" + strings.Join(tableKeys, ",\n"))
 		}
 
 		if strings.EqualFold(s.TableStruct.TableComment, "") {
-			bf.WriteString(fmt.Sprintf(") %s;", s.TableStruct.TableSuffix))
+			bf.WriteString(fmt.Sprintf("\n) %s;", s.TableStruct.TableSuffix))
 		} else {
-			bf.WriteString(fmt.Sprintf(") %s %s;", s.TableStruct.TableSuffix, s.TableStruct.TableComment))
+			bf.WriteString(fmt.Sprintf("\n) %s %s;", s.TableStruct.TableSuffix, s.TableStruct.TableComment))
 		}
 
 		// foreign and check key sql ddl
@@ -277,7 +276,7 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		}
 
 		// get target database version
-		version, err := s.DatasourceT.(*mysql.Database).GetDatabaseVersion(constant.DatabaseTypeMySQL)
+		version, err := s.DatasourceT.GetDatabaseVersion()
 		if err != nil {
 			return compatibleSql, incompatibleSql, err
 		}

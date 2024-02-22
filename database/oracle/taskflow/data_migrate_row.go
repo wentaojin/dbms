@@ -38,6 +38,8 @@ import (
 
 type DataMigrateRow struct {
 	Ctx           context.Context
+	TaskMode      string
+	TaskFlow      string
 	Dmt           *task.DataMigrateTask
 	DatabaseS     database.IDatabase
 	DatabaseT     database.IDatabase
@@ -48,11 +50,12 @@ type DataMigrateRow struct {
 	BatchSize     int
 	CallTimeout   int
 	SafeMode      bool
-	ReadQueue     chan []map[string]interface{}
-	WriteQueue    chan []interface{}
+	ReadChan      chan []map[string]interface{}
+	WriteChan     chan []interface{}
 }
 
 func (r *DataMigrateRow) MigrateRead() error {
+	defer close(r.ReadChan)
 	startTime := time.Now()
 
 	var (
@@ -63,7 +66,7 @@ func (r *DataMigrateRow) MigrateRead() error {
 
 	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailS), constant.CharsetUTF8MB4, r.DBCharsetS)
 	if err != nil {
-		return fmt.Errorf("the task [%s] taskflow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.Dmt.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
+		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	columnDetailS = stringutil.BytesToString(convertRaw)
 
@@ -84,7 +87,8 @@ func (r *DataMigrateRow) MigrateRead() error {
 
 	logger.Info("data migrate task chunk rows extractor starting",
 		zap.String("task_name", r.Dmt.TaskName),
-		zap.String("task_flow", r.Dmt.TaskFlow),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", r.Dmt.ChunkDetailS),
@@ -92,29 +96,29 @@ func (r *DataMigrateRow) MigrateRead() error {
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.ReadQueue)
+	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.ReadChan)
 	if err != nil {
-		close(r.ReadQueue)
-		return fmt.Errorf("the task [%s] taskflow [%v] source sql [%v] execute failed: %v", r.Dmt.TaskName, r.Dmt.TaskFlow, execQuerySQL, err)
+		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}
 
 	endTime := time.Now()
 	logger.Info("data migrate task chunk rows extractor finished",
 		zap.String("task_name", r.Dmt.TaskName),
-		zap.String("task_flow", r.Dmt.TaskFlow),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", r.Dmt.ChunkDetailS),
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("cost", endTime.Sub(startTime).String()))
-
-	close(r.ReadQueue)
 	return nil
 }
 
 func (r *DataMigrateRow) MigrateProcess() error {
-	for dataC := range r.ReadQueue {
+	defer close(r.WriteChan)
+
+	for dataC := range r.ReadChan {
 		var batchRows []interface{}
 		for _, dMap := range dataC {
 			// get value order by column
@@ -126,16 +130,13 @@ func (r *DataMigrateRow) MigrateProcess() error {
 				}
 			}
 			if len(rowTemps) != len(columnDetails) {
-				close(r.WriteQueue)
-				return fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] data migrate column counts vs data counts isn't match, please contact author or reselect", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.Dmt.TaskFlow)
+				return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] taskflow [%s] data migrate column counts vs data counts isn't match, please contact author or reselect", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
 			} else {
 				batchRows = append(batchRows, rowTemps...)
 			}
 		}
-
-		r.WriteQueue <- batchRows
+		r.WriteChan <- batchRows
 	}
-	close(r.WriteQueue)
 	return nil
 }
 
@@ -144,7 +145,8 @@ func (r *DataMigrateRow) MigrateApply() error {
 
 	logger.Info("data migrate task chunk rows applier starting",
 		zap.String("task_name", r.Dmt.TaskName),
-		zap.String("task_flow", r.Dmt.TaskFlow),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", r.Dmt.ChunkDetailS),
@@ -156,21 +158,21 @@ func (r *DataMigrateRow) MigrateApply() error {
 	g := &errgroup.Group{}
 	g.SetLimit(r.SqlThreadT)
 
-	for dataC := range r.WriteQueue {
+	for dataC := range r.WriteChan {
 		vals := dataC
 		g.Go(func() error {
 			// prepare exec
 			if len(vals) == preArgNums {
 				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
 				if err != nil {
-					return fmt.Errorf("the task [%s] taskflow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.Dmt.TaskFlow, err)
+					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
 				}
 			} else {
 				bathSize := len(vals) / columnDetailSCounts
 				sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.Dmt.ColumnDetailT, bathSize, r.SafeMode)
 				_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
 				if err != nil {
-					return fmt.Errorf("the task [%s] taskflow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.Dmt.TaskFlow, err)
+					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
 				}
 			}
 			return nil
@@ -183,7 +185,8 @@ func (r *DataMigrateRow) MigrateApply() error {
 
 	logger.Info("data migrate task chunk rows applier finished",
 		zap.String("task_name", r.Dmt.TaskName),
-		zap.String("task_flow", r.Dmt.TaskFlow),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", r.Dmt.ChunkDetailS),

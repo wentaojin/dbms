@@ -34,6 +34,8 @@ import (
 
 type SqlMigrateRow struct {
 	Ctx           context.Context
+	TaskMode      string
+	TaskFlow      string
 	Smt           *task.SqlMigrateTask
 	DatabaseS     database.IDatabase
 	DatabaseT     database.IDatabase
@@ -44,51 +46,57 @@ type SqlMigrateRow struct {
 	BatchSize     int
 	CallTimeout   int
 	SafeMode      bool
-	ReadQueue     chan []map[string]interface{}
-	WriteQueue    chan []interface{}
+	ReadChan      chan []map[string]interface{}
+	WriteChan     chan []interface{}
 }
 
 func (r *SqlMigrateRow) MigrateRead() error {
+	defer close(r.ReadChan)
 	startTime := time.Now()
 
 	var execQuerySQL string
 
+	sqlText, err := stringutil.Decrypt(r.Smt.SqlQueryS, []byte(constant.DefaultDataEncryptDecryptKey))
+	if err != nil {
+		return err
+	}
 	switch {
 	case strings.EqualFold(r.Smt.ConsistentReadS, "YES"):
-		execQuerySQL = stringutil.StringBuilder(`SELECT * FROM (`, r.Smt.SqlQueryS, `) AS OF SCN `, strconv.FormatUint(r.Smt.GlobalScnS, 10))
+		execQuerySQL = stringutil.StringBuilder(`SELECT * FROM (`, sqlText, `) AS OF SCN `, strconv.FormatUint(r.Smt.GlobalScnS, 10))
 	default:
-		execQuerySQL = r.Smt.SqlQueryS
+		execQuerySQL = sqlText
 	}
 
 	logger.Info("sql migrate task rows extractor starting",
 		zap.String("task_name", r.Smt.TaskName),
-		zap.String("task_flow", r.Smt.TaskFlow),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_t", r.Smt.SchemaNameT),
 		zap.String("table_name_t", r.Smt.TableNameT),
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err := r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.ReadQueue)
+	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.ReadChan)
 	if err != nil {
-		close(r.ReadQueue)
-		return fmt.Errorf("the task [%s] taskflow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.Smt.TaskFlow, execQuerySQL, err)
+		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}
 
 	endTime := time.Now()
 	logger.Info("sql migrate task rows extractor finished",
 		zap.String("task_name", r.Smt.TaskName),
-		zap.String("task_flow", r.Smt.TaskFlow),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_t", r.Smt.SchemaNameT),
 		zap.String("table_name_t", r.Smt.TableNameT),
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("cost", endTime.Sub(startTime).String()))
 
-	close(r.ReadQueue)
 	return nil
 }
 
 func (r *SqlMigrateRow) MigrateProcess() error {
-	for dataC := range r.ReadQueue {
+	defer close(r.WriteChan)
+	for dataC := range r.ReadChan {
 		var batchRows []interface{}
 		for _, dMap := range dataC {
 			// get value order by column
@@ -100,16 +108,12 @@ func (r *SqlMigrateRow) MigrateProcess() error {
 				}
 			}
 			if len(rowTemps) != len(columnDetails) {
-				close(r.WriteQueue)
-				return fmt.Errorf("oracle current task [%s] taskflow [%s] schema_name_t [%s] table_name_t [%s] data migrate column counts vs data counts isn't match, please contact author or reselect", r.Smt.TaskName, r.Smt.TaskFlow, r.Smt.SchemaNameT, r.Smt.TableNameT)
+				return fmt.Errorf("oracle current task [%s] task_mode [%s] task_flow [%s] schema_name_t [%s] table_name_t [%s] data migrate column counts vs data counts isn't match, please contact author or reselect", r.Smt.TaskName, r.TaskMode, r.TaskFlow, r.Smt.SchemaNameT, r.Smt.TableNameT)
 			} else {
 				batchRows = append(batchRows, rowTemps...)
 			}
 		}
-
-		r.WriteQueue <- batchRows
 	}
-	close(r.WriteQueue)
 	return nil
 }
 
@@ -118,7 +122,8 @@ func (r *SqlMigrateRow) MigrateApply() error {
 
 	logger.Info("sql migrate task applier starting",
 		zap.String("task_name", r.Smt.TaskName),
-		zap.String("task_flow", r.Smt.TaskFlow),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_t", r.Smt.SchemaNameT),
 		zap.String("table_name_t", r.Smt.TableNameT),
 		zap.String("startTime", startTime.String()))
@@ -129,21 +134,21 @@ func (r *SqlMigrateRow) MigrateApply() error {
 	g := &errgroup.Group{}
 	g.SetLimit(r.SqlThreadT)
 
-	for dataC := range r.WriteQueue {
+	for dataC := range r.WriteChan {
 		vals := dataC
 		g.Go(func() error {
 			// prepare exec
 			if len(vals) == preArgNums {
 				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
 				if err != nil {
-					return fmt.Errorf("the task [%s] taskflow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.TaskFlow, err)
+					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, err)
 				}
 			} else {
 				bathSize := len(vals) / columnDetailSCounts
 				sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Smt.SchemaNameT, r.Smt.TableNameT, r.Smt.ColumnDetailT, bathSize, r.SafeMode)
 				_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
 				if err != nil {
-					return fmt.Errorf("the task [%s] taskflow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.TaskFlow, err)
+					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, err)
 				}
 			}
 			return nil
@@ -156,7 +161,8 @@ func (r *SqlMigrateRow) MigrateApply() error {
 
 	logger.Info("sql migrate task applier finished",
 		zap.String("task_name", r.Smt.TaskName),
-		zap.String("task_flow", r.Smt.TaskFlow),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_t", r.Smt.SchemaNameT),
 		zap.String("table_name_t", r.Smt.TableNameT),
 		zap.String("cost", time.Now().Sub(startTime).String()))

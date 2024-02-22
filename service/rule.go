@@ -53,24 +53,19 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 		return fmt.Errorf("there is the same table within source include and exclude table, please check and remove")
 	}
 
-	switch {
-	case strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeOracle):
-		databaseS, errN := database.NewDatabase(ctx, datasourceS, "")
-		if errN != nil {
-			return err
+	databaseS, errN := database.NewDatabase(ctx, datasourceS, "")
+	if errN != nil {
+		return err
+	}
+	defer databaseS.Close()
+	allOraSchemas, err := databaseS.FilterDatabaseSchema()
+	if err != nil {
+		return err
+	}
+	for _, s := range sourceSchemas {
+		if !stringutil.IsContainedString(allOraSchemas, s) {
+			return fmt.Errorf("oracle schema isn't contained in the database with the case field rule, failed schemas: [%v]", s)
 		}
-		defer databaseS.Close()
-		allOraSchemas, err := databaseS.FilterDatabaseSchema()
-		if err != nil {
-			return err
-		}
-		for _, s := range sourceSchemas {
-			if !stringutil.IsContainedString(allOraSchemas, s) {
-				return fmt.Errorf("oracle schema isn't contained in the database with the case field rule, failed schemas: [%v]", s)
-			}
-		}
-	default:
-		return fmt.Errorf("the current datasource type [%s] isn't support, please remove and reruning", datasourceS.DbType)
 	}
 
 	if !strings.EqualFold(sr.String(), "") {
@@ -114,6 +109,19 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 				targetSchema = stringutil.StringLower(sr.SchemaNameT)
 			}
 
+			if len(includeTableS) > 0 && len(excludeTableS) > 0 {
+				return fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
+			}
+
+			if len(includeTableS) == 0 {
+				err = model.GetIMigrateTaskTableRW().DeleteMigrateTaskTableByTaskIsExclude(txnCtx, &rule.MigrateTaskTable{
+					TaskName:  taskName,
+					IsExclude: constant.MigrateTaskTableIsNotExclude,
+				})
+				if err != nil {
+					return err
+				}
+			}
 			for _, t := range includeTableS {
 				_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
 					TaskName:    taskName,
@@ -121,8 +129,19 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 					TableNameS:  t,
 					IsExclude:   constant.MigrateTaskTableIsNotExclude,
 				})
+				if err != nil {
+					return err
+				}
 			}
-
+			if len(excludeTableS) == 0 {
+				err = model.GetIMigrateTaskTableRW().DeleteMigrateTaskTableByTaskIsExclude(txnCtx, &rule.MigrateTaskTable{
+					TaskName:  taskName,
+					IsExclude: constant.MigrateTaskTableIsExclude,
+				})
+				if err != nil {
+					return err
+				}
+			}
 			for _, t := range excludeTableS {
 				_, err = model.GetIMigrateTaskTableRW().CreateMigrateTaskTable(txnCtx, &rule.MigrateTaskTable{
 					TaskName:    taskName,
@@ -144,7 +163,7 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 			var (
 				tableRules        []*rule.TableRouteRule
 				columnRules       []*rule.ColumnRouteRule
-				tableMigrateRules []*rule.TableMigrateRule
+				tableMigrateRules []*rule.DataMigrateRule
 			)
 			for _, st := range sr.TableRouteRules {
 				if !strings.EqualFold(st.String(), "") {
@@ -156,7 +175,6 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 						sourceTable string
 						targetTable string
 					)
-					columnRouteRuleMap := make(map[string]string)
 
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
 						sourceTable = st.TableNameS
@@ -168,33 +186,29 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
 						sourceTable = stringutil.StringUpper(st.TableNameS)
 						for k, v := range st.ColumnRouteRules {
-							columnRouteRuleMap[stringutil.StringUpper(k)] = v
+							st.ColumnRouteRules[stringutil.StringUpper(k)] = v
 						}
 					}
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
 						targetTable = stringutil.StringUpper(st.TableNameT)
-						for k, v := range columnRouteRuleMap {
-							columnRouteRuleMap[k] = stringutil.StringUpper(v)
+						for k, v := range st.ColumnRouteRules {
+							st.ColumnRouteRules[k] = stringutil.StringUpper(v)
 						}
 					}
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
 						sourceTable = stringutil.StringLower(st.TableNameS)
 						for k, v := range st.ColumnRouteRules {
-							columnRouteRuleMap[stringutil.StringLower(k)] = v
+							st.ColumnRouteRules[stringutil.StringLower(k)] = v
 						}
 					}
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameLower) {
 						targetTable = stringutil.StringLower(st.TableNameT)
-						for k, v := range columnRouteRuleMap {
-							columnRouteRuleMap[k] = stringutil.StringLower(v)
+						for k, v := range st.ColumnRouteRules {
+							st.ColumnRouteRules[k] = stringutil.StringLower(v)
 						}
 					}
 
-					if columnRouteRuleMap == nil {
-						columnRouteRuleMap = st.ColumnRouteRules
-					}
-
-					for k, v := range columnRouteRuleMap {
+					for k, v := range st.ColumnRouteRules {
 						columnRules = append(columnRules, &rule.ColumnRouteRule{
 							TaskName:    taskName,
 							SchemaNameS: sourceSchema,
@@ -226,7 +240,7 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 				return err
 			}
 
-			for _, st := range sr.TableMigrateRules {
+			for _, st := range sr.DataMigrateRules {
 				if !strings.EqualFold(st.String(), "") {
 					var sourceTable string
 
@@ -241,7 +255,7 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 						sourceTable = stringutil.StringLower(st.TableNameS)
 					}
 
-					tableMigrateRules = append(tableMigrateRules, &rule.TableMigrateRule{
+					tableMigrateRules = append(tableMigrateRules, &rule.DataMigrateRule{
 						TaskName:            taskName,
 						SchemaNameS:         sourceSchema,
 						TableNameS:          sourceTable,
@@ -281,7 +295,8 @@ func DeleteSchemaRouteRule(ctx context.Context, taskName []string) error {
 		if err != nil {
 			return err
 		}
-		err = model.GetIMigrateTableRuleRW().DeleteTableMigrateRule(txnCtx, taskName)
+
+		err = model.GetIDataMigrateRuleRW().DeleteDataMigrateRule(txnCtx, taskName)
 		if err != nil {
 			return err
 		}
@@ -312,7 +327,7 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 
 		var (
 			opColumnRules []*pb.TableRouteRule
-			opTableRules  []*pb.TableMigrateRule
+			opTableRules  []*pb.DataMigrateRule
 
 			includeTables []string
 			excludeTables []string
@@ -359,7 +374,7 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 			opColumnRules = append(opColumnRules, opColumnRule)
 		}
 
-		migrateTableRules, err := model.GetIMigrateTableRuleRW().FindTableMigrateRule(txnCtx, &rule.TableMigrateRule{
+		migrateTableRules, err := model.GetIDataMigrateRuleRW().FindDataMigrateRule(txnCtx, &rule.DataMigrateRule{
 			TaskName:    taskName,
 			SchemaNameS: sr.SchemaNameS,
 		})
@@ -371,7 +386,7 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 			if err != nil {
 				return err
 			}
-			opTableRules = append(opTableRules, &pb.TableMigrateRule{
+			opTableRules = append(opTableRules, &pb.DataMigrateRule{
 				TableNameS:          st.TableNameS,
 				EnableChunkStrategy: enableChunk,
 				WhereRange:          st.WhereRange,
@@ -380,7 +395,7 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 		}
 
 		opSchemaRule.TableRouteRules = opColumnRules
-		opSchemaRule.TableMigrateRules = opTableRules
+		opSchemaRule.DataMigrateRules = opTableRules
 		return nil
 	})
 	if err != nil {
@@ -390,8 +405,8 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 	return opSchemaRules, nil
 }
 
-func UpsertSqlRouteRule(ctx context.Context, taskName string, caseFieldRule *pb.CaseFieldRule, sqlRouteRule []*pb.SqlRouteRule) error {
-	var sqlRouteRules []*rule.SqlRouteRule
+func UpsertSqlMigrateRule(ctx context.Context, taskName string, caseFieldRule *pb.CaseFieldRule, sqlRouteRule []*pb.SqlMigrateRule) error {
+	var sqlRouteRules []*rule.SqlMigrateRule
 
 	for _, st := range sqlRouteRule {
 		if !strings.EqualFold(st.String(), "") {
@@ -446,18 +461,23 @@ func UpsertSqlRouteRule(ctx context.Context, taskName string, caseFieldRule *pb.
 				return err
 			}
 
-			sqlRouteRules = append(sqlRouteRules, &rule.SqlRouteRule{
+			sqlDigest, err := stringutil.Encrypt(st.SqlQueryS, []byte(constant.DefaultDataEncryptDecryptKey))
+			if err != nil {
+				return err
+			}
+
+			sqlRouteRules = append(sqlRouteRules, &rule.SqlMigrateRule{
 				TaskName:        taskName,
 				SchemaNameT:     targetSchema,
 				TableNameT:      targetTable,
 				SqlHintT:        st.SqlHintT,
-				SqlQueryS:       st.SqlQueryS,
+				SqlQueryS:       sqlDigest,
 				ColumnRouteRule: jsonColumnRulesStr,
 				Entity:          nil,
 			})
 		}
 
-		_, err := model.GetIMigrateSqlRuleRW().CreateInBatchSqlRouteRule(ctx, sqlRouteRules, constant.DefaultRecordCreateBatchSize)
+		_, err := model.GetISqlMigrateRuleRW().CreateInBatchSqlMigrateRule(ctx, sqlRouteRules, constant.DefaultRecordCreateBatchSize)
 		if err != nil {
 			return err
 		}
@@ -465,9 +485,9 @@ func UpsertSqlRouteRule(ctx context.Context, taskName string, caseFieldRule *pb.
 	return nil
 }
 
-func DeleteSqlRouteRule(ctx context.Context, taskName []string) error {
+func DeleteSqlMigrateRule(ctx context.Context, taskName []string) error {
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
-		err := model.GetIMigrateSqlRuleRW().DeleteSqlRouteRule(txnCtx, taskName)
+		err := model.GetISqlMigrateRuleRW().DeleteSqlMigrateRule(txnCtx, taskName)
 		if err != nil {
 			return err
 		}
@@ -487,12 +507,12 @@ func DeleteSqlRouteRule(ctx context.Context, taskName []string) error {
 	return nil
 }
 
-func ShowSqlRouteRule(ctx context.Context, taskName string) ([]*pb.SqlRouteRule, error) {
+func ShowSqlMigrateRule(ctx context.Context, taskName string) ([]*pb.SqlMigrateRule, error) {
 	var (
-		opSqlRules []*pb.SqlRouteRule
+		opSqlRules []*pb.SqlMigrateRule
 	)
 
-	migrateSqlRules, err := model.GetIMigrateSqlRuleRW().FindSqlRouteRule(ctx, &rule.SqlRouteRule{
+	migrateSqlRules, err := model.GetISqlMigrateRuleRW().FindSqlMigrateRule(ctx, &rule.SqlMigrateRule{
 		TaskName: taskName,
 	})
 	if err != nil {
@@ -504,7 +524,7 @@ func ShowSqlRouteRule(ctx context.Context, taskName string) ([]*pb.SqlRouteRule,
 		if err != nil {
 			return opSqlRules, err
 		}
-		opSqlRules = append(opSqlRules, &pb.SqlRouteRule{
+		opSqlRules = append(opSqlRules, &pb.SqlMigrateRule{
 			SchemaNameT:      st.SchemaNameT,
 			TableNameT:       st.TableNameT,
 			SqlHintT:         st.SqlHintT,

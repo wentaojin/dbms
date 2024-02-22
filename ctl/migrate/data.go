@@ -39,9 +39,9 @@ type DataMigrateParam struct {
 	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
 	ChunkSize            uint64 `toml:"chunk-size" json:"chunkSize"`
 	SqlThreadS           uint64 `toml:"sql-thread-s" json:"sqlThreadS"`
-	SqlHintS             bool   `toml:"sql-hint-s" json:"sqlHintS"`
-	SqlThreadT           uint64 `toml:"sql-thread-t" json:"applyThreadT"`
-	SqlHintT             bool   `toml:"sql-hint-t" json:"sqlHintT"`
+	SqlHintS             string `toml:"sql-hint-s" json:"sqlHintS"`
+	SqlThreadT           uint64 `toml:"sql-thread-t" json:"sqlThreadT"`
+	SqlHintT             string `toml:"sql-hint-t" json:"sqlHintT"`
 	CallTimeout          uint64 `toml:"call-timeout" json:"callTimeout"`
 	EnableCheckpoint     bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`

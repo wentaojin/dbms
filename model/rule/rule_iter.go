@@ -23,7 +23,6 @@ type ISchemaRouteRule interface {
 	GetSchemaRouteRule(ctx context.Context, rule *SchemaRouteRule) (*SchemaRouteRule, error)
 	ListSchemaRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*SchemaRouteRule, error)
 	DeleteSchemaRouteRule(ctx context.Context, taskNames []string) error
-	IsContainedSchemaRouteRuleRecord(ctx context.Context, rule *SchemaRouteRule) (bool, error)
 }
 
 type IMigrateTaskTable interface {
@@ -32,7 +31,7 @@ type IMigrateTaskTable interface {
 	GetMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) (*MigrateTaskTable, error)
 	ListMigrateTaskTable(ctx context.Context, page uint64, pageSize uint64) ([]*MigrateTaskTable, error)
 	DeleteMigrateTaskTable(ctx context.Context, taskNames []string) error
-	IsContainedMigrateTaskTableRecord(ctx context.Context, rule *MigrateTaskTable) (bool, error)
+	DeleteMigrateTaskTableByTaskIsExclude(ctx context.Context, rule *MigrateTaskTable) error
 	FindMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) ([]*MigrateTaskTable, error)
 }
 
@@ -43,7 +42,6 @@ type ITableRouteRule interface {
 	GetTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
 	ListTableRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*TableRouteRule, error)
 	DeleteTableRouteRule(ctx context.Context, taskNames []string) error
-	IsContainedTableRouteRuleRecord(ctx context.Context, rule *TableRouteRule) (bool, error)
 	FindTableRouteRule(ctx context.Context, rule *TableRouteRule) ([]*TableRouteRule, error)
 }
 
@@ -54,25 +52,24 @@ type IColumnRouteRule interface {
 	GetColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
 	ListColumnRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*ColumnRouteRule, error)
 	DeleteColumnRouteRule(ctx context.Context, taskNames []string) error
-	IsContainedColumnRouteRuleRecord(ctx context.Context, rule *ColumnRouteRule) (bool, error)
 	FindColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) ([]*ColumnRouteRule, error)
 }
 
-type ITableMigrateRule interface {
-	CreateTableMigrateRule(ctx context.Context, rule *TableMigrateRule) (*TableMigrateRule, error)
-	CreateInBatchTableMigrateRule(ctx context.Context, rule []*TableMigrateRule, batchSize int) ([]*TableMigrateRule, error)
-	GetTableMigrateRule(ctx context.Context, rule *TableMigrateRule) (*TableMigrateRule, error)
-	IsContainedTableMigrateRuleRecord(ctx context.Context, rule *TableMigrateRule) (bool, error)
-	DeleteTableMigrateRule(ctx context.Context, taskNames []string) error
-	FindTableMigrateRule(ctx context.Context, rule *TableMigrateRule) ([]*TableMigrateRule, error)
+type IDataMigrateRule interface {
+	CreateDataMigrateRule(ctx context.Context, rule *DataMigrateRule) (*DataMigrateRule, error)
+	CreateInBatchDataMigrateRule(ctx context.Context, rule []*DataMigrateRule, batchSize int) ([]*DataMigrateRule, error)
+	GetDataMigrateRule(ctx context.Context, rule *DataMigrateRule) (*DataMigrateRule, error)
+	DeleteDataMigrateRule(ctx context.Context, taskNames []string) error
+	FindDataMigrateRule(ctx context.Context, rule *DataMigrateRule) ([]*DataMigrateRule, error)
+	IsContainedDataMigrateRuleRecord(ctx context.Context, rule *DataMigrateRule) (bool, error)
 }
 
-type ISqlRouteRule interface {
-	CreateSqlRouteRule(ctx context.Context, rule *SqlRouteRule) (*SqlRouteRule, error)
-	CreateInBatchSqlRouteRule(ctx context.Context, rule []*SqlRouteRule, batchSize int) ([]*SqlRouteRule, error)
-	UpdateSqlRouteRule(ctx context.Context, rule *SqlRouteRule) (*SqlRouteRule, error)
-	GetSqlRouteRule(ctx context.Context, rule *SqlRouteRule) (*SqlRouteRule, error)
-	DeleteSqlRouteRule(ctx context.Context, taskNames []string) error
-	FindSqlRouteRule(ctx context.Context, rule *SqlRouteRule) ([]*SqlRouteRule, error)
-	FindSqlRouteRuleGroupBySchemaTable(ctx context.Context) ([]*SqlRouteRuleGroupSchemaTableTResult, error)
+type ISqlMigrateRule interface {
+	CreateSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) (*SqlMigrateRule, error)
+	CreateInBatchSqlMigrateRule(ctx context.Context, rule []*SqlMigrateRule, batchSize int) ([]*SqlMigrateRule, error)
+	UpdateSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) (*SqlMigrateRule, error)
+	GetSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) (*SqlMigrateRule, error)
+	DeleteSqlMigrateRule(ctx context.Context, taskNames []string) error
+	FindSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) ([]*SqlMigrateRule, error)
+	FindSqlMigrateRuleGroupBySchemaTable(ctx context.Context) ([]*SqlMigrateRuleGroupSchemaTableTResult, error)
 }

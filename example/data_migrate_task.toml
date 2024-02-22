@@ -1,4 +1,4 @@
-task-name = "oracle33totidb145_task"
+task-name = "dmt_33to45"
 datasource-name-s = "oracle33"
 datasource-name-t = "tidb145"
 comment = "测试数据源"
@@ -13,30 +13,31 @@ case-field-rule-s = "0"
 # 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准
 # 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写
 # 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写
-case-field-rule-t = "1"
+case-field-rule-t = "0"
 
 [schema-route-rule]
 schema-name-s = "FINDPT"
 schema-name-t = "STEVEN"
-include-table-s = []
-exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
+include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
+exclude-table-s = []
+#exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
 
 [[schema-route-rule.table-route-rules]]
 table-name-s = "MARVIN00"
 table-name-t = "STEVEN00"
-column-route-rules = {"NAME" = "S_NAME00"}
+column-route-rules = {"NAME" = "T_NAME00"}
 [[schema-route-rule.table-route-rules]]
 table-name-s = "MARVIN01"
 table-name-t = "STEVEN01"
-column-route-rules = {"i01" = "s_i01", "i02" = "s_i02"}
+column-route-rules = {"NAME" = "t_name00"}
 
 [[schema-route-rule.table-migrate-rules]]
-table-name-s = "marvin"
+table-name-s = "MARVIN00"
 # 基于数据切分策略，获取指定数据迁移表的查询范围
 enable-chunk-strategy = true
 # 指定数据迁移表的查询范围
 # 注意自定义数据迁移表之后，对应表将只迁移该部分数据
-where-range = "age > 10 AND age< 20"
+where-range = "id = 1"
 # 指定分片 chunk sql 查询 hint
 sql-hint-s = "/*+ PARALLEL(8) */"
 

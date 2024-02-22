@@ -183,9 +183,9 @@ func (d *Database) GetDatabaseCharset() (string, error) {
 FROM
 	DUAL`))
 	if err != nil {
-		return res[0]["LANG"], err
+		return "", err
 	}
-	return stringutil.StringSplit(res[0]["LANG"], ".")[1], nil
+	return stringutil.StringSplit(res[0]["LANG"], constant.StringSeparatorDot)[1], nil
 }
 
 func (d *Database) GetDatabaseCharsetCollation() (string, string, error) {

@@ -20,11 +20,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wentaojin/dbms/database/mysql"
-	"github.com/wentaojin/dbms/database/oracle"
-	"github.com/wentaojin/dbms/model/common"
-	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/database"
 
+	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -95,26 +93,14 @@ func UpsertDatasource(ctx context.Context, req *pb.UpsertDatasourceRequest) (str
 				PdbName:        r.PdbName,
 				Entity:         &common.Entity{Comment: r.Comment},
 			}
-			switch {
-			case strings.EqualFold(r.DbType, constant.DatabaseTypeOracle):
-				err := oracle.PingDatabaseConnection(dataS, "")
-				if err != nil {
-					return "", err
-				}
-			case strings.EqualFold(r.DbType, constant.DatabaseTypeMySQL):
-				err := mysql.PingDatabaseConnection(dataS)
-				if err != nil {
-					return "", err
-				}
-			case strings.EqualFold(r.DbType, constant.DatabaseTypeTiDB):
-				err := mysql.PingDatabaseConnection(dataS)
-				if err != nil {
-					return "", err
-				}
-			default:
-				return "", fmt.Errorf("datasource [%v] database type [%v] is not support, please contact author or reselect", r.DatasourceName, r.DbType)
+			databaseI, err := database.NewDatabase(ctx, dataS, "")
+			if err != nil {
+				return "", err
 			}
-
+			err = databaseI.PingDatabaseConnection()
+			if err != nil {
+				return "", err
+			}
 			ds = append(ds, dataS)
 		}
 	}

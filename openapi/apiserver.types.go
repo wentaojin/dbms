@@ -46,6 +46,14 @@ type DataMigrateParam struct {
 	TableThread          *uint64 `json:"tableThread,omitempty"`
 }
 
+// DataMigrateRule defines model for DataMigrateRule.
+type DataMigrateRule struct {
+	EnableChunkStrategy *bool   `json:"enableChunkStrategy,omitempty"`
+	SqlHintS            *string `json:"sqlHintS,omitempty"`
+	TableNameS          *string `json:"tableNameS,omitempty"`
+	WhereRange          *string `json:"whereRange,omitempty"`
+}
+
 // DataMigrateTask defines model for DataMigrateTask.
 type DataMigrateTask struct {
 	CaseFieldRule    *CaseFieldRule    `json:"caseFieldRule,omitempty"`
@@ -109,12 +117,12 @@ type Response struct {
 
 // SchemaRouteRule defines model for SchemaRouteRule.
 type SchemaRouteRule struct {
-	TableMigrateRules *[]TableMigrateRule `json:"TableMigrateRules,omitempty"`
-	ExcludeTableS     *[]string           `json:"excludeTableS,omitempty"`
-	IncludeTableS     *[]string           `json:"includeTableS,omitempty"`
-	SchemaNameS       *string             `json:"schemaNameS,omitempty"`
-	SchemaNameT       *string             `json:"schemaNameT,omitempty"`
-	TableRouteRules   *[]TableRouteRule   `json:"tableRouteRules,omitempty"`
+	DataMigrateRules *[]DataMigrateRule `json:"DataMigrateRules,omitempty"`
+	ExcludeTableS    *[]string          `json:"excludeTableS,omitempty"`
+	IncludeTableS    *[]string          `json:"includeTableS,omitempty"`
+	SchemaNameS      *string            `json:"schemaNameS,omitempty"`
+	SchemaNameT      *string            `json:"schemaNameT,omitempty"`
+	TableRouteRules  *[]TableRouteRule  `json:"tableRouteRules,omitempty"`
 }
 
 // SchemaStructRule defines model for SchemaStructRule.
@@ -136,25 +144,25 @@ type SqlMigrateParam struct {
 	SqlThreadT           *uint64 `json:"sqlThreadT,omitempty"`
 }
 
-// SqlMigrateTask defines model for SqlMigrateTask.
-type SqlMigrateTask struct {
-	CaseFieldRule   *CaseFieldRule   `json:"caseFieldRule,omitempty"`
-	Comment         *string          `json:"comment,omitempty"`
-	DatasourceNameS *string          `json:"datasourceNameS,omitempty"`
-	DatasourceNameT *string          `json:"datasourceNameT,omitempty"`
-	SqlMigrateParam *SqlMigrateParam `json:"sqlMigrateParam,omitempty"`
-	SqlRouteRules   *[]SqlRouteRule  `json:"sqlRouteRules,omitempty"`
-	TaskName        *string          `json:"taskName,omitempty"`
-}
-
-// SqlRouteRule defines model for SqlRouteRule.
-type SqlRouteRule struct {
+// SqlMigrateRule defines model for SqlMigrateRule.
+type SqlMigrateRule struct {
 	CaseFieldRuleT   *string            `json:"caseFieldRuleT,omitempty"`
 	ColumnRouteRules *map[string]string `json:"columnRouteRules,omitempty"`
 	SchemaNameT      *string            `json:"schemaNameT,omitempty"`
 	SqlHintT         *string            `json:"sqlHintT,omitempty"`
 	SqlQueryS        *string            `json:"sqlQueryS,omitempty"`
 	TableNameT       *string            `json:"tableNameT,omitempty"`
+}
+
+// SqlMigrateTask defines model for SqlMigrateTask.
+type SqlMigrateTask struct {
+	CaseFieldRule   *CaseFieldRule    `json:"caseFieldRule,omitempty"`
+	Comment         *string           `json:"comment,omitempty"`
+	DatasourceNameS *string           `json:"datasourceNameS,omitempty"`
+	DatasourceNameT *string           `json:"datasourceNameT,omitempty"`
+	SqlMigrateParam *SqlMigrateParam  `json:"sqlMigrateParam,omitempty"`
+	SqlMigrateRules *[]SqlMigrateRule `json:"sqlMigrateRules,omitempty"`
+	TaskName        *string           `json:"taskName,omitempty"`
 }
 
 // StructMigrateParam defines model for StructMigrateParam.
@@ -191,14 +199,6 @@ type TableAttrsRule struct {
 	SchemaNameS *string   `json:"schemaNameS,omitempty"`
 	TableAttrsT *string   `json:"tableAttrsT,omitempty"`
 	TableNamesS *[]string `json:"tableNamesS,omitempty"`
-}
-
-// TableMigrateRule defines model for TableMigrateRule.
-type TableMigrateRule struct {
-	EnableChunkStrategy *bool   `json:"enableChunkStrategy,omitempty"`
-	SqlHintS            *string `json:"sqlHintS,omitempty"`
-	TableNameS          *string `json:"tableNameS,omitempty"`
-	WhereRange          *string `json:"whereRange,omitempty"`
 }
 
 // TableRouteRule defines model for TableRouteRule.
@@ -278,37 +278,36 @@ type APIPutStructMigrateJSONRequestBody = StructMigrateTask
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"hEEAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

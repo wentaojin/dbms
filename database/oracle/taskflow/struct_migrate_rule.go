@@ -34,6 +34,7 @@ import (
 type StructMigrateRule struct {
 	Ctx                      context.Context                  `json:"-"`
 	TaskName                 string                           `json:"taskName"`
+	TaskMode                 string                           `json:"taskMode"`
 	TaskFlow                 string                           `json:"taskFlow"`
 	SchemaNameS              string                           `json:"schemaNameS"`
 	TableNameS               string                           `json:"tableNameS"`
@@ -71,7 +72,7 @@ func (r *StructMigrateRule) GetSchemaNameRule() (map[string]string, error) {
 	}
 	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 	if err != nil {
-		return nil, fmt.Errorf("[GetSchemaNameRule] oracle schema [%s] charset convert failed, %v", r.SchemaNameS, err)
+		return nil, fmt.Errorf("[GetSchemaNameRule] oracle schema [%s] charset [%v] convert failed, %v", r.SchemaNameS, r.DBCharsetS, err)
 	}
 	schemaNameS := stringutil.BytesToString(convertUtf8Raw)
 
@@ -105,7 +106,7 @@ func (r *StructMigrateRule) GetTableNameRule() (map[string]string, error) {
 
 	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 	if err != nil {
-		return nil, fmt.Errorf("[GetTableNameRule] oracle schema [%s] table [%v] charset convert failed, %v", r.SchemaNameS, r.TableNameS, err)
+		return nil, fmt.Errorf("[GetTableNameRule] oracle schema [%s] table [%v] charset [%v] convert failed, %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, err)
 	}
 	tableNameS := stringutil.BytesToString(convertUtf8Raw)
 
@@ -179,35 +180,35 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 	for _, c := range r.TableColumnsAttrs {
 		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, c["COLUMN_NAME"], err)
+			return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], err)
 		}
 
 		columnName := stringutil.BytesToString(columnNameUtf8Raw)
 
 		// column name caseFieldRule
-		var columnNameNew string
+		var columnNameTNew string
 
 		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
-			columnNameNew = strings.ToLower(columnName)
+			columnNameTNew = strings.ToLower(columnName)
 		}
 		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
-			columnNameNew = strings.ToUpper(columnName)
+			columnNameTNew = strings.ToUpper(columnName)
 		}
 		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
-			columnNameNew = columnName
+			columnNameTNew = columnName
 		}
 
-		columnRules[columnName] = columnNameNew
+		columnRules[columnName] = columnNameTNew
 
 		defaultValUtf8Raw, err := stringutil.CharsetConvert([]byte(c["DATA_DEFAULT"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] default value [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, c["COLUMN_NAME"], c["DATA_DEFAULT"], err)
+			return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] default value [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["DATA_DEFAULT"], err)
 		}
 		columnDefaultValues := stringutil.BytesToString(defaultValUtf8Raw)
 
 		commentUtf8Raw, err := stringutil.CharsetConvert([]byte(c["COMMENTS"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] comment [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, c["COLUMN_NAME"], c["COMMENTS"], err)
+			return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] comment [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["COMMENTS"], err)
 		}
 		columnComment := stringutil.BytesToString(commentUtf8Raw)
 
@@ -218,7 +219,7 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 		switch {
 		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
 			originColumnType, buildInColumnType, err = DatabaseTableColumnMapMYSQLDatatypeRule(&Column{
-				ColumnName:    columnName,
+				ColumnName:    c["COLUMN_NAME"],
 				Datatype:      c["DATA_TYPE"],
 				CharUsed:      c["CHAR_USED"],
 				CharLength:    c["CHAR_LENGTH"],
@@ -235,7 +236,7 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 			// priority, return target database table column datatype
 			convertColumnDatatype, convertColumnDefaultValue, err := HandleColumnRuleWithPriority(
 				c["TABLE_NAME"],
-				columnName,
+				c["COLUMN_NAME"],
 				originColumnType,
 				buildInColumnType,
 				columnDefaultValues,
@@ -263,7 +264,6 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 			columnRules[c.ColumnNameS] = c.ColumnNameT
 		}
 	}
-
 	return columnRules, columnDatatypeRules, columnDefaultValueRules, nil
 }
 
@@ -301,7 +301,7 @@ func (r *StructMigrateRule) GetTableCommentRule() (string, error) {
 
 	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableCommentAttrs[0]["COMMENTS"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 	if err != nil {
-		return tableComment, fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] comments [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.TableCommentAttrs[0]["COMMENTS"], err)
+		return tableComment, fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] comments [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.TableCommentAttrs[0]["COMMENTS"], r.DBCharsetS, err)
 	}
 	tableComment = stringutil.BytesToString(convertUtf8Raw)
 	switch {
@@ -319,12 +319,12 @@ func (r *StructMigrateRule) GetTableColumnCollationRule() (map[string]string, er
 		// the oracle 12.2 and the above version support column collation
 		if r.DBCollationS {
 			// check column sort collation
-			if val, ok := constant.MigrateTableStructureDatabaseCollationMap[r.TaskFlow][strings.ToUpper(rowCol["COLLATION"])][constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][r.DBCharsetS]]; ok {
+			if val, ok := constant.MigrateTableStructureDatabaseCollationMap[r.TaskFlow][strings.ToUpper(rowCol["COLLATION"])][constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][stringutil.StringUpper(r.DBCharsetS)]]; ok {
 				columnCollation = val
 			} else {
 				// exclude the column with the integer datatype
 				if !strings.EqualFold(rowCol["COLLATION"], "") {
-					return columnCollationMap, fmt.Errorf("oracle schema [%s] table [%s] column [%s] collation [%s] check failed", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], rowCol["COLLATION"])
+					return columnCollationMap, fmt.Errorf("oracle schema [%s] table [%s] column [%s] charset [%v] collation [%s] check failed", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], r.DBCharsetS, rowCol["COLLATION"])
 				}
 				columnCollation = ""
 			}

@@ -59,8 +59,8 @@ type database struct {
 	migrateSchemaRouteRW          rule.ISchemaRouteRule
 	migrateTableRouteRW           rule.ITableRouteRule
 	migrateColumnRouteRW          rule.IColumnRouteRule
-	migrateTableRuleRW            rule.ITableMigrateRule
-	migrateSqlRuleRW              rule.ISqlRouteRule
+	migrateTableRuleRW            rule.IDataMigrateRule
+	migrateSqlRuleRW              rule.ISqlMigrateRule
 	migrateTaskTableRW            rule.IMigrateTaskTable
 	taskRW                        task.ITask
 	taskLogRW                     task.ILog
@@ -97,6 +97,7 @@ func CreateDatabaseConnection(cfg *Database, addRole, logLevel string) error {
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		PrepareStmt:                              true,
+		DisableNestedTransaction:                 true,
 		Logger:                                   logger.GetGormLogger(logLevel, cfg.SlowThreshold),
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
@@ -202,8 +203,8 @@ func (d *database) initReaderWriters() {
 	DefaultDB.migrateTableRouteRW = rule.NewTableRouteRuleRW(d.base)
 	DefaultDB.migrateColumnRouteRW = rule.NewColumnRouteRuleRW(d.base)
 	DefaultDB.migrateTaskTableRW = rule.NewMigrateTaskTableRW(d.base)
-	DefaultDB.migrateTableRuleRW = rule.NewTableMigrateRuleRW(d.base)
-	DefaultDB.migrateSqlRuleRW = rule.NewSqlRouteRuleRW(d.base)
+	DefaultDB.migrateTableRuleRW = rule.NewDataMigrateRuleRW(d.base)
+	DefaultDB.migrateSqlRuleRW = rule.NewSqlMigrateRuleRW(d.base)
 	DefaultDB.taskRW = task.NewTaskRW(d.base)
 	DefaultDB.taskLogRW = task.NewLogRW(d.base)
 	DefaultDB.structMigrateTaskRW = task.NewStructMigrateTaskRW(d.base)
@@ -239,8 +240,8 @@ func (d *database) migrateTables() (err error) {
 		new(rule.SchemaRouteRule),
 		new(rule.TableRouteRule),
 		new(rule.ColumnRouteRule),
-		new(rule.TableMigrateRule),
-		new(rule.SqlRouteRule),
+		new(rule.DataMigrateRule),
+		new(rule.SqlMigrateRule),
 		new(task.Task),
 		new(task.Log),
 		new(task.StructMigrateTask),
@@ -404,11 +405,11 @@ func GetIMigrateColumnRouteRW() rule.IColumnRouteRule {
 	return DefaultDB.migrateColumnRouteRW
 }
 
-func GetIMigrateTableRuleRW() rule.ITableMigrateRule {
+func GetIDataMigrateRuleRW() rule.IDataMigrateRule {
 	return DefaultDB.migrateTableRuleRW
 }
 
-func GetIMigrateSqlRuleRW() rule.ISqlRouteRule {
+func GetISqlMigrateRuleRW() rule.ISqlMigrateRule {
 	return DefaultDB.migrateSqlRuleRW
 }
 

@@ -336,11 +336,11 @@ func (s *Server) listDataMigrateTask(ctx context.Context, req openapi.APIListDat
 
 func (s *Server) upsertSqlMigrateTask(ctx context.Context, req openapi.APIPutSqlMigrateJSONRequestBody) (string, error) {
 	var (
-		sqlRoutes []*pb.SqlRouteRule
+		sqlRoutes []*pb.SqlMigrateRule
 	)
 
-	for _, t := range *req.SqlRouteRules {
-		sqlRoutes = append(sqlRoutes, &pb.SqlRouteRule{
+	for _, t := range *req.SqlMigrateRules {
+		sqlRoutes = append(sqlRoutes, &pb.SqlMigrateRule{
 			SqlQueryS:        *t.SqlQueryS,
 			SchemaNameT:      *t.SchemaNameT,
 			TableNameT:       *t.TableNameT,
@@ -354,7 +354,7 @@ func (s *Server) upsertSqlMigrateTask(ctx context.Context, req openapi.APIPutSql
 		DatasourceNameS: *req.DatasourceNameS,
 		DatasourceNameT: *req.DatasourceNameT,
 		Comment:         *req.Comment,
-		SqlRouteRule:    sqlRoutes,
+		SqlMigrateRules: sqlRoutes,
 		SqlMigrateParam: &pb.SqlMigrateParam{
 			BatchSize:            *req.SqlMigrateParam.BatchSize,
 			SqlThreadS:           *req.SqlMigrateParam.SqlThreadS,

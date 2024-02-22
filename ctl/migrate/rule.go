@@ -38,7 +38,7 @@ type TableRouteRule struct {
 
 type TableMigrateRule struct {
 	TableNameS          string `toml:"table-name-s" json:"tableNameS"`
-	EnableChunkStrategy string `toml:"enable-chunk-strategy" json:"enableChunkStrategy"`
+	EnableChunkStrategy bool   `toml:"enable-chunk-strategy" json:"enableChunkStrategy"`
 	WhereRange          string `toml:"where-range" json:"WhereRange"`
 	SqlHintS            string `toml:"sql-hint-s" json:"sqlHintS"`
 }

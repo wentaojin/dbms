@@ -41,19 +41,18 @@ func InspectMigrateTask(databaseS database.IDatabase, connectDBCharsetS, connect
 		oracleCollation = true
 	}
 
-	dbCharset, err := databaseS.GetDatabaseCharset()
+	dbCharsetS, err := databaseS.GetDatabaseCharset()
 	if err != nil {
 		return false, err
 	}
-	sourceDBCharset := strings.Split(dbCharset, ".")[1]
-	if !strings.EqualFold(connectDBCharsetS, sourceDBCharset) {
+	if !strings.EqualFold(connectDBCharsetS, dbCharsetS) {
 		zap.L().Warn("oracle charset and oracle config charset",
-			zap.String("oracle database charset", sourceDBCharset),
+			zap.String("oracle database charset", dbCharsetS),
 			zap.String("oracle config charset", connectDBCharsetS))
-		return false, fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", sourceDBCharset, connectDBCharsetS)
+		return false, fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", dbCharsetS, connectDBCharsetS)
 	}
 	if _, ok := constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(connectDBCharsetS)]; !ok {
-		return false, fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", sourceDBCharset, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
+		return false, fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
 	}
 	if !stringutil.IsContainedString(constant.MigrateDataSupportCharset, stringutil.StringUpper(connectDBCharsetT)) {
 		return false, fmt.Errorf("mysql current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))

@@ -29,21 +29,21 @@ import (
 type StructMigrateTable struct {
 	TaskName            string                                `json:"taskName"`
 	TaskFlow            string                                `json:"taskFlow"`
-	Datasource          *Datasource                           `json:"datasource"`
+	DatasourceS         *Datasource                           `json:"datasourceS"`
 	TableAttributes     *database.StructMigrateAttributes     `json:"tableAttributes"`
 	TableAttributesRule *database.StructMigrateAttributesRule `json:"tableAttributesRule"`
 }
 
 func (t *StructMigrateTable) GenSchemaNameS() string {
-	return t.Datasource.SchemaNameS
+	return t.DatasourceS.SchemaNameS
 }
 
 func (t *StructMigrateTable) GenTableNameS() string {
-	return t.Datasource.TableNameS
+	return t.DatasourceS.TableNameS
 }
 
 func (t *StructMigrateTable) GenTableTypeS() string {
-	return t.Datasource.TableTypeS
+	return t.DatasourceS.TableTypeS
 }
 
 func (t *StructMigrateTable) GenTableOriginDDlS() string {
@@ -56,15 +56,15 @@ func (t *StructMigrateTable) GenTableCreatePrefixT() string {
 
 func (t *StructMigrateTable) GenSchemaNameT() (string, error) {
 	var schemaName string
-	if val, ok := t.TableAttributesRule.SchemaNameRule[t.Datasource.SchemaNameS]; ok {
+	if val, ok := t.TableAttributesRule.SchemaNameRule[t.DatasourceS.SchemaNameS]; ok {
 		schemaName = val
 	} else {
-		return "", fmt.Errorf("[GenSchemaNameT] oracle schema [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS)
+		return "", fmt.Errorf("[GenSchemaNameT] oracle schema [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS)
 	}
 
 	switch {
 	case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-		convertTargetRaw, err := stringutil.CharsetConvert([]byte(schemaName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+		convertTargetRaw, err := stringutil.CharsetConvert([]byte(schemaName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 		if err != nil {
 			return "", fmt.Errorf("[GenSchemaNameT] oracle schema [%s] charset convert failed, error: %v", schemaName, err)
 		}
@@ -77,15 +77,15 @@ func (t *StructMigrateTable) GenSchemaNameT() (string, error) {
 
 func (t *StructMigrateTable) GenTableNameT() (string, error) {
 	var tableName string
-	if val, ok := t.TableAttributesRule.TableNameRule[t.Datasource.TableNameS]; ok {
+	if val, ok := t.TableAttributesRule.TableNameRule[t.DatasourceS.TableNameS]; ok {
 		tableName = val
 	} else {
-		return "", fmt.Errorf("[GenTableNameT] oracle schema [%v] table [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS)
+		return "", fmt.Errorf("[GenTableNameT] oracle schema [%v] table [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS)
 	}
 
 	switch {
 	case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-		convertTargetRaw, err := stringutil.CharsetConvert([]byte(tableName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+		convertTargetRaw, err := stringutil.CharsetConvert([]byte(tableName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 		if err != nil {
 			return "", fmt.Errorf("[GenTableNameT] oracle table [%s] charset convert failed, error: %v", tableName, err)
 		}
@@ -103,35 +103,35 @@ func (t *StructMigrateTable) GenTableSuffix() (string, error) {
 		tableSuffix    string
 	)
 
-	tableCharset = constant.MigrateTableStructureDatabaseCharsetMap[t.TaskFlow][t.Datasource.DBCharsetS]
+	tableCharset = constant.MigrateTableStructureDatabaseCharsetMap[t.TaskFlow][stringutil.StringUpper(t.DatasourceS.DBCharsetS)]
 
 	// schema、db、table collation
-	if t.Datasource.CollationS {
+	if t.DatasourceS.CollationS {
 		// table collation
-		if t.Datasource.TableCollationS != "" {
-			if val, ok := constant.MigrateTableStructureDatabaseCollationMap[t.TaskFlow][t.Datasource.TableCollationS][tableCharset]; ok {
+		if t.DatasourceS.TableCollationS != "" {
+			if val, ok := constant.MigrateTableStructureDatabaseCollationMap[t.TaskFlow][t.DatasourceS.TableCollationS][tableCharset]; ok {
 				tableCollation = val
 			} else {
-				return tableSuffix, fmt.Errorf("[GenTableSuffix] oracle database table collation [%v] isn't support", t.Datasource.TableCollationS)
+				return tableSuffix, fmt.Errorf("[GenTableSuffix] oracle database table charset [%v] collation [%v] isn't support", tableCharset, t.DatasourceS.TableCollationS)
 			}
 		}
 		// schema collation
-		if t.Datasource.TableCollationS == "" && t.Datasource.SchemaCollationS != "" {
-			if val, ok := constant.MigrateTableStructureDatabaseCollationMap[t.TaskFlow][t.Datasource.SchemaCollationS][tableCharset]; ok {
+		if t.DatasourceS.TableCollationS == "" && t.DatasourceS.SchemaCollationS != "" {
+			if val, ok := constant.MigrateTableStructureDatabaseCollationMap[t.TaskFlow][t.DatasourceS.SchemaCollationS][tableCharset]; ok {
 				tableCollation = val
 			} else {
-				return tableSuffix, fmt.Errorf("[GenTableSuffix] oracle database schema collation [%v] table collation [%v] isn't support", t.Datasource.SchemaCollationS, t.Datasource.TableCollationS)
+				return tableSuffix, fmt.Errorf("[GenTableSuffix] oracle database schema charset [%v] collation [%v] table collation [%v] isn't support", t.DatasourceS.SchemaCollationS, tableCharset, t.DatasourceS.TableCollationS)
 			}
 		}
-		if t.Datasource.TableCollationS == "" && t.Datasource.SchemaCollationS == "" {
-			return tableSuffix, fmt.Errorf("[GenTableSuffix] oracle database schema collation [%v] table collation [%v] isn't support", t.Datasource.SchemaNameS, t.Datasource.TableCollationS)
+		if t.DatasourceS.TableCollationS == "" && t.DatasourceS.SchemaCollationS == "" {
+			return tableSuffix, fmt.Errorf("[GenTableSuffix] oracle database schema charset [%v] collation [%v] table collation [%v] isn't support", t.DatasourceS.SchemaNameS, tableCharset, t.DatasourceS.TableCollationS)
 		}
 	} else {
 		// db collation
-		if val, ok := constant.MigrateTableStructureDatabaseCollationMap[t.TaskFlow][t.Datasource.DBNlsCompS][tableCharset]; ok {
+		if val, ok := constant.MigrateTableStructureDatabaseCollationMap[t.TaskFlow][t.DatasourceS.DBNlsCompS][tableCharset]; ok {
 			tableCollation = val
 		} else {
-			return tableSuffix, fmt.Errorf("[GenTableSuffix] oracle database nls_comp [%v] collation isn't support", t.Datasource.DBNlsCompS)
+			return tableSuffix, fmt.Errorf("[GenTableSuffix] oracle database charset [%v] nls_comp [%v] collation isn't support", tableCharset, t.DatasourceS.DBNlsCompS)
 		}
 	}
 
@@ -154,7 +154,7 @@ func (t *StructMigrateTable) GenTableSuffix() (string, error) {
 func (t *StructMigrateTable) GenTablePrimaryKey() (string, error) {
 	var primaryKey string
 	if len(t.TableAttributes.PrimaryKey) > 1 {
-		return primaryKey, fmt.Errorf("[GenTablePrimaryKey] oracle database schema [%s] table [%s] primary key exist multiple values: [%v]", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.TableAttributes.PrimaryKey)
+		return primaryKey, fmt.Errorf("[GenTablePrimaryKey] oracle database schema [%s] table [%s] primary key exist multiple values: [%v]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.TableAttributes.PrimaryKey)
 	}
 	if len(t.TableAttributes.PrimaryKey) == 1 {
 		var (
@@ -162,9 +162,9 @@ func (t *StructMigrateTable) GenTablePrimaryKey() (string, error) {
 			primaryColumns []string
 		)
 
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(t.TableAttributes.PrimaryKey[0]["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(t.TableAttributes.PrimaryKey[0]["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%s] table [%s] primary key [%s] charset convert failed, %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.TableAttributes.PrimaryKey[0]["COLUMN_LIST"], err)
+			return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%s] table [%s] primary key [%s] charset convert failed, %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.TableAttributes.PrimaryKey[0]["COLUMN_LIST"], err)
 		}
 		columnList = stringutil.BytesToString(convertUtf8Raw)
 
@@ -178,13 +178,13 @@ func (t *StructMigrateTable) GenTablePrimaryKey() (string, error) {
 			)
 			for _, s := range primaryColumns {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
-					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%s] table [%s] primary charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+						return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%s] table [%s] primary charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 					}
 					pkColumns = append(pkColumns, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, s)
+					return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 				}
 			}
 			pkColumnStr = strings.Join(pkColumns, ",")
@@ -226,13 +226,13 @@ func (t *StructMigrateTable) GenTablePrimaryKey() (string, error) {
 			)
 			for _, s := range primaryColumns {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
-					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%s] table [%s] primary charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+						return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%s] table [%s] primary charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 					}
 					pkColumns = append(pkColumns, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, s)
+					return "", fmt.Errorf("[GenTablePrimaryKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 				}
 			}
 			pkColumnStr = strings.Join(pkColumns, ",")
@@ -253,23 +253,23 @@ func (t *StructMigrateTable) GenTableUniqueKey() ([]string, error) {
 			consName   string
 		)
 
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(rowUKCol["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(rowUKCol["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%s] table [%s] unique charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%s] table [%s] unique charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 		}
 		columnList = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowUKCol["CONSTRAINT_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowUKCol["CONSTRAINT_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%s] table [%s] constraint [%s] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, rowUKCol["CONSTRAINT_NAME"], t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%s] table [%s] constraint [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, rowUKCol["CONSTRAINT_NAME"], t.DatasourceS.DBCharsetT, err)
 		}
 		consName = stringutil.BytesToString(convertUtf8Raw)
 
 		switch {
 		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-			convertTargetRaw, err := stringutil.CharsetConvert([]byte(consName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err := stringutil.CharsetConvert([]byte(consName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%s] table [%s] unique charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+				return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%s] table [%s] unique charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 			}
 			consName = stringutil.BytesToString(convertTargetRaw)
 
@@ -277,13 +277,13 @@ func (t *StructMigrateTable) GenTableUniqueKey() ([]string, error) {
 
 			for _, s := range strings.Split(columnList, ",") {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
-					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%s] table [%s] unique charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+						return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%s] table [%s] unique charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 					}
 					ukColumns = append(ukColumns, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, s)
+					return nil, fmt.Errorf("[GenTableUniqueKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 				}
 			}
 			uniqueKeys = append(uniqueKeys, fmt.Sprintf("UNIQUE KEY `%s` (%s)", consName, strings.Join(ukColumns, ",")))
@@ -305,33 +305,33 @@ func (t *StructMigrateTable) GenTableForeignKey() ([]string, error) {
 		consName    string
 	)
 	for _, rowFKCol := range t.TableAttributes.ForeignKey {
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(rowFKCol["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(rowFKCol["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign column_list charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign column_list charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 		}
 		columnList = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowFKCol["R_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowFKCol["R_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign r_owner charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign r_owner charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 		}
 		rOwner = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowFKCol["RTABLE_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowFKCol["RTABLE_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign rtable_name charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign rtable_name charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 		}
 		rTable = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowFKCol["RCOLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowFKCol["RCOLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign rcolumn_list charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign rcolumn_list charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 		}
 		rColumnList = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowFKCol["CONSTRAINT_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowFKCol["CONSTRAINT_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign constraint_name charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign constraint_name charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 		}
 		consName = stringutil.BytesToString(convertUtf8Raw)
 
@@ -354,44 +354,44 @@ func (t *StructMigrateTable) GenTableForeignKey() ([]string, error) {
 			)
 			for _, s := range strings.Split(columnList, ",") {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
-					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign column_list charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+						return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign column_list charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 					}
 
 					fkColumns = append(fkColumns, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, s)
+					return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 				}
 			}
 			columnList = strings.Join(fkColumns, ",")
 
 			for _, s := range strings.Split(rColumnList, ",") {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
-					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign rcolumn_list charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+						return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign rcolumn_list charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 					}
 					rfkColumns = append(rfkColumns, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, s)
+					return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 				}
 			}
 			rColumnList = strings.Join(rfkColumns, ",")
 
-			convertTargetRaw, err := stringutil.CharsetConvert([]byte(rOwner), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err := stringutil.CharsetConvert([]byte(rOwner), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign r_owner charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+				return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign r_owner charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 			}
 			rOwner = stringutil.BytesToString(convertTargetRaw)
-			convertTargetRaw, err = stringutil.CharsetConvert([]byte(rTable), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err = stringutil.CharsetConvert([]byte(rTable), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign rtable_name charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+				return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign rtable_name charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 			}
 			rTable = stringutil.BytesToString(convertTargetRaw)
-			convertTargetRaw, err = stringutil.CharsetConvert([]byte(consName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err = stringutil.CharsetConvert([]byte(consName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign constraint_name charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+				return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign constraint_name charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 			}
 			consName = fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw))
 
@@ -439,12 +439,12 @@ func (t *StructMigrateTable) GenTableCheckKey() ([]string, error) {
 
 	matchRex, err := regexp.Compile(`(^.*)(?i:IS NOT NULL)`)
 	if err != nil {
-		return checkKeys, fmt.Errorf("oracle schema [%v] table [%v] check constraint regexp match [IS NOT NULL] failed: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, err)
+		return checkKeys, fmt.Errorf("oracle schema [%v] table [%v] check constraint regexp match [IS NOT NULL] failed: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, err)
 	}
 
 	checkRex, err := regexp.Compile(`(.*)(?i:IS NOT NULL)`)
 	if err != nil {
-		fmt.Printf("\"oracle schema [%v] table [%v] check constraint regexp check [IS NOT NULL] failed: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, err)
+		fmt.Printf("\"oracle schema [%v] table [%v] check constraint regexp check [IS NOT NULL] failed: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, err)
 	}
 
 	for _, rowCKCol := range t.TableAttributes.CheckKey {
@@ -452,24 +452,24 @@ func (t *StructMigrateTable) GenTableCheckKey() ([]string, error) {
 			searchCond     string
 			constraintName string
 		)
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCKCol["SEARCH_CONDITION"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCKCol["SEARCH_CONDITION"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check search_condition charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check search_condition charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 		}
 		searchCond = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowCKCol["CONSTRAINT_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowCKCol["CONSTRAINT_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 		}
 		constraintName = stringutil.BytesToString(convertUtf8Raw)
 
 		// match replace
 		for _, rowCol := range t.TableAttributes.TableColumns {
 			var columnName string
-			convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+			convertUtf8Raw, err = stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check column_name charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+				return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check column_name charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 			}
 			columnName = stringutil.BytesToString(convertUtf8Raw)
 
@@ -486,7 +486,7 @@ func (t *StructMigrateTable) GenTableCheckKey() ([]string, error) {
 					constraintName = strings.ToUpper(constraintName)
 				}
 			} else {
-				return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName)
+				return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName)
 			}
 		}
 
@@ -497,14 +497,14 @@ func (t *StructMigrateTable) GenTableCheckKey() ([]string, error) {
 			if !matchRex.MatchString(s) {
 				switch {
 				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-					convertTargetRaw, err := stringutil.CharsetConvert([]byte(constraintName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err := stringutil.CharsetConvert([]byte(constraintName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name one charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+						return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name one charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 					}
 					constraintName = stringutil.BytesToString(convertTargetRaw)
-					convertTargetRaw, err = stringutil.CharsetConvert([]byte(searchCond), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err = stringutil.CharsetConvert([]byte(searchCond), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name one charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+						return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name one charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 					}
 					searchCond = stringutil.BytesToString(convertTargetRaw)
 					checkKeys = append(checkKeys, fmt.Sprintf("CONSTRAINT `%s` CHECK (%s)",
@@ -556,16 +556,16 @@ func (t *StructMigrateTable) GenTableCheckKey() ([]string, error) {
 
 			switch {
 			case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-				convertTargetRaw, err := stringutil.CharsetConvert([]byte(constraintName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+				convertTargetRaw, err := stringutil.CharsetConvert([]byte(constraintName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 				if err != nil {
-					return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name two charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+					return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name two charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 				}
 				constraintName = stringutil.BytesToString(convertTargetRaw)
 
 				checkCond := strings.Join(d, " ")
-				convertTargetRaw, err = stringutil.CharsetConvert([]byte(checkCond), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+				convertTargetRaw, err = stringutil.CharsetConvert([]byte(checkCond), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 				if err != nil {
-					return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name one charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.Datasource.DBCharsetT, err)
+					return nil, fmt.Errorf("[GenTableCheckKey] oracle schema [%s] table [%s] check constraint_name one charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DatasourceS.DBCharsetT, err)
 				}
 				checkCond = stringutil.BytesToString(convertTargetRaw)
 				checkKeys = append(checkKeys, fmt.Sprintf("CONSTRAINT `%s` CHECK (%s)",
@@ -599,15 +599,15 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 			columnList string
 			indexName  string
 		)
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(idxMeta["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(idxMeta["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] unique_index charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["COLUMN_LIST"], t.Datasource.DBCharsetT, err)
+			return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] unique_index charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], t.DatasourceS.DBCharsetT, err)
 		}
 		columnList = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["INDEX_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["INDEX_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["COLUMN_LIST"], idxMeta["INDEX_NAME"], t.Datasource.DBCharsetT, err)
+			return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], idxMeta["INDEX_NAME"], t.DatasourceS.DBCharsetT, err)
 		}
 		indexName = stringutil.BytesToString(convertUtf8Raw)
 
@@ -620,9 +620,9 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 
 		switch {
 		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-			convertTargetRaw, err := stringutil.CharsetConvert([]byte(indexName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err := stringutil.CharsetConvert([]byte(indexName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["COLUMN_LIST"], idxMeta["INDEX_NAME"], t.Datasource.DBCharsetT, err)
+				return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], idxMeta["INDEX_NAME"], t.DatasourceS.DBCharsetT, err)
 			}
 			indexName = stringutil.BytesToString(convertTargetRaw)
 
@@ -630,13 +630,13 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 
 			for _, s := range strings.Split(columnList, ",") {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
-					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["COLUMN_LIST"], val, t.Datasource.DBCharsetT, err)
+						return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], val, t.DatasourceS.DBCharsetT, err)
 					}
 					ukColumns = append(ukColumns, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, s)
+					return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 				}
 			}
 			columnList = strings.Join(ukColumns, ",")
@@ -654,7 +654,7 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 					zap.L().Warn("reverse unique key",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -669,7 +669,7 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 					zap.L().Warn("reverse unique key",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -682,25 +682,25 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 					zap.L().Error("reverse unique index",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
 						zap.String("index_column_list_s", idxMeta["COLUMN_LIST"]),
 						zap.String("error", "database not support"))
 
-					return uniqueIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] reverse unique index panic, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta)
+					return uniqueIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] reverse unique index panic, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta)
 				}
 			} else {
 				zap.L().Error("reverse unique key",
 					zap.String("task_name", t.TaskName),
 					zap.String("task_flow", t.TaskFlow),
-					zap.String("schema_name_s", t.Datasource.SchemaNameS),
+					zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 					zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 					zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 					zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
 					zap.String("index_column_list_s", idxMeta["COLUMN_LIST"]))
-				return uniqueIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] reverse nonunique index panic, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta)
+				return uniqueIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] reverse nonunique index panic, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta)
 			}
 		default:
 			return uniqueIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableUniqueIndex] oracle current taskflow [%s] isn't support, please contact author or reselect", t.TaskFlow)
@@ -722,27 +722,27 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 			itypOwner  string
 			itypName   string
 		)
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(idxMeta["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(idxMeta["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["COLUMN_LIST"], t.Datasource.DBCharsetT, err)
+			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], t.DatasourceS.DBCharsetT, err)
 		}
 		columnList = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["INDEX_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["INDEX_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] index [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["INDEX_NAME"], t.Datasource.DBCharsetT, err)
+			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] index [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["INDEX_NAME"], t.DatasourceS.DBCharsetT, err)
 		}
 		indexName = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["ITYP_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["ITYP_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] itype_owner [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["ITYP_OWNER"], t.Datasource.DBCharsetT, err)
+			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] itype_owner [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["ITYP_OWNER"], t.DatasourceS.DBCharsetT, err)
 		}
 		itypOwner = stringutil.BytesToString(convertUtf8Raw)
 
-		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["ITYP_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["ITYP_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] itype_name [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["ITYP_NAME"], t.Datasource.DBCharsetT, err)
+			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] itype_name [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["ITYP_NAME"], t.DatasourceS.DBCharsetT, err)
 		}
 		itypName = stringutil.BytesToString(convertUtf8Raw)
 
@@ -768,34 +768,34 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 
 		switch {
 		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-			convertTargetRaw, err := stringutil.CharsetConvert([]byte(indexName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err := stringutil.CharsetConvert([]byte(indexName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] index [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["INDEX_NAME"], t.Datasource.DBCharsetT, err)
+				return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] index [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["INDEX_NAME"], t.DatasourceS.DBCharsetT, err)
 			}
 			indexName = stringutil.BytesToString(convertTargetRaw)
 
-			convertTargetRaw, err = stringutil.CharsetConvert([]byte(itypOwner), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err = stringutil.CharsetConvert([]byte(itypOwner), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] itype_owner [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["ITYP_OWNER"], t.Datasource.DBCharsetT, err)
+				return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] itype_owner [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["ITYP_OWNER"], t.DatasourceS.DBCharsetT, err)
 			}
 			itypOwner = stringutil.BytesToString(convertTargetRaw)
 
-			convertTargetRaw, err = stringutil.CharsetConvert([]byte(itypName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err = stringutil.CharsetConvert([]byte(itypName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] itype_name [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["ITYP_NAME"], t.Datasource.DBCharsetT, err)
+				return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] itype_name [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["ITYP_NAME"], t.DatasourceS.DBCharsetT, err)
 			}
 			itypName = stringutil.BytesToString(convertTargetRaw)
 
 			var normalIndex []string
 			for _, col := range strings.Split(columnList, ",") {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[col]; ok {
-					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 					if err != nil {
-						return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta["COLUMN_LIST"], t.Datasource.DBCharsetT, err)
+						return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], t.DatasourceS.DBCharsetT, err)
 					}
 					normalIndex = append(normalIndex, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, col)
+					return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, col)
 				}
 			}
 			columnList = strings.Join(normalIndex, ",")
@@ -820,7 +820,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 					zap.L().Warn("reverse normal index",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -839,7 +839,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 					zap.L().Warn("reverse normal index",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -858,7 +858,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 					zap.L().Warn("reverse normal index",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -880,7 +880,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 					zap.L().Warn("reverse normal index",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -901,7 +901,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 					zap.L().Warn("reverse normal index",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -917,7 +917,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 					zap.L().Error("reverse normal index",
 						zap.String("task_name", t.TaskName),
 						zap.String("task_flow", t.TaskFlow),
-						zap.String("schema_name_s", t.Datasource.SchemaNameS),
+						zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 						zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 						zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 						zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -927,13 +927,13 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 						zap.String("domain_parameters_s", idxMeta["PARAMETERS"]),
 						zap.String("error", "database not support"))
 
-					return normalIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] reverse normal index panic, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, idxMeta)
+					return normalIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] reverse normal index panic, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta)
 				}
 			} else {
 				zap.L().Error("reverse normal index",
 					zap.String("task_name", t.TaskName),
 					zap.String("task_flow", t.TaskFlow),
-					zap.String("schema_name_s", t.Datasource.SchemaNameS),
+					zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
 					zap.String("table_name_s", idxMeta["TABLE_NAME"]),
 					zap.String("index_name_s", idxMeta["INDEX_NAME"]),
 					zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
@@ -941,7 +941,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 					zap.String("domain_owner_s", idxMeta["ITYP_OWNER"]),
 					zap.String("domain_index_name_s", idxMeta["ITYP_NAME"]),
 					zap.String("domain_parameters_s", idxMeta["PARAMETERS"]))
-				return normalIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] reverse normal unique index panic, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableTypeS, idxMeta)
+				return normalIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] reverse normal unique index panic, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableTypeS, idxMeta)
 			}
 		default:
 			return normalIndexes, compatibilityIndexSql, fmt.Errorf("[GenTableNormalIndex] oracle current taskflow [%s] isn't support, please contact author or reselect", t.TaskFlow)
@@ -957,9 +957,9 @@ func (t *StructMigrateTable) GenTableComment() (string, error) {
 		convertUtf8Raw := []byte(t.TableAttributesRule.TableCommentRule)
 		switch {
 		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-			convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return "", fmt.Errorf("[GenTableComment] oracle schema [%s] table [%s] comment [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, t.TableAttributesRule.TableCommentRule, t.Datasource.DBCharsetT, err)
+				return "", fmt.Errorf("[GenTableComment] oracle schema [%s] table [%s] comment [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.TableAttributesRule.TableCommentRule, t.DatasourceS.DBCharsetT, err)
 			}
 			tableComment = fmt.Sprintf("COMMENT='%s'", stringutil.BytesToString(convertTargetRaw))
 			return tableComment, nil
@@ -982,23 +982,23 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 		)
 
 		// column collation
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetS)], constant.CharsetUTF8MB4)
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, fmt.Errorf("[GenTableColumns] oracle schema [%s] table [%s] column [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, rowCol["COLUMN_NAME"], t.Datasource.DBCharsetT, err)
+			return nil, fmt.Errorf("[GenTableColumns] oracle schema [%s] table [%s] column [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, rowCol["COLUMN_NAME"], t.DatasourceS.DBCharsetT, err)
 		}
 		columnName := stringutil.BytesToString(convertUtf8Raw)
 
 		if val, exist := t.TableAttributesRule.ColumnCollationRule[columnName]; exist {
 			columnCollation = val
 		} else {
-			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] collation isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName)
+			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] collation isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName)
 		}
 
 		// column datatype
 		if val, ok := t.TableAttributesRule.ColumnDatatypeRule[columnName]; ok {
 			columnType = val
 		} else {
-			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] datatype isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName)
+			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] datatype isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName)
 		}
 
 		// NULLABLE
@@ -1012,19 +1012,25 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 		if val, ok := t.TableAttributesRule.ColumnDefaultValueRule[columnName]; ok {
 			dataDefault = val
 		} else {
-			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] default value isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName)
+			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] default value isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName)
 		}
 
-		// if the column comment is exist, then set
 		if val, ok := t.TableAttributesRule.ColumnCommentRule[columnName]; ok {
 			comment = val
 		} else {
-			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] comment isn't exist, please contact author or recheck", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName)
+			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] comment isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName)
+		}
+
+		if val, ok := t.TableAttributesRule.ColumnNameRule[columnName]; ok {
+			columnName = val
+		} else {
+			return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] rule isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName)
 		}
 
 		switch {
 		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
 			// column name
+
 			if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
 				columnName = strings.ToLower(columnName)
 			}
@@ -1033,22 +1039,21 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 			}
 
 			// comment、data default、column name unescaped
-
-			convertTargetRaw, err := stringutil.CharsetConvert([]byte(columnName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err := stringutil.CharsetConvert([]byte(columnName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, fmt.Errorf("[GenTableColumns] oracle schema [%s] table [%s] column [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName, t.Datasource.DBCharsetT, err)
+				return nil, fmt.Errorf("[GenTableColumns] oracle schema [%s] table [%s] column [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, t.DatasourceS.DBCharsetT, err)
 			}
 			columnName = stringutil.BytesToString(convertTargetRaw)
 
-			convertTargetRaw, err = stringutil.CharsetConvert([]byte(comment), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err = stringutil.CharsetConvert([]byte(comment), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, fmt.Errorf("[GenTableColumns] oracle schema [%s] table [%s] column [%v] comment [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName, comment, t.Datasource.DBCharsetT, err)
+				return nil, fmt.Errorf("[GenTableColumns] oracle schema [%s] table [%s] column [%v] comment [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, comment, t.DatasourceS.DBCharsetT, err)
 			}
 			comment = stringutil.BytesToString(convertTargetRaw)
 
-			convertTargetRaw, err = stringutil.CharsetConvert([]byte(dataDefault), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.Datasource.DBCharsetT)])
+			convertTargetRaw, err = stringutil.CharsetConvert([]byte(dataDefault), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DatasourceS.DBCharsetT)])
 			if err != nil {
-				return nil, fmt.Errorf("[GenTableColumns] oracle schema [%s] table [%s] column [%v] default value [%v] charset convert [%s] failed, error: %v", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName, dataDefault, t.Datasource.DBCharsetT, err)
+				return nil, fmt.Errorf("[GenTableColumns] oracle schema [%s] table [%s] column [%v] default value [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, dataDefault, t.DatasourceS.DBCharsetT, err)
 			}
 			dataDefault = stringutil.BytesToString(convertTargetRaw)
 
@@ -1079,7 +1084,7 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s DEFAULT %s", columnName, columnType, dataDefault))
 					}
 				default:
-					return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] nulllable [NULL] panic, collation [%s] comment [%s]", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName, columnCollation, comment)
+					return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] nulllable [NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCollation, comment)
 				}
 			}
 
@@ -1110,7 +1115,7 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s", columnName, columnType, nullable, dataDefault))
 					}
 				default:
-					return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] nulllable [NOT NULL] panic, collation [%s] comment [%s]", t.Datasource.SchemaNameS, t.Datasource.TableNameS, columnName, columnCollation, comment)
+					return tableColumns, fmt.Errorf("[GenTableColumns] oracle table [%s.%s] column [%s] nulllable [NOT NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCollation, comment)
 				}
 			}
 

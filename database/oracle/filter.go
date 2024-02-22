@@ -38,7 +38,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 	startTime := time.Now()
 	var (
 		exporterTableSlice []string
-		excludeTables      []string
+		excludeTableSlice  []string
 		err                error
 	)
 
@@ -60,27 +60,27 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 			}
 		}
 	case len(includeTableS) == 0 && len(excludeTableS) != 0:
-		f, err := filter.Parse(excludeTables)
+		f, err := filter.Parse(excludeTableS)
 		if err != nil {
 			return nil, fmt.Errorf("oracle schema filter exclude tables failed, error: [%v]", err)
 		}
 
 		for _, t := range allTables {
 			if f.MatchTable(t) {
-				excludeTables = append(excludeTables, t)
+				excludeTableSlice = append(excludeTableSlice, t)
 			}
 		}
-		exporterTableSlice = stringutil.StringItemsFilterDifference(allTables, excludeTables)
+		exporterTableSlice = stringutil.StringItemsFilterDifference(allTables, excludeTableSlice)
 
 	case len(includeTableS) == 0 && len(excludeTableS) == 0:
 		exporterTableSlice = allTables
 
 	default:
-		return exporterTableSlice, fmt.Errorf("source config params source-include-table/source-exclude-table cannot exist at the same time")
+		return exporterTableSlice, fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
 	}
 
 	if len(exporterTableSlice) == 0 {
-		return exporterTableSlice, fmt.Errorf("exporter tables aren't exist, please check config params source-include-table/source-exclude-table")
+		return exporterTableSlice, fmt.Errorf("exporter tables aren't exist, please check config params include-table-s/exclude-table-s")
 	}
 
 	endTime := time.Now()
@@ -88,7 +88,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 		zap.String("schema", sourceSchema),
 		zap.Strings("exporter tables list", exporterTableSlice),
 		zap.Int("include table counts", len(exporterTableSlice)),
-		zap.Int("exclude table counts", len(excludeTables)),
+		zap.Int("exclude table counts", len(excludeTableSlice)),
 		zap.Int("all table counts", len(allTables)),
 		zap.String("cost", endTime.Sub(startTime).String()))
 

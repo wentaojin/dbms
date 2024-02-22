@@ -87,18 +87,18 @@ func (r *SqlMigrateRule) GenTableColumnRule() (string, string, error) {
 		columnNameSliT []string
 	)
 	for _, c := range columnNames {
-		columnNameS, err := optimizerColumnDatatypeS(c, columnTypeMap[c], columnScaleMap[c])
-		if err != nil {
-			return "", "", err
-		}
-		columnNameSliS = append(columnNameSliS, columnNameS)
-
 		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return "", "", fmt.Errorf("[GenTableColumnRule] oracle data migrate task sql column [%v] charset convert [UTFMB4] failed, error: %v", c, err)
 		}
 
 		columnName := stringutil.BytesToString(columnNameUtf8Raw)
+
+		columnNameS, err := optimizerColumnDatatypeS(columnName, columnTypeMap[c], columnScaleMap[c])
+		if err != nil {
+			return "", "", err
+		}
+		columnNameSliS = append(columnNameSliS, columnNameS)
 
 		// column name caseFieldRule
 		var (

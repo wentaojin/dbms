@@ -27,6 +27,7 @@ const DefaultRecordCreateBatchSize = 50
 
 // StringSeparatorComma used for build-in string data separator
 const StringSeparatorComma = ","
+const StringSeparatorDot = "."
 const StringSeparatorBacktick = "`"
 const StringSeparatorSlash = "/"
 const StringSeparatorAite = "@"

@@ -210,6 +210,6 @@ func (a *AppStructGen) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(fmt.Sprintf("the struct migrate task ddl sql file output [%v], please forward to view", a.outputDir))
+	fmt.Printf("the struct migrate task ddl sql file had be output to [%v], please forward to view\n", a.outputDir)
 	return nil
 }

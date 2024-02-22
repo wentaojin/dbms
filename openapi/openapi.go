@@ -17,7 +17,6 @@ package openapi
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 )
@@ -64,10 +63,6 @@ func Request(method, url string, body []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request http status [%d] not ok, please check server status or logs", resp.StatusCode)
-	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

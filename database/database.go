@@ -32,6 +32,7 @@ type IDatabase interface {
 	QueryContext(ctx context.Context, sqlStr string) (*sql.Rows, error)
 	ExecContext(ctx context.Context, sqlStr string, args ...any) (sql.Result, error)
 	GeneralQuery(sqlStr string) ([]string, []map[string]string, error)
+	PingDatabaseConnection() error
 	Close() error
 	IDatabaseObjectFilter
 	IDatabaseStructMigrate

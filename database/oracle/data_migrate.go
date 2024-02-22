@@ -105,10 +105,13 @@ func (d *Database) GetDatabaseTableSizeBySegment(schemaName, tableName string) (
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT ROUND(bytes/1024/1024,2) AS SIZE_MB
   FROM DBA_SEGMENTS
  WHERE OWNER = '%s'
-   AND SEGMANT_TYPE = 'TABLE'
+   AND SEGMENT_TYPE = 'TABLE'
    AND SEGMENT_NAME = '%s'`, schemaName, tableName))
 	if err != nil {
 		return 0, err
+	}
+	if len(res) == 0 {
+		return 0, nil
 	}
 	if len(res) != 1 {
 		return 0, fmt.Errorf("get oracle schema table [%v] size by segment falied, results: [%v]",

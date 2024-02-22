@@ -350,7 +350,7 @@ func (rw *RWDataMigrateTask) TableName(ctx context.Context) string {
 
 func (rw *RWDataMigrateTask) CreateDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error) {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
 		UpdateAll: true,
 	}).Create(task).Error
 	if err != nil {
@@ -361,7 +361,7 @@ func (rw *RWDataMigrateTask) CreateDataMigrateTask(ctx context.Context, task *Da
 
 func (rw *RWDataMigrateTask) CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, batchSize int) error {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
 		UpdateAll: true,
 	}).CreateInBatches(task, batchSize).Error
 	if err != nil {
@@ -372,6 +372,14 @@ func (rw *RWDataMigrateTask) CreateInBatchDataMigrateTask(ctx context.Context, t
 
 func (rw *RWDataMigrateTask) UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error) {
 	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_detail_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkDetailS).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWDataMigrateTask) BatchUpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error) {
+	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -552,11 +560,28 @@ func (rw *RWSqlMigrateTask) UpdateSqlMigrateTask(ctx context.Context, task *SqlM
 	return task, nil
 }
 
+func (rw *RWSqlMigrateTask) BatchUpdateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask, updates map[string]interface{}) (*SqlMigrateTask, error) {
+	err := rw.DB(ctx).Model(&SqlMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
 func (rw *RWSqlMigrateTask) FindSqlMigrateTaskByTaskStatus(ctx context.Context, task *SqlMigrateTask) ([]*SqlMigrateTask, error) {
 	var dataS []*SqlMigrateTask
 	err := rw.DB(ctx).Model(&SqlMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSqlMigrateTask) FindSqlMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataMigrateGroupStatusResult, error) {
+	var dataS []*DataMigrateGroupStatusResult
+	err := rw.DB(ctx).Model(&SqlMigrateTask{}).Select("task_name,task_status,count(1) as status_counts").Where("task_name = ?", taskName).Group("task_name,task_status").Order("status_counts desc").Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] group by the task_name and task_status record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }

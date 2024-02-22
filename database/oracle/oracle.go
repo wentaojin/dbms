@@ -70,6 +70,14 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CONTAINER = %s`, datasource.PdbName))
 	}
 
+	// session params
+	sessionParams = append(sessionParams, []string{
+		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', TRUE); END;",
+		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'PRETTY', TRUE); END;",
+		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', FALSE); END;",
+		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'TABLESPACE', FALSE); END;",
+		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', FALSE); END;",
+	}...)
 	if !strings.EqualFold(datasource.Username, currentSchema) && !strings.EqualFold(currentSchema, "") {
 		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CURRENT_SCHEMA = "%s"`, currentSchema))
 	}
@@ -81,6 +89,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	// close external auth
 	oraDSN.ExternalAuth = false
 	oraDSN.OnInitStmts = sessionParams
+	// todo: 临时
 	oraDSN.LibDir = "/Users/marvin/storehouse/oracle/instantclient_19_16"
 
 	// charset
@@ -100,63 +109,11 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	return &Database{Ctx: ctx, DBConn: sqlDB}, nil
 }
 
-func PingDatabaseConnection(datasource *datasource.Datasource, currentSchema string) error {
-	var (
-		connString    string
-		oraDSN        dsn.ConnectionParams
-		err           error
-		sessionParams []string
-	)
-
-	connString = fmt.Sprintf("oracle://@%s/%s?standaloneConnection=1&%s",
-		stringutil.StringBuilder(datasource.Host, ":", strconv.FormatUint(datasource.Port, 10)),
-		datasource.ServiceName, datasource.ConnectParams)
-	oraDSN, err = godror.ParseDSN(connString)
-	if err != nil {
-		return err
-	}
-
-	oraDSN.Username, oraDSN.Password = datasource.Username, godror.NewPassword(datasource.Password)
-
-	// session params
-	sessionParams = append(sessionParams, []string{
-		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', TRUE); END;",
-		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'PRETTY', TRUE); END;",
-		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', FALSE); END;",
-		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'TABLESPACE', FALSE); END;",
-		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', FALSE); END;",
-	}...)
-	if !strings.EqualFold(datasource.PdbName, "") {
-		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CONTAINER = %s`, datasource.PdbName))
-	}
-
-	if !strings.EqualFold(datasource.Username, currentSchema) && !strings.EqualFold(currentSchema, "") {
-		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CURRENT_SCHEMA = "%s"`, currentSchema))
-	}
-
-	if !strings.EqualFold(datasource.SessionParams, "") {
-		sessionParams = stringutil.StringSplit(datasource.SessionParams, constant.StringSeparatorComma)
-	}
-
-	// 关闭外部认证
-	oraDSN.ExternalAuth = false
-	oraDSN.OnInitStmts = sessionParams
-
-	// charset 字符集
-	if !strings.EqualFold(datasource.ConnectCharset, "") {
-		oraDSN.CommonParams.Charset = datasource.ConnectCharset
-	}
-
-	sqlDB := sql.OpenDB(godror.NewConnector(oraDSN))
-	sqlDB.SetMaxIdleConns(0)
-	sqlDB.SetMaxOpenConns(0)
-	sqlDB.SetConnMaxLifetime(0)
-
-	err = sqlDB.Ping()
+func (d *Database) PingDatabaseConnection() error {
+	err := d.DBConn.Ping()
 	if err != nil {
 		return fmt.Errorf("error on ping oracle database connection:%v", err)
 	}
-
 	return nil
 }
 

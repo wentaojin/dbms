@@ -231,6 +231,30 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			Result:  openapi.ResponseResultStatusSuccess,
 			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
 		}}, nil
+	case constant.TaskModeDataMigrate:
+		err = s.operateDataMigrateTask(cancelCtx, t, req)
+		if err != nil {
+			return &pb.OperateWorkerResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: err.Error(),
+			}}, err
+		}
+		return &pb.OperateWorkerResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusSuccess,
+			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
+		}}, nil
+	case constant.TaskModeSqlMigrate:
+		err = s.operateSqlMigrateTask(cancelCtx, t, req)
+		if err != nil {
+			return &pb.OperateWorkerResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: err.Error(),
+			}}, err
+		}
+		return &pb.OperateWorkerResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusSuccess,
+			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
+		}}, nil
 	default:
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result: openapi.ResponseResultStatusFailed,
@@ -290,6 +314,150 @@ func (s *Server) operateStructMigrateTask(ctx context.Context, t *task.Task, req
 		s.cancelFunc()
 		_, err := service.DeleteStructMigrateTask(context.TODO(),
 			&pb.DeleteStructMigrateTaskRequest{TaskName: []string{t.TaskName}})
+		if err != nil {
+			return err
+		}
+		// persistence worker state
+		w := &etcdutil.Worker{
+			Addr:     s.WorkerOptions.WorkerAddr,
+			State:    constant.DefaultWorkerFreeState,
+			TaskName: "",
+		}
+		_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		s.cancelFunc()
+		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+	}
+}
+
+func (s *Server) operateDataMigrateTask(ctx context.Context, t *task.Task, req *pb.OperateWorkerRequest) error {
+	switch strings.ToUpper(req.Operate) {
+	case constant.TaskOperationStart:
+		go func() {
+			defer s.handlePanicRecover(ctx, t)
+			err := service.StartDataMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+			if err != nil {
+				w := &etcdutil.Worker{
+					Addr:     s.WorkerOptions.WorkerAddr,
+					State:    constant.DefaultWorkerFailedState,
+					TaskName: t.TaskName,
+				}
+				_, errPut := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+				if errPut != nil {
+					panic(fmt.Errorf("the worker task [%v] failed, there are two errors, one is the worker write [%v] value failed: [%v], two is the worker task running failed: [%v]", t.TaskName, w.String(), errPut, err))
+				} else {
+					panic(fmt.Errorf("the worker task [%v] failed: [%v]", t.TaskName, err))
+				}
+			}
+			w := &etcdutil.Worker{
+				Addr:     s.WorkerOptions.WorkerAddr,
+				State:    constant.DefaultWorkerFreeState,
+				TaskName: "",
+			}
+			_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+			if err != nil {
+				panic(fmt.Errorf("the worker task [%v] success, but the worker status wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
+			}
+			s.cancelFunc()
+		}()
+		return nil
+	case constant.TaskOperationStop:
+		s.cancelFunc()
+		err := service.StopDataMigrateTask(context.TODO(), req.TaskName)
+		if err != nil {
+			return err
+		}
+		// persistence worker state
+		w := &etcdutil.Worker{
+			Addr:     s.WorkerOptions.WorkerAddr,
+			State:    constant.DefaultWorkerStoppedState,
+			TaskName: req.TaskName,
+		}
+		_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+		if err != nil {
+			return err
+		}
+		return nil
+	case constant.TaskOperationDelete:
+		s.cancelFunc()
+		_, err := service.DeleteDataMigrateTask(context.TODO(),
+			&pb.DeleteDataMigrateTaskRequest{TaskName: []string{t.TaskName}})
+		if err != nil {
+			return err
+		}
+		// persistence worker state
+		w := &etcdutil.Worker{
+			Addr:     s.WorkerOptions.WorkerAddr,
+			State:    constant.DefaultWorkerFreeState,
+			TaskName: "",
+		}
+		_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		s.cancelFunc()
+		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+	}
+}
+
+func (s *Server) operateSqlMigrateTask(ctx context.Context, t *task.Task, req *pb.OperateWorkerRequest) error {
+	switch strings.ToUpper(req.Operate) {
+	case constant.TaskOperationStart:
+		go func() {
+			defer s.handlePanicRecover(ctx, t)
+			err := service.StartSqlMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+			if err != nil {
+				w := &etcdutil.Worker{
+					Addr:     s.WorkerOptions.WorkerAddr,
+					State:    constant.DefaultWorkerFailedState,
+					TaskName: t.TaskName,
+				}
+				_, errPut := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+				if errPut != nil {
+					panic(fmt.Errorf("the worker task [%v] failed, there are two errors, one is the worker write [%v] value failed: [%v], two is the worker task running failed: [%v]", t.TaskName, w.String(), errPut, err))
+				} else {
+					panic(fmt.Errorf("the worker task [%v] failed: [%v]", t.TaskName, err))
+				}
+			}
+			w := &etcdutil.Worker{
+				Addr:     s.WorkerOptions.WorkerAddr,
+				State:    constant.DefaultWorkerFreeState,
+				TaskName: "",
+			}
+			_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+			if err != nil {
+				panic(fmt.Errorf("the worker task [%v] success, but the worker status wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
+			}
+			s.cancelFunc()
+		}()
+		return nil
+	case constant.TaskOperationStop:
+		s.cancelFunc()
+		err := service.StopSqlMigrateTask(context.TODO(), req.TaskName)
+		if err != nil {
+			return err
+		}
+		// persistence worker state
+		w := &etcdutil.Worker{
+			Addr:     s.WorkerOptions.WorkerAddr,
+			State:    constant.DefaultWorkerStoppedState,
+			TaskName: req.TaskName,
+		}
+		_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+		if err != nil {
+			return err
+		}
+		return nil
+	case constant.TaskOperationDelete:
+		s.cancelFunc()
+		_, err := service.DeleteSqlMigrateTask(context.TODO(),
+			&pb.DeleteSqlMigrateTaskRequest{TaskName: []string{t.TaskName}})
 		if err != nil {
 			return err
 		}

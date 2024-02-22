@@ -18,11 +18,45 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/wentaojin/dbms/errconcurrent"
-	"golang.org/x/sync/errgroup"
 )
+
+func main() {
+
+	ctx := context.Background()
+
+	g := errconcurrent.NewGroup()
+	g.SetLimit(2)
+
+	for i := 0; i < 1000000000; i++ {
+		g.Go(i, func(t interface{}) error {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				readChannel := make(chan [][]int, 1024)
+				writeChannel := make(chan []int, 1024)
+				err := IDataMigrate(&Migrate{
+					ctx:          ctx,
+					ReadChannel:  readChannel,
+					WriteChannel: writeChannel})
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+		})
+	}
+
+	for _, r := range g.Wait() {
+		if r.Err != nil {
+			fmt.Println(r.Err)
+		}
+	}
+}
 
 type IDataMigrateProcessor interface {
 	MigrateRead() error
@@ -73,66 +107,6 @@ func IDataMigrate(p IDataMigrateProcessor) error {
 		return err
 	}
 
-	return nil
-}
-
-func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	if err := pool(ctx); err != nil {
-		panic(err)
-	}
-	fmt.Println(2222)
-
-	go func() {
-		fmt.Println("Go routine done")
-		cancel()
-	}()
-	<-ctx.Done()
-}
-
-func pool(ctx context.Context) error {
-	cancelCtx, cancel := context.WithCancel(ctx)
-	fmt.Printf("startTime: %v\n", time.Now())
-
-	go func() {
-		time.Sleep(10 * time.Second)
-		cancel()
-		fmt.Printf("endTime: %v\n", time.Now())
-	}()
-
-	g := errconcurrent.NewGroup()
-	g.SetLimit(2)
-	for i := 0; i < 10; i++ {
-		select {
-		case <-cancelCtx.Done():
-			goto BreakLoop
-		default:
-			g.Go(i, func(t interface{}) error {
-				fmt.Printf("分配：%d\n", t)
-				time.Sleep(2 * time.Second)
-				readChannel := make(chan [][]int, 1024)
-				writeChannel := make(chan []int, 1024)
-				err := IDataMigrate(&Migrate{
-					ctx:          ctx,
-					ReadChannel:  readChannel,
-					WriteChannel: writeChannel})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-		}
-	}
-BreakLoop:
-	fmt.Println("the task data migrate stage chunk has be canceled")
-
-	for _, ts := range g.Wait() {
-		if ts.Err != nil {
-			fmt.Printf("task: %v, error: %v\n", ts.Task, ts.Err)
-		}
-	}
 	return nil
 }
 

@@ -176,17 +176,17 @@ func (r *DataMigrateRule) GenTableColumnRule() (string, string, error) {
 	for _, rowCol := range sourceColumnInfos {
 		columnName := rowCol["COLUMN_NAME"]
 
-		columnNameS, err := optimizerColumnDatatypeS(columnName, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
-		if err != nil {
-			return "", "", err
-		}
-		columnNameSilS = append(columnNameSilS, columnNameS)
-
 		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnName), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return "", "", fmt.Errorf("[GenTableQueryColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, columnName, err)
 		}
 		columnName = stringutil.BytesToString(columnNameUtf8Raw)
+
+		columnNameS, err := optimizerColumnDatatypeS(columnName, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
+		if err != nil {
+			return "", "", err
+		}
+		columnNameSilS = append(columnNameSilS, columnNameS)
 
 		var (
 			columnNameSNew string
@@ -207,7 +207,7 @@ func (r *DataMigrateRule) GenTableColumnRule() (string, string, error) {
 			case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
 				if strings.EqualFold(r.TaskMode, constant.TaskModeDataMigrate) ||
 					strings.EqualFold(r.TaskMode, constant.TaskModeIncrMigrate) {
-					columnNameT = fmt.Sprintf("`%s`", val)
+					columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorBacktick, val, constant.StringSeparatorBacktick)
 				}
 				if strings.EqualFold(r.TaskMode, constant.TaskModeCSVMigrate) {
 					columnNameT = val
@@ -232,7 +232,7 @@ func (r *DataMigrateRule) GenTableTypeRule() string {
 func (r *DataMigrateRule) GenTableCustomRule() (bool, string, string, error) {
 	var whereRange string
 
-	isRecord, err := model.GetIMigrateTableRuleRW().IsContainedTableMigrateRuleRecord(r.Ctx, &rule.TableMigrateRule{
+	isRecord, err := model.GetIDataMigrateRuleRW().IsContainedDataMigrateRuleRecord(r.Ctx, &rule.DataMigrateRule{
 		TaskName:    r.TaskName,
 		SchemaNameS: r.SchemaNameS,
 		TableNameS:  r.TableNameS,
@@ -244,7 +244,7 @@ func (r *DataMigrateRule) GenTableCustomRule() (bool, string, string, error) {
 		return false, whereRange, r.GlobalSqlHintS, nil
 	}
 
-	migrateTableRule, err := model.GetIMigrateTableRuleRW().GetTableMigrateRule(r.Ctx, &rule.TableMigrateRule{
+	migrateTableRule, err := model.GetIDataMigrateRuleRW().GetDataMigrateRule(r.Ctx, &rule.DataMigrateRule{
 		TaskName:    r.TaskName,
 		SchemaNameS: r.SchemaNameS,
 		TableNameS:  r.TableNameS,

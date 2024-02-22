@@ -100,27 +100,18 @@ func IDataMigrateProcess(p IDataMigrateProcessor) error {
 	g := errgroup.Group{}
 
 	g.Go(func() error {
-		err := p.MigrateProcess()
-		if err != nil {
-			return err
-		}
-		return nil
+		return p.MigrateRead()
 	})
 
 	g.Go(func() error {
-		err := p.MigrateApply()
-		if err != nil {
-			return err
-		}
-		return nil
+		return p.MigrateProcess()
 	})
 
-	err := p.MigrateRead()
-	if err != nil {
-		return err
-	}
+	g.Go(func() error {
+		return p.MigrateApply()
+	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
 		return err
 	}

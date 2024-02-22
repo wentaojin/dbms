@@ -36,10 +36,33 @@ import (
 )
 
 func UpsertDataMigrateTask(ctx context.Context, req *pb.UpsertDataMigrateTaskRequest) (string, error) {
-	err := model.Transaction(ctx, func(txnCtx context.Context) error {
-		_, err := model.GetITaskRW().CreateTask(txnCtx, &task.Task{
+	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
+	if err != nil {
+		return "", err
+	}
+	if !strings.EqualFold(taskInfo.TaskMode, constant.TaskModeDataMigrate) && !strings.EqualFold(taskInfo.TaskMode, "") {
+		return "", fmt.Errorf("the task name [%s] has be existed in the task mode [%s], please rename the global unqiue task name", req.TaskName, taskInfo.TaskMode)
+	}
+
+	err = model.Transaction(ctx, func(txnCtx context.Context) error {
+		var (
+			datasourceS *datasource.Datasource
+			datasourceT *datasource.Datasource
+			err         error
+		)
+		datasourceS, err = model.GetIDatasourceRW().GetDatasource(txnCtx, req.DatasourceNameS)
+		if err != nil {
+			return err
+		}
+		datasourceT, err = model.GetIDatasourceRW().GetDatasource(txnCtx, req.DatasourceNameT)
+		if err != nil {
+			return err
+		}
+
+		_, err = model.GetITaskRW().CreateTask(txnCtx, &task.Task{
 			TaskName:        req.TaskName,
 			TaskMode:        constant.TaskModeDataMigrate,
+			TaskFlow:        stringutil.StringBuilder(stringutil.StringUpper(datasourceS.DbType), constant.StringSeparatorAite, stringutil.StringUpper(datasourceT.DbType)),
 			DatasourceNameS: req.DatasourceNameS,
 			DatasourceNameT: req.DatasourceNameT,
 			CaseFieldRuleS:  req.CaseFieldRule.CaseFieldRuleS,
@@ -111,7 +134,7 @@ func DeleteDataMigrateTask(ctx context.Context, req *pb.DeleteDataMigrateTaskReq
 		if err != nil {
 			return err
 		}
-		err = model.GetIMigrateTableRuleRW().DeleteTableMigrateRule(txnCtx, req.TaskName)
+		err = model.GetIDataMigrateRuleRW().DeleteDataMigrateRule(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}
@@ -237,25 +260,15 @@ func ShowDataMigrateTask(ctx context.Context, req *pb.ShowDataMigrateTaskRequest
 func StartDataMigrateTask(ctx context.Context, taskName, workerAddr string) error {
 	startTime := time.Now()
 	logger.Info("data migrate task start", zap.String("task_name", taskName))
-	_, err := model.GetITaskRW().UpdateTask(ctx, &task.Task{
-		TaskName: taskName,
-	}, map[string]interface{}{
-		"WorkerAddr": workerAddr,
-		"TaskStatus": constant.TaskDatabaseStatusRunning,
-		"StartTime":  startTime,
-	})
-	if err != nil {
-		return err
-	}
-
-	logger.Info("data migrate task get datasource", zap.String("task_name", taskName))
+	logger.Info("data migrate task get task information", zap.String("task_name", taskName))
 	var (
 		taskInfo         *task.Task
 		sourceDatasource *datasource.Datasource
 		targetDatasource *datasource.Datasource
+		err              error
 	)
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
-		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName})
+		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeDataMigrate})
 		if err != nil {
 			return err
 		}
@@ -273,21 +286,32 @@ func StartDataMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
-	taskFlow := stringutil.StringBuilder(stringutil.StringUpper(sourceDatasource.DbType), constant.StringSeparatorAite, stringutil.StringUpper(targetDatasource.DbType))
+	logger.Info("data migrate task update task status",
+		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
+	_, err = model.GetITaskRW().UpdateTask(ctx, &task.Task{
+		TaskName: taskInfo.TaskName,
+	}, map[string]interface{}{
+		"WorkerAddr": workerAddr,
+		"TaskStatus": constant.TaskDatabaseStatusRunning,
+		"StartTime":  startTime,
+	})
+	if err != nil {
+		return err
+	}
 
-	logger.Info("data migrate task get params", zap.String("task_name", taskName))
-	taskParams, err := getDataMigrateTasKParams(ctx, taskName)
+	logger.Info("data migrate task get task params",
+		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
+	taskParams, err := getDataMigrateTasKParams(ctx, taskInfo.TaskName)
 	if err != nil {
 		return err
 	}
 
 	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
-		logger.Info("struct migrate task process task", zap.String("task_name", taskName))
+		logger.Info("struct migrate task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 		taskTime := time.Now()
 		dataMigrate := &taskflow.DataMigrateTask{
 			Ctx:         ctx,
-			TaskName:    taskName,
-			TaskFlow:    taskFlow,
+			Task:        taskInfo,
 			DatasourceS: sourceDatasource,
 			DatasourceT: targetDatasource,
 			TaskParams:  taskParams,
@@ -297,7 +321,7 @@ func StartDataMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 			return err
 		}
 		logger.Info("data migrate task process task",
-			zap.String("task_name", taskName),
+			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
 			zap.String("cost", time.Now().Sub(taskTime).String()))
 	} else {
 		return fmt.Errorf("current data migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
@@ -305,12 +329,12 @@ func StartDataMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 
 	// status
 	var (
-		migrateFailedResults  uint64
-		migrateWaitResults    uint64
-		migrateRunResults     uint64
-		migrateStopResults    uint64
-		migrateSuccessResults uint64
-		migrateTotalsResults  uint64
+		migrateFailedResults  int64
+		migrateWaitResults    int64
+		migrateRunResults     int64
+		migrateStopResults    int64
+		migrateSuccessResults int64
+		migrateTotalsResults  int64
 	)
 
 	statusRecords, err := model.GetIDataMigrateTaskRW().FindDataMigrateTaskGroupByTaskStatus(ctx, taskName)
@@ -320,17 +344,17 @@ func StartDataMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 	for _, rec := range statusRecords {
 		switch strings.ToUpper(rec.TaskStatus) {
 		case constant.TaskDatabaseStatusFailed:
-			migrateFailedResults = rec.StatusTotals
+			migrateFailedResults = rec.StatusCounts
 		case constant.TaskDatabaseStatusWaiting:
-			migrateWaitResults = rec.StatusTotals
+			migrateWaitResults = rec.StatusCounts
 		case constant.TaskDatabaseStatusStopped:
-			migrateStopResults = rec.StatusTotals
+			migrateStopResults = rec.StatusCounts
 		case constant.TaskDatabaseStatusRunning:
-			migrateRunResults = rec.StatusTotals
+			migrateRunResults = rec.StatusCounts
 		case constant.TaskDatabaseStatusSuccess:
-			migrateSuccessResults = rec.StatusTotals
+			migrateSuccessResults = rec.StatusCounts
 		default:
-			return fmt.Errorf("the task [%v] taskflow [%v] taskStatus [%v] panic, please contact auhtor or reselect", taskName, taskFlow, rec.TaskStatus)
+			return fmt.Errorf("the task [%v] task_mode [%s] task_flow [%v] taskStatus [%v] panic, please contact auhtor or reselect", taskInfo.TaskName, taskInfo.TaskMode, taskInfo.TaskFlow, rec.TaskStatus)
 		}
 	}
 
@@ -339,7 +363,7 @@ func StartDataMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 	if migrateFailedResults > 0 || migrateWaitResults > 0 || migrateRunResults > 0 || migrateStopResults > 0 {
 		err = model.Transaction(ctx, func(txnCtx context.Context) error {
 			_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
-				TaskName: taskName,
+				TaskName: taskInfo.TaskName,
 			}, map[string]interface{}{
 				"TaskStatus": constant.TaskDatabaseStatusFailed,
 				"EndTime":    time.Now(),
@@ -371,20 +395,22 @@ func StartDataMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		}
 
 		logger.Info("data migrate task failed",
-			zap.String("task_name", taskName),
-			zap.Uint64("total records", migrateTotalsResults),
-			zap.Uint64("failed records", migrateFailedResults),
-			zap.Uint64("wait records", migrateWaitResults),
-			zap.Uint64("running records", migrateRunResults),
-			zap.Uint64("stopped records", migrateStopResults),
-			zap.Uint64("success records", migrateSuccessResults),
+			zap.String("task_name", taskInfo.TaskName),
+			zap.String("task_mode", taskInfo.TaskMode),
+			zap.String("task_flow", taskInfo.TaskFlow),
+			zap.Int64("total records", migrateTotalsResults),
+			zap.Int64("failed records", migrateFailedResults),
+			zap.Int64("wait records", migrateWaitResults),
+			zap.Int64("running records", migrateRunResults),
+			zap.Int64("stopped records", migrateStopResults),
+			zap.Int64("success records", migrateSuccessResults),
 			zap.String("detail tips", "please see [data_migrate_task] detail"),
 			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
 	}
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
-			TaskName: taskName,
+			TaskName: taskInfo.TaskName,
 		}, map[string]interface{}{
 			"TaskStatus": constant.TaskDatabaseStatusSuccess,
 			"EndTime":    time.Now(),
@@ -413,9 +439,11 @@ func StartDataMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 	}
 
 	logger.Info("data migrate task success",
-		zap.String("task_name", taskName),
-		zap.Uint64("total records", migrateTotalsResults),
-		zap.Uint64("success records", migrateSuccessResults),
+		zap.String("task_name", taskInfo.TaskName),
+		zap.String("task_mode", taskInfo.TaskMode),
+		zap.String("task_flow", taskInfo.TaskFlow),
+		zap.Int64("total records", migrateTotalsResults),
+		zap.Int64("success records", migrateSuccessResults),
 		zap.String("detail tips", "please see [data_migrate_task] detail"),
 		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
@@ -431,7 +459,7 @@ func StopDataMigrateTask(ctx context.Context, taskName string) error {
 		if err != nil {
 			return err
 		}
-		_, err = model.GetIStructMigrateTaskRW().BatchUpdateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+		_, err = model.GetIDataMigrateTaskRW().BatchUpdateDataMigrateTask(txnCtx, &task.DataMigrateTask{
 			TaskName:   taskName,
 			TaskStatus: constant.TaskDatabaseStatusRunning,
 		}, map[string]interface{}{

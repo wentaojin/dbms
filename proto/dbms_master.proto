@@ -215,7 +215,7 @@ message UpsertSqlMigrateTaskRequest{
   string comment = 4;
 
   CaseFieldRule caseFieldRule = 5;
-  repeated SqlRouteRule sqlRouteRules = 6;
+  repeated SqlMigrateRule SqlMigrateRules = 6;
   SqlMigrateParam sqlMigrateParam = 7;
 }
 message UpsertSqlMigrateTaskResponse{
@@ -282,7 +282,7 @@ message SchemaRouteRule{
   repeated string excludeTableS = 4;
 
   repeated TableRouteRule tableRouteRules = 5;
-  repeated TableMigrateRule TableMigrateRules = 6;
+  repeated DataMigrateRule DataMigrateRules = 6;
 }
 
 message CaseFieldRule {
@@ -352,7 +352,7 @@ message TableAttrsRule {
   string tableAttrsT = 3;
 }
 
-message TableMigrateRule {
+message DataMigrateRule {
   string tableNameS = 1;
   bool enableChunkStrategy = 2;
   string whereRange = 3;
@@ -372,7 +372,7 @@ message DataMigrateParam {
   bool enableConsistentRead = 10;
 }
 
-message SqlRouteRule {
+message SqlMigrateRule {
   string sqlQueryS = 1;
   string schemaNameT = 2;
   string tableNameT = 3;
