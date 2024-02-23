@@ -15,7 +15,7 @@ case-field-rule-s = "0"
 # 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写
 case-field-rule-t = "1"
 
-[[sql-route-rules]]
+[[sql-migrate-rules]]
 # 指定源端查询 sql
 sql-query-s = ''
 # 指定数据写入目标端表名，必须在当前 schema-name-t 内

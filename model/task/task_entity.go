@@ -66,18 +66,21 @@ type StructMigrateTask struct {
 }
 
 type DataMigrateSummary struct {
-	ID           uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
-	SchemaNameS  string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
-	TableNameS   string  `gorm:"type:varchar(120);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
-	SchemaNameT  string  `gorm:"type:varchar(120);not null;comment:target schema name" json:"schemaNameT"`
-	TableNameT   string  `gorm:"type:varchar(120);not null;comment:target table name" json:"tableNameT"`
-	TableRowsS   uint64  `gorm:"comment:source table rows" json:"tableRowsS"`
-	TableSizeS   float64 `gorm:"comment:source table size (MB)" json:"tableSizeS"`
-	ChunkTotals  uint64  `gorm:"type:int;comment:source table chunk totals" json:"chunkTotals"`
-	ChunkSuccess uint64  `gorm:"type:int;comment:source table chunk success" json:"chunkSuccess"`
-	ChunkFails   uint64  `gorm:"type:int;comment:source table chunk fails" json:"chunkFails"`
-	Duration     float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	ID            uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName      string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	SchemaNameS   string  `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
+	TableNameS    string  `gorm:"type:varchar(120);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
+	SchemaNameT   string  `gorm:"type:varchar(120);not null;comment:target schema name" json:"schemaNameT"`
+	TableNameT    string  `gorm:"type:varchar(120);not null;comment:target table name" json:"tableNameT"`
+	GlobalScnS    uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
+	ColumnDetailS string  `gorm:"type:text;comment:source column used to query information" json:"columnDetailS"`
+	ColumnDetailT string  `gorm:"type:text;comment:source column used to query information" json:"columnDetailT"`
+	TableRowsS    uint64  `gorm:"comment:source table rows" json:"tableRowsS"`
+	TableSizeS    float64 `gorm:"comment:source table size (MB)" json:"tableSizeS"`
+	ChunkTotals   uint64  `gorm:"type:int;comment:source table chunk totals" json:"chunkTotals"`
+	ChunkSuccess  uint64  `gorm:"type:int;comment:source table chunk success" json:"chunkSuccess"`
+	ChunkFails    uint64  `gorm:"type:int;comment:source table chunk fails" json:"chunkFails"`
+	Duration      float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }
 
@@ -90,8 +93,9 @@ type DataMigrateTask struct {
 	TableNameT      string  `gorm:"type:varchar(120);not null;comment:target table name" json:"tableNameT"`
 	TableTypeS      string  `gorm:"type:varchar(120);comment:source table type" json:"tableTypeS"`
 	GlobalScnS      uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
-	ColumnDetailS   string  `gorm:"type:text;comment:source column information" json:"columnDetailS"`
-	ColumnDetailT   string  `gorm:"type:text;comment:source column information" json:"columnDetailT"`
+	ColumnDetailO   string  `gorm:"type:text;comment:source column store origin information" json:"columnDetailO"`
+	ColumnDetailS   string  `gorm:"type:text;comment:source column used to query information" json:"columnDetailS"`
+	ColumnDetailT   string  `gorm:"type:text;comment:source column used to query information" json:"columnDetailT"`
 	SqlHintS        string  `gorm:"type:varchar(300);comment:source sql hint" json:"sqlHintS"`
 	SqlHintT        string  `gorm:"type:varchar(300);comment:target sql hint" json:"sqlHintT"`
 	ChunkDetailS    string  `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`

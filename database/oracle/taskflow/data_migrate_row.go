@@ -50,7 +50,7 @@ type DataMigrateRow struct {
 	BatchSize     int
 	CallTimeout   int
 	SafeMode      bool
-	ReadChan      chan []map[string]interface{}
+	ReadChan      chan []interface{}
 	WriteChan     chan []interface{}
 }
 
@@ -96,7 +96,7 @@ func (r *DataMigrateRow) MigrateRead() error {
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.ReadChan)
+	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}
@@ -117,24 +117,7 @@ func (r *DataMigrateRow) MigrateRead() error {
 
 func (r *DataMigrateRow) MigrateProcess() error {
 	defer close(r.WriteChan)
-
-	for dataC := range r.ReadChan {
-		var batchRows []interface{}
-		for _, dMap := range dataC {
-			// get value order by column
-			var rowTemps []interface{}
-			columnDetails := stringutil.StringSplit(r.Dmt.ColumnDetailS, constant.StringSeparatorComma)
-			for _, c := range columnDetails {
-				if val, ok := dMap[stringutil.StringTrim(c, constant.StringSeparatorQuotationMarks)]; ok {
-					rowTemps = append(rowTemps, val)
-				}
-			}
-			if len(rowTemps) != len(columnDetails) {
-				return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] taskflow [%s] data migrate column counts vs data counts isn't match, please contact author or reselect", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
-			} else {
-				batchRows = append(batchRows, rowTemps...)
-			}
-		}
+	for batchRows := range r.ReadChan {
 		r.WriteChan <- batchRows
 	}
 	return nil
@@ -152,8 +135,8 @@ func (r *DataMigrateRow) MigrateApply() error {
 		zap.String("chunk_detail_s", r.Dmt.ChunkDetailS),
 		zap.String("startTime", startTime.String()))
 
-	columnDetailSCounts := len(stringutil.StringSplit(r.Dmt.ColumnDetailS, constant.StringSeparatorComma))
-	preArgNums := columnDetailSCounts * r.BatchSize
+	columnDetailSCounts := len(stringutil.StringSplit(r.Dmt.ColumnDetailO, constant.StringSeparatorComma))
+	argRowsNums := columnDetailSCounts * r.BatchSize
 
 	g := &errgroup.Group{}
 	g.SetLimit(r.SqlThreadT)
@@ -162,17 +145,22 @@ func (r *DataMigrateRow) MigrateApply() error {
 		vals := dataC
 		g.Go(func() error {
 			// prepare exec
-			if len(vals) == preArgNums {
+			if len(vals) == argRowsNums {
 				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
 				if err != nil {
 					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
 				}
 			} else {
 				bathSize := len(vals) / columnDetailSCounts
-				sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.Dmt.ColumnDetailT, bathSize, r.SafeMode)
-				_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
-				if err != nil {
-					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
+				switch {
+				case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.Dmt.ColumnDetailT, bathSize, r.SafeMode)
+					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
+					if err != nil {
+						return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
+					}
+				default:
+					return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
 				}
 			}
 			return nil

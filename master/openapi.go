@@ -257,8 +257,9 @@ func (s *Server) listStructMigrateTask(ctx context.Context, req openapi.APIListS
 
 func (s *Server) upsertDataMigrateTask(ctx context.Context, req openapi.APIPutDataMigrateJSONRequestBody) (string, error) {
 	var (
-		migrateSchemaRs *pb.SchemaRouteRule
-		tableRoutes     []*pb.TableRouteRule
+		migrateSchemaRs  *pb.SchemaRouteRule
+		tableRoutes      []*pb.TableRouteRule
+		dataMigrateRules []*pb.DataMigrateRule
 	)
 
 	for _, t := range *req.SchemaRouteRule.TableRouteRules {
@@ -268,12 +269,21 @@ func (s *Server) upsertDataMigrateTask(ctx context.Context, req openapi.APIPutDa
 			ColumnRouteRules: *t.ColumnRouteRules,
 		})
 	}
+	for _, t := range *req.SchemaRouteRule.DataMigrateRules {
+		dataMigrateRules = append(dataMigrateRules, &pb.DataMigrateRule{
+			TableNameS:          *t.TableNameS,
+			EnableChunkStrategy: *t.EnableChunkStrategy,
+			WhereRange:          *t.WhereRange,
+			SqlHintS:            *t.SqlHintS,
+		})
+	}
 	migrateSchemaRs = &pb.SchemaRouteRule{
-		SchemaNameS:     *req.SchemaRouteRule.SchemaNameS,
-		SchemaNameT:     *req.SchemaRouteRule.SchemaNameT,
-		IncludeTableS:   *req.SchemaRouteRule.IncludeTableS,
-		ExcludeTableS:   *req.SchemaRouteRule.ExcludeTableS,
-		TableRouteRules: tableRoutes,
+		SchemaNameS:      *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:      *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS:    *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS:    *req.SchemaRouteRule.ExcludeTableS,
+		TableRouteRules:  tableRoutes,
+		DataMigrateRules: dataMigrateRules,
 	}
 
 	resp, err := s.UpsertDataMigrateTask(ctx, &pb.UpsertDataMigrateTaskRequest{

@@ -46,7 +46,7 @@ type SqlMigrateRow struct {
 	BatchSize     int
 	CallTimeout   int
 	SafeMode      bool
-	ReadChan      chan []map[string]interface{}
+	ReadChan      chan []interface{}
 	WriteChan     chan []interface{}
 }
 
@@ -76,7 +76,7 @@ func (r *SqlMigrateRow) MigrateRead() error {
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.ReadChan)
+	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Smt.ColumnDetailS, r.ReadChan)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}
@@ -96,23 +96,8 @@ func (r *SqlMigrateRow) MigrateRead() error {
 
 func (r *SqlMigrateRow) MigrateProcess() error {
 	defer close(r.WriteChan)
-	for dataC := range r.ReadChan {
-		var batchRows []interface{}
-		for _, dMap := range dataC {
-			// get value order by column
-			var rowTemps []interface{}
-			columnDetails := stringutil.StringSplit(r.Smt.ColumnDetailS, constant.StringSeparatorComma)
-			for _, c := range columnDetails {
-				if val, ok := dMap[stringutil.StringTrim(c, constant.StringSeparatorQuotationMarks)]; ok {
-					rowTemps = append(rowTemps, val)
-				}
-			}
-			if len(rowTemps) != len(columnDetails) {
-				return fmt.Errorf("oracle current task [%s] task_mode [%s] task_flow [%s] schema_name_t [%s] table_name_t [%s] data migrate column counts vs data counts isn't match, please contact author or reselect", r.Smt.TaskName, r.TaskMode, r.TaskFlow, r.Smt.SchemaNameT, r.Smt.TableNameT)
-			} else {
-				batchRows = append(batchRows, rowTemps...)
-			}
-		}
+	for batchRows := range r.ReadChan {
+		r.WriteChan <- batchRows
 	}
 	return nil
 }

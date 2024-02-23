@@ -102,7 +102,7 @@ func (d *Database) CloseDatabaseTableChunkTask(taskName string) error {
 	panic("implement me")
 }
 
-func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT string, dataChan chan []map[string]interface{}) error {
+func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error {
 	//TODO implement me
 	panic("implement me")
 }

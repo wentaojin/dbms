@@ -174,14 +174,25 @@ END;`, taskName)
 	return nil
 }
 
-func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT string, dataChan chan []map[string]interface{}) error {
+func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error {
 	var (
-		err     error
-		columns []string
+		columnNames []string
+		columnTypes []string
+		err         error
 	)
+	columnNameOrders := stringutil.StringSplit(columnDetailS, constant.StringSeparatorComma)
+	columnNameOrdersCounts := len(columnNameOrders)
+	rowData := make([]interface{}, columnNameOrdersCounts)
 
-	var rowsTMP []map[string]interface{}
-	rowsMap := make(map[string]interface{})
+	argsNums := batchSize * columnNameOrdersCounts
+
+	batchRowsData := make([]interface{}, 0, argsNums)
+
+	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
+
+	for i, c := range columnNameOrders {
+		columnNameOrderIndexMap[c] = i
+	}
 
 	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
 
@@ -194,44 +205,25 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 	}
 	defer rows.Close()
 
-	tmpCols, err := rows.Columns()
-	if err != nil {
-		return err
-	}
-
-	for _, col := range tmpCols {
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(col), dbCharsetS, constant.CharsetUTF8MB4)
-		if err != nil {
-			return fmt.Errorf("column [%s] charset convert failed, %v", col, err)
-		}
-
-		convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
-		if err != nil {
-			return fmt.Errorf("column [%s] charset convert failed, %v", col, err)
-		}
-
-		columns = append(columns, stringutil.BytesToString(convertTargetRaw))
-	}
-
-	var (
-		columnNames []string
-		columnTypes []string
-	)
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
 		return err
 	}
 
 	for _, ct := range colTypes {
-		columnNames = append(columnNames, ct.Name())
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(ct.Name()), dbCharsetS, constant.CharsetUTF8MB4)
+		if err != nil {
+			return fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
+		}
+		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
 		// database field type DatabaseTypeName() maps go type ScanType()
 		columnTypes = append(columnTypes, ct.ScanType().String())
 	}
 
 	// data scan
-	cols := len(columns)
-	rawResult := make([][]byte, cols)
-	dest := make([]interface{}, cols)
+	columnNums := len(columnNames)
+	rawResult := make([][]byte, columnNums)
+	dest := make([]interface{}, columnNums)
 	for i := range rawResult {
 		dest[i] = &rawResult[i]
 	}
@@ -245,10 +237,10 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 		for i, raw := range rawResult {
 			if raw == nil {
 				//rowsMap[cols[i]] = `NULL` -> sql
-				rowsMap[columns[i]] = nil
+				rowData[columnNameOrderIndexMap[columnNames[i]]] = nil
 			} else if stringutil.BytesToString(raw) == "" {
 				//rowsMap[cols[i]] = `NULL` -> sql
-				rowsMap[columns[i]] = nil
+				rowData[columnNameOrderIndexMap[columnNames[i]]] = nil
 			} else {
 				switch columnTypes[i] {
 				case "int64":
@@ -256,40 +248,40 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 					if err != nil {
 						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
 					}
-					rowsMap[columns[i]] = fmt.Sprintf("%v", r)
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
 				case "uint64":
 					r, err := stringutil.StrconvUintBitSize(stringutil.BytesToString(raw), 64)
 					if err != nil {
 						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
 					}
-					rowsMap[columns[i]] = fmt.Sprintf("%v", r)
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
 				case "float32":
 					r, err := stringutil.StrconvFloatBitSize(stringutil.BytesToString(raw), 32)
 					if err != nil {
 						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
 					}
-					rowsMap[columns[i]] = fmt.Sprintf("%v", r)
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
 				case "float64":
 					r, err := stringutil.StrconvFloatBitSize(stringutil.BytesToString(raw), 64)
 					if err != nil {
 						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
 					}
-					rowsMap[columns[i]] = fmt.Sprintf("%v", r)
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
 				case "rune":
 					r, err := stringutil.StrconvRune(stringutil.BytesToString(raw))
 					if err != nil {
 						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
 					}
-					rowsMap[columns[i]] = fmt.Sprintf("%v", r)
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
 				case "godror.Number":
 					r, err := decimal.NewFromString(stringutil.BytesToString(raw))
 					if err != nil {
 						return fmt.Errorf("column [%s] NewFromString strconv failed, %v", columnNames[i], err)
 					}
-					rowsMap[columns[i]] = fmt.Sprintf("%v", r)
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
 				case "[]uint8":
 					// binary data -> raw、long raw、blob
-					rowsMap[columns[i]] = raw
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = raw
 				default:
 					convertUtf8Raw, err := stringutil.CharsetConvert(raw, dbCharsetS, constant.CharsetUTF8MB4)
 					if err != nil {
@@ -300,22 +292,23 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 					if err != nil {
 						return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
 					}
-					rowsMap[columns[i]] = fmt.Sprintf("%v", stringutil.BytesToString(convertTargetRaw))
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(convertTargetRaw)
 				}
 			}
 		}
 
 		// temporary array
-		rowsTMP = append(rowsTMP, rowsMap)
+		batchRowsData = append(batchRowsData, rowData...)
+
 		// clear
-		rowsMap = make(map[string]interface{})
+		rowData = make([]interface{}, columnNameOrdersCounts)
 
 		// batch
-		if len(rowsTMP) == batchSize {
-			dataChan <- rowsTMP
+		if len(batchRowsData) == argsNums {
+			dataChan <- batchRowsData
 
 			// clear
-			rowsTMP = make([]map[string]interface{}, 0)
+			batchRowsData = make([]interface{}, 0, argsNums)
 		}
 	}
 
@@ -324,8 +317,8 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 	}
 
 	// non-batch batch
-	if len(rowsTMP) > 0 {
-		dataChan <- rowsTMP
+	if len(batchRowsData) > 0 {
+		dataChan <- batchRowsData
 	}
 
 	return nil

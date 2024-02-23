@@ -154,7 +154,7 @@ func (smt *SqlMigrateTask) Start() error {
 					}
 					defer stmt.Close()
 
-					readChan := make(chan []map[string]interface{}, constant.DefaultMigrateTaskQueueSize)
+					readChan := make(chan []interface{}, constant.DefaultMigrateTaskQueueSize)
 					writeChan := make(chan []interface{}, constant.DefaultMigrateTaskQueueSize)
 					err = database.IDataMigrateProcess(&SqlMigrateRow{
 						Ctx:           smt.Ctx,

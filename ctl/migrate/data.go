@@ -53,9 +53,9 @@ type SqlConfig struct {
 	DatasourceNameT string `toml:"datasource-name-t" json:"datasourceNameT"`
 	Comment         string `toml:"comment" json:"comment"`
 
-	CaseFieldRule   CaseFieldRule   `toml:"case-field-rule" json:"caseFieldRule"`
-	SqlRouteRules   []SqlRouteRule  `toml:"sql-route-rules" json:"sqlRouteRules"`
-	SqlMigrateParam SqlMigrateParam `toml:"sql-migrate-param" json:"sqlMigrateParam"`
+	CaseFieldRule   CaseFieldRule    `toml:"case-field-rule" json:"caseFieldRule"`
+	SqlMigrateRules []SqlMigrateRule `toml:"sql-migrate-rules" json:"sqlMigrateRules"`
+	SqlMigrateParam SqlMigrateParam  `toml:"sql-migrate-param" json:"sqlMigrateParam"`
 }
 
 type SqlMigrateParam struct {

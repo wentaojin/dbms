@@ -31,10 +31,10 @@ table-name-s = "MARVIN01"
 table-name-t = "STEVEN01"
 column-route-rules = {"NAME" = "t_name00"}
 
-[[schema-route-rule.table-migrate-rules]]
+[[schema-route-rule.data-migrate-rules]]
 table-name-s = "MARVIN00"
 # 基于数据切分策略，获取指定数据迁移表的查询范围
-enable-chunk-strategy = true
+enable-chunk-strategy = false
 # 指定数据迁移表的查询范围
 # 注意自定义数据迁移表之后，对应表将只迁移该部分数据
 where-range = "id = 1"
@@ -52,11 +52,11 @@ batch-size = 50
 # 2、建议参数值是 insert-batch-size 整数倍，会根据 insert-batch-size 大小切分
 chunk-size = 100000
 # 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上游表数据，可动态变更
-sql-thread-s = 32
+sql-thread-s = 2
 # 指定分片 chunk sql 查询 hint
 sql-hint-s = "/*+ PARALLEL(8) */"
 # 表内每 sql-thread-s 线程写下游并发数，可动态变更
-sql-thread-t = 64
+sql-thread-t = 2
 # 指定分片 chunk sql 写入 Hint
 sql-hint-t = ""
 # calltimeout，单位：秒

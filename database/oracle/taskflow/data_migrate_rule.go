@@ -105,7 +105,7 @@ func (r *DataMigrateRule) GenTableNameRule() (string, string, error) {
 	return tableNameS, tableNameTNew, nil
 }
 
-func (r *DataMigrateRule) GenTableColumnRule() (string, string, error) {
+func (r *DataMigrateRule) GenTableColumnRule() (string, string, string, error) {
 	columnRules := make(map[string]string)
 
 	columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(r.Ctx, &rule.ColumnRouteRule{
@@ -114,18 +114,18 @@ func (r *DataMigrateRule) GenTableColumnRule() (string, string, error) {
 		TableNameS:  r.TableNameS,
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	sourceColumnNameS, err := r.DatabaseS.GetDatabaseTableColumnNameTableDimensions(r.SchemaNameS, r.TableNameS)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	for _, c := range sourceColumnNameS {
 		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, c, err)
+			return "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, c, err)
 		}
 
 		columnName := stringutil.BytesToString(columnNameUtf8Raw)
@@ -170,7 +170,7 @@ func (r *DataMigrateRule) GenTableColumnRule() (string, string, error) {
 
 	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumns(r.SchemaNameS, r.TableNameS, r.DBCollationS)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	for _, rowCol := range sourceColumnInfos {
@@ -178,13 +178,13 @@ func (r *DataMigrateRule) GenTableColumnRule() (string, string, error) {
 
 		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnName), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return "", "", fmt.Errorf("[GenTableQueryColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, columnName, err)
+			return "", "", "", fmt.Errorf("[GenTableQueryColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, columnName, err)
 		}
 		columnName = stringutil.BytesToString(columnNameUtf8Raw)
 
 		columnNameS, err := optimizerColumnDatatypeS(columnName, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 		columnNameSilS = append(columnNameSilS, columnNameS)
 
@@ -213,16 +213,18 @@ func (r *DataMigrateRule) GenTableColumnRule() (string, string, error) {
 					columnNameT = val
 				}
 			default:
-				return "", "", fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
+				return "", "", "", fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
 			}
 		} else {
-			return "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.SchemaNameS, r.TableNameS, columnName)
+			return "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.SchemaNameS, r.TableNameS, columnName)
 		}
 
 		columnNameSliT = append(columnNameSliT, columnNameT)
 	}
 
-	return stringutil.StringJoin(columnNameSilS, constant.StringSeparatorComma), stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil
+	return stringutil.StringJoin(sourceColumnNameS, constant.StringSeparatorComma),
+		stringutil.StringJoin(columnNameSilS, constant.StringSeparatorComma),
+		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil
 }
 
 func (r *DataMigrateRule) GenTableTypeRule() string {

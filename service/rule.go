@@ -265,6 +265,11 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 					})
 				}
 			}
+
+			_, err = model.GetIDataMigrateRuleRW().CreateInBatchDataMigrateRule(ctx, tableMigrateRules, constant.DefaultRecordCreateBatchSize)
+			if err != nil {
+				return err
+			}
 			return nil
 		})
 		if err != nil {

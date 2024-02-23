@@ -34,7 +34,7 @@ type IDatabaseDataMigrate interface {
 	StartDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) error
 	GetDatabaseTableChunkData(taskName string) ([]map[string]string, error)
 	CloseDatabaseTableChunkTask(taskName string) error
-	QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT string, dataChan chan []map[string]interface{}) error
+	QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error
 }
 
 // IDataMigrateRuleInitializer used for database table rule initializer
@@ -42,7 +42,7 @@ type IDataMigrateRuleInitializer interface {
 	GenTableTypeRule() string
 	GenSchemaNameRule() (string, string, error)
 	GenTableNameRule() (string, string, error)
-	GenTableColumnRule() (string, string, error)
+	GenTableColumnRule() (string, string, string, error)
 	GenTableCustomRule() (bool, string, string, error)
 }
 
@@ -52,6 +52,7 @@ type DataMigrateAttributesRule struct {
 	TableNameS          string `json:"tableNameS"`
 	TableTypeS          string `json:"tableTypeS"`
 	TableNameT          string `json:"tableNameT"`
+	ColumnDetailO       string `json:"columnDetailO"`
 	ColumnDetailS       string `json:"columnDetailS"`
 	ColumnDetailT       string `json:"columnDetailT"`
 	EnableChunkStrategy bool   `json:"enableChunkStrategy"`
@@ -68,7 +69,7 @@ func IDataMigrateAttributesRule(i IDataMigrateRuleInitializer) (*DataMigrateAttr
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}
-	sourceColumn, targetColumn, err := i.GenTableColumnRule()
+	sourceColumnO, sourceColumnS, targetColumnT, err := i.GenTableColumnRule()
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}
@@ -82,8 +83,9 @@ func IDataMigrateAttributesRule(i IDataMigrateRuleInitializer) (*DataMigrateAttr
 		TableNameS:          sourceTable,
 		TableNameT:          targetTable,
 		TableTypeS:          i.GenTableTypeRule(),
-		ColumnDetailS:       sourceColumn,
-		ColumnDetailT:       targetColumn,
+		ColumnDetailO:       sourceColumnO,
+		ColumnDetailS:       sourceColumnS,
+		ColumnDetailT:       targetColumnT,
 		EnableChunkStrategy: enableChunkStrategy,
 		WhereRange:          whereRange,
 		SqlHintS:            sqlHintS,

@@ -5,4 +5,4 @@ username = "root"
 password = ""
 schema = "dbms"
 # slow threshold
-slow-threshold = 10
+slow-threshold = 300
