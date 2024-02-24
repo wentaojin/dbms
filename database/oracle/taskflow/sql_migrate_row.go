@@ -76,7 +76,7 @@ func (r *SqlMigrateRow) MigrateRead() error {
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Smt.ColumnDetailS, r.ReadChan)
+	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Smt.ColumnDetailO, r.ReadChan)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}
@@ -126,15 +126,21 @@ func (r *SqlMigrateRow) MigrateApply() error {
 			if len(vals) == preArgNums {
 				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
 				if err != nil {
-					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, err)
+					return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)
 				}
 			} else {
 				bathSize := len(vals) / columnDetailSCounts
-				sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Smt.SchemaNameT, r.Smt.TableNameT, r.Smt.ColumnDetailT, bathSize, r.SafeMode)
-				_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
-				if err != nil {
-					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, err)
+				switch {
+				case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Smt.SchemaNameT, r.Smt.TableNameT, r.Smt.ColumnDetailT, bathSize, r.SafeMode)
+					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
+					if err != nil {
+						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)
+					}
+				default:
+					return fmt.Errorf("oracle current task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow)
 				}
+
 			}
 			return nil
 		})

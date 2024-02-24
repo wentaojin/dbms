@@ -64,8 +64,9 @@ type database struct {
 	migrateTaskTableRW            rule.IMigrateTaskTable
 	taskRW                        task.ITask
 	taskLogRW                     task.ILog
-	structMigrateTaskRW           task.IStructMigrateTask
 	paramsRW                      params.IParams
+	structMigrateSummaryRW        task.IStructMigrateSummary
+	structMigrateTaskRW           task.IStructMigrateTask
 	structMigrateTaskRuleRW       migrate.IStructMigrateTaskRule
 	structMigrateSchemaRuleRW     migrate.IStructMigrateSchemaRule
 	structMigrateTableRuleRW      migrate.IStructMigrateTableRule
@@ -207,8 +208,9 @@ func (d *database) initReaderWriters() {
 	DefaultDB.migrateSqlRuleRW = rule.NewSqlMigrateRuleRW(d.base)
 	DefaultDB.taskRW = task.NewTaskRW(d.base)
 	DefaultDB.taskLogRW = task.NewLogRW(d.base)
-	DefaultDB.structMigrateTaskRW = task.NewStructMigrateTaskRW(d.base)
 	DefaultDB.paramsRW = params.NewTaskParamsRW(d.base)
+	DefaultDB.structMigrateTaskRW = task.NewStructMigrateTaskRW(d.base)
+	DefaultDB.structMigrateSummaryRW = task.NewStructMigrateSummaryRW(d.base)
 	DefaultDB.structMigrateTaskRuleRW = migrate.NewStructMigrateTaskRuleRW(d.base)
 	DefaultDB.structMigrateSchemaRuleRW = migrate.NewStructMigrateSchemaRuleRW(d.base)
 	DefaultDB.structMigrateTableRuleRW = migrate.NewStructMigrateTableRuleRW(d.base)
@@ -244,6 +246,7 @@ func (d *database) migrateTables() (err error) {
 		new(rule.SqlMigrateRule),
 		new(task.Task),
 		new(task.Log),
+		new(task.StructMigrateSummary),
 		new(task.StructMigrateTask),
 		new(params.TaskDefaultParam),
 		new(params.TaskCustomParam),
@@ -423,6 +426,10 @@ func GetITaskLogRW() task.ILog {
 
 func GetIStructMigrateTaskRW() task.IStructMigrateTask {
 	return DefaultDB.structMigrateTaskRW
+}
+
+func GetIStructMigrateSummaryRW() task.IStructMigrateSummary {
+	return DefaultDB.structMigrateSummaryRW
 }
 
 func GetIParamsRW() params.IParams {

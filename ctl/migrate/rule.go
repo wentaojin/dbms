@@ -17,7 +17,7 @@ package migrate
 
 type CaseFieldRule struct {
 	CaseFieldRuleS string `toml:"case-field-rule-s" json:"caseFieldRuleS"`
-	CaseFieldRuleT string `toml:"case-field-rule-t" json:"CaseFieldRuleT"`
+	CaseFieldRuleT string `toml:"case-field-rule-t" json:"caseFieldRuleT"`
 }
 
 type SchemaRouteRule struct {

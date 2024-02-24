@@ -273,14 +273,14 @@ func StartSqlMigrateTask(ctx context.Context, taskName, workerAddr string) error
 		logger.Info("sql migrate task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 
 		taskTime := time.Now()
-		dataMigrate := &taskflow.SqlMigrateTask{
+		dm := &taskflow.SqlMigrateTask{
 			Ctx:         ctx,
 			Task:        taskInfo,
 			DatasourceS: sourceDatasource,
 			DatasourceT: targetDatasource,
 			TaskParams:  taskParams,
 		}
-		err = dataMigrate.Start()
+		err = dm.Start()
 		if err != nil {
 			return err
 		}
@@ -309,14 +309,54 @@ func StartSqlMigrateTask(ctx context.Context, taskName, workerAddr string) error
 		switch strings.ToUpper(rec.TaskStatus) {
 		case constant.TaskDatabaseStatusFailed:
 			migrateFailedResults = rec.StatusCounts
+			_, err = model.GetISqlMigrateSummaryRW().UpdateSqlMigrateSummary(ctx, &task.SqlMigrateSummary{
+				TaskName: rec.TaskName,
+			}, map[string]interface{}{
+				"SqlFails": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		case constant.TaskDatabaseStatusWaiting:
 			migrateWaitResults = rec.StatusCounts
+			_, err = model.GetISqlMigrateSummaryRW().UpdateSqlMigrateSummary(ctx, &task.SqlMigrateSummary{
+				TaskName: rec.TaskName,
+			}, map[string]interface{}{
+				"SqlWaits": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		case constant.TaskDatabaseStatusStopped:
 			migrateStopResults = rec.StatusCounts
+			_, err = model.GetISqlMigrateSummaryRW().UpdateSqlMigrateSummary(ctx, &task.SqlMigrateSummary{
+				TaskName: rec.TaskName,
+			}, map[string]interface{}{
+				"SqlStops": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		case constant.TaskDatabaseStatusRunning:
 			migrateRunResults = rec.StatusCounts
+			_, err = model.GetISqlMigrateSummaryRW().UpdateSqlMigrateSummary(ctx, &task.SqlMigrateSummary{
+				TaskName: rec.TaskName,
+			}, map[string]interface{}{
+				"SqlRuns": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		case constant.TaskDatabaseStatusSuccess:
 			migrateSuccessResults = rec.StatusCounts
+			_, err = model.GetISqlMigrateSummaryRW().UpdateSqlMigrateSummary(ctx, &task.SqlMigrateSummary{
+				TaskName: rec.TaskName,
+			}, map[string]interface{}{
+				"SqlSuccess": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("the task [%v] task_mode [%s] task_flow [%v] task_status [%v] panic, please contact auhtor or reselect", taskInfo.TaskName, taskInfo.TaskMode, taskInfo.TaskFlow, rec.TaskStatus)
 		}

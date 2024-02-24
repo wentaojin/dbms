@@ -1,4 +1,4 @@
-task-name = "oracle33totidb145_task"
+task-name = "lmt_33to45"
 datasource-name-s = "oracle33"
 datasource-name-t = "tidb145"
 comment = "测试数据源"
@@ -8,21 +8,31 @@ comment = "测试数据源"
 # 1，参数值是 0 代表以当前配置文件为准，与源端对比
 # 2，参数值是 1 代表统一转换值为小写，与源端对比
 # 3，参数值是 2 代表统一转换值为大写，与源端对比
-case-field-rule-s = "0"
+case-field-rule-s = "2"
 # 控制 strict-migrate-task 配置文件 *-t 以及 column-route-rules 中的 value 值
 # 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准
 # 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写
 # 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写
-case-field-rule-t = "1"
+case-field-rule-t = "0"
 
 [[sql-migrate-rules]]
 # 指定源端查询 sql
-sql-query-s = ''
+sql-query-s = '''
+select
+	t.id,
+	s.name
+from
+	findpt.marvin01 t,
+	marvin.marvin00 s
+where
+	t.id = s.id
+'''
 # 指定数据写入目标端表名，必须在当前 schema-name-t 内
-schema-name-t = ""
-table-name-t = ""
+schema-name-t = "steven"
+table-name-t = "steven03"
 sql-hint-t = ""
-column-route-rules = {"i01" = "s_i01", "i02" = "s_i02"}
+# 匹配查询 sql 字段名替换目标端字段名
+column-route-rules = {"ID" = "id", "NAME" = "n"}
 
 [sql-migrate-param]
 # 数据写入批量大小

@@ -381,6 +381,10 @@ func DeleteStructMigrateTask(ctx context.Context, req *pb.DeleteStructMigrateTas
 		if err != nil {
 			return err
 		}
+		err = model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -759,14 +763,59 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		switch strings.ToUpper(rec.TaskStatus) {
 		case constant.TaskDatabaseStatusFailed:
 			migrateFailedResults = rec.StatusCounts
+			_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(ctx, &task.StructMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"TableFails": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		case constant.TaskDatabaseStatusWaiting:
 			migrateWaitResults = rec.StatusCounts
+			_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(ctx, &task.StructMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"TableWaits": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		case constant.TaskDatabaseStatusStopped:
 			migrateStopResults = rec.StatusCounts
+			_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(ctx, &task.StructMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"TableStops": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		case constant.TaskDatabaseStatusRunning:
 			migrateRunResults = rec.StatusCounts
+			_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(ctx, &task.StructMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"TableRuns": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		case constant.TaskDatabaseStatusSuccess:
 			migrateSuccessResults = rec.StatusCounts
+			_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(ctx, &task.StructMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"TableSuccess": rec.StatusCounts,
+			})
+			if err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("the task [%v] task_mode [%v] task_flow [%v] taskStatus [%v] panic, please contact auhtor or reselect", taskInfo.TaskName, taskInfo.TaskMode, taskInfo.TaskFlow, rec.TaskStatus)
 		}
@@ -1055,6 +1104,16 @@ func initStructMigrateTask(ctx context.Context, taskInfo *task.Task, databaseS d
 		if err != nil {
 			return err
 		}
+	}
+
+	_, err = model.GetIStructMigrateSummaryRW().CreateStructMigrateSummary(ctx,
+		&task.StructMigrateSummary{
+			TaskName:    taskInfo.TaskName,
+			SchemaNameS: schemaRoute.SchemaNameS,
+			TableTotals: uint64(len(databaseTables) + 1), // include schema create sql
+		})
+	if err != nil {
+		return err
 	}
 	return nil
 }

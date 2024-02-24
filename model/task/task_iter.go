@@ -33,6 +33,15 @@ type ILog interface {
 	DeleteLog(ctx context.Context, taskName []string) error
 }
 
+type IStructMigrateSummary interface {
+	CreateStructMigrateSummary(ctx context.Context, task *StructMigrateSummary) (*StructMigrateSummary, error)
+	GetStructMigrateSummary(ctx context.Context, task *StructMigrateSummary) (*StructMigrateSummary, error)
+	UpdateStructMigrateSummary(ctx context.Context, task *StructMigrateSummary, updates map[string]interface{}) (*StructMigrateSummary, error)
+	FindStructMigrateSummary(ctx context.Context, task *StructMigrateSummary) ([]*StructMigrateSummary, error)
+	DeleteStructMigrateSummary(ctx context.Context, task *StructMigrateSummary) error
+	DeleteStructMigrateSummaryName(ctx context.Context, taskName []string) error
+}
+
 type IStructMigrateTask interface {
 	CreateStructMigrateTask(ctx context.Context, task *StructMigrateTask) (*StructMigrateTask, error)
 	GetStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
@@ -63,8 +72,9 @@ type IDataMigrateTask interface {
 	UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
 	BatchUpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
 	FindDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
-	FindDataMigrateTaskBySchemaTableChunkCounts(ctx context.Context, task *DataMigrateTask) (int64, error)
-	FindDataMigrateTaskGroupByTaskSchemaTable(ctx context.Context) ([]*DataMigrateGroupChunkResult, error)
+	FindDataMigrateTaskBySchemaTableChunkStatus(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateGroupTaskStatusResult, error)
+	FindDataMigrateTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataMigrateGroupChunkResult, error)
+	FindDataMigrateTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataMigrateGroupTaskStatusResult, error)
 	FindDataMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataMigrateGroupStatusResult, error)
 	ListDataMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataMigrateTask, error)
 	DeleteDataMigrateTask(ctx context.Context, task *DataMigrateTask) error
@@ -75,7 +85,6 @@ type ISqlMigrateSummary interface {
 	CreateSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) (*SqlMigrateSummary, error)
 	GetSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) (*SqlMigrateSummary, error)
 	UpdateSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary, updates map[string]interface{}) (*SqlMigrateSummary, error)
-	FindSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) ([]*SqlMigrateSummary, error)
 	DeleteSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) error
 	DeleteSqlMigrateSummaryName(ctx context.Context, taskName []string) error
 }

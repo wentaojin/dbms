@@ -61,8 +61,8 @@ type SqlConfig struct {
 type SqlMigrateParam struct {
 	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
 	SqlThreadS           uint64 `toml:"sql-thread-s" json:"sqlThreadS"`
-	SqlThreadT           uint64 `toml:"sql-thread-t" json:"applyThreadT"`
-	SqlHintT             bool   `toml:"sql-hint-t" json:"sqlHintT"`
+	SqlThreadT           uint64 `toml:"sql-thread-t" json:"sqlThreadT"`
+	SqlHintT             string `toml:"sql-hint-t" json:"sqlHintT"`
 	CallTimeout          uint64 `toml:"call-timeout" json:"callTimeout"`
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
 }

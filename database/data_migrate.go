@@ -39,11 +39,11 @@ type IDatabaseDataMigrate interface {
 
 // IDataMigrateRuleInitializer used for database table rule initializer
 type IDataMigrateRuleInitializer interface {
-	GenTableTypeRule() string
-	GenSchemaNameRule() (string, string, error)
-	GenTableNameRule() (string, string, error)
-	GenTableColumnRule() (string, string, string, error)
-	GenTableCustomRule() (bool, string, string, error)
+	GenDataMigrateTableTypeRule() string
+	GenDataMigrateSchemaNameRule() (string, string, error)
+	GenDataMigrateTableNameRule() (string, string, error)
+	GenDataMigrateTableColumnRule() (string, string, string, error)
+	GenDataMigrateTableCustomRule() (bool, string, string, error)
 }
 
 type DataMigrateAttributesRule struct {
@@ -61,19 +61,19 @@ type DataMigrateAttributesRule struct {
 }
 
 func IDataMigrateAttributesRule(i IDataMigrateRuleInitializer) (*DataMigrateAttributesRule, error) {
-	sourceSchema, targetSchema, err := i.GenSchemaNameRule()
+	sourceSchema, targetSchema, err := i.GenDataMigrateSchemaNameRule()
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}
-	sourceTable, targetTable, err := i.GenTableNameRule()
+	sourceTable, targetTable, err := i.GenDataMigrateTableNameRule()
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}
-	sourceColumnO, sourceColumnS, targetColumnT, err := i.GenTableColumnRule()
+	sourceColumnO, sourceColumnS, targetColumnT, err := i.GenDataMigrateTableColumnRule()
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}
-	enableChunkStrategy, whereRange, sqlHintS, err := i.GenTableCustomRule()
+	enableChunkStrategy, whereRange, sqlHintS, err := i.GenDataMigrateTableCustomRule()
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func IDataMigrateAttributesRule(i IDataMigrateRuleInitializer) (*DataMigrateAttr
 		SchemaNameT:         targetSchema,
 		TableNameS:          sourceTable,
 		TableNameT:          targetTable,
-		TableTypeS:          i.GenTableTypeRule(),
+		TableTypeS:          i.GenDataMigrateTableTypeRule(),
 		ColumnDetailO:       sourceColumnO,
 		ColumnDetailS:       sourceColumnS,
 		ColumnDetailT:       targetColumnT,
@@ -122,15 +122,16 @@ func IDataMigrateProcess(p IDataMigrateProcessor) error {
 
 // ISqlMigrateRuleInitializer used for database table rule initializer
 type ISqlMigrateRuleInitializer interface {
-	GenSchemaNameRule() (string, error)
-	GenTableNameRule() (string, error)
-	GenTableColumnRule() (string, string, error)
-	GenTableCustomRule() (string, string)
+	GenSqlMigrateSchemaNameRule() (string, error)
+	GenSqlMigrateTableNameRule() (string, error)
+	GenSqlMigrateTableColumnRule() (string, string, string, error)
+	GenSqlMigrateTableCustomRule() (string, string)
 }
 
 type SqlMigrateAttributesRule struct {
 	SchemaNameT   string `json:"schemaNameT"`
 	TableNameT    string `json:"tableNameT"`
+	ColumnDetailO string `json:"columnDetailO"`
 	ColumnDetailS string `json:"columnDetailS"`
 	ColumnDetailT string `json:"columnDetailT"`
 	SqlHintT      string `json:"sqlHintS"`
@@ -138,23 +139,24 @@ type SqlMigrateAttributesRule struct {
 }
 
 func ISqlMigrateAttributesRule(i ISqlMigrateRuleInitializer) (*SqlMigrateAttributesRule, error) {
-	schemaNameT, err := i.GenSchemaNameRule()
+	schemaNameT, err := i.GenSqlMigrateSchemaNameRule()
 	if err != nil {
 		return nil, err
 	}
-	tableNameT, err := i.GenTableNameRule()
+	tableNameT, err := i.GenSqlMigrateTableNameRule()
 	if err != nil {
 		return nil, err
 	}
-	columnDetailS, columnDetailT, err := i.GenTableColumnRule()
+	columnDetailO, columnDetailS, columnDetailT, err := i.GenSqlMigrateTableColumnRule()
 	if err != nil {
 		return nil, err
 	}
-	sqlHintT, sqlQueryS := i.GenTableCustomRule()
+	sqlHintT, sqlQueryS := i.GenSqlMigrateTableCustomRule()
 
 	return &SqlMigrateAttributesRule{
 		SchemaNameT:   schemaNameT,
 		TableNameT:    tableNameT,
+		ColumnDetailO: columnDetailO,
 		ColumnDetailS: columnDetailS,
 		ColumnDetailT: columnDetailT,
 		SqlHintT:      sqlHintT,

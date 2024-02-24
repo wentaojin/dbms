@@ -420,8 +420,6 @@ func UpsertSqlMigrateRule(ctx context.Context, taskName string, caseFieldRule *p
 				targetTable  string
 			)
 
-			columnRouteRuleMap := make(map[string]string)
-
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameOrigin) {
 				targetSchema = st.SchemaNameT
 				targetTable = st.TableNameT
@@ -438,30 +436,26 @@ func UpsertSqlMigrateRule(ctx context.Context, taskName string, caseFieldRule *p
 
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
 				for k, v := range st.ColumnRouteRules {
-					columnRouteRuleMap[stringutil.StringUpper(k)] = v
+					st.ColumnRouteRules[stringutil.StringUpper(k)] = v
 				}
 			}
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
-				for k, v := range columnRouteRuleMap {
-					columnRouteRuleMap[k] = stringutil.StringUpper(v)
+				for k, v := range st.ColumnRouteRules {
+					st.ColumnRouteRules[k] = stringutil.StringUpper(v)
 				}
 			}
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
 				for k, v := range st.ColumnRouteRules {
-					columnRouteRuleMap[stringutil.StringLower(k)] = v
+					st.ColumnRouteRules[stringutil.StringLower(k)] = v
 				}
 			}
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameLower) {
-				for k, v := range columnRouteRuleMap {
-					columnRouteRuleMap[k] = stringutil.StringLower(v)
+				for k, v := range st.ColumnRouteRules {
+					st.ColumnRouteRules[k] = stringutil.StringLower(v)
 				}
 			}
 
-			if columnRouteRuleMap == nil {
-				columnRouteRuleMap = st.ColumnRouteRules
-			}
-
-			jsonColumnRulesStr, err := stringutil.MarshalJSON(columnRouteRuleMap)
+			jsonColumnRulesStr, err := stringutil.MarshalJSON(st.ColumnRouteRules)
 			if err != nil {
 				return err
 			}

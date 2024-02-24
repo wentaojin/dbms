@@ -50,7 +50,7 @@ type StructMigrateTask struct {
 }
 
 func (st *StructMigrateTask) Start() error {
-	schemaTaskTime := time.Now()
+	schemaStartTime := time.Now()
 	logger.Info("struct migrate task get buildin rule",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 
@@ -159,6 +159,14 @@ func (st *StructMigrateTask) Start() error {
 		if err != nil {
 			return err
 		}
+		migrateRunningTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
+			&task.StructMigrateTask{
+				TaskName:       st.Task.TaskName,
+				TaskStatus:     constant.TaskDatabaseStatusRunning,
+				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+		if err != nil {
+			return err
+		}
 		migrateStopTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
 			&task.StructMigrateTask{
 				TaskName:       st.Task.TaskName,
@@ -168,6 +176,7 @@ func (st *StructMigrateTask) Start() error {
 			return err
 		}
 		migrateTasks = append(migrateTasks, migrateFailedTasks...)
+		migrateTasks = append(migrateTasks, migrateRunningTasks...)
 		migrateTasks = append(migrateTasks, migrateStopTasks...)
 		return nil
 	})
@@ -182,17 +191,25 @@ func (st *StructMigrateTask) Start() error {
 	g := errconcurrent.NewGroup()
 	g.SetLimit(int(st.TaskParams.MigrateThread))
 
-	for _, taskJob := range migrateTasks {
-		g.Go(taskJob, func(t interface{}) error {
+	for _, job := range migrateTasks {
+		gTime := time.Now()
+		g.Go(job, gTime, func(job interface{}) error {
 			select {
 			case <-st.Ctx.Done():
 				return nil
 			default:
-				smt := t.(*task.StructMigrateTask)
+				smt := job.(*task.StructMigrateTask)
 				err = st.structMigrateStart(
-					st.DatabaseS, st.DatabaseT,
-					smt, buildInDatatypeRules, buildInDefaultValueRules,
-					dbCollationS, schemaCollationS, tableCollationS, nlsComp)
+					st.DatabaseS,
+					st.DatabaseT,
+					gTime,
+					smt,
+					buildInDatatypeRules,
+					buildInDefaultValueRules,
+					dbCollationS,
+					schemaCollationS,
+					tableCollationS,
+					nlsComp)
 				if err != nil {
 					return err
 				}
@@ -216,6 +233,7 @@ func (st *StructMigrateTask) Start() error {
 					&task.StructMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS},
 					map[string]interface{}{
 						"TaskStatus":  constant.TaskDatabaseStatusFailed,
+						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
 						"ErrorDetail": r.Err.Error(),
 					})
 				if err != nil {
@@ -248,17 +266,33 @@ func (st *StructMigrateTask) Start() error {
 	if err != nil {
 		return err
 	}
+	err = st.DatabaseT.Close()
+	if err != nil {
+		return err
+	}
+	schemaEndTime := time.Now()
+	_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(st.Ctx,
+		&task.StructMigrateSummary{
+			TaskName:    st.Task.TaskName,
+			SchemaNameS: st.SchemaNameS},
+		map[string]interface{}{
+			"Duration": fmt.Sprintf("%f", schemaEndTime.Sub(schemaStartTime).Seconds()),
+		})
+	if err != nil {
+		return err
+	}
 	logger.Info("struct migrate task",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("cost", time.Now().Sub(schemaTaskTime).String()))
-
+		zap.String("cost", schemaEndTime.Sub(schemaStartTime).String()))
 	return nil
 }
 
 func (st *StructMigrateTask) structMigrateStart(
-	databaseS, databaseT database.IDatabase,
+	databaseS,
+	databaseT database.IDatabase,
+	startTime time.Time,
 	smt *task.StructMigrateTask,
 	buildInDatatypeRules []*buildin.BuildinDatatypeRule,
 	buildInDefaultValueRules []*buildin.BuildinDefaultvalRule,
@@ -266,7 +300,6 @@ func (st *StructMigrateTask) structMigrateStart(
 	schemaCollationS string,
 	tableCollationS map[string]string,
 	nlsComp string) error {
-	startTime := time.Now()
 	// if the schema table success, skip
 	if strings.EqualFold(smt.TaskStatus, constant.TaskDatabaseStatusSuccess) {
 		logger.Info("struct migrate task process",

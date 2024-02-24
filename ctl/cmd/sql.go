@@ -33,7 +33,7 @@ func (a *App) AppSql() Cmder {
 
 func (a *AppSql) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "data",
+		Use:              "sql",
 		Short:            "Operator cluster sql migrate",
 		Long:             `Operator cluster sql migrate`,
 		RunE:             a.RunE,

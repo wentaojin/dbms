@@ -364,6 +364,10 @@ func (s *Server) upsertSqlMigrateTask(ctx context.Context, req openapi.APIPutSql
 		DatasourceNameS: *req.DatasourceNameS,
 		DatasourceNameT: *req.DatasourceNameT,
 		Comment:         *req.Comment,
+		CaseFieldRule: &pb.CaseFieldRule{
+			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
+			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
+		},
 		SqlMigrateRules: sqlRoutes,
 		SqlMigrateParam: &pb.SqlMigrateParam{
 			BatchSize:            *req.SqlMigrateParam.BatchSize,

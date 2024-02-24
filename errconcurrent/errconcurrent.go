@@ -18,6 +18,7 @@ package errconcurrent
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 type token struct{}
@@ -36,6 +37,7 @@ type Group struct {
 // A Result is from the group
 type Result struct {
 	Task interface{}
+	Time time.Time
 	Err  error
 }
 
@@ -71,24 +73,25 @@ func (g *Group) Wait() []Result {
 //
 // The first call to return a non-nil error cancels the group's context, if the
 // group was created by calling WithContext. The error will be returned by Wait.
-func (g *Group) Go(t interface{}, f func(t interface{}) error) {
+func (g *Group) Go(job interface{}, st time.Time, fn func(job interface{}) error) {
 	if g.sem != nil {
 		g.sem <- token{}
 	}
 
 	g.wg.Add(1)
-	go func(t interface{}) {
+	go func(job interface{}, st time.Time) {
 		defer g.done()
 
-		if err := f(t); err != nil {
+		if err := fn(job); err != nil {
 			g.mu.Lock()
 			g.Results = append(g.Results, Result{
-				Task: t,
+				Task: job,
+				Time: st,
 				Err:  err,
 			})
 			g.mu.Unlock()
 		}
-	}(t)
+	}(job, st)
 }
 
 // SetLimit limits the number of active goroutines in this group to at most n.

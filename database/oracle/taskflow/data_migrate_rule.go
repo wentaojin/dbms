@@ -45,7 +45,7 @@ type DataMigrateRule struct {
 	CaseFieldRuleT string             `json:"caseFieldRuleT"`
 }
 
-func (r *DataMigrateRule) GenSchemaNameRule() (string, string, error) {
+func (r *DataMigrateRule) GenDataMigrateSchemaNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(r.Ctx, &rule.SchemaRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS})
 	if err != nil {
@@ -75,7 +75,7 @@ func (r *DataMigrateRule) GenSchemaNameRule() (string, string, error) {
 	return schemaNameS, schemaNameTNew, nil
 }
 
-func (r *DataMigrateRule) GenTableNameRule() (string, string, error) {
+func (r *DataMigrateRule) GenDataMigrateTableNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateTableRouteRW().GetTableRouteRule(r.Ctx, &rule.TableRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
 	if err != nil {
@@ -105,7 +105,7 @@ func (r *DataMigrateRule) GenTableNameRule() (string, string, error) {
 	return tableNameS, tableNameTNew, nil
 }
 
-func (r *DataMigrateRule) GenTableColumnRule() (string, string, string, error) {
+func (r *DataMigrateRule) GenDataMigrateTableColumnRule() (string, string, string, error) {
 	columnRules := make(map[string]string)
 
 	columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(r.Ctx, &rule.ColumnRouteRule{
@@ -227,23 +227,21 @@ func (r *DataMigrateRule) GenTableColumnRule() (string, string, string, error) {
 		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil
 }
 
-func (r *DataMigrateRule) GenTableTypeRule() string {
+func (r *DataMigrateRule) GenDataMigrateTableTypeRule() string {
 	return r.TableTypeS[r.TableNameS]
 }
 
-func (r *DataMigrateRule) GenTableCustomRule() (bool, string, string, error) {
-	var whereRange string
-
+func (r *DataMigrateRule) GenDataMigrateTableCustomRule() (bool, string, string, error) {
 	isRecord, err := model.GetIDataMigrateRuleRW().IsContainedDataMigrateRuleRecord(r.Ctx, &rule.DataMigrateRule{
 		TaskName:    r.TaskName,
 		SchemaNameS: r.SchemaNameS,
 		TableNameS:  r.TableNameS,
 	})
 	if err != nil {
-		return false, whereRange, "", err
+		return false, "", "", err
 	}
 	if !isRecord {
-		return false, whereRange, r.GlobalSqlHintS, nil
+		return false, "", r.GlobalSqlHintS, nil
 	}
 
 	migrateTableRule, err := model.GetIDataMigrateRuleRW().GetDataMigrateRule(r.Ctx, &rule.DataMigrateRule{
@@ -252,18 +250,15 @@ func (r *DataMigrateRule) GenTableCustomRule() (bool, string, string, error) {
 		TableNameS:  r.TableNameS,
 	})
 	if err != nil {
-		return false, whereRange, r.GlobalSqlHintS, err
+		return false, "", r.GlobalSqlHintS, err
 	}
 	enableChunkStrategy, err := strconv.ParseBool(migrateTableRule.EnableChunkStrategy)
 	if err != nil {
-		return false, whereRange, r.GlobalSqlHintS, err
-	}
-	if enableChunkStrategy && !strings.EqualFold(migrateTableRule.WhereRange, "") {
-		whereRange = migrateTableRule.WhereRange
+		return false, "", r.GlobalSqlHintS, err
 	}
 
 	if strings.EqualFold(migrateTableRule.SqlHintS, "") {
-		return enableChunkStrategy, whereRange, r.GlobalSqlHintS, nil
+		return enableChunkStrategy, migrateTableRule.WhereRange, r.GlobalSqlHintS, nil
 	}
-	return enableChunkStrategy, whereRange, migrateTableRule.SqlHintS, nil
+	return enableChunkStrategy, migrateTableRule.WhereRange, migrateTableRule.SqlHintS, nil
 }
