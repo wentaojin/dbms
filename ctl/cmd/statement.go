@@ -23,19 +23,19 @@ import (
 	"github.com/wentaojin/dbms/ctl/migrate"
 )
 
-type AppData struct {
+type AppStatement struct {
 	*App
 }
 
-func (a *App) AppData() Cmder {
-	return &AppData{App: a}
+func (a *App) AppStatement() Cmder {
+	return &AppStatement{App: a}
 }
 
-func (a *AppData) Cmd() *cobra.Command {
+func (a *AppStatement) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "data",
-		Short:            "Operator cluster data migrate",
-		Long:             `Operator cluster data migrate`,
+		Use:              "stmt",
+		Short:            "Operator cluster statement migrate",
+		Long:             `Operator cluster statement migrate`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -43,27 +43,27 @@ func (a *AppData) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppData) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppStatement) RunE(cmd *cobra.Command, args []string) error {
 	if err := cmd.Help(); err != nil {
 		return err
 	}
 	return nil
 }
 
-type AppDataUpsert struct {
-	*AppData
+type AppStatementUpsert struct {
+	*AppStatement
 	config string
 }
 
-func (a *AppData) AppDataUpsert() Cmder {
-	return &AppDataUpsert{AppData: a}
+func (a *AppStatement) AppStatementUpsert() Cmder {
+	return &AppStatementUpsert{AppStatement: a}
 }
 
-func (a *AppDataUpsert) Cmd() *cobra.Command {
+func (a *AppStatementUpsert) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "upsert",
-		Short:            "upsert cluster data migrate task",
-		Long:             `upsert cluster data migrate task`,
+		Short:            "upsert cluster statement migrate task",
+		Long:             `upsert cluster statement migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -72,7 +72,7 @@ func (a *AppDataUpsert) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppDataUpsert) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppStatementUpsert) RunE(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(a.config, "") {
 		return fmt.Errorf("flag parameter [config] is requirement, can not null")
 	}
@@ -90,20 +90,20 @@ func (a *AppDataUpsert) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-type AppDataDelete struct {
-	*AppData
+type AppStatementDelete struct {
+	*AppStatement
 	task string
 }
 
-func (a *AppData) AppDataDelete() Cmder {
-	return &AppDataDelete{AppData: a}
+func (a *AppStatement) AppStatementDelete() Cmder {
+	return &AppStatementDelete{AppStatement: a}
 }
 
-func (a *AppDataDelete) Cmd() *cobra.Command {
+func (a *AppStatementDelete) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "delete",
-		Short:            "delete cluster data migrate task",
-		Long:             `delete cluster data migrate task`,
+		Short:            "delete cluster statement migrate task",
+		Long:             `delete cluster statement migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -112,7 +112,7 @@ func (a *AppDataDelete) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppDataDelete) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppStatementDelete) RunE(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(a.task, "") {
 		return fmt.Errorf("flag parameter [task] is requirement, can not null")
 	}
@@ -127,24 +127,24 @@ func (a *AppDataDelete) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete Data Migrate Task [%v]！！！\n", a.task)
+	fmt.Printf("Success Delete statement migrate Task [%v]！！！\n", a.task)
 	return nil
 }
 
-type AppDataGet struct {
-	*AppData
+type AppStatementGet struct {
+	*AppStatement
 	task string
 }
 
-func (a *AppData) AppDataGet() Cmder {
-	return &AppDataGet{AppData: a}
+func (a *AppStatement) AppStatementGet() Cmder {
+	return &AppStatementGet{AppStatement: a}
 }
 
-func (a *AppDataGet) Cmd() *cobra.Command {
+func (a *AppStatementGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster data migrate task",
-		Long:             `get cluster data migrate task`,
+		Short:            "get cluster statement migrate task",
+		Long:             `get cluster statement migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -152,7 +152,7 @@ func (a *AppDataGet) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppDataGet) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppStatementGet) RunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		if err := cmd.Help(); err != nil {
 			return err

@@ -36,7 +36,7 @@ import (
 	"github.com/wentaojin/dbms/utils/constant"
 )
 
-type DataMigrateRow struct {
+type StmtMigrateRow struct {
 	Ctx           context.Context
 	TaskMode      string
 	TaskFlow      string
@@ -54,7 +54,7 @@ type DataMigrateRow struct {
 	WriteChan     chan []interface{}
 }
 
-func (r *DataMigrateRow) MigrateRead() error {
+func (r *StmtMigrateRow) MigrateRead() error {
 	defer close(r.ReadChan)
 	startTime := time.Now()
 
@@ -115,7 +115,7 @@ func (r *DataMigrateRow) MigrateRead() error {
 	return nil
 }
 
-func (r *DataMigrateRow) MigrateProcess() error {
+func (r *StmtMigrateRow) MigrateProcess() error {
 	defer close(r.WriteChan)
 	for batchRows := range r.ReadChan {
 		r.WriteChan <- batchRows
@@ -123,7 +123,7 @@ func (r *DataMigrateRow) MigrateProcess() error {
 	return nil
 }
 
-func (r *DataMigrateRow) MigrateApply() error {
+func (r *StmtMigrateRow) MigrateApply() error {
 	startTime := time.Now()
 
 	logger.Info("data migrate task chunk rows applier starting",

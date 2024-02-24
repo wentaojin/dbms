@@ -79,7 +79,7 @@ func UpsertDataMigrateTask(ctx context.Context, req *pb.UpsertDataMigrateTaskReq
 			return err
 		}
 
-		fieldInfos := stringutil.GetJSONTagFieldValue(req.DataMigrateParam)
+		fieldInfos := stringutil.GetJSONTagFieldValue(req.StatementMigrateParam)
 		for jsonTag, fieldValue := range fieldInfos {
 			_, err = model.GetIParamsRW().CreateTaskCustomParam(txnCtx, &params.TaskCustomParam{
 				TaskName:   req.TaskName,
@@ -154,7 +154,7 @@ func DeleteDataMigrateTask(ctx context.Context, req *pb.DeleteDataMigrateTaskReq
 func ShowDataMigrateTask(ctx context.Context, req *pb.ShowDataMigrateTaskRequest) (string, error) {
 	var (
 		resp  *pb.UpsertDataMigrateTaskRequest
-		param *pb.DataMigrateParam
+		param *pb.StatementMigrateParam
 	)
 
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
@@ -213,7 +213,7 @@ func ShowDataMigrateTask(ctx context.Context, req *pb.ShowDataMigrateTaskRequest
 			return err
 		}
 
-		param = &pb.DataMigrateParam{
+		param = &pb.StatementMigrateParam{
 			TableThread:          tableThread,
 			BatchSize:            batchSize,
 			ChunkSize:            chunkSize,
@@ -239,9 +239,9 @@ func ShowDataMigrateTask(ctx context.Context, req *pb.ShowDataMigrateTaskRequest
 				CaseFieldRuleS: taskInfo.CaseFieldRuleS,
 				CaseFieldRuleT: taskInfo.CaseFieldRuleT,
 			},
-			Comment:          taskInfo.Comment,
-			SchemaRouteRule:  schemaRouteRule,
-			DataMigrateParam: param,
+			Comment:               taskInfo.Comment,
+			SchemaRouteRule:       schemaRouteRule,
+			StatementMigrateParam: param,
 		}
 
 		return nil
@@ -476,8 +476,8 @@ func StopDataMigrateTask(ctx context.Context, taskName string) error {
 	return nil
 }
 
-func getDataMigrateTasKParams(ctx context.Context, taskName string) (*pb.DataMigrateParam, error) {
-	taskParam := &pb.DataMigrateParam{}
+func getDataMigrateTasKParams(ctx context.Context, taskName string) (*pb.StatementMigrateParam, error) {
+	taskParam := &pb.StatementMigrateParam{}
 
 	migrateParams, err := model.GetIParamsRW().QueryTaskCustomParam(ctx, &params.TaskCustomParam{
 		TaskName: taskName,

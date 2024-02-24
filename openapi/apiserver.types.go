@@ -32,20 +32,6 @@ type ColumnStructRule struct {
 	TableNameS    *string `json:"tableNameS,omitempty"`
 }
 
-// DataMigrateParam defines model for DataMigrateParam.
-type DataMigrateParam struct {
-	BatchSize            *uint64 `json:"batchSize,omitempty"`
-	CallTimeout          *uint64 `json:"callTimeout,omitempty"`
-	ChunkSize            *uint64 `json:"chunkSize,omitempty"`
-	EnableCheckpoint     *bool   `json:"enableCheckpoint,omitempty"`
-	EnableConsistentRead *bool   `json:"enableConsistentRead,omitempty"`
-	SqlHintS             *string `json:"sqlHintS,omitempty"`
-	SqlHintT             *string `json:"sqlHintT,omitempty"`
-	SqlThreadS           *uint64 `json:"sqlThreadS,omitempty"`
-	SqlThreadT           *uint64 `json:"sqlThreadT,omitempty"`
-	TableThread          *uint64 `json:"tableThread,omitempty"`
-}
-
 // DataMigrateRule defines model for DataMigrateRule.
 type DataMigrateRule struct {
 	EnableChunkStrategy *bool   `json:"enableChunkStrategy,omitempty"`
@@ -56,13 +42,13 @@ type DataMigrateRule struct {
 
 // DataMigrateTask defines model for DataMigrateTask.
 type DataMigrateTask struct {
-	CaseFieldRule    *CaseFieldRule    `json:"caseFieldRule,omitempty"`
-	Comment          *string           `json:"comment,omitempty"`
-	DataMigrateParam *DataMigrateParam `json:"dataMigrateParam,omitempty"`
-	DatasourceNameS  *string           `json:"datasourceNameS,omitempty"`
-	DatasourceNameT  *string           `json:"datasourceNameT,omitempty"`
-	SchemaRouteRule  *SchemaRouteRule  `json:"schemaRouteRule,omitempty"`
-	TaskName         *string           `json:"taskName,omitempty"`
+	CaseFieldRule         *CaseFieldRule         `json:"caseFieldRule,omitempty"`
+	Comment               *string                `json:"comment,omitempty"`
+	DatasourceNameS       *string                `json:"datasourceNameS,omitempty"`
+	DatasourceNameT       *string                `json:"datasourceNameT,omitempty"`
+	SchemaRouteRule       *SchemaRouteRule       `json:"schemaRouteRule,omitempty"`
+	StatementMigrateParam *StatementMigrateParam `json:"statementMigrateParam,omitempty"`
+	TaskName              *string                `json:"taskName,omitempty"`
 }
 
 // Database defines model for Database.
@@ -163,6 +149,20 @@ type SqlMigrateTask struct {
 	SqlMigrateParam *SqlMigrateParam  `json:"sqlMigrateParam,omitempty"`
 	SqlMigrateRules *[]SqlMigrateRule `json:"sqlMigrateRules,omitempty"`
 	TaskName        *string           `json:"taskName,omitempty"`
+}
+
+// StatementMigrateParam defines model for StatementMigrateParam.
+type StatementMigrateParam struct {
+	BatchSize            *uint64 `json:"batchSize,omitempty"`
+	CallTimeout          *uint64 `json:"callTimeout,omitempty"`
+	ChunkSize            *uint64 `json:"chunkSize,omitempty"`
+	EnableCheckpoint     *bool   `json:"enableCheckpoint,omitempty"`
+	EnableConsistentRead *bool   `json:"enableConsistentRead,omitempty"`
+	SqlHintS             *string `json:"sqlHintS,omitempty"`
+	SqlHintT             *string `json:"sqlHintT,omitempty"`
+	SqlThreadS           *uint64 `json:"sqlThreadS,omitempty"`
+	SqlThreadT           *uint64 `json:"sqlThreadT,omitempty"`
+	TableThread          *uint64 `json:"tableThread,omitempty"`
 }
 
 // StructMigrateParam defines model for StructMigrateParam.
@@ -278,36 +278,37 @@ type APIPutStructMigrateJSONRequestBody = StructMigrateTask
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"fwMAAP//DYQrNZZBAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

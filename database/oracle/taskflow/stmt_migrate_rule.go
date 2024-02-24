@@ -29,7 +29,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-type DataMigrateRule struct {
+type StmtMigrateRule struct {
 	Ctx            context.Context    `json:"-"`
 	TaskName       string             `json:"taskName"`
 	TaskMode       string             `json:"taskMode"`
@@ -45,7 +45,7 @@ type DataMigrateRule struct {
 	CaseFieldRuleT string             `json:"caseFieldRuleT"`
 }
 
-func (r *DataMigrateRule) GenDataMigrateSchemaNameRule() (string, string, error) {
+func (r *StmtMigrateRule) GenDataMigrateSchemaNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(r.Ctx, &rule.SchemaRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS})
 	if err != nil {
@@ -75,7 +75,7 @@ func (r *DataMigrateRule) GenDataMigrateSchemaNameRule() (string, string, error)
 	return schemaNameS, schemaNameTNew, nil
 }
 
-func (r *DataMigrateRule) GenDataMigrateTableNameRule() (string, string, error) {
+func (r *StmtMigrateRule) GenDataMigrateTableNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateTableRouteRW().GetTableRouteRule(r.Ctx, &rule.TableRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
 	if err != nil {
@@ -105,7 +105,7 @@ func (r *DataMigrateRule) GenDataMigrateTableNameRule() (string, string, error) 
 	return tableNameS, tableNameTNew, nil
 }
 
-func (r *DataMigrateRule) GenDataMigrateTableColumnRule() (string, string, string, error) {
+func (r *StmtMigrateRule) GenDataMigrateTableColumnRule() (string, string, string, error) {
 	columnRules := make(map[string]string)
 
 	columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(r.Ctx, &rule.ColumnRouteRule{
@@ -227,11 +227,11 @@ func (r *DataMigrateRule) GenDataMigrateTableColumnRule() (string, string, strin
 		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil
 }
 
-func (r *DataMigrateRule) GenDataMigrateTableTypeRule() string {
+func (r *StmtMigrateRule) GenDataMigrateTableTypeRule() string {
 	return r.TableTypeS[r.TableNameS]
 }
 
-func (r *DataMigrateRule) GenDataMigrateTableCustomRule() (bool, string, string, error) {
+func (r *StmtMigrateRule) GenDataMigrateTableCustomRule() (bool, string, string, error) {
 	isRecord, err := model.GetIDataMigrateRuleRW().IsContainedDataMigrateRuleRecord(r.Ctx, &rule.DataMigrateRule{
 		TaskName:    r.TaskName,
 		SchemaNameS: r.SchemaNameS,

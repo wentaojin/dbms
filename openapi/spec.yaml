@@ -511,8 +511,8 @@ components:
           $ref: '#/components/schemas/CaseFieldRule'
         schemaRouteRule:
           $ref: '#/components/schemas/SchemaRouteRule'
-        dataMigrateParam:
-          $ref: '#/components/schemas/DataMigrateParam'
+        statementMigrateParam:
+          $ref: '#/components/schemas/StatementMigrateParam'
     SqlMigrateTask:
       type: object
       properties:
@@ -536,7 +536,7 @@ components:
             $ref: '#/components/schemas/SqlMigrateRule'
         sqlMigrateParam:
           $ref: '#/components/schemas/SqlMigrateParam'
-    DataMigrateParam:
+    StatementMigrateParam:
       type: object
       properties:
         tableThread:

@@ -296,17 +296,17 @@ func (s *Server) upsertDataMigrateTask(ctx context.Context, req openapi.APIPutDa
 			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
 		},
 		SchemaRouteRule: migrateSchemaRs,
-		DataMigrateParam: &pb.DataMigrateParam{
-			TableThread:          *req.DataMigrateParam.TableThread,
-			BatchSize:            *req.DataMigrateParam.BatchSize,
-			ChunkSize:            *req.DataMigrateParam.ChunkSize,
-			SqlThreadS:           *req.DataMigrateParam.SqlThreadS,
-			SqlHintS:             *req.DataMigrateParam.SqlHintS,
-			SqlThreadT:           *req.DataMigrateParam.SqlThreadT,
-			SqlHintT:             *req.DataMigrateParam.SqlHintT,
-			CallTimeout:          *req.DataMigrateParam.CallTimeout,
-			EnableCheckpoint:     *req.DataMigrateParam.EnableCheckpoint,
-			EnableConsistentRead: *req.DataMigrateParam.EnableConsistentRead,
+		StatementMigrateParam: &pb.StatementMigrateParam{
+			TableThread:          *req.StatementMigrateParam.TableThread,
+			BatchSize:            *req.StatementMigrateParam.BatchSize,
+			ChunkSize:            *req.StatementMigrateParam.ChunkSize,
+			SqlThreadS:           *req.StatementMigrateParam.SqlThreadS,
+			SqlHintS:             *req.StatementMigrateParam.SqlHintS,
+			SqlThreadT:           *req.StatementMigrateParam.SqlThreadT,
+			SqlHintT:             *req.StatementMigrateParam.SqlHintT,
+			CallTimeout:          *req.StatementMigrateParam.CallTimeout,
+			EnableCheckpoint:     *req.StatementMigrateParam.EnableCheckpoint,
+			EnableConsistentRead: *req.StatementMigrateParam.EnableConsistentRead,
 		},
 	})
 	if err != nil {

@@ -46,7 +46,7 @@ type DataMigrateTask struct {
 	Task        *task.Task
 	DatasourceS *datasource.Datasource
 	DatasourceT *datasource.Datasource
-	TaskParams  *pb.DataMigrateParam
+	TaskParams  *pb.StatementMigrateParam
 }
 
 func (dmt *DataMigrateTask) Start() error {
@@ -227,7 +227,7 @@ func (dmt *DataMigrateTask) Start() error {
 					readChan := make(chan []interface{}, constant.DefaultMigrateTaskQueueSize)
 					writeChan := make(chan []interface{}, constant.DefaultMigrateTaskQueueSize)
 
-					err = database.IDataMigrateProcess(&DataMigrateRow{
+					err = database.IDataMigrateProcess(&StmtMigrateRow{
 						Ctx:           dmt.Ctx,
 						TaskMode:      dmt.Task.TaskMode,
 						TaskFlow:      dmt.Task.TaskFlow,
@@ -584,7 +584,7 @@ func (dmt *DataMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 					return err
 				}
 
-				dataRule := &DataMigrateRule{
+				dataRule := &StmtMigrateRule{
 					Ctx:            gCtx,
 					TaskMode:       dmt.Task.TaskMode,
 					TaskName:       dmt.Task.TaskName,

@@ -186,7 +186,7 @@ message UpsertDataMigrateTaskRequest{
 
   CaseFieldRule caseFieldRule = 5;
   SchemaRouteRule schemaRouteRule = 6;
-  DataMigrateParam dataMigrateParam = 8;
+  StatementMigrateParam statementMigrateParam = 8;
 }
 message UpsertDataMigrateTaskResponse{
   Response response = 1;
@@ -359,7 +359,7 @@ message DataMigrateRule {
   string sqlHintS = 4;
 }
 
-message DataMigrateParam {
+message StatementMigrateParam {
   uint64 tableThread = 1;
   uint64 BatchSize = 2;
   uint64 ChunkSize = 3;

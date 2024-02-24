@@ -23,18 +23,18 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-type DataConfig struct {
+type StatementConfig struct {
 	TaskName        string `toml:"task-name" json:"taskName"`
 	DatasourceNameS string `toml:"datasource-name-s" json:"datasourceNameS"`
 	DatasourceNameT string `toml:"datasource-name-t" json:"datasourceNameT"`
 	Comment         string `toml:"comment" json:"comment"`
 
-	CaseFieldRule    CaseFieldRule    `toml:"case-field-rule" json:"caseFieldRule"`
-	SchemaRouteRule  SchemaRouteRule  `toml:"schema-route-rule" json:"schemaRouteRule"`
-	DataMigrateParam DataMigrateParam `toml:"data-migrate-param" json:"dataMigrateParam"`
+	CaseFieldRule         CaseFieldRule         `toml:"case-field-rule" json:"caseFieldRule"`
+	SchemaRouteRule       SchemaRouteRule       `toml:"schema-route-rule" json:"schemaRouteRule"`
+	StatementMigrateParam StatementMigrateParam `toml:"statement-migrate-param" json:"statementMigrateParam"`
 }
 
-type DataMigrateParam struct {
+type StatementMigrateParam struct {
 	TableThread          uint64 `toml:"table-thread" json:"tableThread"`
 	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
 	ChunkSize            uint64 `toml:"chunk-size" json:"chunkSize"`
@@ -67,7 +67,7 @@ type SqlMigrateParam struct {
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
 }
 
-func (d *DataConfig) String() string {
+func (d *StatementConfig) String() string {
 	jsonStr, _ := stringutil.MarshalJSON(d)
 	return jsonStr
 }
@@ -78,7 +78,7 @@ func (s *SqlConfig) String() string {
 }
 
 func UpsertDataMigrate(serverAddr string, file string) error {
-	var cfg = &DataConfig{}
+	var cfg = &StatementConfig{}
 	if _, err := toml.DecodeFile(file, cfg); err != nil {
 		return fmt.Errorf("failed decode toml config file %s: %v", file, err)
 	}
