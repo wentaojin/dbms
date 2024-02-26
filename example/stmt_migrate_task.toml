@@ -32,7 +32,7 @@ table-name-s = "MARVIN01"
 table-name-t = "STEVEN01"
 column-route-rules = {"NAME" = "t_name00"}
 
-[[schema-route-rule.data-migrate-rules]]
+[[data-migrate-rules]]
 table-name-s = "MARVIN00"
 # 基于数据切分策略，获取指定数据迁移表的查询范围
 enable-chunk-strategy = false

@@ -26,8 +26,7 @@ type SchemaRouteRule struct {
 	IncludeTableS []string `toml:"include-table-s" json:"includeTableS"`
 	ExcludeTableS []string `toml:"exclude-table-s" json:"excludeTableS"`
 
-	TableRouteRules  []TableRouteRule  `toml:"table-route-rules" json:"tableRouteRules"`
-	DataMigrateRules []DataMigrateRule `toml:"data-migrate-rules" json:"dataMigrateRules"`
+	TableRouteRules []TableRouteRule `toml:"table-route-rules" json:"tableRouteRules"`
 }
 
 type TableRouteRule struct {

@@ -204,7 +204,8 @@ message UpsertStmtMigrateTaskRequest{
 
   CaseFieldRule caseFieldRule = 5;
   SchemaRouteRule schemaRouteRule = 6;
-  StatementMigrateParam statementMigrateParam = 7;
+  repeated DataMigrateRule DataMigrateRules = 7;
+  StatementMigrateParam statementMigrateParam = 8;
 }
 message UpsertStmtMigrateTaskResponse{
   Response response = 1;
@@ -264,7 +265,8 @@ message UpsertCsvMigrateTaskRequest{
 
   CaseFieldRule caseFieldRule = 5;
   SchemaRouteRule schemaRouteRule = 6;
-  CsvMigrateParam CsvMigrateParam = 7;
+  repeated DataMigrateRule DataMigrateRules = 7;
+  CsvMigrateParam CsvMigrateParam = 8;
 }
 message UpsertCsvMigrateTaskResponse{
   Response response = 1;
@@ -330,7 +332,6 @@ message SchemaRouteRule{
   repeated string excludeTableS = 4;
 
   repeated TableRouteRule tableRouteRules = 5;
-  repeated DataMigrateRule DataMigrateRules = 6;
 }
 
 message CaseFieldRule {

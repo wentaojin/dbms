@@ -268,7 +268,7 @@ func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutSt
 			ColumnRouteRules: *t.ColumnRouteRules,
 		})
 	}
-	for _, t := range *req.SchemaRouteRule.DataMigrateRules {
+	for _, t := range *req.DataMigrateRules {
 		dataMigrateRules = append(dataMigrateRules, &pb.DataMigrateRule{
 			TableNameS:          *t.TableNameS,
 			EnableChunkStrategy: *t.EnableChunkStrategy,
@@ -277,12 +277,11 @@ func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutSt
 		})
 	}
 	migrateSchemaRs = &pb.SchemaRouteRule{
-		SchemaNameS:      *req.SchemaRouteRule.SchemaNameS,
-		SchemaNameT:      *req.SchemaRouteRule.SchemaNameT,
-		IncludeTableS:    *req.SchemaRouteRule.IncludeTableS,
-		ExcludeTableS:    *req.SchemaRouteRule.ExcludeTableS,
-		TableRouteRules:  tableRoutes,
-		DataMigrateRules: dataMigrateRules,
+		SchemaNameS:     *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:     *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS:   *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS:   *req.SchemaRouteRule.ExcludeTableS,
+		TableRouteRules: tableRoutes,
 	}
 
 	resp, err := s.UpsertStmtMigrateTask(ctx, &pb.UpsertStmtMigrateTaskRequest{
@@ -294,7 +293,8 @@ func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutSt
 			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
 			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
 		},
-		SchemaRouteRule: migrateSchemaRs,
+		SchemaRouteRule:  migrateSchemaRs,
+		DataMigrateRules: dataMigrateRules,
 		StatementMigrateParam: &pb.StatementMigrateParam{
 			TableThread:          *req.StatementMigrateParam.TableThread,
 			BatchSize:            *req.StatementMigrateParam.BatchSize,
@@ -357,7 +357,7 @@ func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsv
 			ColumnRouteRules: *t.ColumnRouteRules,
 		})
 	}
-	for _, t := range *req.SchemaRouteRule.DataMigrateRules {
+	for _, t := range *req.DataMigrateRules {
 		dataMigrateRules = append(dataMigrateRules, &pb.DataMigrateRule{
 			TableNameS:          *t.TableNameS,
 			EnableChunkStrategy: *t.EnableChunkStrategy,
@@ -366,12 +366,11 @@ func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsv
 		})
 	}
 	migrateSchemaRs = &pb.SchemaRouteRule{
-		SchemaNameS:      *req.SchemaRouteRule.SchemaNameS,
-		SchemaNameT:      *req.SchemaRouteRule.SchemaNameT,
-		IncludeTableS:    *req.SchemaRouteRule.IncludeTableS,
-		ExcludeTableS:    *req.SchemaRouteRule.ExcludeTableS,
-		TableRouteRules:  tableRoutes,
-		DataMigrateRules: dataMigrateRules,
+		SchemaNameS:     *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:     *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS:   *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS:   *req.SchemaRouteRule.ExcludeTableS,
+		TableRouteRules: tableRoutes,
 	}
 
 	resp, err := s.UpsertCsvMigrateTask(ctx, &pb.UpsertCsvMigrateTaskRequest{
@@ -383,7 +382,8 @@ func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsv
 			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
 			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
 		},
-		SchemaRouteRule: migrateSchemaRs,
+		SchemaRouteRule:  migrateSchemaRs,
+		DataMigrateRules: dataMigrateRules,
 		CsvMigrateParam: &pb.CsvMigrateParam{
 			TableThread:          *req.CsvMigrateParam.TableThread,
 			BatchSize:            *req.CsvMigrateParam.BatchSize,

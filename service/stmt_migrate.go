@@ -74,7 +74,7 @@ func UpsertStmtMigrateTask(ctx context.Context, req *pb.UpsertStmtMigrateTaskReq
 			return err
 		}
 
-		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule)
+		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule, req.DataMigrateRules)
 		if err != nil {
 			return err
 		}
@@ -230,7 +230,7 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 			EnableConsistentRead: enableConsistentRead,
 		}
 
-		schemaRouteRule, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
+		schemaRouteRule, dataMigrateRules, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
 		if err != nil {
 			return err
 		}
@@ -245,6 +245,7 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 			},
 			Comment:               taskInfo.Comment,
 			SchemaRouteRule:       schemaRouteRule,
+			DataMigrateRules:      dataMigrateRules,
 			StatementMigrateParam: param,
 		}
 

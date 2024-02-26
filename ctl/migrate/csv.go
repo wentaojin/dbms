@@ -29,9 +29,10 @@ type CsvConfig struct {
 	DatasourceNameT string `toml:"datasource-name-t" json:"datasourceNameT"`
 	Comment         string `toml:"comment" json:"comment"`
 
-	CaseFieldRule   CaseFieldRule   `toml:"case-field-rule" json:"caseFieldRule"`
-	SchemaRouteRule SchemaRouteRule `toml:"schema-route-rule" json:"schemaRouteRule"`
-	CsvMigrateParam CsvMigrateParam `toml:"csv-migrate-param" json:"csvMigrateParam"`
+	CaseFieldRule    CaseFieldRule     `toml:"case-field-rule" json:"caseFieldRule"`
+	SchemaRouteRule  SchemaRouteRule   `toml:"schema-route-rule" json:"schemaRouteRule"`
+	DataMigrateRules []DataMigrateRule `toml:"data-migrate-rules" json:"dataMigrateRules"`
+	CsvMigrateParam  CsvMigrateParam   `toml:"csv-migrate-param" json:"csvMigrateParam"`
 }
 
 type CsvMigrateParam struct {

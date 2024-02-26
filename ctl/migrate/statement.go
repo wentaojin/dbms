@@ -31,6 +31,7 @@ type StatementConfig struct {
 
 	CaseFieldRule         CaseFieldRule         `toml:"case-field-rule" json:"caseFieldRule"`
 	SchemaRouteRule       SchemaRouteRule       `toml:"schema-route-rule" json:"schemaRouteRule"`
+	DataMigrateRules      []DataMigrateRule     `toml:"data-migrate-rules" json:"dataMigrateRules"`
 	StatementMigrateParam StatementMigrateParam `toml:"statement-migrate-param" json:"statementMigrateParam"`
 }
 

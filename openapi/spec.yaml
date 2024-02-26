@@ -584,6 +584,10 @@ components:
           $ref: '#/components/schemas/CaseFieldRule'
         schemaRouteRule:
           $ref: '#/components/schemas/SchemaRouteRule'
+        DataMigrateRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataMigrateRule'
         statementMigrateParam:
           $ref: '#/components/schemas/StatementMigrateParam'
     CsvMigrateTask:
@@ -605,6 +609,10 @@ components:
           $ref: '#/components/schemas/CaseFieldRule'
         schemaRouteRule:
           $ref: '#/components/schemas/SchemaRouteRule'
+        DataMigrateRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataMigrateRule'
         csvMigrateParam:
           $ref: '#/components/schemas/CsvMigrateParam'
     SqlMigrateTask:
@@ -734,10 +742,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TableRouteRule'
-        DataMigrateRules:
-          type: array
-          items:
-            $ref: '#/components/schemas/DataMigrateRule'
     TableRouteRule:
       type: object
       properties:
