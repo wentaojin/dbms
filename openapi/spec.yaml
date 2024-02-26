@@ -815,13 +815,10 @@ components:
         migrateThread:
           type: integer
           format: uint64
-        directWrite:
-          type: boolean
         createIfNotExist:
           type: boolean
-        outputDir:
-          type: string
-          format: string
+        enableDirectCreate:
+          type: boolean
     CaseFieldRule:
       type: object
       properties:

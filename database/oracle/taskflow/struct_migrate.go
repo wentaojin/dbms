@@ -128,7 +128,7 @@ func (st *StructMigrateTask) Start() error {
 	}
 
 	// direct write database -> schema
-	if st.TaskParams.DirectWrite {
+	if st.TaskParams.EnableDirectCreate {
 		_, err = st.DatabaseT.ExecContext(st.Ctx, createSchema)
 		if err != nil {
 			return err
@@ -445,7 +445,7 @@ func (st *StructMigrateTask) structMigrateStart(
 	var w database.IStructMigrateDatabaseWriter
 	w = NewStructMigrateDatabase(st.Ctx, smt.TaskName, st.Task.TaskFlow, databaseT, startTime, tableStruct)
 
-	if st.TaskParams.DirectWrite {
+	if st.TaskParams.EnableDirectCreate {
 		err = w.SyncStructDatabase()
 		if err != nil {
 			return err

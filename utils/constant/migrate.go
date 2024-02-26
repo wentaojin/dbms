@@ -361,10 +361,9 @@ const (
 // migrate parameters
 // struct migrate parameters
 const (
-	ParamNameStructMigrateMigrateThread    = "migrateThread"
-	ParamNameStructMigrateDirectWrite      = "directWrite"
-	ParamNameStructMigrateCreateIfNotExist = "createIfNotExist"
-	ParamNameStructMigrateOutputDir        = "outputDir"
+	ParamNameStructMigrateMigrateThread      = "migrateThread"
+	ParamNameStructMigrateCreateIfNotExist   = "createIfNotExist"
+	ParamNameStructMigrateEnableDirectCreate = "enableDirectCreate"
 
 	// ParamValueStructMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

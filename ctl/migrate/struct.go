@@ -36,10 +36,9 @@ type StructConfig struct {
 }
 
 type StructMigrateParam struct {
-	MigrateThread    int64  `toml:"migrate-thread" json:"migrateThread"`
-	DirectWrite      bool   `toml:"direct-write" json:"directWrite"`
-	CreateIfNotExist bool   `toml:"create-if-not-exist" json:"createIfNotExist"`
-	OutputDir        string `toml:"output-dir" json:"outputDir"`
+	MigrateThread      int64 `toml:"migrate-thread" json:"migrateThread"`
+	CreateIfNotExist   bool  `toml:"create-if-not-exist" json:"createIfNotExist"`
+	EnableDirectCreate bool  `toml:"enable-direct-create" json:"enableDirectCreate"`
 }
 
 type StructMigrateRule struct {

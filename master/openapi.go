@@ -207,10 +207,9 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 		},
 		SchemaRouteRule: migrateSchemaRs,
 		StructMigrateParam: &pb.StructMigrateParam{
-			MigrateThread:    *req.StructMigrateParam.MigrateThread,
-			DirectWrite:      *req.StructMigrateParam.DirectWrite,
-			CreateIfNotExist: *req.StructMigrateParam.CreateIfNotExist,
-			OutputDir:        *req.StructMigrateParam.OutputDir,
+			MigrateThread:      *req.StructMigrateParam.MigrateThread,
+			CreateIfNotExist:   *req.StructMigrateParam.CreateIfNotExist,
+			EnableDirectCreate: *req.StructMigrateParam.EnableDirectCreate,
 		},
 		StructMigrateRule: &pb.StructMigrateRule{
 			TaskStructRules:   taskLevelRules,

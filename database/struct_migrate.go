@@ -50,7 +50,6 @@ type IStructMigrateAttributesReader interface {
 	GetTableComment() ([]map[string]string, error)
 	GetTableColumns() ([]map[string]string, error)
 	GetTableColumnComment() ([]map[string]string, error)
-
 	GetTableOriginStruct() (string, error)
 }
 

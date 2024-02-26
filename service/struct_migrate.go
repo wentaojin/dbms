@@ -429,21 +429,19 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 			return err
 		}
 
-		directWrite, err := strconv.ParseBool(paramMap[constant.ParamNameStructMigrateDirectWrite])
+		createIfNotExist, err := strconv.ParseBool(paramMap[constant.ParamNameStructMigrateCreateIfNotExist])
 		if err != nil {
 			return err
 		}
-
-		createIfNotExist, err := strconv.ParseBool(paramMap[constant.ParamNameStructMigrateCreateIfNotExist])
+		enableDirectCreate, err := strconv.ParseBool(paramMap[constant.ParamNameStructMigrateEnableDirectCreate])
 		if err != nil {
 			return err
 		}
 
 		param = &pb.StructMigrateParam{
-			MigrateThread:    uint64(migrateThread),
-			DirectWrite:      directWrite,
-			CreateIfNotExist: createIfNotExist,
-			OutputDir:        paramMap[constant.ParamNameStructMigrateOutputDir],
+			MigrateThread:      uint64(migrateThread),
+			CreateIfNotExist:   createIfNotExist,
+			EnableDirectCreate: enableDirectCreate,
 		}
 
 		taskRules, err := model.GetIStructMigrateTaskRuleRW().QueryTaskStructRule(txnCtx, &migrate.TaskStructRule{TaskName: req.TaskName})
@@ -951,9 +949,6 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 		return taskParam, err
 	}
 	for _, p := range migrateParams {
-		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateOutputDir) {
-			taskParam.OutputDir = p.ParamValue
-		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateMigrateThread) {
 			migrateThread, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
@@ -968,12 +963,12 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 			}
 			taskParam.CreateIfNotExist = createIfNotExist
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateDirectWrite) {
-			directBool, err := strconv.ParseBool(p.ParamValue)
+		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateEnableDirectCreate) {
+			enableDirectCreate, err := strconv.ParseBool(p.ParamValue)
 			if err != nil {
 				return taskParam, err
 			}
-			taskParam.DirectWrite = directBool
+			taskParam.EnableDirectCreate = enableDirectCreate
 		}
 	}
 	return taskParam, nil

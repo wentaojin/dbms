@@ -347,8 +347,7 @@ message TableRouteRule {
 message StructMigrateParam {
   uint64 migrateThread = 1;
   bool createIfNotExist = 2;
-  bool directWrite = 3;
-  string outputDir = 4;
+  bool enableDirectCreate = 3;
 }
 
 message StructMigrateRule {

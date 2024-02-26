@@ -5,9 +5,8 @@ comment = "测试数据源"
 
 [struct-migrate-param]
 migrate-thread = 10
-direct-write = true
 create-if-not-exist = true
-output-dir = ""
+enable-direct-create = true
 
 [case-field-rule]
 # 控制 strict-migrate-task 配置文件内所有 *-s 参数配置值（default-value-s 除外）以及 column-route-rules 中的 key 值
