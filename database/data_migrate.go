@@ -34,7 +34,8 @@ type IDatabaseDataMigrate interface {
 	StartDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) error
 	GetDatabaseTableChunkData(taskName string) ([]map[string]string, error)
 	CloseDatabaseTableChunkTask(taskName string) error
-	QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error
+	QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error
+	QueryDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error
 }
 
 // IDataMigrateRuleInitializer used for database table rule initializer

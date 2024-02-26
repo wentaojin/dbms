@@ -153,43 +153,85 @@ func (s *Server) ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMi
 	}}, nil
 }
 
-func (s *Server) UpsertDataMigrateTask(ctx context.Context, req *pb.UpsertDataMigrateTaskRequest) (*pb.UpsertDataMigrateTaskResponse, error) {
-	showMsg, err := service.UpsertDataMigrateTask(ctx, req)
+func (s *Server) UpsertStmtMigrateTask(ctx context.Context, req *pb.UpsertStmtMigrateTaskRequest) (*pb.UpsertStmtMigrateTaskResponse, error) {
+	showMsg, err := service.UpsertStmtMigrateTask(ctx, req)
 	if err != nil {
-		return &pb.UpsertDataMigrateTaskResponse{Response: &pb.Response{
+		return &pb.UpsertStmtMigrateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
-	return &pb.UpsertDataMigrateTaskResponse{Response: &pb.Response{
+	return &pb.UpsertStmtMigrateTaskResponse{Response: &pb.Response{
 		Result:  openapi.ResponseResultStatusSuccess,
 		Message: showMsg,
 	}}, nil
 }
 
-func (s *Server) DeleteDataMigrateTask(ctx context.Context, req *pb.DeleteDataMigrateTaskRequest) (*pb.DeleteDataMigrateTaskResponse, error) {
-	delMsg, err := service.DeleteDataMigrateTask(ctx, req)
+func (s *Server) DeleteStmtMigrateTask(ctx context.Context, req *pb.DeleteStmtMigrateTaskRequest) (*pb.DeleteStmtMigrateTaskResponse, error) {
+	delMsg, err := service.DeleteStmtMigrateTask(ctx, req)
 	if err != nil {
-		return &pb.DeleteDataMigrateTaskResponse{Response: &pb.Response{
+		return &pb.DeleteStmtMigrateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
-	return &pb.DeleteDataMigrateTaskResponse{Response: &pb.Response{
+	return &pb.DeleteStmtMigrateTaskResponse{Response: &pb.Response{
 		Result:  openapi.ResponseResultStatusSuccess,
 		Message: delMsg,
 	}}, nil
 }
 
-func (s *Server) ShowDataMigrateTask(ctx context.Context, req *pb.ShowDataMigrateTaskRequest) (*pb.ShowDataMigrateTaskResponse, error) {
-	delMsg, err := service.ShowDataMigrateTask(ctx, req)
+func (s *Server) ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest) (*pb.ShowStmtMigrateTaskResponse, error) {
+	delMsg, err := service.ShowStmtMigrateTask(ctx, req)
 	if err != nil {
-		return &pb.ShowDataMigrateTaskResponse{Response: &pb.Response{
+		return &pb.ShowStmtMigrateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
 			Message: err.Error(),
 		}}, err
 	}
-	return &pb.ShowDataMigrateTaskResponse{Response: &pb.Response{
+	return &pb.ShowStmtMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) UpsertCsvMigrateTask(ctx context.Context, req *pb.UpsertCsvMigrateTaskRequest) (*pb.UpsertCsvMigrateTaskResponse, error) {
+	showMsg, err := service.UpsertCsvMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.UpsertCsvMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.UpsertCsvMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: showMsg,
+	}}, nil
+}
+
+func (s *Server) DeleteCsvMigrateTask(ctx context.Context, req *pb.DeleteCsvMigrateTaskRequest) (*pb.DeleteCsvMigrateTaskResponse, error) {
+	delMsg, err := service.DeleteCsvMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.DeleteCsvMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.DeleteCsvMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) (*pb.ShowCsvMigrateTaskResponse, error) {
+	delMsg, err := service.ShowCsvMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.ShowCsvMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.ShowCsvMigrateTaskResponse{Response: &pb.Response{
 		Result:  openapi.ResponseResultStatusSuccess,
 		Message: delMsg,
 	}}, nil

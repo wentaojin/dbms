@@ -31,12 +31,15 @@ type MasterClient interface {
 	UpsertStructMigrateTask(ctx context.Context, in *UpsertStructMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertStructMigrateTaskResponse, error)
 	DeleteStructMigrateTask(ctx context.Context, in *DeleteStructMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteStructMigrateTaskResponse, error)
 	ShowStructMigrateTask(ctx context.Context, in *ShowStructMigrateTaskRequest, opts ...grpc.CallOption) (*ShowStructMigrateTaskResponse, error)
-	UpsertDataMigrateTask(ctx context.Context, in *UpsertDataMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertDataMigrateTaskResponse, error)
-	DeleteDataMigrateTask(ctx context.Context, in *DeleteDataMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteDataMigrateTaskResponse, error)
-	ShowDataMigrateTask(ctx context.Context, in *ShowDataMigrateTaskRequest, opts ...grpc.CallOption) (*ShowDataMigrateTaskResponse, error)
+	UpsertDataMigrateTask(ctx context.Context, in *UpsertStmtMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertStmtMigrateTaskResponse, error)
+	DeleteDataMigrateTask(ctx context.Context, in *DeleteStmtMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteStmtMigrateTaskResponse, error)
+	ShowDataMigrateTask(ctx context.Context, in *ShowStmtMigrateTaskRequest, opts ...grpc.CallOption) (*ShowStmtMigrateTaskResponse, error)
 	UpsertSqlMigrateTask(ctx context.Context, in *UpsertSqlMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertSqlMigrateTaskResponse, error)
 	DeleteSqlMigrateTask(ctx context.Context, in *DeleteSqlMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteSqlMigrateTaskResponse, error)
 	ShowSqlMigrateTask(ctx context.Context, in *ShowSqlMigrateTaskRequest, opts ...grpc.CallOption) (*ShowSqlMigrateTaskResponse, error)
+	UpsertCsvMigrateTask(ctx context.Context, in *UpsertCsvMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertCsvMigrateTaskResponse, error)
+	DeleteCsvMigrateTask(ctx context.Context, in *DeleteCsvMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteCsvMigrateTaskResponse, error)
+	ShowCsvMigrateTask(ctx context.Context, in *ShowCsvMigrateTaskRequest, opts ...grpc.CallOption) (*ShowCsvMigrateTaskResponse, error)
 	OperateTask(ctx context.Context, in *OperateTaskRequest, opts ...grpc.CallOption) (*OperateTaskResponse, error)
 }
 
@@ -129,8 +132,8 @@ func (c *masterClient) ShowStructMigrateTask(ctx context.Context, in *ShowStruct
 	return out, nil
 }
 
-func (c *masterClient) UpsertDataMigrateTask(ctx context.Context, in *UpsertDataMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertDataMigrateTaskResponse, error) {
-	out := new(UpsertDataMigrateTaskResponse)
+func (c *masterClient) UpsertDataMigrateTask(ctx context.Context, in *UpsertStmtMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertStmtMigrateTaskResponse, error) {
+	out := new(UpsertStmtMigrateTaskResponse)
 	err := c.cc.Invoke(ctx, "/proto.Master/UpsertDataMigrateTask", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -138,8 +141,8 @@ func (c *masterClient) UpsertDataMigrateTask(ctx context.Context, in *UpsertData
 	return out, nil
 }
 
-func (c *masterClient) DeleteDataMigrateTask(ctx context.Context, in *DeleteDataMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteDataMigrateTaskResponse, error) {
-	out := new(DeleteDataMigrateTaskResponse)
+func (c *masterClient) DeleteDataMigrateTask(ctx context.Context, in *DeleteStmtMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteStmtMigrateTaskResponse, error) {
+	out := new(DeleteStmtMigrateTaskResponse)
 	err := c.cc.Invoke(ctx, "/proto.Master/DeleteDataMigrateTask", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -147,8 +150,8 @@ func (c *masterClient) DeleteDataMigrateTask(ctx context.Context, in *DeleteData
 	return out, nil
 }
 
-func (c *masterClient) ShowDataMigrateTask(ctx context.Context, in *ShowDataMigrateTaskRequest, opts ...grpc.CallOption) (*ShowDataMigrateTaskResponse, error) {
-	out := new(ShowDataMigrateTaskResponse)
+func (c *masterClient) ShowDataMigrateTask(ctx context.Context, in *ShowStmtMigrateTaskRequest, opts ...grpc.CallOption) (*ShowStmtMigrateTaskResponse, error) {
+	out := new(ShowStmtMigrateTaskResponse)
 	err := c.cc.Invoke(ctx, "/proto.Master/ShowDataMigrateTask", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -183,6 +186,33 @@ func (c *masterClient) ShowSqlMigrateTask(ctx context.Context, in *ShowSqlMigrat
 	return out, nil
 }
 
+func (c *masterClient) UpsertCsvMigrateTask(ctx context.Context, in *UpsertCsvMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertCsvMigrateTaskResponse, error) {
+	out := new(UpsertCsvMigrateTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/UpsertCsvMigrateTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) DeleteCsvMigrateTask(ctx context.Context, in *DeleteCsvMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteCsvMigrateTaskResponse, error) {
+	out := new(DeleteCsvMigrateTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/DeleteCsvMigrateTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) ShowCsvMigrateTask(ctx context.Context, in *ShowCsvMigrateTaskRequest, opts ...grpc.CallOption) (*ShowCsvMigrateTaskResponse, error) {
+	out := new(ShowCsvMigrateTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/ShowCsvMigrateTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *masterClient) OperateTask(ctx context.Context, in *OperateTaskRequest, opts ...grpc.CallOption) (*OperateTaskResponse, error) {
 	out := new(OperateTaskResponse)
 	err := c.cc.Invoke(ctx, "/proto.Master/OperateTask", in, out, opts...)
@@ -205,12 +235,15 @@ type MasterServer interface {
 	UpsertStructMigrateTask(context.Context, *UpsertStructMigrateTaskRequest) (*UpsertStructMigrateTaskResponse, error)
 	DeleteStructMigrateTask(context.Context, *DeleteStructMigrateTaskRequest) (*DeleteStructMigrateTaskResponse, error)
 	ShowStructMigrateTask(context.Context, *ShowStructMigrateTaskRequest) (*ShowStructMigrateTaskResponse, error)
-	UpsertDataMigrateTask(context.Context, *UpsertDataMigrateTaskRequest) (*UpsertDataMigrateTaskResponse, error)
-	DeleteDataMigrateTask(context.Context, *DeleteDataMigrateTaskRequest) (*DeleteDataMigrateTaskResponse, error)
-	ShowDataMigrateTask(context.Context, *ShowDataMigrateTaskRequest) (*ShowDataMigrateTaskResponse, error)
+	UpsertDataMigrateTask(context.Context, *UpsertStmtMigrateTaskRequest) (*UpsertStmtMigrateTaskResponse, error)
+	DeleteDataMigrateTask(context.Context, *DeleteStmtMigrateTaskRequest) (*DeleteStmtMigrateTaskResponse, error)
+	ShowDataMigrateTask(context.Context, *ShowStmtMigrateTaskRequest) (*ShowStmtMigrateTaskResponse, error)
 	UpsertSqlMigrateTask(context.Context, *UpsertSqlMigrateTaskRequest) (*UpsertSqlMigrateTaskResponse, error)
 	DeleteSqlMigrateTask(context.Context, *DeleteSqlMigrateTaskRequest) (*DeleteSqlMigrateTaskResponse, error)
 	ShowSqlMigrateTask(context.Context, *ShowSqlMigrateTaskRequest) (*ShowSqlMigrateTaskResponse, error)
+	UpsertCsvMigrateTask(context.Context, *UpsertCsvMigrateTaskRequest) (*UpsertCsvMigrateTaskResponse, error)
+	DeleteCsvMigrateTask(context.Context, *DeleteCsvMigrateTaskRequest) (*DeleteCsvMigrateTaskResponse, error)
+	ShowCsvMigrateTask(context.Context, *ShowCsvMigrateTaskRequest) (*ShowCsvMigrateTaskResponse, error)
 	OperateTask(context.Context, *OperateTaskRequest) (*OperateTaskResponse, error)
 	mustEmbedUnimplementedMasterServer()
 }
@@ -246,13 +279,13 @@ func (UnimplementedMasterServer) DeleteStructMigrateTask(context.Context, *Delet
 func (UnimplementedMasterServer) ShowStructMigrateTask(context.Context, *ShowStructMigrateTaskRequest) (*ShowStructMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowStructMigrateTask not implemented")
 }
-func (UnimplementedMasterServer) UpsertDataMigrateTask(context.Context, *UpsertDataMigrateTaskRequest) (*UpsertDataMigrateTaskResponse, error) {
+func (UnimplementedMasterServer) UpsertDataMigrateTask(context.Context, *UpsertStmtMigrateTaskRequest) (*UpsertStmtMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpsertDataMigrateTask not implemented")
 }
-func (UnimplementedMasterServer) DeleteDataMigrateTask(context.Context, *DeleteDataMigrateTaskRequest) (*DeleteDataMigrateTaskResponse, error) {
+func (UnimplementedMasterServer) DeleteDataMigrateTask(context.Context, *DeleteStmtMigrateTaskRequest) (*DeleteStmtMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteDataMigrateTask not implemented")
 }
-func (UnimplementedMasterServer) ShowDataMigrateTask(context.Context, *ShowDataMigrateTaskRequest) (*ShowDataMigrateTaskResponse, error) {
+func (UnimplementedMasterServer) ShowDataMigrateTask(context.Context, *ShowStmtMigrateTaskRequest) (*ShowStmtMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowDataMigrateTask not implemented")
 }
 func (UnimplementedMasterServer) UpsertSqlMigrateTask(context.Context, *UpsertSqlMigrateTaskRequest) (*UpsertSqlMigrateTaskResponse, error) {
@@ -263,6 +296,15 @@ func (UnimplementedMasterServer) DeleteSqlMigrateTask(context.Context, *DeleteSq
 }
 func (UnimplementedMasterServer) ShowSqlMigrateTask(context.Context, *ShowSqlMigrateTaskRequest) (*ShowSqlMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowSqlMigrateTask not implemented")
+}
+func (UnimplementedMasterServer) UpsertCsvMigrateTask(context.Context, *UpsertCsvMigrateTaskRequest) (*UpsertCsvMigrateTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpsertCsvMigrateTask not implemented")
+}
+func (UnimplementedMasterServer) DeleteCsvMigrateTask(context.Context, *DeleteCsvMigrateTaskRequest) (*DeleteCsvMigrateTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteCsvMigrateTask not implemented")
+}
+func (UnimplementedMasterServer) ShowCsvMigrateTask(context.Context, *ShowCsvMigrateTaskRequest) (*ShowCsvMigrateTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShowCsvMigrateTask not implemented")
 }
 func (UnimplementedMasterServer) OperateTask(context.Context, *OperateTaskRequest) (*OperateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OperateTask not implemented")
@@ -443,7 +485,7 @@ func _Master_ShowStructMigrateTask_Handler(srv interface{}, ctx context.Context,
 }
 
 func _Master_UpsertDataMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpsertDataMigrateTaskRequest)
+	in := new(UpsertStmtMigrateTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -455,13 +497,13 @@ func _Master_UpsertDataMigrateTask_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/proto.Master/UpsertDataMigrateTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).UpsertDataMigrateTask(ctx, req.(*UpsertDataMigrateTaskRequest))
+		return srv.(MasterServer).UpsertDataMigrateTask(ctx, req.(*UpsertStmtMigrateTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Master_DeleteDataMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteDataMigrateTaskRequest)
+	in := new(DeleteStmtMigrateTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -473,13 +515,13 @@ func _Master_DeleteDataMigrateTask_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/proto.Master/DeleteDataMigrateTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).DeleteDataMigrateTask(ctx, req.(*DeleteDataMigrateTaskRequest))
+		return srv.(MasterServer).DeleteDataMigrateTask(ctx, req.(*DeleteStmtMigrateTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Master_ShowDataMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ShowDataMigrateTaskRequest)
+	in := new(ShowStmtMigrateTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -491,7 +533,7 @@ func _Master_ShowDataMigrateTask_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/proto.Master/ShowDataMigrateTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).ShowDataMigrateTask(ctx, req.(*ShowDataMigrateTaskRequest))
+		return srv.(MasterServer).ShowDataMigrateTask(ctx, req.(*ShowStmtMigrateTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -546,6 +588,60 @@ func _Master_ShowSqlMigrateTask_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MasterServer).ShowSqlMigrateTask(ctx, req.(*ShowSqlMigrateTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_UpsertCsvMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertCsvMigrateTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).UpsertCsvMigrateTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/UpsertCsvMigrateTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).UpsertCsvMigrateTask(ctx, req.(*UpsertCsvMigrateTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_DeleteCsvMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCsvMigrateTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).DeleteCsvMigrateTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/DeleteCsvMigrateTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).DeleteCsvMigrateTask(ctx, req.(*DeleteCsvMigrateTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_ShowCsvMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShowCsvMigrateTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).ShowCsvMigrateTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/ShowCsvMigrateTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).ShowCsvMigrateTask(ctx, req.(*ShowCsvMigrateTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -634,6 +730,18 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShowSqlMigrateTask",
 			Handler:    _Master_ShowSqlMigrateTask_Handler,
+		},
+		{
+			MethodName: "UpsertCsvMigrateTask",
+			Handler:    _Master_UpsertCsvMigrateTask_Handler,
+		},
+		{
+			MethodName: "DeleteCsvMigrateTask",
+			Handler:    _Master_DeleteCsvMigrateTask_Handler,
+		},
+		{
+			MethodName: "ShowCsvMigrateTask",
+			Handler:    _Master_ShowCsvMigrateTask_Handler,
 		},
 		{
 			MethodName: "OperateTask",

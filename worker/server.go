@@ -231,8 +231,8 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			Result:  openapi.ResponseResultStatusSuccess,
 			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
 		}}, nil
-	case constant.TaskModeDataMigrate:
-		err = s.operateDataMigrateTask(cancelCtx, t, req)
+	case constant.TaskModeStmtMigrate:
+		err = s.operateStmtMigrateTask(cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -334,12 +334,12 @@ func (s *Server) operateStructMigrateTask(ctx context.Context, t *task.Task, req
 	}
 }
 
-func (s *Server) operateDataMigrateTask(ctx context.Context, t *task.Task, req *pb.OperateWorkerRequest) error {
+func (s *Server) operateStmtMigrateTask(ctx context.Context, t *task.Task, req *pb.OperateWorkerRequest) error {
 	switch strings.ToUpper(req.Operate) {
 	case constant.TaskOperationStart:
 		go func() {
 			defer s.handlePanicRecover(ctx, t)
-			err := service.StartDataMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+			err := service.StartStmtMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
 			if err != nil {
 				w := &etcdutil.Worker{
 					Addr:     s.WorkerOptions.WorkerAddr,
@@ -367,7 +367,7 @@ func (s *Server) operateDataMigrateTask(ctx context.Context, t *task.Task, req *
 		return nil
 	case constant.TaskOperationStop:
 		s.cancelFunc()
-		err := service.StopDataMigrateTask(context.TODO(), req.TaskName)
+		err := service.StopStmtMigrateTask(context.TODO(), req.TaskName)
 		if err != nil {
 			return err
 		}
@@ -384,8 +384,8 @@ func (s *Server) operateDataMigrateTask(ctx context.Context, t *task.Task, req *
 		return nil
 	case constant.TaskOperationDelete:
 		s.cancelFunc()
-		_, err := service.DeleteDataMigrateTask(context.TODO(),
-			&pb.DeleteDataMigrateTaskRequest{TaskName: []string{t.TaskName}})
+		_, err := service.DeleteStmtMigrateTask(context.TODO(),
+			&pb.DeleteStmtMigrateTaskRequest{TaskName: []string{t.TaskName}})
 		if err != nil {
 			return err
 		}

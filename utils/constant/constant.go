@@ -41,5 +41,8 @@ const (
 // DefaultMigrateTaskQueueSize used for queue channel size
 const DefaultMigrateTaskQueueSize = 1024
 
+// DefaultMigrateTaskBufferIOSize used for buffer io size
+const DefaultMigrateTaskBufferIOSize = 4096
+
 // DefaultDataEncryptDecryptKey used for data encrypt and decrypt key
 const DefaultDataEncryptDecryptKey = "marvin@jwt!#$123qwer9797"

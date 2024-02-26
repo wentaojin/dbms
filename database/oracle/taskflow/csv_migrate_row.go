@@ -16,45 +16,39 @@ limitations under the License.
 package taskflow
 
 import (
+	"bufio"
 	"context"
-	"database/sql"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"golang.org/x/sync/errgroup"
+	"github.com/wentaojin/dbms/proto/pb"
 
 	"github.com/wentaojin/dbms/database"
-
 	"github.com/wentaojin/dbms/logger"
-	"github.com/wentaojin/dbms/utils/stringutil"
-
-	"go.uber.org/zap"
-
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/stringutil"
+	"go.uber.org/zap"
 )
 
-type StmtMigrateRow struct {
-	Ctx           context.Context
-	TaskMode      string
-	TaskFlow      string
-	Dmt           *task.DataMigrateTask
-	DatabaseS     database.IDatabase
-	DatabaseT     database.IDatabase
-	DatabaseTStmt *sql.Stmt
-	DBCharsetS    string
-	DBCharsetT    string
-	SqlThreadT    int
-	BatchSize     int
-	CallTimeout   int
-	SafeMode      bool
-	ReadChan      chan []interface{}
-	WriteChan     chan []interface{}
+type CsvMigrateRow struct {
+	Ctx        context.Context
+	TaskMode   string
+	TaskFlow   string
+	BufioSize  int
+	Dmt        *task.DataMigrateTask
+	DatabaseS  database.IDatabase
+	DBCharsetS string
+	DBCharsetT string
+	TaskParams *pb.CsvMigrateParam
+	ReadChan   chan []string
+	WriteChan  chan string
 }
 
-func (r *StmtMigrateRow) MigrateRead() error {
+func (r *CsvMigrateRow) MigrateRead() error {
 	defer close(r.ReadChan)
 	startTime := time.Now()
 
@@ -85,7 +79,7 @@ func (r *StmtMigrateRow) MigrateRead() error {
 		execQuerySQL = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, r.Dmt.ChunkDetailS)
 	}
 
-	logger.Info("stmt migrate task chunk rows extractor starting",
+	logger.Info("csv migrate task chunk rows extractor starting",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
@@ -96,13 +90,14 @@ func (r *StmtMigrateRow) MigrateRead() error {
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
+	err = r.DatabaseS.QueryDatabaseTableCsvData(execQuerySQL,
+		int(r.TaskParams.CallTimeout), r.TaskFlow, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.TaskParams.EscapeBackslash, r.TaskParams.NullValue, r.TaskParams.Separator, r.TaskParams.Delimiter, r.ReadChan)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}
 
 	endTime := time.Now()
-	logger.Info("stmt migrate task chunk rows extractor finished",
+	logger.Info("csv migrate task chunk rows extractor finished",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
@@ -115,18 +110,18 @@ func (r *StmtMigrateRow) MigrateRead() error {
 	return nil
 }
 
-func (r *StmtMigrateRow) MigrateProcess() error {
+func (r *CsvMigrateRow) MigrateProcess() error {
 	defer close(r.WriteChan)
-	for batchRows := range r.ReadChan {
-		r.WriteChan <- batchRows
+	for rows := range r.ReadChan {
+		r.WriteChan <- stringutil.StringBuilder(stringutil.StringJoin(rows, r.TaskParams.Separator), r.TaskParams.Terminator)
 	}
 	return nil
 }
 
-func (r *StmtMigrateRow) MigrateApply() error {
+func (r *CsvMigrateRow) MigrateApply() error {
 	startTime := time.Now()
 
-	logger.Info("stmt migrate task chunk rows applier starting",
+	logger.Info("csv migrate task chunk rows applier starting",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
@@ -134,44 +129,32 @@ func (r *StmtMigrateRow) MigrateApply() error {
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", r.Dmt.ChunkDetailS),
 		zap.String("startTime", startTime.String()))
-
-	columnDetailSCounts := len(stringutil.StringSplit(r.Dmt.ColumnDetailO, constant.StringSeparatorComma))
-	argRowsNums := columnDetailSCounts * r.BatchSize
-
-	g := &errgroup.Group{}
-	g.SetLimit(r.SqlThreadT)
-
-	for dataC := range r.WriteChan {
-		vals := dataC
-		g.Go(func() error {
-			// prepare exec
-			if len(vals) == argRowsNums {
-				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
-				if err != nil {
-					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
-				}
-			} else {
-				bathSize := len(vals) / columnDetailSCounts
-				switch {
-				case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.Dmt.SqlHintT, r.Dmt.ColumnDetailT, bathSize, r.SafeMode)
-					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
-					if err != nil {
-						return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
-					}
-				default:
-					return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
-				}
-			}
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
+	fileW, err := os.OpenFile(r.Dmt.CsvFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	if err != nil {
 		return err
 	}
+	defer fileW.Close()
 
-	logger.Info("stmt migrate task chunk rows applier finished",
+	writer := bufio.NewWriterSize(fileW, r.BufioSize)
+	defer writer.Flush()
+
+	if r.TaskParams.Header {
+		if _, err = writer.WriteString(stringutil.StringBuilder(
+			stringutil.StringJoin(
+				stringutil.StringSplit(
+					r.Dmt.ColumnDetailT, constant.StringSeparatorComma),
+				r.TaskParams.Separator),
+			r.TaskParams.Terminator)); err != nil {
+			return fmt.Errorf("failed to write csv column header: %v", err)
+		}
+	}
+
+	for dataC := range r.WriteChan {
+		if _, err = writer.WriteString(dataC); err != nil {
+			return fmt.Errorf("failed to write data row to csv: %v", err)
+		}
+	}
+	logger.Info("csv migrate task chunk rows applier finished",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),

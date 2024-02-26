@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/wentaojin/dbms/utils/constant"
@@ -174,13 +175,13 @@ END;`, taskName)
 	return nil
 }
 
-func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error {
+func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
 	var (
 		columnNames []string
 		columnTypes []string
 		err         error
 	)
-	columnNameOrders := stringutil.StringSplit(columnDetailS, constant.StringSeparatorComma)
+	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
 	columnNameOrdersCounts := len(columnNameOrders)
 	rowData := make([]interface{}, columnNameOrdersCounts)
 
@@ -321,5 +322,142 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 		dataChan <- batchRowsData
 	}
 
+	return nil
+}
+
+func (d *Database) QueryDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
+	var (
+		columnNames []string
+		columnTypes []string
+		err         error
+	)
+	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
+	columnNameOrdersCounts := len(columnNameOrders)
+	rowData := make([]string, columnNameOrdersCounts)
+
+	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
+
+	for i, c := range columnNameOrders {
+		columnNameOrderIndexMap[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, querySQL)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return err
+	}
+
+	for _, ct := range colTypes {
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(ct.Name()), dbCharsetS, constant.CharsetUTF8MB4)
+		if err != nil {
+			return fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
+		}
+		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
+		// database field type DatabaseTypeName() maps go type ScanType()
+		columnTypes = append(columnTypes, ct.ScanType().String())
+	}
+
+	// data scan
+	columnNums := len(columnNames)
+	rawResult := make([][]byte, columnNums)
+	dest := make([]interface{}, columnNums)
+	for i := range rawResult {
+		dest[i] = &rawResult[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(dest...)
+		if err != nil {
+			return err
+		}
+
+		for i, raw := range rawResult {
+			// ORACLE database NULL and "" are the same
+			if raw == nil {
+				if !strings.EqualFold(nullValue, "") {
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = nullValue
+				} else {
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
+				}
+			} else if stringutil.BytesToString(raw) == "" {
+				if !strings.EqualFold(nullValue, "") {
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = nullValue
+				} else {
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
+				}
+			} else {
+				switch columnTypes[i] {
+				case "int64":
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
+				case "uint64":
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
+				case "float32":
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
+				case "float64":
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
+				case "rune":
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
+				case "godror.Number":
+					rfs, err := decimal.NewFromString(stringutil.BytesToString(raw))
+					if err != nil {
+						return fmt.Errorf("column [%s] NewFromString strconv failed, %v", columnNames[i], err)
+					}
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = rfs.String()
+				case "[]uint8":
+					// binary data -> raw、long raw、blob
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.EscapeBinaryCSV(raw, escapeBackslash, delimiter, separator)
+				default:
+					var convertTargetRaw []byte
+					convertUtf8Raw, err := stringutil.CharsetConvert(raw, dbCharsetS, constant.CharsetUTF8MB4)
+					if err != nil {
+						return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+					}
+
+					// Handling character sets, special character escapes, string reference delimiters
+					if escapeBackslash {
+						switch {
+						case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
+							convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
+							if err != nil {
+								return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+							}
+						default:
+							return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+						}
+
+					} else {
+						convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						if err != nil {
+							return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+						}
+					}
+					if delimiter == "" {
+						rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(convertTargetRaw)
+					} else {
+						rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
+					}
+				}
+			}
+		}
+
+		// temporary array
+		dataChan <- rowData
+		// clear
+		rowData = make([]string, columnNameOrdersCounts)
+	}
+
+	if err = rows.Err(); err != nil {
+		return err
+	}
 	return nil
 }

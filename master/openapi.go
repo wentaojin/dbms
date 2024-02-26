@@ -255,7 +255,7 @@ func (s *Server) listStructMigrateTask(ctx context.Context, req openapi.APIListS
 	return "", errors.New(resp.Response.Message)
 }
 
-func (s *Server) upsertDataMigrateTask(ctx context.Context, req openapi.APIPutDataMigrateJSONRequestBody) (string, error) {
+func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutStmtMigrateJSONRequestBody) (string, error) {
 	var (
 		migrateSchemaRs  *pb.SchemaRouteRule
 		tableRoutes      []*pb.TableRouteRule
@@ -286,7 +286,7 @@ func (s *Server) upsertDataMigrateTask(ctx context.Context, req openapi.APIPutDa
 		DataMigrateRules: dataMigrateRules,
 	}
 
-	resp, err := s.UpsertDataMigrateTask(ctx, &pb.UpsertDataMigrateTaskRequest{
+	resp, err := s.UpsertDataMigrateTask(ctx, &pb.UpsertStmtMigrateTaskRequest{
 		TaskName:        *req.TaskName,
 		DatasourceNameS: *req.DatasourceNameS,
 		DatasourceNameT: *req.DatasourceNameT,
@@ -318,8 +318,8 @@ func (s *Server) upsertDataMigrateTask(ctx context.Context, req openapi.APIPutDa
 	return "", errors.New(resp.Response.Message)
 }
 
-func (s *Server) deleteDataMigrateTask(ctx context.Context, req openapi.APIDeleteDataMigrateJSONRequestBody) (string, error) {
-	resp, err := s.DeleteDataMigrateTask(ctx, &pb.DeleteDataMigrateTaskRequest{TaskName: *req.Param})
+func (s *Server) deleteStmtMigrateTask(ctx context.Context, req openapi.APIDeleteStmtMigrateJSONRequestBody) (string, error) {
+	resp, err := s.DeleteDataMigrateTask(ctx, &pb.DeleteStmtMigrateTaskRequest{TaskName: *req.Param})
 	if err != nil {
 		return "", err
 	}
@@ -329,8 +329,103 @@ func (s *Server) deleteDataMigrateTask(ctx context.Context, req openapi.APIDelet
 	return "", errors.New(resp.Response.Message)
 }
 
-func (s *Server) listDataMigrateTask(ctx context.Context, req openapi.APIListDataMigrateJSONRequestBody) (string, error) {
-	resp, err := s.ShowDataMigrateTask(ctx, &pb.ShowDataMigrateTaskRequest{
+func (s *Server) listStmtMigrateTask(ctx context.Context, req openapi.APIListStmtMigrateJSONRequestBody) (string, error) {
+	resp, err := s.ShowDataMigrateTask(ctx, &pb.ShowStmtMigrateTaskRequest{
+		TaskName: *req.Param,
+		Page:     *req.Page,
+		PageSize: *req.PageSize,
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsvMigrateJSONRequestBody) (string, error) {
+	var (
+		migrateSchemaRs  *pb.SchemaRouteRule
+		tableRoutes      []*pb.TableRouteRule
+		dataMigrateRules []*pb.DataMigrateRule
+	)
+
+	for _, t := range *req.SchemaRouteRule.TableRouteRules {
+		tableRoutes = append(tableRoutes, &pb.TableRouteRule{
+			TableNameS:       *t.TableNameS,
+			TableNameT:       *t.TableNameT,
+			ColumnRouteRules: *t.ColumnRouteRules,
+		})
+	}
+	for _, t := range *req.SchemaRouteRule.DataMigrateRules {
+		dataMigrateRules = append(dataMigrateRules, &pb.DataMigrateRule{
+			TableNameS:          *t.TableNameS,
+			EnableChunkStrategy: *t.EnableChunkStrategy,
+			WhereRange:          *t.WhereRange,
+			SqlHintS:            *t.SqlHintS,
+		})
+	}
+	migrateSchemaRs = &pb.SchemaRouteRule{
+		SchemaNameS:      *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:      *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS:    *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS:    *req.SchemaRouteRule.ExcludeTableS,
+		TableRouteRules:  tableRoutes,
+		DataMigrateRules: dataMigrateRules,
+	}
+
+	resp, err := s.UpsertCsvMigrateTask(ctx, &pb.UpsertCsvMigrateTaskRequest{
+		TaskName:        *req.TaskName,
+		DatasourceNameS: *req.DatasourceNameS,
+		DatasourceNameT: *req.DatasourceNameT,
+		Comment:         *req.Comment,
+		CaseFieldRule: &pb.CaseFieldRule{
+			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
+			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
+		},
+		SchemaRouteRule: migrateSchemaRs,
+		CsvMigrateParam: &pb.CsvMigrateParam{
+			TableThread:          *req.CsvMigrateParam.TableThread,
+			BatchSize:            *req.CsvMigrateParam.BatchSize,
+			Header:               *req.CsvMigrateParam.Header,
+			Separator:            *req.CsvMigrateParam.Separator,
+			Terminator:           *req.CsvMigrateParam.Terminator,
+			DataCharsetT:         *req.CsvMigrateParam.DataCharsetT,
+			Delimiter:            *req.CsvMigrateParam.Delimiter,
+			NullValue:            *req.CsvMigrateParam.NullValue,
+			EscapeBackslash:      *req.CsvMigrateParam.EscapeBackslash,
+			ChunkSize:            *req.CsvMigrateParam.ChunkSize,
+			OutputDir:            *req.CsvMigrateParam.OutputDir,
+			SqlThreadS:           *req.CsvMigrateParam.SqlThreadS,
+			SqlHintS:             *req.CsvMigrateParam.SqlHintS,
+			CallTimeout:          *req.CsvMigrateParam.CallTimeout,
+			EnableCheckpoint:     *req.CsvMigrateParam.EnableCheckpoint,
+			EnableConsistentRead: *req.CsvMigrateParam.EnableConsistentRead,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) deleteCsvMigrateTask(ctx context.Context, req openapi.APIDeleteCsvMigrateJSONRequestBody) (string, error) {
+	resp, err := s.DeleteCsvMigrateTask(ctx, &pb.DeleteCsvMigrateTaskRequest{TaskName: *req.Param})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) listCsvMigrateTask(ctx context.Context, req openapi.APIListCsvMigrateJSONRequestBody) (string, error) {
+	resp, err := s.ShowCsvMigrateTask(ctx, &pb.ShowCsvMigrateTaskRequest{
 		TaskName: *req.Param,
 		Page:     *req.Page,
 		PageSize: *req.PageSize,

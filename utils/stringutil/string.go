@@ -21,9 +21,11 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"unicode"
 	"unsafe"
@@ -371,6 +373,88 @@ func CharsetConvert(data []byte, fromCharset, toCharset string) ([]byte, error) 
 // https://segmentfault.com/a/1190000037679588
 func BytesToString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
+}
+
+// PathNotExistOrCreate used for the filepath is whether exist, if not exist, then create
+func PathNotExistOrCreate(path string) error {
+	_, err := os.Stat(path)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(path, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("file dir MkdirAll failed: %v", err)
+		}
+	}
+	return err
+}
+
+// GetDiskUsage used for get the current dir disk usage size
+func GetDiskUsage(path string) (*syscall.Statfs_t, error) {
+	statfs := &syscall.Statfs_t{}
+	if err := syscall.Statfs(path, statfs); err != nil {
+		return statfs, fmt.Errorf("get dir [%v] disk usage size failed: %v", path, err)
+	}
+	return statfs, nil
+}
+
+// EscapeBinaryCSV used for bytes to string
+func EscapeBinaryCSV(s []byte, escapeBackslash bool, delimiterCsv, separatorCsv string) string {
+	switch {
+	case escapeBackslash:
+		return escapeBackslashCSV(s, delimiterCsv, separatorCsv)
+	case len(delimiterCsv) > 0:
+		delimiter := []byte(delimiterCsv)
+		return string(bytes.ReplaceAll(s, delimiter, append(delimiter, delimiter...)))
+	default:
+		return string(s)
+	}
+}
+
+func escapeBackslashCSV(s []byte, delimiterCsv, separatorCsv string) string {
+	bf := bytes.Buffer{}
+
+	var (
+		escape  byte
+		last         = 0
+		specCmt byte = 0
+	)
+
+	delimiter := []byte(delimiterCsv)
+	separator := []byte(separatorCsv)
+
+	if len(delimiter) > 0 {
+		specCmt = delimiter[0] // if csv has a delimiter, we should use backslash to comment the delimiter in field value
+	} else if len(separator) > 0 {
+		specCmt = separator[0] // if csv's delimiter is "", we should escape the separator to avoid error
+	}
+
+	for i := 0; i < len(s); i++ {
+		escape = 0
+
+		switch s[i] {
+		case 0: /* Must be escaped for 'mysql' */
+			escape = '0'
+		case '\r':
+			escape = 'r'
+		case '\n': /* escaped for line terminators */
+			escape = 'n'
+		case '\\':
+			escape = '\\'
+		case specCmt:
+			escape = specCmt
+		}
+
+		if escape != 0 {
+			bf.Write(s[last:i])
+			bf.WriteByte('\\')
+			bf.WriteByte(escape)
+			last = i + 1
+		}
+	}
+	bf.Write(s[last:])
+	return bf.String()
 }
 
 // If there are special characters, add \ directly before the special characters.

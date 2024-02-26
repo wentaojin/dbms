@@ -19,7 +19,7 @@ package constant
 const (
 	TaskModeObjectAssess  = "OBJECT_ASSESS"
 	TaskModeStructMigrate = "STRUCT_MIGRATE"
-	TaskModeDataMigrate   = "DATA_MIGRATE"
+	TaskModeStmtMigrate   = "STMT_MIGRATE"
 	TaskModeSqlMigrate    = "SQL_MIGRATE"
 	TaskModeIncrMigrate   = "INCR_MIGRATE"
 	TaskModeCSVMigrate    = "CSV_MIGRATE"

@@ -60,19 +60,19 @@ service Master {
       body: "*"
     };
   }
-  rpc UpsertDataMigrateTask(UpsertDataMigrateTaskRequest) returns (UpsertDataMigrateTaskResponse){
+  rpc UpsertDataMigrateTask(UpsertStmtMigrateTaskRequest) returns (UpsertStmtMigrateTaskResponse){
     option (google.api.http) = {
       put: "/apis/v1alpha1/dataMigrateTask"
       body: "*"
     };
   }
-  rpc DeleteDataMigrateTask(DeleteDataMigrateTaskRequest) returns (DeleteDataMigrateTaskResponse){
+  rpc DeleteDataMigrateTask(DeleteStmtMigrateTaskRequest) returns (DeleteStmtMigrateTaskResponse){
     option (google.api.http) = {
       delete: "/apis/v1alpha1/dataMigrateTask"
       body: "*"
     };
   }
-  rpc ShowDataMigrateTask(ShowDataMigrateTaskRequest) returns (ShowDataMigrateTaskResponse){
+  rpc ShowDataMigrateTask(ShowStmtMigrateTaskRequest) returns (ShowStmtMigrateTaskResponse){
     option (google.api.http) = {
       post: "/apis/v1alpha1/dataMigrateTask"
       body: "*"
@@ -93,6 +93,24 @@ service Master {
   rpc ShowSqlMigrateTask(ShowSqlMigrateTaskRequest) returns (ShowSqlMigrateTaskResponse){
     option (google.api.http) = {
       post: "/apis/v1alpha1/sqlMigrateTask"
+      body: "*"
+    };
+  }
+  rpc UpsertCsvMigrateTask(UpsertCsvMigrateTaskRequest) returns (UpsertCsvMigrateTaskResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/csvMigrateTask"
+      body: "*"
+    };
+  }
+  rpc DeleteCsvMigrateTask(DeleteCsvMigrateTaskRequest) returns (DeleteCsvMigrateTaskResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/csvMigrateTask"
+      body: "*"
+    };
+  }
+  rpc ShowCsvMigrateTask(ShowCsvMigrateTaskRequest) returns (ShowCsvMigrateTaskResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/csvMigrateTask"
       body: "*"
     };
   }
@@ -178,7 +196,7 @@ message ShowStructMigrateTaskResponse{
   Response response = 1;
 }
 
-message UpsertDataMigrateTaskRequest{
+message UpsertStmtMigrateTaskRequest{
   string taskName = 1;
   string datasourceNameS = 2;
   string datasourceNameT = 3;
@@ -186,25 +204,25 @@ message UpsertDataMigrateTaskRequest{
 
   CaseFieldRule caseFieldRule = 5;
   SchemaRouteRule schemaRouteRule = 6;
-  StatementMigrateParam statementMigrateParam = 8;
+  StatementMigrateParam statementMigrateParam = 7;
 }
-message UpsertDataMigrateTaskResponse{
+message UpsertStmtMigrateTaskResponse{
   Response response = 1;
 }
 
-message DeleteDataMigrateTaskRequest{
+message DeleteStmtMigrateTaskRequest{
   repeated string taskName = 1;
 }
-message DeleteDataMigrateTaskResponse{
+message DeleteStmtMigrateTaskResponse{
   Response response = 1;
 }
 
-message ShowDataMigrateTaskRequest{
+message ShowStmtMigrateTaskRequest{
   string taskName = 1;
   uint64 page = 2;
   uint64 pageSize = 3;
 }
-message ShowDataMigrateTaskResponse{
+message ShowStmtMigrateTaskResponse{
   Response response = 1;
 }
 
@@ -235,6 +253,36 @@ message ShowSqlMigrateTaskRequest{
   uint64 pageSize = 3;
 }
 message ShowSqlMigrateTaskResponse{
+  Response response = 1;
+}
+
+message UpsertCsvMigrateTaskRequest{
+  string taskName = 1;
+  string datasourceNameS = 2;
+  string datasourceNameT = 3;
+  string comment = 4;
+
+  CaseFieldRule caseFieldRule = 5;
+  SchemaRouteRule schemaRouteRule = 6;
+  CsvMigrateParam CsvMigrateParam = 7;
+}
+message UpsertCsvMigrateTaskResponse{
+  Response response = 1;
+}
+
+message DeleteCsvMigrateTaskRequest{
+  repeated string taskName = 1;
+}
+message DeleteCsvMigrateTaskResponse{
+  Response response = 1;
+}
+
+message ShowCsvMigrateTaskRequest{
+  string taskName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowCsvMigrateTaskResponse{
   Response response = 1;
 }
 
@@ -371,6 +419,27 @@ message StatementMigrateParam {
   bool enableCheckpoint = 9;
   bool enableConsistentRead = 10;
 }
+
+message CsvMigrateParam{
+  uint64 tableThread = 1;
+  uint64 BatchSize = 2;
+  bool header = 3;
+  string diskUsageFactor = 4;
+  string separator = 5;
+  string terminator = 6;
+  string dataCharsetT = 7;
+  string delimiter = 8;
+  string nullValue = 9;
+  bool escapeBackslash = 10;
+  uint64 chunkSize = 11;
+  string outputDir = 12;
+  uint64 sqlThreadS = 13;
+  string sqlHintS = 14;
+  uint64 callTimeout = 15;
+  bool enableCheckpoint = 16;
+  bool enableConsistentRead = 17;
+}
+
 
 message SqlMigrateRule {
   string sqlQueryS = 1;

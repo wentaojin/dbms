@@ -23,41 +23,37 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-type StatementConfig struct {
+type SqlConfig struct {
 	TaskName        string `toml:"task-name" json:"taskName"`
 	DatasourceNameS string `toml:"datasource-name-s" json:"datasourceNameS"`
 	DatasourceNameT string `toml:"datasource-name-t" json:"datasourceNameT"`
 	Comment         string `toml:"comment" json:"comment"`
 
-	CaseFieldRule         CaseFieldRule         `toml:"case-field-rule" json:"caseFieldRule"`
-	SchemaRouteRule       SchemaRouteRule       `toml:"schema-route-rule" json:"schemaRouteRule"`
-	StatementMigrateParam StatementMigrateParam `toml:"statement-migrate-param" json:"statementMigrateParam"`
+	CaseFieldRule   CaseFieldRule    `toml:"case-field-rule" json:"caseFieldRule"`
+	SqlMigrateRules []SqlMigrateRule `toml:"sql-migrate-rules" json:"sqlMigrateRules"`
+	SqlMigrateParam SqlMigrateParam  `toml:"sql-migrate-param" json:"sqlMigrateParam"`
 }
 
-type StatementMigrateParam struct {
-	TableThread          uint64 `toml:"table-thread" json:"tableThread"`
+type SqlMigrateParam struct {
 	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
-	ChunkSize            uint64 `toml:"chunk-size" json:"chunkSize"`
 	SqlThreadS           uint64 `toml:"sql-thread-s" json:"sqlThreadS"`
-	SqlHintS             string `toml:"sql-hint-s" json:"sqlHintS"`
 	SqlThreadT           uint64 `toml:"sql-thread-t" json:"sqlThreadT"`
 	SqlHintT             string `toml:"sql-hint-t" json:"sqlHintT"`
 	CallTimeout          uint64 `toml:"call-timeout" json:"callTimeout"`
-	EnableCheckpoint     bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
 }
 
-func (d *StatementConfig) String() string {
-	jsonStr, _ := stringutil.MarshalJSON(d)
+func (s *SqlConfig) String() string {
+	jsonStr, _ := stringutil.MarshalJSON(s)
 	return jsonStr
 }
 
-func UpsertStmtMigrate(serverAddr string, file string) error {
-	var cfg = &StatementConfig{}
+func UpsertSqlMigrate(serverAddr string, file string) error {
+	var cfg = &SqlConfig{}
 	if _, err := toml.DecodeFile(file, cfg); err != nil {
 		return fmt.Errorf("failed decode toml config file %s: %v", file, err)
 	}
-	resp, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APIStmtMigratePath), []byte(cfg.String()))
+	resp, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APISqlMigratePath), []byte(cfg.String()))
 	if err != nil {
 		return err
 	}
@@ -76,8 +72,8 @@ func UpsertStmtMigrate(serverAddr string, file string) error {
 	return nil
 }
 
-func DeleteStmtMigrate(serverAddr string, name string) error {
-	resp, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APIStmtMigratePath), []byte(name))
+func DeleteSqlMigrate(serverAddr string, name string) error {
+	resp, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APISqlMigratePath), []byte(name))
 	if err != nil {
 		return err
 	}
@@ -95,8 +91,8 @@ func DeleteStmtMigrate(serverAddr string, name string) error {
 	return nil
 }
 
-func GetStmtMigrate(serverAddr string, name string) error {
-	resp, err := openapi.Request(openapi.RequestGETMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APIStmtMigratePath), []byte(name))
+func GetSqlMigrate(serverAddr string, name string) error {
+	resp, err := openapi.Request(openapi.RequestGETMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APISqlMigratePath), []byte(name))
 	if err != nil {
 		return err
 	}

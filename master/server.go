@@ -648,8 +648,8 @@ func (s *Server) APIPutStructMigrate(c *gin.Context) {
 	})
 }
 
-func (s *Server) APIDeleteDataMigrate(c *gin.Context) {
-	var req openapi.APIDeleteDataMigrateJSONRequestBody
+func (s *Server) APIDeleteStmtMigrate(c *gin.Context) {
+	var req openapi.APIDeleteStmtMigrateJSONRequestBody
 	err := c.Bind(&req)
 	if err != nil {
 		c.JSON(http.StatusNoContent, openapi.Response{
@@ -658,7 +658,7 @@ func (s *Server) APIDeleteDataMigrate(c *gin.Context) {
 		})
 		return
 	}
-	delMsg, err := s.deleteDataMigrateTask(c.Request.Context(), req)
+	delMsg, err := s.deleteStmtMigrateTask(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusNoContent, openapi.Response{
 			Code:  http.StatusBadRequest,
@@ -672,8 +672,8 @@ func (s *Server) APIDeleteDataMigrate(c *gin.Context) {
 	})
 }
 
-func (s *Server) APIListDataMigrate(c *gin.Context) {
-	var req openapi.APIListDataMigrateJSONRequestBody
+func (s *Server) APIListStmtMigrate(c *gin.Context) {
+	var req openapi.APIListStmtMigrateJSONRequestBody
 	err := c.Bind(&req)
 	if err != nil {
 		c.JSON(http.StatusCreated, openapi.Response{
@@ -682,7 +682,7 @@ func (s *Server) APIListDataMigrate(c *gin.Context) {
 		})
 		return
 	}
-	listMsg, err := s.listDataMigrateTask(c.Request.Context(), req)
+	listMsg, err := s.listStmtMigrateTask(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusCreated, openapi.Response{
 			Code:  http.StatusBadRequest,
@@ -696,8 +696,8 @@ func (s *Server) APIListDataMigrate(c *gin.Context) {
 	})
 }
 
-func (s *Server) APIPutDataMigrate(c *gin.Context) {
-	var req openapi.APIPutDataMigrateJSONRequestBody
+func (s *Server) APIPutStmtMigrate(c *gin.Context) {
+	var req openapi.APIPutStmtMigrateJSONRequestBody
 	if err := c.Bind(&req); err != nil {
 		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,
@@ -705,7 +705,78 @@ func (s *Server) APIPutDataMigrate(c *gin.Context) {
 		})
 		return
 	}
-	upsertMsg, err := s.upsertDataMigrateTask(c.Request.Context(), req)
+	upsertMsg, err := s.upsertStmtMigrateTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: upsertMsg,
+	})
+}
+
+func (s *Server) APIDeleteCsvMigrate(c *gin.Context) {
+	var req openapi.APIDeleteCsvMigrateJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	delMsg, err := s.deleteCsvMigrateTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusNoContent, openapi.Response{
+		Code: http.StatusNoContent,
+		Data: delMsg,
+	})
+}
+
+func (s *Server) APIListCsvMigrate(c *gin.Context) {
+	var req openapi.APIListCsvMigrateJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	listMsg, err := s.listCsvMigrateTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, openapi.Response{
+		Code: http.StatusCreated,
+		Data: listMsg,
+	})
+}
+
+func (s *Server) APIPutCsvMigrate(c *gin.Context) {
+	var req openapi.APIPutCsvMigrateJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	upsertMsg, err := s.upsertCsvMigrateTask(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusOK, openapi.Response{
 			Code:  http.StatusBadRequest,

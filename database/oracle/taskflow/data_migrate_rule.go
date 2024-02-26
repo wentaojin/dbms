@@ -29,7 +29,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-type StmtMigrateRule struct {
+type DataMigrateRule struct {
 	Ctx            context.Context    `json:"-"`
 	TaskName       string             `json:"taskName"`
 	TaskMode       string             `json:"taskMode"`
@@ -45,7 +45,7 @@ type StmtMigrateRule struct {
 	CaseFieldRuleT string             `json:"caseFieldRuleT"`
 }
 
-func (r *StmtMigrateRule) GenDataMigrateSchemaNameRule() (string, string, error) {
+func (r *DataMigrateRule) GenDataMigrateSchemaNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(r.Ctx, &rule.SchemaRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS})
 	if err != nil {
@@ -75,7 +75,7 @@ func (r *StmtMigrateRule) GenDataMigrateSchemaNameRule() (string, string, error)
 	return schemaNameS, schemaNameTNew, nil
 }
 
-func (r *StmtMigrateRule) GenDataMigrateTableNameRule() (string, string, error) {
+func (r *DataMigrateRule) GenDataMigrateTableNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateTableRouteRW().GetTableRouteRule(r.Ctx, &rule.TableRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
 	if err != nil {
@@ -105,7 +105,7 @@ func (r *StmtMigrateRule) GenDataMigrateTableNameRule() (string, string, error) 
 	return tableNameS, tableNameTNew, nil
 }
 
-func (r *StmtMigrateRule) GenDataMigrateTableColumnRule() (string, string, string, error) {
+func (r *DataMigrateRule) GenDataMigrateTableColumnRule() (string, string, string, error) {
 	columnRules := make(map[string]string)
 
 	columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(r.Ctx, &rule.ColumnRouteRule{
@@ -135,23 +135,23 @@ func (r *StmtMigrateRule) GenDataMigrateTableColumnRule() (string, string, strin
 			columnNameSNew string
 			columnNameTNew string
 		)
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleLower) {
 			columnNameSNew = strings.ToLower(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleUpper) {
 			columnNameSNew = strings.ToUpper(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleOrigin) {
 			columnNameSNew = columnName
 		}
 
-		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataMigrateCaseFieldRuleLower) {
 			columnNameTNew = strings.ToLower(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataMigrateCaseFieldRuleUpper) {
 			columnNameTNew = strings.ToUpper(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataMigrateCaseFieldRuleOrigin) {
 			columnNameTNew = columnName
 		}
 
@@ -192,20 +192,20 @@ func (r *StmtMigrateRule) GenDataMigrateTableColumnRule() (string, string, strin
 			columnNameSNew string
 			columnNameT    string
 		)
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleLower) {
 			columnNameSNew = strings.ToLower(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleUpper) {
 			columnNameSNew = strings.ToUpper(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleOrigin) {
 			columnNameSNew = columnName
 		}
 
 		if val, ok := columnRules[columnNameSNew]; ok {
 			switch {
 			case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-				if strings.EqualFold(r.TaskMode, constant.TaskModeDataMigrate) ||
+				if strings.EqualFold(r.TaskMode, constant.TaskModeStmtMigrate) ||
 					strings.EqualFold(r.TaskMode, constant.TaskModeIncrMigrate) {
 					columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorBacktick, val, constant.StringSeparatorBacktick)
 				}
@@ -218,7 +218,6 @@ func (r *StmtMigrateRule) GenDataMigrateTableColumnRule() (string, string, strin
 		} else {
 			return "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.SchemaNameS, r.TableNameS, columnName)
 		}
-
 		columnNameSliT = append(columnNameSliT, columnNameT)
 	}
 
@@ -227,11 +226,11 @@ func (r *StmtMigrateRule) GenDataMigrateTableColumnRule() (string, string, strin
 		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil
 }
 
-func (r *StmtMigrateRule) GenDataMigrateTableTypeRule() string {
+func (r *DataMigrateRule) GenDataMigrateTableTypeRule() string {
 	return r.TableTypeS[r.TableNameS]
 }
 
-func (r *StmtMigrateRule) GenDataMigrateTableCustomRule() (bool, string, string, error) {
+func (r *DataMigrateRule) GenDataMigrateTableCustomRule() (bool, string, string, error) {
 	isRecord, err := model.GetIDataMigrateRuleRW().IsContainedDataMigrateRuleRecord(r.Ctx, &rule.DataMigrateRule{
 		TaskName:    r.TaskName,
 		SchemaNameS: r.SchemaNameS,

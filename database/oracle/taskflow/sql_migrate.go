@@ -166,7 +166,7 @@ func (smt *SqlMigrateTask) Start() error {
 						return errW
 					}
 
-					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(dt.SchemaNameT, dt.TableNameT, dt.ColumnDetailT, int(smt.TaskParams.BatchSize), true)
+					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(dt.SchemaNameT, dt.TableNameT, smt.TaskParams.SqlHintT, dt.ColumnDetailT, int(smt.TaskParams.BatchSize), true)
 
 					stmt, err := databaseT.PrepareContext(smt.Ctx, sqlStr)
 					if err != nil {

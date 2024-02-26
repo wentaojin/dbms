@@ -31,14 +31,14 @@ type ServerInterface interface {
 	// (POST /task)
 	APIPostTask(c *gin.Context)
 
-	// (DELETE /task/dataMigrate)
-	APIDeleteDataMigrate(c *gin.Context)
+	// (DELETE /task/csvMigrate)
+	APIDeleteCsvMigrate(c *gin.Context)
 
-	// (POST /task/dataMigrate)
-	APIListDataMigrate(c *gin.Context)
+	// (POST /task/csvMigrate)
+	APIListCsvMigrate(c *gin.Context)
 
-	// (PUT /task/dataMigrate)
-	APIPutDataMigrate(c *gin.Context)
+	// (PUT /task/csvMigrate)
+	APIPutCsvMigrate(c *gin.Context)
 
 	// (DELETE /task/sqlMigrate)
 	APIDeleteSqlMigrate(c *gin.Context)
@@ -48,6 +48,15 @@ type ServerInterface interface {
 
 	// (PUT /task/sqlMigrate)
 	APIPutSqlMigrate(c *gin.Context)
+
+	// (DELETE /task/stmtMigrate)
+	APIDeleteStmtMigrate(c *gin.Context)
+
+	// (POST /task/stmtMigrate)
+	APIListStmtMigrate(c *gin.Context)
+
+	// (PUT /task/stmtMigrate)
+	APIPutStmtMigrate(c *gin.Context)
 
 	// (DELETE /task/structMigrate)
 	APIDeleteStructMigrate(c *gin.Context)
@@ -159,8 +168,8 @@ func (siw *ServerInterfaceWrapper) APIPostTask(c *gin.Context) {
 	siw.Handler.APIPostTask(c)
 }
 
-// APIDeleteDataMigrate operation middleware
-func (siw *ServerInterfaceWrapper) APIDeleteDataMigrate(c *gin.Context) {
+// APIDeleteCsvMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIDeleteCsvMigrate(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -169,11 +178,11 @@ func (siw *ServerInterfaceWrapper) APIDeleteDataMigrate(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIDeleteDataMigrate(c)
+	siw.Handler.APIDeleteCsvMigrate(c)
 }
 
-// APIListDataMigrate operation middleware
-func (siw *ServerInterfaceWrapper) APIListDataMigrate(c *gin.Context) {
+// APIListCsvMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIListCsvMigrate(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -182,11 +191,11 @@ func (siw *ServerInterfaceWrapper) APIListDataMigrate(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIListDataMigrate(c)
+	siw.Handler.APIListCsvMigrate(c)
 }
 
-// APIPutDataMigrate operation middleware
-func (siw *ServerInterfaceWrapper) APIPutDataMigrate(c *gin.Context) {
+// APIPutCsvMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIPutCsvMigrate(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -195,7 +204,7 @@ func (siw *ServerInterfaceWrapper) APIPutDataMigrate(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.APIPutDataMigrate(c)
+	siw.Handler.APIPutCsvMigrate(c)
 }
 
 // APIDeleteSqlMigrate operation middleware
@@ -235,6 +244,45 @@ func (siw *ServerInterfaceWrapper) APIPutSqlMigrate(c *gin.Context) {
 	}
 
 	siw.Handler.APIPutSqlMigrate(c)
+}
+
+// APIDeleteStmtMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIDeleteStmtMigrate(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIDeleteStmtMigrate(c)
+}
+
+// APIListStmtMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIListStmtMigrate(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIListStmtMigrate(c)
+}
+
+// APIPutStmtMigrate operation middleware
+func (siw *ServerInterfaceWrapper) APIPutStmtMigrate(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIPutStmtMigrate(c)
 }
 
 // APIDeleteStructMigrate operation middleware
@@ -310,12 +358,15 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/datasource", wrapper.APIListDatasource)
 	router.PUT(options.BaseURL+"/datasource", wrapper.APIPutDatasource)
 	router.POST(options.BaseURL+"/task", wrapper.APIPostTask)
-	router.DELETE(options.BaseURL+"/task/dataMigrate", wrapper.APIDeleteDataMigrate)
-	router.POST(options.BaseURL+"/task/dataMigrate", wrapper.APIListDataMigrate)
-	router.PUT(options.BaseURL+"/task/dataMigrate", wrapper.APIPutDataMigrate)
+	router.DELETE(options.BaseURL+"/task/csvMigrate", wrapper.APIDeleteCsvMigrate)
+	router.POST(options.BaseURL+"/task/csvMigrate", wrapper.APIListCsvMigrate)
+	router.PUT(options.BaseURL+"/task/csvMigrate", wrapper.APIPutCsvMigrate)
 	router.DELETE(options.BaseURL+"/task/sqlMigrate", wrapper.APIDeleteSqlMigrate)
 	router.POST(options.BaseURL+"/task/sqlMigrate", wrapper.APIListSqlMigrate)
 	router.PUT(options.BaseURL+"/task/sqlMigrate", wrapper.APIPutSqlMigrate)
+	router.DELETE(options.BaseURL+"/task/stmtMigrate", wrapper.APIDeleteStmtMigrate)
+	router.POST(options.BaseURL+"/task/stmtMigrate", wrapper.APIListStmtMigrate)
+	router.PUT(options.BaseURL+"/task/stmtMigrate", wrapper.APIPutStmtMigrate)
 	router.DELETE(options.BaseURL+"/task/structMigrate", wrapper.APIDeleteStructMigrate)
 	router.POST(options.BaseURL+"/task/structMigrate", wrapper.APIListStructMigrate)
 	router.PUT(options.BaseURL+"/task/structMigrate", wrapper.APIPutStructMigrate)

@@ -49,10 +49,10 @@ func (r *SqlMigrateRule) GenSqlMigrateSchemaNameRule() (string, error) {
 	}
 	schemaNameT := stringutil.BytesToString(convertUtf8Raw)
 
-	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataMigrateCaseFieldRuleLower) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueSqlMigrateCaseFieldRuleLower) {
 		schemaNameT = strings.ToLower(schemaNameT)
 	}
-	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataMigrateCaseFieldRuleUpper) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueSqlMigrateCaseFieldRuleUpper) {
 		schemaNameT = strings.ToUpper(schemaNameT)
 	}
 
@@ -66,10 +66,10 @@ func (r *SqlMigrateRule) GenSqlMigrateTableNameRule() (string, error) {
 	}
 	tableNameT := stringutil.BytesToString(convertUtf8Raw)
 
-	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataMigrateCaseFieldRuleLower) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueSqlMigrateCaseFieldRuleLower) {
 		tableNameT = strings.ToLower(tableNameT)
 	}
-	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataMigrateCaseFieldRuleUpper) {
+	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueSqlMigrateCaseFieldRuleUpper) {
 		tableNameT = strings.ToUpper(tableNameT)
 	}
 	return tableNameT, nil
@@ -94,7 +94,7 @@ func (r *SqlMigrateRule) GenSqlMigrateTableColumnRule() (string, string, string,
 	for _, c := range columnNames {
 		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return "", "", "", fmt.Errorf("[GenTableColumnRule] oracle data migrate task sql column [%v] charset convert [UTFMB4] failed, error: %v", c, err)
+			return "", "", "", fmt.Errorf("[GenTableColumnRule] oracle sql migrate task sql column [%v] charset convert [UTFMB4] failed, error: %v", c, err)
 		}
 
 		columnName := stringutil.BytesToString(columnNameUtf8Raw)
@@ -112,13 +112,13 @@ func (r *SqlMigrateRule) GenSqlMigrateTableColumnRule() (string, string, string,
 			columnNameSNew string
 			columnNameTNew string
 		)
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueSqlMigrateCaseFieldRuleLower) {
 			columnNameSNew = strings.ToLower(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueSqlMigrateCaseFieldRuleUpper) {
 			columnNameSNew = strings.ToUpper(columnName)
 		}
-		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueSqlMigrateCaseFieldRuleOrigin) {
 			columnNameSNew = columnName
 		}
 
@@ -132,10 +132,10 @@ func (r *SqlMigrateRule) GenSqlMigrateTableColumnRule() (string, string, string,
 			if strings.EqualFold(r.TaskMode, constant.TaskModeSqlMigrate) {
 				columnNameSliT = append(columnNameSliT, fmt.Sprintf("`%s`", columnNameTNew))
 			} else {
-				return "", "", "", fmt.Errorf("oracle current task [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] data migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
+				return "", "", "", fmt.Errorf("oracle current task [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
 			}
 		default:
-			return "", "", "", fmt.Errorf("oracle current task [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] data migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
+			return "", "", "", fmt.Errorf("oracle current task [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
 		}
 	}
 	return stringutil.StringJoin(columnNameSliO, constant.StringSeparatorComma), stringutil.StringJoin(columnNameSliS, constant.StringSeparatorComma), stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil

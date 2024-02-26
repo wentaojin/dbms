@@ -229,21 +229,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Response'
-  /task/dataMigrate:
+  /task/stmtMigrate:
     put:
       tags:
-        - dataMigrate
-      description: Put data migrate task information
-      operationId: APIPutDataMigrate
+        - stmtMigrate
+      description: Put statement migrate task information
+      operationId: APIPutStmtMigrate
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataMigrateTask'
+              $ref: '#/components/schemas/StmtMigrateTask'
       responses:
         '200':
-          description: data migrate task create success response
+          description: statement migrate task create success response
           content:
             application/json:
               schema:
@@ -256,9 +256,9 @@ paths:
                 $ref: '#/components/schemas/Response'
     post:
       tags:
-        - dataMigrate
-      description: List data migrate task information
-      operationId: APIListDataMigrate
+        - stmtMigrate
+      description: List statement migrate task information
+      operationId: APIListStmtMigrate
       requestBody:
         required: true
         content:
@@ -267,7 +267,7 @@ paths:
               $ref: '#/components/schemas/RequestPostParam'
       responses:
         '201':
-          description: page array of data migrate task list success responses
+          description: page array of statement migrate task list success responses
           content:
             application/json:
               schema:
@@ -280,9 +280,82 @@ paths:
                 $ref: '#/components/schemas/Response'
     delete:
       tags:
-        - dataMigrate
-      description: Delete data migrate rule information
-      operationId: APIDeleteDataMigrate
+        - stmtMigrate
+      description: Delete statement migrate rule information
+      operationId: APIDeleteStmtMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+  /task/csvMigrate:
+    put:
+      tags:
+        - csvMigrate
+      description: Put csv migrate task information
+      operationId: APIPutCsvMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CsvMigrateTask'
+      responses:
+        '200':
+          description: csv migrate task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - csvMigrate
+      description: List csv migrate task information
+      operationId: APIListCsvMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of csv migrate task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - csvMigrate
+      description: Delete csv migrate rule information
+      operationId: APIDeleteCsvMigrate
       requestBody:
         required: true
         content:
@@ -492,7 +565,7 @@ components:
           $ref: '#/components/schemas/StructMigrateParam'
         structMigrateRule:
           $ref: '#/components/schemas/StructMigrateRule'
-    DataMigrateTask:
+    StmtMigrateTask:
       type: object
       properties:
         taskName:
@@ -513,6 +586,27 @@ components:
           $ref: '#/components/schemas/SchemaRouteRule'
         statementMigrateParam:
           $ref: '#/components/schemas/StatementMigrateParam'
+    CsvMigrateTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        schemaRouteRule:
+          $ref: '#/components/schemas/SchemaRouteRule'
+        csvMigrateParam:
+          $ref: '#/components/schemas/CsvMigrateParam'
     SqlMigrateTask:
       type: object
       properties:
@@ -558,6 +652,56 @@ components:
           type: integer
           format: uint64
         sqlHintT:
+          type: string
+          format: string
+        callTimeout:
+          type: integer
+          format: uint64
+        enableCheckpoint:
+          type: boolean
+        enableConsistentRead:
+          type: boolean
+    CsvMigrateParam:
+      type: object
+      properties:
+        tableThread:
+          type: integer
+          format: uint64
+        batchSize:
+          type: integer
+          format: uint64
+        diskUsageFactor:
+          type: string
+          format: string
+        header:
+          type: boolean
+        separator:
+          type: string
+          format: string
+        terminator:
+          type: string
+          format: string
+        dataCharsetT:
+          type: string
+          format: string
+        chunkSize:
+          type: integer
+          format: uint64
+        delimiter:
+          type: string
+          format: string
+        nullValue:
+          type: string
+          format: string
+        escapeBackslash:
+          type: boolean
+        outputDir:
+          type: string
+          format: string
+        sqlThreadS:
+          type: integer
+          format: uint64
+        sqlHintS:
           type: string
           format: string
         callTimeout:

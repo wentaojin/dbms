@@ -33,8 +33,9 @@ const (
 	APIDatasourcePath    = "datasource"
 	APITaskPath          = "task"
 	APIStructMigratePath = "structMigrate"
-	APIDataMigratePath   = "dataMigrate"
+	APIStmtMigratePath   = "stmtMigrate"
 	APISqlMigratePath    = "sqlMigrate"
+	APICsvMigratePath    = "csvMigrate"
 )
 
 const (

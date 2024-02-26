@@ -83,7 +83,7 @@ func (a *AppStatementUpsert) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.UpsertDataMigrate(a.Server, a.config)
+	err := migrate.UpsertStmtMigrate(a.Server, a.config)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (a *AppStatementDelete) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.DeleteDataMigrate(a.Server, a.task)
+	err := migrate.DeleteStmtMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (a *AppStatementGet) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.GetDataMigrate(a.Server, a.task)
+	err := migrate.GetStmtMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}

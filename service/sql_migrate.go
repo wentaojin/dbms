@@ -183,7 +183,7 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 			BatchSize:            batchSize,
 			SqlThreadS:           sqlThreadS,
 			SqlThreadT:           sqlThreadT,
-			SqlHintT:             paramMap[constant.ParamNameDataMigrateSqlHintT],
+			SqlHintT:             paramMap[constant.ParamNameSqlMigrateSqlHintT],
 			CallTimeout:          callTimeout,
 			EnableConsistentRead: enableConsistentRead,
 		}
@@ -492,38 +492,38 @@ func getSqlMigrateTasKParams(ctx context.Context, taskName string) (*pb.SqlMigra
 		return taskParam, err
 	}
 	for _, p := range migrateParams {
-		if strings.EqualFold(p.ParamName, constant.ParamNameDataMigrateBatchSize) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateBatchSize) {
 			batchSize, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.BatchSize = batchSize
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameDataMigrateSqlThreadS) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateSqlThreadS) {
 			sqlThreadS, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.SqlThreadS = sqlThreadS
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameDataMigrateSqlThreadT) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateSqlThreadT) {
 			sqlThreadT, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.SqlThreadT = sqlThreadT
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameDataMigrateSqlHintT) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateSqlHintT) {
 			taskParam.SqlHintT = p.ParamValue
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameDataMigrateCallTimeout) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateCallTimeout) {
 			callTimeout, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.CallTimeout = callTimeout
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameDataMigrateEnableConsistentRead) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateEnableConsistentRead) {
 			enableConsistentRead, err := strconv.ParseBool(p.ParamValue)
 			if err != nil {
 				return taskParam, err

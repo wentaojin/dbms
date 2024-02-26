@@ -35,12 +35,12 @@ import (
 	"go.uber.org/zap"
 )
 
-func UpsertStmtMigrateTask(ctx context.Context, req *pb.UpsertStmtMigrateTaskRequest) (string, error) {
+func UpsertCsvMigrateTask(ctx context.Context, req *pb.UpsertCsvMigrateTaskRequest) (string, error) {
 	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
 	if err != nil {
 		return "", err
 	}
-	if !strings.EqualFold(taskInfo.TaskMode, constant.TaskModeStmtMigrate) && !strings.EqualFold(taskInfo.TaskMode, "") {
+	if !strings.EqualFold(taskInfo.TaskMode, constant.TaskModeCSVMigrate) && !strings.EqualFold(taskInfo.TaskMode, "") {
 		return "", fmt.Errorf("the task name [%s] has be existed in the task mode [%s], please rename the global unqiue task name", req.TaskName, taskInfo.TaskMode)
 	}
 
@@ -61,7 +61,7 @@ func UpsertStmtMigrateTask(ctx context.Context, req *pb.UpsertStmtMigrateTaskReq
 
 		_, err = model.GetITaskRW().CreateTask(txnCtx, &task.Task{
 			TaskName:        req.TaskName,
-			TaskMode:        constant.TaskModeStmtMigrate,
+			TaskMode:        constant.TaskModeCSVMigrate,
 			TaskFlow:        stringutil.StringBuilder(stringutil.StringUpper(datasourceS.DbType), constant.StringSeparatorAite, stringutil.StringUpper(datasourceT.DbType)),
 			DatasourceNameS: req.DatasourceNameS,
 			DatasourceNameT: req.DatasourceNameT,
@@ -79,11 +79,11 @@ func UpsertStmtMigrateTask(ctx context.Context, req *pb.UpsertStmtMigrateTaskReq
 			return err
 		}
 
-		fieldInfos := stringutil.GetJSONTagFieldValue(req.StatementMigrateParam)
+		fieldInfos := stringutil.GetJSONTagFieldValue(req.CsvMigrateParam)
 		for jsonTag, fieldValue := range fieldInfos {
 			_, err = model.GetIParamsRW().CreateTaskCustomParam(txnCtx, &params.TaskCustomParam{
 				TaskName:   req.TaskName,
-				TaskMode:   constant.TaskModeStmtMigrate,
+				TaskMode:   constant.TaskModeCSVMigrate,
 				ParamName:  jsonTag,
 				ParamValue: fieldValue,
 			})
@@ -104,7 +104,7 @@ func UpsertStmtMigrateTask(ctx context.Context, req *pb.UpsertStmtMigrateTaskReq
 	return jsonStr, nil
 }
 
-func DeleteStmtMigrateTask(ctx context.Context, req *pb.DeleteStmtMigrateTaskRequest) (string, error) {
+func DeleteCsvMigrateTask(ctx context.Context, req *pb.DeleteCsvMigrateTaskRequest) (string, error) {
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
 		err := model.GetITaskRW().DeleteTask(txnCtx, req.TaskName)
 		if err != nil {
@@ -155,10 +155,10 @@ func DeleteStmtMigrateTask(ctx context.Context, req *pb.DeleteStmtMigrateTaskReq
 	return jsonStr, nil
 }
 
-func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest) (string, error) {
+func ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) (string, error) {
 	var (
-		resp  *pb.UpsertStmtMigrateTaskRequest
-		param *pb.StatementMigrateParam
+		resp  *pb.UpsertCsvMigrateTaskRequest
+		param *pb.CsvMigrateParam
 	)
 
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
@@ -169,7 +169,7 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 
 		paramsInfo, err := model.GetIParamsRW().QueryTaskCustomParam(txnCtx, &params.TaskCustomParam{
 			TaskName: req.TaskName,
-			TaskMode: constant.TaskModeStmtMigrate,
+			TaskMode: constant.TaskModeCSVMigrate,
 		})
 		if err != nil {
 			return err
@@ -180,51 +180,58 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 			paramMap[p.ParamName] = p.ParamValue
 		}
 
-		tableThread, err := strconv.ParseUint(paramMap[constant.ParamNameStmtMigrateTableThread], 10, 64)
+		tableThread, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateTableThread], 10, 64)
+		if err != nil {
+			return err
+		}
+		batchSize, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateBatchSize], 10, 64)
+		if err != nil {
+			return err
+		}
+		chunkSize, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateChunkSize], 10, 64)
+		if err != nil {
+			return err
+		}
+		sqlThreadS, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateSqlThreadS], 10, 64)
+		if err != nil {
+			return err
+		}
+		callTimeout, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateCallTimeout], 10, 64)
+		if err != nil {
+			return err
+		}
+		header, err := strconv.ParseBool(paramMap[constant.ParamNameCsvMigrateHeader])
+		if err != nil {
+			return err
+		}
+		escapeBackslash, err := strconv.ParseBool(paramMap[constant.ParamNameCsvMigrateEscapeBackslash])
+		if err != nil {
+			return err
+		}
+		enableCheckpoint, err := strconv.ParseBool(paramMap[constant.ParamNameCsvMigrateEnableCheckpoint])
+		if err != nil {
+			return err
+		}
+		enableConsistentRead, err := strconv.ParseBool(paramMap[constant.ParamNameCsvMigrateEnableConsistentRead])
 		if err != nil {
 			return err
 		}
 
-		batchSize, err := strconv.ParseUint(paramMap[constant.ParamNameStmtMigrateBatchSize], 10, 64)
-		if err != nil {
-			return err
-		}
-
-		chunkSize, err := strconv.ParseUint(paramMap[constant.ParamNameStmtMigrateChunkSize], 10, 64)
-		if err != nil {
-			return err
-		}
-
-		sqlThreadS, err := strconv.ParseUint(paramMap[constant.ParamNameStmtMigrateSqlThreadS], 10, 64)
-		if err != nil {
-			return err
-		}
-		sqlThreadT, err := strconv.ParseUint(paramMap[constant.ParamNameStmtMigrateSqlThreadT], 10, 64)
-		if err != nil {
-			return err
-		}
-		callTimeout, err := strconv.ParseUint(paramMap[constant.ParamNameStmtMigrateCallTimeout], 10, 64)
-		if err != nil {
-			return err
-		}
-		enableCheckpoint, err := strconv.ParseBool(paramMap[constant.ParamNameStmtMigrateEnableCheckpoint])
-		if err != nil {
-			return err
-		}
-
-		enableConsistentRead, err := strconv.ParseBool(paramMap[constant.ParamNameStmtMigrateEnableConsistentRead])
-		if err != nil {
-			return err
-		}
-
-		param = &pb.StatementMigrateParam{
+		param = &pb.CsvMigrateParam{
 			TableThread:          tableThread,
 			BatchSize:            batchSize,
+			DiskUsageFactor:      paramMap[constant.ParamNameCsvMigrateDiskUsageFactor],
+			Header:               header,
+			Separator:            paramMap[constant.ParamNameCsvMigrateSeparator],
+			Terminator:           paramMap[constant.ParamNameCsvMigrateTerminator],
+			DataCharsetT:         paramMap[constant.ParamNameCsvMigrateDataCharsetT],
+			Delimiter:            paramMap[constant.ParamNameCsvMigrateDelimiter],
+			NullValue:            paramMap[constant.ParamNameCsvMigrateNullValue],
+			EscapeBackslash:      escapeBackslash,
 			ChunkSize:            chunkSize,
+			OutputDir:            paramMap[constant.ParamNameCsvMigrateOutputDir],
 			SqlThreadS:           sqlThreadS,
-			SqlHintS:             paramMap[constant.ParamNameStmtMigrateSqlHintS],
-			SqlThreadT:           sqlThreadT,
-			SqlHintT:             paramMap[constant.ParamNameStmtMigrateSqlHintT],
+			SqlHintS:             paramMap[constant.ParamNameCsvMigrateSqlHintS],
 			CallTimeout:          callTimeout,
 			EnableCheckpoint:     enableCheckpoint,
 			EnableConsistentRead: enableConsistentRead,
@@ -235,19 +242,18 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 			return err
 		}
 
-		resp = &pb.UpsertStmtMigrateTaskRequest{
+		resp = &pb.UpsertCsvMigrateTaskRequest{
 			TaskName:        taskInfo.TaskName,
 			DatasourceNameS: taskInfo.DatasourceNameS,
 			DatasourceNameT: taskInfo.DatasourceNameT,
+			Comment:         taskInfo.Comment,
 			CaseFieldRule: &pb.CaseFieldRule{
 				CaseFieldRuleS: taskInfo.CaseFieldRuleS,
 				CaseFieldRuleT: taskInfo.CaseFieldRuleT,
 			},
-			Comment:               taskInfo.Comment,
-			SchemaRouteRule:       schemaRouteRule,
-			StatementMigrateParam: param,
+			SchemaRouteRule: schemaRouteRule,
+			CsvMigrateParam: param,
 		}
-
 		return nil
 	})
 	if err != nil {
@@ -261,10 +267,10 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 	return jsonStr, nil
 }
 
-func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) error {
+func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error {
 	startTime := time.Now()
-	logger.Info("stmt migrate task start", zap.String("task_name", taskName))
-	logger.Info("stmt migrate task get task information", zap.String("task_name", taskName))
+	logger.Info("csv migrate task start", zap.String("task_name", taskName))
+	logger.Info("csv migrate task get task information", zap.String("task_name", taskName))
 	var (
 		taskInfo         *task.Task
 		sourceDatasource *datasource.Datasource
@@ -272,7 +278,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		err              error
 	)
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
-		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeStmtMigrate})
+		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeCSVMigrate})
 		if err != nil {
 			return err
 		}
@@ -290,7 +296,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
-	logger.Info("stmt migrate task update task status",
+	logger.Info("csv migrate task update task status",
 		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 	_, err = model.GetITaskRW().UpdateTask(ctx, &task.Task{
 		TaskName: taskInfo.TaskName,
@@ -303,32 +309,32 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
-	logger.Info("stmt migrate task get task params",
+	logger.Info("csv migrate task get task params",
 		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	taskParams, err := getStmtMigrateTasKParams(ctx, taskInfo.TaskName)
+	taskParams, err := getCsvMigrateTasKParams(ctx, taskInfo.TaskName)
 	if err != nil {
 		return err
 	}
 
 	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
-		logger.Info("stmt migrate task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
+		logger.Info("csv migrate task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 		taskTime := time.Now()
-		dataMigrate := &taskflow.DataMigrateTask{
+		dm := &taskflow.CsvMigrateTask{
 			Ctx:         ctx,
 			Task:        taskInfo,
 			DatasourceS: sourceDatasource,
 			DatasourceT: targetDatasource,
 			TaskParams:  taskParams,
 		}
-		err = dataMigrate.Start()
+		err = dm.Start()
 		if err != nil {
 			return err
 		}
-		logger.Info("stmt migrate task process task",
+		logger.Info("csv migrate task process task",
 			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
 			zap.String("cost", time.Now().Sub(taskTime).String()))
 	} else {
-		return fmt.Errorf("current stmt migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
+		return fmt.Errorf("current csv migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}
 
 	// status
@@ -398,7 +404,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 			return err
 		}
 
-		logger.Info("stmt migrate task failed",
+		logger.Info("csv migrate task failed",
 			zap.String("task_name", taskInfo.TaskName),
 			zap.String("task_mode", taskInfo.TaskMode),
 			zap.String("task_flow", taskInfo.TaskFlow),
@@ -442,7 +448,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
-	logger.Info("stmt migrate task success",
+	logger.Info("csv migrate task success",
 		zap.String("task_name", taskInfo.TaskName),
 		zap.String("task_mode", taskInfo.TaskMode),
 		zap.String("task_flow", taskInfo.TaskFlow),
@@ -453,7 +459,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 	return nil
 }
 
-func StopStmtMigrateTask(ctx context.Context, taskName string) error {
+func StopCsvMigrateTask(ctx context.Context, taskName string) error {
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
 		_, err := model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
 			TaskName: taskName,
@@ -480,73 +486,98 @@ func StopStmtMigrateTask(ctx context.Context, taskName string) error {
 	return nil
 }
 
-func getStmtMigrateTasKParams(ctx context.Context, taskName string) (*pb.StatementMigrateParam, error) {
-	taskParam := &pb.StatementMigrateParam{}
+func getCsvMigrateTasKParams(ctx context.Context, taskName string) (*pb.CsvMigrateParam, error) {
+	taskParam := &pb.CsvMigrateParam{}
 
 	migrateParams, err := model.GetIParamsRW().QueryTaskCustomParam(ctx, &params.TaskCustomParam{
 		TaskName: taskName,
-		TaskMode: constant.TaskModeStmtMigrate,
+		TaskMode: constant.TaskModeCSVMigrate,
 	})
 	if err != nil {
 		return taskParam, err
 	}
 	for _, p := range migrateParams {
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateTableThread) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateTableThread) {
 			tableThread, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.TableThread = tableThread
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateBatchSize) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateBatchSize) {
 			batchSize, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.BatchSize = batchSize
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateChunkSize) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateDiskUsageFactor) {
+			taskParam.DiskUsageFactor = p.ParamValue
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateHeader) {
+			header, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.Header = header
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateSeparator) {
+			taskParam.Separator = p.ParamName
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateTerminator) {
+			taskParam.Terminator = p.ParamName
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateDataCharsetT) {
+			taskParam.DataCharsetT = p.ParamName
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateDelimiter) {
+			taskParam.Delimiter = p.ParamName
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateNullValue) {
+			taskParam.NullValue = p.ParamName
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateEscapeBackslash) {
+			escapeBackslash, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.EscapeBackslash = escapeBackslash
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateChunkSize) {
 			chunkSize, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.ChunkSize = chunkSize
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateSqlThreadS) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateOutputDir) {
+			taskParam.OutputDir = p.ParamName
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateSqlThreadS) {
 			sqlThreadS, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.SqlThreadS = sqlThreadS
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateSqlHintS) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateSqlHintS) {
 			taskParam.SqlHintS = p.ParamValue
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateSqlThreadT) {
-			sqlThreadT, err := strconv.ParseUint(p.ParamValue, 10, 64)
-			if err != nil {
-				return taskParam, err
-			}
-			taskParam.SqlThreadT = sqlThreadT
-		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateSqlHintT) {
-			taskParam.SqlHintT = p.ParamValue
-		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateCallTimeout) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateCallTimeout) {
 			callTimeout, err := strconv.ParseUint(p.ParamValue, 10, 64)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.CallTimeout = callTimeout
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateEnableCheckpoint) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateEnableCheckpoint) {
 			enableCheckpoint, err := strconv.ParseBool(p.ParamValue)
 			if err != nil {
 				return taskParam, err
 			}
 			taskParam.EnableCheckpoint = enableCheckpoint
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateEnableConsistentRead) {
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateEnableConsistentRead) {
 			enableConsistentRead, err := strconv.ParseBool(p.ParamValue)
 			if err != nil {
 				return taskParam, err

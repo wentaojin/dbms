@@ -375,18 +375,18 @@ const (
 	ParamValueStructMigrateCaseFieldRuleUpper  = "2"
 )
 
-// data migrate parameters
+// statement migrate parameters
 const (
-	ParamNameDataMigrateTableThread          = "tableThread"
-	ParamNameDataMigrateBatchSize            = "batchSize"
-	ParamNameDataMigrateChunkSize            = "chunkSize"
-	ParamNameDataMigrateSqlThreadS           = "sqlThreadS"
-	ParamNameDataMigrateSqlHintS             = "sqlHintS"
-	ParamNameDataMigrateSqlThreadT           = "sqlThreadT"
-	ParamNameDataMigrateSqlHintT             = "sqlHintT"
-	ParamNameDataMigrateCallTimeout          = "callTimeout"
-	ParamNameDataMigrateEnableCheckpoint     = "enableCheckpoint"
-	ParamNameDataMigrateEnableConsistentRead = "enableConsistentRead"
+	ParamNameStmtMigrateTableThread          = "tableThread"
+	ParamNameStmtMigrateBatchSize            = "batchSize"
+	ParamNameStmtMigrateChunkSize            = "chunkSize"
+	ParamNameStmtMigrateSqlThreadS           = "sqlThreadS"
+	ParamNameStmtMigrateSqlHintS             = "sqlHintS"
+	ParamNameStmtMigrateSqlThreadT           = "sqlThreadT"
+	ParamNameStmtMigrateSqlHintT             = "sqlHintT"
+	ParamNameStmtMigrateCallTimeout          = "callTimeout"
+	ParamNameStmtMigrateEnableCheckpoint     = "enableCheckpoint"
+	ParamNameStmtMigrateEnableConsistentRead = "enableConsistentRead"
 
 	// ParamValueDataMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin
@@ -395,6 +395,27 @@ const (
 	ParamValueDataMigrateCaseFieldRuleOrigin = "0"
 	ParamValueDataMigrateCaseFieldRuleLower  = "1"
 	ParamValueDataMigrateCaseFieldRuleUpper  = "2"
+)
+
+// csv migrate parameters
+const (
+	ParamNameCsvMigrateTableThread          = "tableThread"
+	ParamNameCsvMigrateBatchSize            = "batchSize"
+	ParamNameCsvMigrateDiskUsageFactor      = "diskUsageFactor"
+	ParamNameCsvMigrateHeader               = "header"
+	ParamNameCsvMigrateSeparator            = "separator"
+	ParamNameCsvMigrateTerminator           = "terminator"
+	ParamNameCsvMigrateDataCharsetT         = "dataCharsetT"
+	ParamNameCsvMigrateDelimiter            = "delimiter"
+	ParamNameCsvMigrateNullValue            = "nullValue"
+	ParamNameCsvMigrateEscapeBackslash      = "escapeBackslash"
+	ParamNameCsvMigrateChunkSize            = "chunkSize"
+	ParamNameCsvMigrateOutputDir            = "outputDir"
+	ParamNameCsvMigrateSqlThreadS           = "sqlThreadS"
+	ParamNameCsvMigrateSqlHintS             = "sqlHintS"
+	ParamNameCsvMigrateCallTimeout          = "callTimeout"
+	ParamNameCsvMigrateEnableCheckpoint     = "enableCheckpoint"
+	ParamNameCsvMigrateEnableConsistentRead = "enableConsistentRead"
 )
 
 // sql migrate parameters

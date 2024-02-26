@@ -106,3 +106,8 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 	//TODO implement me
 	panic("implement me")
 }
+
+func (d *Database) QueryDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
+	//TODO implement me
+	panic("implement me")
+}

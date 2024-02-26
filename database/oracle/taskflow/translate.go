@@ -16,6 +16,8 @@ limitations under the License.
 package taskflow
 
 import (
+	"strings"
+
 	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/thinkeridea/go-extend/exstrings"
@@ -23,21 +25,28 @@ import (
 )
 
 func GenMYSQLCompatibleDatabasePrepareStmt(
-	targetSchemaName, targetTableName string, columnDetailT string, insertBatchSize int, safeMode bool) string {
+	targetSchemaName, targetTableName string, sqlHintT, columnDetailT string, insertBatchSize int, safeMode bool) string {
 
 	return stringutil.StringBuilder(
-		genMYSQLCompatibleDatabaseInsertSQLStmtPrefix(targetSchemaName, targetTableName, columnDetailT, safeMode),
+		genMYSQLCompatibleDatabaseInsertSQLStmtPrefix(targetSchemaName, targetTableName, sqlHintT, columnDetailT, safeMode),
 		genMYSQLCompatibleDatabasePrepareBindVarStmt(len(stringutil.StringSplit(columnDetailT, constant.StringSeparatorComma)), insertBatchSize))
 }
 
-func genMYSQLCompatibleDatabaseInsertSQLStmtPrefix(targetSchemaName, targetTableName string, columnDetailT string, safeMode bool) string {
+func genMYSQLCompatibleDatabaseInsertSQLStmtPrefix(targetSchemaName, targetTableName, sqlHintT string, columnDetailT string, safeMode bool) string {
 	var prefixSQL string
 	column := stringutil.StringBuilder(" (", columnDetailT, ")")
 	if safeMode {
-		prefixSQL = stringutil.StringBuilder(`REPLACE INTO `, targetSchemaName, ".", targetTableName, column, ` VALUES `)
-
+		if strings.EqualFold(sqlHintT, "") {
+			prefixSQL = stringutil.StringBuilder(`REPLACE INTO `, targetSchemaName, ".", targetTableName, column, ` VALUES `)
+		} else {
+			prefixSQL = stringutil.StringBuilder(`REPLACE `, sqlHintT, ` INTO `, targetSchemaName, ".", targetTableName, column, ` VALUES `)
+		}
 	} else {
-		prefixSQL = stringutil.StringBuilder(`INSERT INTO `, targetSchemaName, ".", targetTableName, column, ` VALUES `)
+		if strings.EqualFold(sqlHintT, "") {
+			prefixSQL = stringutil.StringBuilder(`INSERT INTO `, targetSchemaName, ".", targetTableName, column, ` VALUES `)
+		} else {
+			prefixSQL = stringutil.StringBuilder(`INSERT `, sqlHintT, ` INTO `, targetSchemaName, ".", targetTableName, column, ` VALUES `)
+		}
 	}
 	return prefixSQL
 }
