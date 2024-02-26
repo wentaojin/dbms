@@ -132,7 +132,7 @@ func (r *SqlMigrateRow) MigrateApply() error {
 				bathSize := len(vals) / columnDetailSCounts
 				switch {
 				case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Smt.SchemaNameT, r.Smt.TableNameT, r.Smt.ColumnDetailT, bathSize, r.SafeMode)
+					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Smt.SchemaNameT, r.Smt.TableNameT, r.Smt.SqlHintT, r.Smt.ColumnDetailT, bathSize, r.SafeMode)
 					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
 					if err != nil {
 						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)

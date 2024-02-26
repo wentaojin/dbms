@@ -158,6 +158,127 @@ func StopTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequ
 	}}, nil
 }
 
+func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
+	t, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	if strings.EqualFold(t.TaskName, "") {
+		errMsg := fmt.Errorf("the task [%s] is not exist, forbid delete, please double check", req.TaskName)
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: errMsg.Error(),
+		}}, errMsg
+	}
+
+	if strings.EqualFold(t.TaskStatus, constant.TaskDatabaseStatusRunning) {
+		errMsg := fmt.Errorf("the task [%s] has running, the operation cann't [%v], the current task status is [%v], running worker addr is [%v], delete is prohibitted, please stop before deleting", req.TaskName, req.Operate, t.TaskStatus, t.WorkerAddr)
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: errMsg.Error(),
+		}}, errMsg
+	} else {
+		keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, t.WorkerAddr))
+		if err != nil {
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: err.Error(),
+			}}, err
+		}
+		if len(keyResp.Kvs) == 0 || len(keyResp.Kvs) > 1 {
+			errMsg := fmt.Errorf("the task [%v] is not exist or the worker state over one, current worker nums [%d]", req.TaskName, len(keyResp.Kvs))
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: errMsg.Error(),
+			}}, errMsg
+		}
+
+		// send worker request
+		grpcConn, err := grpc.DialContext(ctx, t.WorkerAddr)
+		if err != nil {
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: err.Error(),
+			}}, err
+		}
+		defer grpcConn.Close()
+
+		client := pb.NewWorkerClient(grpcConn)
+
+		request := &pb.OperateWorkerRequest{
+			Operate:  constant.TaskOperationDelete,
+			TaskName: req.TaskName,
+		}
+		w, err := client.OperateWorker(ctx, request)
+		if err != nil {
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: err.Error(),
+			}}, err
+		}
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusSuccess,
+			Message: w.String(),
+		}}, nil
+	}
+}
+
+func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
+	resp := struct {
+		TaskName        string `json:"taskName"`
+		TaskMode        string `json:"taskMode"`
+		DatasourceNameS string `json:"datasourceNameS"`
+		DatasourceNameT string `json:"datasourceNameT"`
+		TaskStatus      string `json:"taskStatus"`
+		WorkerAddr      string `json:"workerAddr"`
+		LogDetail       string `json:"logDetail"`
+	}{}
+
+	err := model.Transaction(ctx, func(txnCtx context.Context) error {
+		t, err := model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: req.TaskName})
+		if err != nil {
+			return err
+		}
+		resp.TaskName = t.TaskName
+		resp.TaskMode = t.TaskMode
+		resp.DatasourceNameS = t.DatasourceNameS
+		resp.DatasourceNameT = t.DatasourceNameT
+		resp.TaskStatus = t.TaskStatus
+		resp.WorkerAddr = t.WorkerAddr
+
+		l, err := model.GetITaskLogRW().QueryLog(txnCtx, &task.Log{
+			TaskName: req.TaskName,
+		})
+		if err != nil {
+			return err
+		}
+		resp.LogDetail = l[0].LogDetail
+
+		return nil
+	})
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+
+	jsonStr, err := stringutil.MarshalJSON(resp)
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.OperateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: jsonStr,
+	}}, nil
+}
+
 type Cronjob struct {
 	ctx         context.Context
 	cli         *clientv3.Client
@@ -192,7 +313,7 @@ func (c *Cronjob) Run() {
 	}
 }
 
-func CrontabTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req *pb.OperateTaskRequest, job cron.Job) (*pb.OperateTaskResponse, error) {
+func AddCronTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req *pb.OperateTaskRequest, job cron.Job) (*pb.OperateTaskResponse, error) {
 	newEntryID, err := c.AddJob(req.Express, cron.NewChain(cron.Recover(logger.NewCronLogger(logger.GetRootLogger()))).Then(job))
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
@@ -224,7 +345,7 @@ func CrontabTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req *p
 	}
 }
 
-func ClearTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
+func ClearCronTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
 	t, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
@@ -255,135 +376,4 @@ func ClearTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskReq
 			Message: errMsg.Error(),
 		}}, errMsg
 	}
-}
-
-func DeleteTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
-	t, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
-	if err != nil {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
-	if strings.EqualFold(t.TaskName, "") {
-		errMsg := fmt.Errorf("the task [%s] is not exist, forbid delete, please double check", req.TaskName)
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: errMsg.Error(),
-		}}, errMsg
-	}
-
-	switch strings.ToUpper(t.TaskStatus) {
-	case constant.TaskDatabaseStatusRunning:
-		errMsg := fmt.Errorf("the task [%s] has running, the operation cann't [%v], the current task status is [%v], running worker addr is [%v]", req.TaskName, req.Operate, t.TaskStatus, t.WorkerAddr)
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: errMsg.Error(),
-		}}, errMsg
-	default:
-		var tasks []string
-		tasks = append(tasks, req.TaskName)
-		err = model.Transaction(ctx, func(txnCtx context.Context) error {
-			err = model.GetITaskRW().DeleteTask(txnCtx, tasks)
-			if err != nil {
-				return err
-			}
-			err = model.GetIParamsRW().DeleteTaskCustomParam(txnCtx, tasks)
-			if err != nil {
-				return err
-			}
-			err = model.GetIStructMigrateTaskRuleRW().DeleteTaskStructRule(txnCtx, tasks)
-			if err != nil {
-				return err
-			}
-			err = model.GetIStructMigrateSchemaRuleRW().DeleteSchemaStructRule(txnCtx, tasks)
-			if err != nil {
-				return err
-			}
-			err = model.GetIStructMigrateTableRuleRW().DeleteTableStructRule(txnCtx, tasks)
-			if err != nil {
-				return err
-			}
-			err = model.GetIStructMigrateColumnRuleRW().DeleteColumnStructRule(txnCtx, tasks)
-			if err != nil {
-				return err
-			}
-			err = model.GetIStructMigrateTableAttrsRuleRW().DeleteTableAttrsRule(txnCtx, tasks)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return &pb.OperateTaskResponse{Response: &pb.Response{
-				Result:  openapi.ResponseResultStatusFailed,
-				Message: err.Error(),
-			}}, err
-		}
-
-		jsonStr, err := stringutil.MarshalJSON(req)
-		if err != nil {
-			return &pb.OperateTaskResponse{Response: &pb.Response{
-				Result:  openapi.ResponseResultStatusFailed,
-				Message: err.Error(),
-			}}, err
-		}
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusSuccess,
-			Message: jsonStr,
-		}}, nil
-	}
-}
-
-func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
-	resp := struct {
-		TaskName        string `json:"taskName"`
-		TaskMode        string `json:"taskMode"`
-		DatasourceNameS string `json:"datasourceNameS"`
-		DatasourceNameT string `json:"datasourceNameT"`
-		TaskStatus      string `json:"taskStatus"`
-		WorkerAddr      string `json:"workerAddr"`
-		LogDetail       string `json:"logDetail"`
-	}{}
-
-	err := model.Transaction(ctx, func(txnCtx context.Context) error {
-		t, err := model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: req.TaskName})
-		if err != nil {
-			return err
-		}
-		resp.TaskName = t.TaskName
-		resp.TaskMode = t.TaskMode
-		resp.DatasourceNameS = t.DatasourceNameS
-		resp.DatasourceNameT = t.DatasourceNameT
-		resp.TaskStatus = t.TaskStatus
-		resp.WorkerAddr = t.WorkerAddr
-
-		l, err := model.GetITaskLogRW().QueryLog(txnCtx, &task.Log{
-			TaskName: req.TaskName,
-		})
-		if err != nil {
-			return err
-		}
-		resp.LogDetail = l[len(l)-1].LogDetail
-
-		return nil
-	})
-	if err != nil {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
-
-	jsonStr, err := stringutil.MarshalJSON(resp)
-	if err != nil {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
-	return &pb.OperateTaskResponse{Response: &pb.Response{
-		Result:  openapi.ResponseResultStatusSuccess,
-		Message: jsonStr,
-	}}, nil
 }

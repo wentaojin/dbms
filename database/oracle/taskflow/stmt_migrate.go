@@ -356,7 +356,7 @@ func (dmt *DataMigrateTask) Start() error {
 						SchemaNameS: rec.SchemaNameS,
 						TableNameS:  rec.TableNameS,
 					}, map[string]interface{}{
-						"ChunkFails": rec.TaskStatus,
+						"ChunkFails": rec.StatusTotals,
 					})
 					if err != nil {
 						return err
@@ -367,7 +367,7 @@ func (dmt *DataMigrateTask) Start() error {
 						SchemaNameS: rec.SchemaNameS,
 						TableNameS:  rec.TableNameS,
 					}, map[string]interface{}{
-						"ChunkWaits": rec.TaskStatus,
+						"ChunkWaits": rec.StatusTotals,
 					})
 					if err != nil {
 						return err
@@ -378,7 +378,7 @@ func (dmt *DataMigrateTask) Start() error {
 						SchemaNameS: rec.SchemaNameS,
 						TableNameS:  rec.TableNameS,
 					}, map[string]interface{}{
-						"ChunkRuns": rec.TaskStatus,
+						"ChunkRuns": rec.StatusTotals,
 					})
 					if err != nil {
 						return err
@@ -389,7 +389,7 @@ func (dmt *DataMigrateTask) Start() error {
 						SchemaNameS: rec.SchemaNameS,
 						TableNameS:  rec.TableNameS,
 					}, map[string]interface{}{
-						"ChunkStops": rec.TaskStatus,
+						"ChunkStops": rec.StatusTotals,
 					})
 					if err != nil {
 						return err

@@ -133,6 +133,15 @@ func (cmt *CsvMigrateTask) Start() error {
 			continue
 		}
 
+		err = stringutil.PathNotExistOrCreate(filepath.Join(
+			cmt.TaskParams.OutputDir,
+			s.SchemaNameS,
+			s.TableNameS,
+		))
+		if err != nil {
+			return err
+		}
+
 		logger.Info("csv migrate task process table",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
@@ -200,15 +209,6 @@ func (cmt *CsvMigrateTask) Start() error {
 			zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", s.SchemaNameS),
 			zap.String("table_name_s", s.TableNameS))
-		err = stringutil.PathNotExistOrCreate(filepath.Join(
-			cmt.TaskParams.OutputDir,
-			s.SchemaNameS,
-			s.TableNameT,
-		))
-		if err != nil {
-			return err
-		}
-
 		g := errconcurrent.NewGroup()
 		g.SetLimit(int(cmt.TaskParams.SqlThreadS))
 		for _, j := range migrateTasks {
@@ -378,7 +378,7 @@ func (cmt *CsvMigrateTask) Start() error {
 						SchemaNameS: rec.SchemaNameS,
 						TableNameS:  rec.TableNameS,
 					}, map[string]interface{}{
-						"ChunkFails": rec.TaskStatus,
+						"ChunkFails": rec.StatusTotals,
 					})
 					if err != nil {
 						return err
@@ -389,7 +389,7 @@ func (cmt *CsvMigrateTask) Start() error {
 						SchemaNameS: rec.SchemaNameS,
 						TableNameS:  rec.TableNameS,
 					}, map[string]interface{}{
-						"ChunkWaits": rec.TaskStatus,
+						"ChunkWaits": rec.StatusTotals,
 					})
 					if err != nil {
 						return err
@@ -400,7 +400,7 @@ func (cmt *CsvMigrateTask) Start() error {
 						SchemaNameS: rec.SchemaNameS,
 						TableNameS:  rec.TableNameS,
 					}, map[string]interface{}{
-						"ChunkRuns": rec.TaskStatus,
+						"ChunkRuns": rec.StatusTotals,
 					})
 					if err != nil {
 						return err
@@ -411,7 +411,7 @@ func (cmt *CsvMigrateTask) Start() error {
 						SchemaNameS: rec.SchemaNameS,
 						TableNameS:  rec.TableNameS,
 					}, map[string]interface{}{
-						"ChunkStops": rec.TaskStatus,
+						"ChunkStops": rec.StatusTotals,
 					})
 					if err != nil {
 						return err

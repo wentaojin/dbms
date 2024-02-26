@@ -15,7 +15,13 @@ limitations under the License.
 */
 package migrate
 
-import "github.com/wentaojin/dbms/utils/stringutil"
+import (
+	"fmt"
+
+	"github.com/BurntSushi/toml"
+	"github.com/wentaojin/dbms/openapi"
+	"github.com/wentaojin/dbms/utils/stringutil"
+)
 
 type CsvConfig struct {
 	TaskName        string `toml:"task-name" json:"taskName"`
@@ -23,9 +29,9 @@ type CsvConfig struct {
 	DatasourceNameT string `toml:"datasource-name-t" json:"datasourceNameT"`
 	Comment         string `toml:"comment" json:"comment"`
 
-	CaseFieldRule         CaseFieldRule         `toml:"case-field-rule" json:"caseFieldRule"`
-	SchemaRouteRule       SchemaRouteRule       `toml:"schema-route-rule" json:"schemaRouteRule"`
-	StatementMigrateParam StatementMigrateParam `toml:"statement-migrate-param" json:"statementMigrateParam"`
+	CaseFieldRule   CaseFieldRule   `toml:"case-field-rule" json:"caseFieldRule"`
+	SchemaRouteRule SchemaRouteRule `toml:"schema-route-rule" json:"schemaRouteRule"`
+	CsvMigrateParam CsvMigrateParam `toml:"csv-migrate-param" json:"csvMigrateParam"`
 }
 
 type CsvMigrateParam struct {
@@ -51,4 +57,67 @@ type CsvMigrateParam struct {
 func (c *CsvConfig) String() string {
 	jsonStr, _ := stringutil.MarshalJSON(c)
 	return jsonStr
+}
+
+func UpsertCsvMigrate(serverAddr string, file string) error {
+	var cfg = &CsvConfig{}
+	if _, err := toml.DecodeFile(file, cfg); err != nil {
+		return fmt.Errorf("failed decode toml config file %s: %v", file, err)
+	}
+	resp, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APICsvMigratePath), []byte(cfg.String()))
+	if err != nil {
+		return err
+	}
+
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	if err != nil {
+		return fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
+	return nil
+}
+
+func DeleteCsvMigrate(serverAddr string, name string) error {
+	resp, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APICsvMigratePath), []byte(name))
+	if err != nil {
+		return err
+	}
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	if err != nil {
+		return fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
+	return nil
+}
+
+func GetCsvMigrate(serverAddr string, name string) error {
+	resp, err := openapi.Request(openapi.RequestGETMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APICsvMigratePath), []byte(name))
+	if err != nil {
+		return err
+	}
+
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	if err != nil {
+		return fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+	fmt.Println(formattedJSON)
+	return nil
 }

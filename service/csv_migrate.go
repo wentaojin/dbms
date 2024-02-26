@@ -522,19 +522,19 @@ func getCsvMigrateTasKParams(ctx context.Context, taskName string) (*pb.CsvMigra
 			taskParam.Header = header
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateSeparator) {
-			taskParam.Separator = p.ParamName
+			taskParam.Separator = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateTerminator) {
-			taskParam.Terminator = p.ParamName
+			taskParam.Terminator = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateDataCharsetT) {
-			taskParam.DataCharsetT = p.ParamName
+			taskParam.DataCharsetT = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateDelimiter) {
-			taskParam.Delimiter = p.ParamName
+			taskParam.Delimiter = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateNullValue) {
-			taskParam.NullValue = p.ParamName
+			taskParam.NullValue = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateEscapeBackslash) {
 			escapeBackslash, err := strconv.ParseBool(p.ParamValue)
@@ -551,7 +551,7 @@ func getCsvMigrateTasKParams(ctx context.Context, taskName string) (*pb.CsvMigra
 			taskParam.ChunkSize = chunkSize
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateOutputDir) {
-			taskParam.OutputDir = p.ParamName
+			taskParam.OutputDir = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateSqlThreadS) {
 			sqlThreadS, err := strconv.ParseUint(p.ParamValue, 10, 64)

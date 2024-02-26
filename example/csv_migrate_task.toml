@@ -70,7 +70,7 @@ escape-backslash = true
 chunk-size = 100000
 # 数据文件输出目录, 所有表数据输出文件目录，需要磁盘空间充足，当数据目录不足某个表存储时将自动跳过数据导出直至满足条件的表或者任务结束
 # 目录格式：/data/${target_dbname}/${table_name}
-output-dir = "/users/marvin/gostore/transferdb/data"
+output-dir = "/users/marvin/gostore/dbms/data"
 # 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上游表数据，可动态变更
 sql-thread-s = 2
 # 指定分片 chunk sql 查询 hint

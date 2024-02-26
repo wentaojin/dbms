@@ -60,19 +60,19 @@ service Master {
       body: "*"
     };
   }
-  rpc UpsertDataMigrateTask(UpsertStmtMigrateTaskRequest) returns (UpsertStmtMigrateTaskResponse){
+  rpc UpsertStmtMigrateTask(UpsertStmtMigrateTaskRequest) returns (UpsertStmtMigrateTaskResponse){
     option (google.api.http) = {
       put: "/apis/v1alpha1/dataMigrateTask"
       body: "*"
     };
   }
-  rpc DeleteDataMigrateTask(DeleteStmtMigrateTaskRequest) returns (DeleteStmtMigrateTaskResponse){
+  rpc DeleteStmtMigrateTask(DeleteStmtMigrateTaskRequest) returns (DeleteStmtMigrateTaskResponse){
     option (google.api.http) = {
       delete: "/apis/v1alpha1/dataMigrateTask"
       body: "*"
     };
   }
-  rpc ShowDataMigrateTask(ShowStmtMigrateTaskRequest) returns (ShowStmtMigrateTaskResponse){
+  rpc ShowStmtMigrateTask(ShowStmtMigrateTaskRequest) returns (ShowStmtMigrateTaskResponse){
     option (google.api.http) = {
       post: "/apis/v1alpha1/dataMigrateTask"
       body: "*"

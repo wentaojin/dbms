@@ -286,7 +286,7 @@ func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutSt
 		DataMigrateRules: dataMigrateRules,
 	}
 
-	resp, err := s.UpsertDataMigrateTask(ctx, &pb.UpsertStmtMigrateTaskRequest{
+	resp, err := s.UpsertStmtMigrateTask(ctx, &pb.UpsertStmtMigrateTaskRequest{
 		TaskName:        *req.TaskName,
 		DatasourceNameS: *req.DatasourceNameS,
 		DatasourceNameT: *req.DatasourceNameT,
@@ -319,7 +319,7 @@ func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutSt
 }
 
 func (s *Server) deleteStmtMigrateTask(ctx context.Context, req openapi.APIDeleteStmtMigrateJSONRequestBody) (string, error) {
-	resp, err := s.DeleteDataMigrateTask(ctx, &pb.DeleteStmtMigrateTaskRequest{TaskName: *req.Param})
+	resp, err := s.DeleteStmtMigrateTask(ctx, &pb.DeleteStmtMigrateTaskRequest{TaskName: *req.Param})
 	if err != nil {
 		return "", err
 	}
@@ -330,7 +330,7 @@ func (s *Server) deleteStmtMigrateTask(ctx context.Context, req openapi.APIDelet
 }
 
 func (s *Server) listStmtMigrateTask(ctx context.Context, req openapi.APIListStmtMigrateJSONRequestBody) (string, error) {
-	resp, err := s.ShowDataMigrateTask(ctx, &pb.ShowStmtMigrateTaskRequest{
+	resp, err := s.ShowStmtMigrateTask(ctx, &pb.ShowStmtMigrateTaskRequest{
 		TaskName: *req.Param,
 		Page:     *req.Page,
 		PageSize: *req.PageSize,
@@ -388,6 +388,7 @@ func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsv
 		CsvMigrateParam: &pb.CsvMigrateParam{
 			TableThread:          *req.CsvMigrateParam.TableThread,
 			BatchSize:            *req.CsvMigrateParam.BatchSize,
+			DiskUsageFactor:      *req.CsvMigrateParam.DiskUsageFactor,
 			Header:               *req.CsvMigrateParam.Header,
 			Separator:            *req.CsvMigrateParam.Separator,
 			Terminator:           *req.CsvMigrateParam.Terminator,

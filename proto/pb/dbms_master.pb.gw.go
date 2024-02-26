@@ -337,7 +337,7 @@ func local_request_Master_ShowStructMigrateTask_0(ctx context.Context, marshaler
 
 }
 
-func request_Master_UpsertDataMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, client MasterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Master_UpsertStmtMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, client MasterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpsertStmtMigrateTaskRequest
 	var metadata runtime.ServerMetadata
 
@@ -349,12 +349,12 @@ func request_Master_UpsertDataMigrateTask_0(ctx context.Context, marshaler runti
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.UpsertDataMigrateTask(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UpsertStmtMigrateTask(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_Master_UpsertDataMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, server MasterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Master_UpsertStmtMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, server MasterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpsertStmtMigrateTaskRequest
 	var metadata runtime.ServerMetadata
 
@@ -366,12 +366,12 @@ func local_request_Master_UpsertDataMigrateTask_0(ctx context.Context, marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.UpsertDataMigrateTask(ctx, &protoReq)
+	msg, err := server.UpsertStmtMigrateTask(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_Master_DeleteDataMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, client MasterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Master_DeleteStmtMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, client MasterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteStmtMigrateTaskRequest
 	var metadata runtime.ServerMetadata
 
@@ -383,12 +383,12 @@ func request_Master_DeleteDataMigrateTask_0(ctx context.Context, marshaler runti
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.DeleteDataMigrateTask(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.DeleteStmtMigrateTask(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_Master_DeleteDataMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, server MasterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Master_DeleteStmtMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, server MasterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteStmtMigrateTaskRequest
 	var metadata runtime.ServerMetadata
 
@@ -400,12 +400,12 @@ func local_request_Master_DeleteDataMigrateTask_0(ctx context.Context, marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.DeleteDataMigrateTask(ctx, &protoReq)
+	msg, err := server.DeleteStmtMigrateTask(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_Master_ShowDataMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, client MasterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Master_ShowStmtMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, client MasterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ShowStmtMigrateTaskRequest
 	var metadata runtime.ServerMetadata
 
@@ -417,12 +417,12 @@ func request_Master_ShowDataMigrateTask_0(ctx context.Context, marshaler runtime
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.ShowDataMigrateTask(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.ShowStmtMigrateTask(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_Master_ShowDataMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, server MasterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Master_ShowStmtMigrateTask_0(ctx context.Context, marshaler runtime.Marshaler, server MasterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ShowStmtMigrateTaskRequest
 	var metadata runtime.ServerMetadata
 
@@ -434,7 +434,7 @@ func local_request_Master_ShowDataMigrateTask_0(ctx context.Context, marshaler r
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.ShowDataMigrateTask(ctx, &protoReq)
+	msg, err := server.ShowStmtMigrateTask(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -908,7 +908,7 @@ func RegisterMasterHandlerServer(ctx context.Context, mux *runtime.ServeMux, ser
 
 	})
 
-	mux.Handle("PUT", pattern_Master_UpsertDataMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_Master_UpsertStmtMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -916,12 +916,12 @@ func RegisterMasterHandlerServer(ctx context.Context, mux *runtime.ServeMux, ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/proto.Master/UpsertDataMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/proto.Master/UpsertStmtMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_Master_UpsertDataMigrateTask_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Master_UpsertStmtMigrateTask_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -929,11 +929,11 @@ func RegisterMasterHandlerServer(ctx context.Context, mux *runtime.ServeMux, ser
 			return
 		}
 
-		forward_Master_UpsertDataMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Master_UpsertStmtMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_Master_DeleteDataMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_Master_DeleteStmtMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -941,12 +941,12 @@ func RegisterMasterHandlerServer(ctx context.Context, mux *runtime.ServeMux, ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/proto.Master/DeleteDataMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/proto.Master/DeleteStmtMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_Master_DeleteDataMigrateTask_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Master_DeleteStmtMigrateTask_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -954,11 +954,11 @@ func RegisterMasterHandlerServer(ctx context.Context, mux *runtime.ServeMux, ser
 			return
 		}
 
-		forward_Master_DeleteDataMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Master_DeleteStmtMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_Master_ShowDataMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Master_ShowStmtMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -966,12 +966,12 @@ func RegisterMasterHandlerServer(ctx context.Context, mux *runtime.ServeMux, ser
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/proto.Master/ShowDataMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/proto.Master/ShowStmtMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_Master_ShowDataMigrateTask_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Master_ShowStmtMigrateTask_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -979,7 +979,7 @@ func RegisterMasterHandlerServer(ctx context.Context, mux *runtime.ServeMux, ser
 			return
 		}
 
-		forward_Master_ShowDataMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Master_ShowStmtMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1397,69 +1397,69 @@ func RegisterMasterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cli
 
 	})
 
-	mux.Handle("PUT", pattern_Master_UpsertDataMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_Master_UpsertStmtMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/proto.Master/UpsertDataMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/proto.Master/UpsertStmtMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_Master_UpsertDataMigrateTask_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Master_UpsertStmtMigrateTask_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_Master_UpsertDataMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Master_UpsertStmtMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_Master_DeleteDataMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_Master_DeleteStmtMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/proto.Master/DeleteDataMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/proto.Master/DeleteStmtMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_Master_DeleteDataMigrateTask_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Master_DeleteStmtMigrateTask_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_Master_DeleteDataMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Master_DeleteStmtMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_Master_ShowDataMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Master_ShowStmtMigrateTask_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/proto.Master/ShowDataMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/proto.Master/ShowStmtMigrateTask", runtime.WithHTTPPathPattern("/apis/v1alpha1/dataMigrateTask"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_Master_ShowDataMigrateTask_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Master_ShowStmtMigrateTask_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_Master_ShowDataMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Master_ShowStmtMigrateTask_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1639,11 +1639,11 @@ var (
 
 	pattern_Master_ShowStructMigrateTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"apis", "v1alpha1", "structMigrateTask"}, ""))
 
-	pattern_Master_UpsertDataMigrateTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"apis", "v1alpha1", "dataMigrateTask"}, ""))
+	pattern_Master_UpsertStmtMigrateTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"apis", "v1alpha1", "dataMigrateTask"}, ""))
 
-	pattern_Master_DeleteDataMigrateTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"apis", "v1alpha1", "dataMigrateTask"}, ""))
+	pattern_Master_DeleteStmtMigrateTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"apis", "v1alpha1", "dataMigrateTask"}, ""))
 
-	pattern_Master_ShowDataMigrateTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"apis", "v1alpha1", "dataMigrateTask"}, ""))
+	pattern_Master_ShowStmtMigrateTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"apis", "v1alpha1", "dataMigrateTask"}, ""))
 
 	pattern_Master_UpsertSqlMigrateTask_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"apis", "v1alpha1", "sqlMigrateTask"}, ""))
 
@@ -1679,11 +1679,11 @@ var (
 
 	forward_Master_ShowStructMigrateTask_0 = runtime.ForwardResponseMessage
 
-	forward_Master_UpsertDataMigrateTask_0 = runtime.ForwardResponseMessage
+	forward_Master_UpsertStmtMigrateTask_0 = runtime.ForwardResponseMessage
 
-	forward_Master_DeleteDataMigrateTask_0 = runtime.ForwardResponseMessage
+	forward_Master_DeleteStmtMigrateTask_0 = runtime.ForwardResponseMessage
 
-	forward_Master_ShowDataMigrateTask_0 = runtime.ForwardResponseMessage
+	forward_Master_ShowStmtMigrateTask_0 = runtime.ForwardResponseMessage
 
 	forward_Master_UpsertSqlMigrateTask_0 = runtime.ForwardResponseMessage
 

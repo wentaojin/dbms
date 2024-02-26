@@ -286,14 +286,14 @@ func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*
 	case constant.TaskOperationStop:
 		return service.StopTask(ctx, s.etcdClient, req)
 	case constant.TaskOperationCrontab:
-		return service.CrontabTask(ctx, s.cron, s.etcdClient, req,
+		return service.AddCronTask(ctx, s.cron, s.etcdClient, req,
 			service.NewCronjob(ctx, s.etcdClient, s.discoveries, req.TaskName))
 		// cleanup tasks are used for scheduled job tasks that are running.
 	case constant.TaskOperationClear:
-		return service.ClearTask(ctx, s.etcdClient, req)
+		return service.ClearCronTask(ctx, s.etcdClient, req)
 		// delete tasks are used to delete tasks that are not running or have stopped running.
 	case constant.TaskOperationDelete:
-		return service.DeleteTask(ctx, req)
+		return service.DeleteTask(ctx, s.etcdClient, req)
 	case constant.TaskOperationGet:
 		return service.GetTask(ctx, req)
 	default:

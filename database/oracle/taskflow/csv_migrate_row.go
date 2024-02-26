@@ -129,6 +129,7 @@ func (r *CsvMigrateRow) MigrateApply() error {
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", r.Dmt.ChunkDetailS),
 		zap.String("startTime", startTime.String()))
+
 	fileW, err := os.OpenFile(r.Dmt.CsvFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
