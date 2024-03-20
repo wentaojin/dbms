@@ -404,12 +404,24 @@ func (r *DataCompareRow) CompareDiff() error {
 		delDetails []string
 	)
 	for dk, dv := range addDestSets {
-		addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-			r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+		switch {
+		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+			addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+				r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+		default:
+			return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
+		}
+
 	}
 	for dk, dv := range delDestSets {
-		delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
-			r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+		switch {
+		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+			delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+				r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+		default:
+			return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
+		}
+
 	}
 
 	if len(addDetails) > 0 {
