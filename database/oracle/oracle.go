@@ -121,8 +121,8 @@ func (d *Database) PrepareContext(ctx context.Context, sqlStr string) (*sql.Stmt
 	return d.DBConn.PrepareContext(ctx, sqlStr)
 }
 
-func (d *Database) QueryContext(ctx context.Context, query string) (*sql.Rows, error) {
-	return d.DBConn.QueryContext(ctx, query)
+func (d *Database) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return d.DBConn.QueryContext(ctx, query, args...)
 }
 
 func (d *Database) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {

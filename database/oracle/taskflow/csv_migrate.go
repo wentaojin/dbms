@@ -129,6 +129,16 @@ func (cmt *CsvMigrateTask) Start() error {
 				zap.Uint64("disk used space(MB)", usedSpace),
 				zap.Uint64("disk free space(MB)", freeSpace),
 				zap.Uint64("estimate table space(MB)", uint64(estmTableSizeMB)))
+			_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{
+				TaskName:    s.TaskName,
+				SchemaNameS: s.SchemaNameS,
+				TableNameS:  s.TableNameS,
+			}, map[string]interface{}{
+				"Refused": fmt.Sprintf("the output [%s] current disk quota isn't enough, total space(MB): [%v], used space(MB): [%v], free space(MB): [%v], estimate space(MB): [%v]", cmt.TaskParams.OutputDir, totalSpace, usedSpace, freeSpace, estmTableSizeMB),
+			})
+			if err != nil {
+				return err
+			}
 			// skip
 			continue
 		}
@@ -426,6 +436,7 @@ func (cmt *CsvMigrateTask) Start() error {
 				SchemaNameS: s.SchemaNameS,
 				TableNameS:  s.TableNameS,
 			}, map[string]interface{}{
+				"Refused":  "", // reset
 				"Duration": fmt.Sprintf("%f", time.Now().Sub(startTableTime).Seconds()),
 			})
 			if err != nil {
@@ -652,17 +663,15 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 							return err
 						}
 						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:      cmt.Task.TaskName,
-							SchemaNameS:   attsRule.SchemaNameS,
-							TableNameS:    attsRule.TableNameS,
-							SchemaNameT:   attsRule.SchemaNameT,
-							TableNameT:    attsRule.TableNameT,
-							GlobalScnS:    globalScn,
-							ColumnDetailS: attsRule.ColumnDetailS,
-							ColumnDetailT: attsRule.ColumnDetailT,
-							TableRowsS:    tableRows,
-							TableSizeS:    tableSize,
-							ChunkTotals:   1,
+							TaskName:    cmt.Task.TaskName,
+							SchemaNameS: attsRule.SchemaNameS,
+							TableNameS:  attsRule.TableNameS,
+							SchemaNameT: attsRule.SchemaNameT,
+							TableNameT:  attsRule.TableNameT,
+							GlobalScnS:  globalScn,
+							TableRowsS:  tableRows,
+							TableSizeS:  tableSize,
+							ChunkTotals: 1,
 						})
 						if err != nil {
 							return err
@@ -725,17 +734,15 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 							return err
 						}
 						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:      cmt.Task.TaskName,
-							SchemaNameS:   attsRule.SchemaNameS,
-							TableNameS:    attsRule.TableNameS,
-							SchemaNameT:   attsRule.SchemaNameT,
-							TableNameT:    attsRule.TableNameT,
-							GlobalScnS:    globalScn,
-							ColumnDetailS: attsRule.ColumnDetailS,
-							ColumnDetailT: attsRule.ColumnDetailT,
-							TableRowsS:    tableRows,
-							TableSizeS:    tableSize,
-							ChunkTotals:   1,
+							TaskName:    cmt.Task.TaskName,
+							SchemaNameS: attsRule.SchemaNameS,
+							TableNameS:  attsRule.TableNameS,
+							SchemaNameT: attsRule.SchemaNameT,
+							TableNameT:  attsRule.TableNameT,
+							GlobalScnS:  globalScn,
+							TableRowsS:  tableRows,
+							TableSizeS:  tableSize,
+							ChunkTotals: 1,
 						})
 						if err != nil {
 							return err
@@ -785,17 +792,15 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 						return err
 					}
 					_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-						TaskName:      cmt.Task.TaskName,
-						SchemaNameS:   attsRule.SchemaNameS,
-						TableNameS:    attsRule.TableNameS,
-						SchemaNameT:   attsRule.SchemaNameT,
-						TableNameT:    attsRule.TableNameT,
-						GlobalScnS:    globalScn,
-						ColumnDetailS: attsRule.ColumnDetailS,
-						ColumnDetailT: attsRule.ColumnDetailT,
-						TableRowsS:    tableRows,
-						TableSizeS:    tableSize,
-						ChunkTotals:   uint64(len(chunks)),
+						TaskName:    cmt.Task.TaskName,
+						SchemaNameS: attsRule.SchemaNameS,
+						TableNameS:  attsRule.TableNameS,
+						SchemaNameT: attsRule.SchemaNameT,
+						TableNameT:  attsRule.TableNameT,
+						GlobalScnS:  globalScn,
+						TableRowsS:  tableRows,
+						TableSizeS:  tableSize,
+						ChunkTotals: uint64(len(chunks)),
 					})
 					if err != nil {
 						return err

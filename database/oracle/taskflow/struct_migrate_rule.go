@@ -235,7 +235,7 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 			}
 			// priority, return target database table column datatype
 			convertColumnDatatype, convertColumnDefaultValue, err := HandleColumnRuleWithPriority(
-				c["TABLE_NAME"],
+				r.TableNameS,
 				c["COLUMN_NAME"],
 				originColumnType,
 				buildInColumnType,

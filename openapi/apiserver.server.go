@@ -40,6 +40,15 @@ type ServerInterface interface {
 	// (PUT /task/csvMigrate)
 	APIPutCsvMigrate(c *gin.Context)
 
+	// (DELETE /task/dataCompare)
+	APIDeleteDataCompare(c *gin.Context)
+
+	// (POST /task/dataCompare)
+	APIListDataCompare(c *gin.Context)
+
+	// (PUT /task/dataCompare)
+	APIPutDataCompare(c *gin.Context)
+
 	// (DELETE /task/sqlMigrate)
 	APIDeleteSqlMigrate(c *gin.Context)
 
@@ -207,6 +216,45 @@ func (siw *ServerInterfaceWrapper) APIPutCsvMigrate(c *gin.Context) {
 	siw.Handler.APIPutCsvMigrate(c)
 }
 
+// APIDeleteDataCompare operation middleware
+func (siw *ServerInterfaceWrapper) APIDeleteDataCompare(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIDeleteDataCompare(c)
+}
+
+// APIListDataCompare operation middleware
+func (siw *ServerInterfaceWrapper) APIListDataCompare(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIListDataCompare(c)
+}
+
+// APIPutDataCompare operation middleware
+func (siw *ServerInterfaceWrapper) APIPutDataCompare(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIPutDataCompare(c)
+}
+
 // APIDeleteSqlMigrate operation middleware
 func (siw *ServerInterfaceWrapper) APIDeleteSqlMigrate(c *gin.Context) {
 
@@ -361,6 +409,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/task/csvMigrate", wrapper.APIDeleteCsvMigrate)
 	router.POST(options.BaseURL+"/task/csvMigrate", wrapper.APIListCsvMigrate)
 	router.PUT(options.BaseURL+"/task/csvMigrate", wrapper.APIPutCsvMigrate)
+	router.DELETE(options.BaseURL+"/task/dataCompare", wrapper.APIDeleteDataCompare)
+	router.POST(options.BaseURL+"/task/dataCompare", wrapper.APIListDataCompare)
+	router.PUT(options.BaseURL+"/task/dataCompare", wrapper.APIPutDataCompare)
 	router.DELETE(options.BaseURL+"/task/sqlMigrate", wrapper.APIDeleteSqlMigrate)
 	router.POST(options.BaseURL+"/task/sqlMigrate", wrapper.APIListSqlMigrate)
 	router.PUT(options.BaseURL+"/task/sqlMigrate", wrapper.APIPutSqlMigrate)

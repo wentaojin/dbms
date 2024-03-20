@@ -156,7 +156,7 @@ END;`, taskName, schemaName, tableName, chunkSize)
 }
 
 func (d *Database) GetDatabaseTableChunkData(taskName string) ([]map[string]string, error) {
-	sqlStr := fmt.Sprintf(`SELECT 'ROWID BETWEEN ''' || START_ROWID || ''' AND ''' || END_ROWID || '''' CMD FROM DBA_PARALLEL_EXECUTE_CHUNKS WHERE  TASK_NAME = '%s' ORDER BY chunk_id`, taskName)
+	sqlStr := fmt.Sprintf(`SELECT 'ROWID BETWEEN ''' || START_ROWID || ''' AND ''' || END_ROWID || '''' CMD FROM DBA_PARALLEL_EXECUTE_CHUNKS WHERE  TASK_NAME = '%s' ORDER BY CHUNK_ID`, taskName)
 	_, res, err := d.GeneralQuery(sqlStr)
 	if err != nil {
 		return res, err

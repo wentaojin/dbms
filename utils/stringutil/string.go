@@ -133,6 +133,22 @@ func StringTrim(originStr string, trimStr string) string {
 	return strings.Trim(originStr, trimStr)
 }
 
+func StringSliceAlignLen(slices [][]string) ([][]string, int) {
+	minL := 0
+	for i, slice := range slices {
+		if i == 0 || len(slice) < minL {
+			minL = len(slice)
+		}
+	}
+
+	// align
+	alignSlices := make([][]string, len(slices))
+	for i, slice := range slices {
+		alignSlices[i] = slice[:minL]
+	}
+	return alignSlices, minL
+}
+
 // StringItemsFilterDifference used for filter difference items, and returns new array string
 func StringItemsFilterDifference(originItems, excludeItems []string) []string {
 	s1 := set.NewStringSet()

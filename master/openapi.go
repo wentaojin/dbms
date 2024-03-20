@@ -343,6 +343,84 @@ func (s *Server) listStmtMigrateTask(ctx context.Context, req openapi.APIListStm
 	return "", errors.New(resp.Response.Message)
 }
 
+func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDataCompareJSONRequestBody) (string, error) {
+	var (
+		migrateSchemaRs *pb.SchemaRouteRule
+		tableRoutes     []*pb.TableRouteRule
+	)
+
+	for _, t := range *req.SchemaRouteRule.TableRouteRules {
+		tableRoutes = append(tableRoutes, &pb.TableRouteRule{
+			TableNameS:       *t.TableNameS,
+			TableNameT:       *t.TableNameT,
+			ColumnRouteRules: *t.ColumnRouteRules,
+		})
+	}
+
+	migrateSchemaRs = &pb.SchemaRouteRule{
+		SchemaNameS:     *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:     *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS:   *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS:   *req.SchemaRouteRule.ExcludeTableS,
+		TableRouteRules: tableRoutes,
+	}
+
+	resp, err := s.UpsertDataCompareTask(ctx, &pb.UpsertDataCompareTaskRequest{
+		TaskName:        *req.TaskName,
+		DatasourceNameS: *req.DatasourceNameS,
+		DatasourceNameT: *req.DatasourceNameT,
+		Comment:         *req.Comment,
+		CaseFieldRule: &pb.CaseFieldRule{
+			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
+			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
+		},
+		SchemaRouteRule: migrateSchemaRs,
+		DataCompareParam: &pb.DataCompareParam{
+			TableThread:          *req.DataCompareParam.TableThread,
+			BatchSize:            *req.DataCompareParam.BatchSize,
+			SqlThread:            *req.DataCompareParam.SqlThread,
+			SqlHintS:             *req.DataCompareParam.SqlHintS,
+			SqlHintT:             *req.DataCompareParam.SqlHintT,
+			CallTimeout:          *req.DataCompareParam.CallTimeout,
+			EnableCheckpoint:     *req.DataCompareParam.EnableCheckpoint,
+			EnableConsistentRead: *req.DataCompareParam.EnableConsistentRead,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) deleteDataCompareTask(ctx context.Context, req openapi.APIDeleteDataCompareJSONRequestBody) (string, error) {
+	resp, err := s.DeleteDataCompareTask(ctx, &pb.DeleteDataCompareTaskRequest{TaskName: *req.Param})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) listDataCompareTask(ctx context.Context, req openapi.APIListDataCompareJSONRequestBody) (string, error) {
+	resp, err := s.ShowDataCompareTask(ctx, &pb.ShowDataCompareTaskRequest{
+		TaskName: *req.Param,
+		Page:     *req.Page,
+		PageSize: *req.PageSize,
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
 func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsvMigrateJSONRequestBody) (string, error) {
 	var (
 		migrateSchemaRs  *pb.SchemaRouteRule

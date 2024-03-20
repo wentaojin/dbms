@@ -25,13 +25,15 @@ const (
 // DefaultRecordCreateBatchSize Model Create Record Default Batch Size
 const DefaultRecordCreateBatchSize = 50
 
-// StringSeparatorComma used for build-in string data separator
-const StringSeparatorComma = ","
-const StringSeparatorDot = "."
-const StringSeparatorBacktick = "`"
-const StringSeparatorSlash = "/"
-const StringSeparatorAite = "@"
-const StringSeparatorQuotationMarks = "\""
+const (
+	StringSeparatorComma     = ","
+	StringSeparatorDot       = "."
+	StringSeparatorBacktick  = "`"
+	StringSeparatorSlash     = "/"
+	StringSeparatorAite      = "@"
+	StringSplicingSymbol     = "||"
+	StringSeparatorSemicolon = ";"
+)
 
 const (
 	MigrateTaskTableIsExclude    = "YES"

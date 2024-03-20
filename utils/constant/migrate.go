@@ -434,3 +434,24 @@ const (
 	ParamValueSqlMigrateCaseFieldRuleLower  = "1"
 	ParamValueSqlMigrateCaseFieldRuleUpper  = "2"
 )
+
+// data compare parameters
+const (
+	ParamNameDataCompareTableThread          = "tableThread"
+	ParamNameDataCompareBatchSize            = "batchSize"
+	ParamNameDataCompareSqlThread            = "sqlThread"
+	ParamNameDataCompareSqlHintS             = "sqlHintS"
+	ParamNameDataCompareSqlHintT             = "sqlHintT"
+	ParamNameDataCompareCallTimeout          = "callTimeout"
+	ParamNameDataCompareEnableCheckpoint     = "enableCheckpoint"
+	ParamNameDataCompareEnableConsistentRead = "enableConsistentRead"
+	ParamNameDataCompareOnlyCompareRow       = "onlyCompareRow"
+
+	// ParamValueDataCompareCaseFieldRuleOrigin case-field-name params value
+	// - 0 represent keeping origin
+	// - 1 represent keeping lower
+	// - 2 represent keeping upper
+	ParamValueDataCompareCaseFieldRuleOrigin = "0"
+	ParamValueDataCompareCaseFieldRuleLower  = "1"
+	ParamValueDataCompareCaseFieldRuleUpper  = "2"
+)

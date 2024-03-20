@@ -36,6 +36,7 @@ const (
 	APIStmtMigratePath   = "stmtMigrate"
 	APISqlMigratePath    = "sqlMigrate"
 	APICsvMigratePath    = "csvMigrate"
+	APIDataComparePath   = "dataCompare"
 )
 
 const (

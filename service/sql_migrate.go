@@ -37,6 +37,10 @@ import (
 )
 
 func UpsertSqlMigrateTask(ctx context.Context, req *pb.UpsertSqlMigrateTaskRequest) (string, error) {
+	_, err := DeleteSqlMigrateTask(ctx, &pb.DeleteSqlMigrateTaskRequest{TaskName: []string{req.TaskName}})
+	if err != nil {
+		return "", err
+	}
 	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
 	if err != nil {
 		return "", err

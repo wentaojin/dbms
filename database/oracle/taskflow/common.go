@@ -60,7 +60,7 @@ func InspectMigrateTask(databaseS database.IDatabase, connectDBCharsetS, connect
 	return oracleCollation, nil
 }
 
-func optimizerColumnDatatypeS(columnName, datatype, dataScale string) (string, error) {
+func optimizerDataMigrateColumnS(columnName, datatype, dataScale string) (string, error) {
 	switch strings.ToUpper(datatype) {
 	// numeric type
 	case "NUMBER":
@@ -68,7 +68,7 @@ func optimizerColumnDatatypeS(columnName, datatype, dataScale string) (string, e
 	case "DECIMAL", "DEC", "DOUBLE PRECISION", "FLOAT", "INTEGER", "INT", "REAL", "NUMERIC", "BINARY_FLOAT", "BINARY_DOUBLE", "SMALLINT":
 		return stringutil.StringBuilder(`"`, columnName, `"`), nil
 	// character datatype
-	case "BFILE", "CHARACTER", "LONG", "NCHAR VARYING", "ROWID", "UROWID", "VARCHAR", "CHAR", "NCHAR", "NVARCHAR2", "NCLOB", "CLOB":
+	case "BFILE", "CHARACTER", "LONG", "NCHAR VARYING", "ROWID", "UROWID", "VARCHAR", "CHAR", "NCHAR", "VARCHAR2", "NVARCHAR2", "NCLOB", "CLOB":
 		return stringutil.StringBuilder(`"`, columnName, `"`), nil
 	// xmltype datatype
 	case "XMLTYPE":
@@ -98,6 +98,53 @@ func optimizerColumnDatatypeS(columnName, datatype, dataScale string) (string, e
 			}
 		} else {
 			return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		}
+	}
+}
+
+func optimizerDataCompareColumnST(columnNameS, datatypeS, dataScaleS, columnNameT string) (string, string, error) {
+	switch strings.ToUpper(datatypeS) {
+	// numeric type
+	case "NUMBER":
+		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+	case "DECIMAL", "DEC", "DOUBLE PRECISION", "FLOAT", "INTEGER", "INT", "REAL", "NUMERIC", "BINARY_FLOAT", "BINARY_DOUBLE", "SMALLINT":
+		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+	// character datatype
+	case "CHARACTER", "NCHAR VARYING", "VARCHAR", "CHAR", "NCHAR", "VARCHAR2", "NVARCHAR2":
+		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+	case "LONG":
+		return stringutil.StringBuilder(`NVL(UPPER((DBMS_CRYPTO.HASH(TO_LOB("`, columnNameS, `"),2 /*DBMS_CRYPTO.HASH_MD5*/))), 0)`),
+			stringutil.StringBuilder(`IFNULL(UPPER(MD5(`, columnNameT, `)),0)`), nil
+	case "ROWID", "UROWID":
+		return stringutil.StringBuilder(`NVL(ROWIDTOCHAR("`, columnNameS, `"), 0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		// xmltype datatype
+	case "XMLTYPE":
+		return stringutil.StringBuilder(`NVL(UPPER((DBMS_CRYPTO.HASH(XMLSERIALIZE(CONTENT "`, columnNameS, `" AS CLOB),2 /*DBMS_CRYPTO.HASH_MD5*/))), 0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(`, columnNameT, `)),0)`), nil
+	// binary datatype
+	case "BLOB", "LONG RAW", "RAW", "BFILE", "NCLOB", "CLOB":
+		return stringutil.StringBuilder(`NVL(UPPER(DBMS_CRYPTO.HASH("`, columnNameS, `",2 /*DBMS_CRYPTO.HASH_MD5*/)), 0)`),
+			stringutil.StringBuilder(`IFNULL(UPPER(MD5(`, columnNameT, `)),0)`), nil
+	// time datatype
+	case "DATE":
+		return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD HH24:MI:SS'), 0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+	// other datatype
+	default:
+		if strings.Contains(datatypeS, "INTERVAL") {
+			return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `"),0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		} else if strings.Contains(datatypeS, "TIMESTAMP") {
+			dataScaleV, err := strconv.Atoi(dataScaleS)
+			if err != nil {
+				return "", "", fmt.Errorf("aujust oracle timestamp datatype scale [%s] strconv.Atoi failed: %v", dataScaleS, err)
+			}
+			if dataScaleV == 0 {
+				return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD HH24:MI:SS'), 0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+			} else if dataScaleV > 0 && dataScaleV <= 6 {
+				return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD HH24:MI:SS.FF`, dataScaleS, `'),0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+			} else {
+				return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD HH24:MI:SS.FF6'),0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+			}
+		} else {
+			return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
 		}
 	}
 }

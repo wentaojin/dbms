@@ -18,7 +18,6 @@ package taskflow
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/wentaojin/dbms/database"
@@ -29,7 +28,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-type DataMigrateRule struct {
+type DataCompareRule struct {
 	Ctx            context.Context    `json:"-"`
 	TaskName       string             `json:"taskName"`
 	TaskMode       string             `json:"taskMode"`
@@ -38,14 +37,16 @@ type DataMigrateRule struct {
 	TableNameS     string             `json:"tableNameS"`
 	GlobalSqlHintS string             `json:"globalSqlHintS"`
 	TableTypeS     map[string]string  `json:"tableTypeS"`
+	OnlyCompareRow bool               `json:"onlyCompareRow"`
 	DatabaseS      database.IDatabase `json:"databaseS"`
 	DBCharsetS     string             `json:"DBCharsetS"`
+	DBCharsetT     string             `json:"DBCharsetT"`
 	DBCollationS   bool               `json:"DBCollationS"`
 	CaseFieldRuleS string             `json:"caseFieldRuleS"`
 	CaseFieldRuleT string             `json:"caseFieldRuleT"`
 }
 
-func (r *DataMigrateRule) GenSchemaNameRule() (string, string, error) {
+func (r *DataCompareRule) GenSchemaNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(r.Ctx, &rule.SchemaRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS})
 	if err != nil {
@@ -75,7 +76,7 @@ func (r *DataMigrateRule) GenSchemaNameRule() (string, string, error) {
 	return schemaNameS, schemaNameTNew, nil
 }
 
-func (r *DataMigrateRule) GenSchemaTableNameRule() (string, string, error) {
+func (r *DataCompareRule) GenSchemaTableNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateTableRouteRW().GetTableRouteRule(r.Ctx, &rule.TableRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
 	if err != nil {
@@ -105,7 +106,7 @@ func (r *DataMigrateRule) GenSchemaTableNameRule() (string, string, error) {
 	return tableNameS, tableNameTNew, nil
 }
 
-func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, string, error) {
+func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, string, error) {
 	columnRules := make(map[string]string)
 
 	columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(r.Ctx, &rule.ColumnRouteRule{
@@ -165,7 +166,7 @@ func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, st
 	}
 
 	var (
-		columnNameSilS, columnNameSliT []string
+		columnNameSilS, columnNameSilSO, columnNameSliT, columnNameSliTO []string
 	)
 
 	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumns(r.SchemaNameS, r.TableNameS, r.DBCollationS)
@@ -174,91 +175,73 @@ func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, st
 	}
 
 	for _, rowCol := range sourceColumnInfos {
-		columnName := rowCol["COLUMN_NAME"]
+		columnNameS := rowCol["COLUMN_NAME"]
 
-		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnName), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return "", "", "", "", fmt.Errorf("[GenTableQueryColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, columnName, err)
+			return "", "", "", "", fmt.Errorf("[GenTableQueryColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, columnNameS, err)
 		}
-		columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		columnNameS = stringutil.BytesToString(columnNameUtf8Raw)
 
-		columnNameS, err := optimizerDataMigrateColumnS(columnName, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
+		columnNameSO, err := optimizerDataMigrateColumnS(columnNameS, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
 		if err != nil {
 			return "", "", "", "", err
 		}
-		columnNameSilS = append(columnNameSilS, columnNameS)
+		columnNameSilSO = append(columnNameSilSO, columnNameSO)
 
 		var (
 			columnNameSNew string
 			columnNameT    string
 		)
 		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleLower) {
-			columnNameSNew = strings.ToLower(columnName)
+			columnNameSNew = strings.ToLower(columnNameS)
 		}
 		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleUpper) {
-			columnNameSNew = strings.ToUpper(columnName)
+			columnNameSNew = strings.ToUpper(columnNameS)
 		}
 		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleOrigin) {
-			columnNameSNew = columnName
+			columnNameSNew = columnNameS
 		}
 
 		if val, ok := columnRules[columnNameSNew]; ok {
 			switch {
 			case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-				if strings.EqualFold(r.TaskMode, constant.TaskModeStmtMigrate) ||
-					strings.EqualFold(r.TaskMode, constant.TaskModeIncrMigrate) {
-					columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorBacktick, val, constant.StringSeparatorBacktick)
-				}
-				if strings.EqualFold(r.TaskMode, constant.TaskModeCSVMigrate) {
-					columnNameT = val
-				}
+				columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorBacktick, val, constant.StringSeparatorBacktick)
 			default:
 				return "", "", "", "", fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
 			}
 		} else {
-			return "", "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.SchemaNameS, r.TableNameS, columnName)
+			return "", "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.SchemaNameS, r.TableNameS, columnNameS)
 		}
+
+		columnNameSliTO = append(columnNameSliTO, columnNameT)
+		columnNameS, columnNameT, err = optimizerDataCompareColumnST(columnNameS, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"], columnNameT)
+		if err != nil {
+			return "", "", "", "", err
+		}
+		columnNameSilS = append(columnNameSilS, columnNameS)
 		columnNameSliT = append(columnNameSliT, columnNameT)
 	}
 
-	return stringutil.StringJoin(sourceColumnNameS, constant.StringSeparatorComma),
-		stringutil.StringJoin(columnNameSilS, constant.StringSeparatorComma),
-		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma),
-		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil
+	if r.OnlyCompareRow {
+		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma), "COUNT(1) AS ROWSCOUNT", stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma), "COUNT(1) AS ROWSCOUNT", nil
+	}
+	return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
+		fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(UTL_I18N.STRING_TO_RAW(%s,'%s'), 2 /*DBMS_CRYPTO.HASH_MD5*/)) AS ROWSCHECKSUM`,
+			stringutil.StringJoin(columnNameSilS, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8),
+		stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
+		fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+			stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4),
+		nil
 }
 
-func (r *DataMigrateRule) GenSchemaTableTypeRule() string {
+func (r *DataCompareRule) GenSchemaTableTypeRule() string {
 	return r.TableTypeS[r.TableNameS]
 }
 
-func (r *DataMigrateRule) GenSchemaTableCustomRule() (bool, string, string, error) {
-	isRecord, err := model.GetIDataMigrateRuleRW().IsContainedDataMigrateRuleRecord(r.Ctx, &rule.DataMigrateRule{
-		TaskName:    r.TaskName,
-		SchemaNameS: r.SchemaNameS,
-		TableNameS:  r.TableNameS,
-	})
-	if err != nil {
-		return false, "", "", err
+func (r *DataCompareRule) GenSchemaTableCompareMethodRule() string {
+	if r.OnlyCompareRow {
+		return constant.DataCompareMethodCheckRows
 	}
-	if !isRecord {
-		return false, "", r.GlobalSqlHintS, nil
-	}
-
-	migrateTableRule, err := model.GetIDataMigrateRuleRW().GetDataMigrateRule(r.Ctx, &rule.DataMigrateRule{
-		TaskName:    r.TaskName,
-		SchemaNameS: r.SchemaNameS,
-		TableNameS:  r.TableNameS,
-	})
-	if err != nil {
-		return false, "", r.GlobalSqlHintS, err
-	}
-	enableChunkStrategy, err := strconv.ParseBool(migrateTableRule.EnableChunkStrategy)
-	if err != nil {
-		return false, "", r.GlobalSqlHintS, err
-	}
-
-	if strings.EqualFold(migrateTableRule.SqlHintS, "") {
-		return enableChunkStrategy, migrateTableRule.WhereRange, r.GlobalSqlHintS, nil
-	}
-	return enableChunkStrategy, migrateTableRule.WhereRange, migrateTableRule.SqlHintS, nil
+	return constant.DataCompareMethodCheckSum
 }

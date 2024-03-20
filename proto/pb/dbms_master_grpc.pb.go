@@ -40,6 +40,9 @@ type MasterClient interface {
 	UpsertCsvMigrateTask(ctx context.Context, in *UpsertCsvMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertCsvMigrateTaskResponse, error)
 	DeleteCsvMigrateTask(ctx context.Context, in *DeleteCsvMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteCsvMigrateTaskResponse, error)
 	ShowCsvMigrateTask(ctx context.Context, in *ShowCsvMigrateTaskRequest, opts ...grpc.CallOption) (*ShowCsvMigrateTaskResponse, error)
+	UpsertDataCompareTask(ctx context.Context, in *UpsertDataCompareTaskRequest, opts ...grpc.CallOption) (*UpsertDataCompareTaskResponse, error)
+	DeleteDataCompareTask(ctx context.Context, in *DeleteDataCompareTaskRequest, opts ...grpc.CallOption) (*DeleteDataCompareTaskResponse, error)
+	ShowDataCompareTask(ctx context.Context, in *ShowDataCompareTaskRequest, opts ...grpc.CallOption) (*ShowDataCompareTaskResponse, error)
 	OperateTask(ctx context.Context, in *OperateTaskRequest, opts ...grpc.CallOption) (*OperateTaskResponse, error)
 }
 
@@ -213,6 +216,33 @@ func (c *masterClient) ShowCsvMigrateTask(ctx context.Context, in *ShowCsvMigrat
 	return out, nil
 }
 
+func (c *masterClient) UpsertDataCompareTask(ctx context.Context, in *UpsertDataCompareTaskRequest, opts ...grpc.CallOption) (*UpsertDataCompareTaskResponse, error) {
+	out := new(UpsertDataCompareTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/UpsertDataCompareTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) DeleteDataCompareTask(ctx context.Context, in *DeleteDataCompareTaskRequest, opts ...grpc.CallOption) (*DeleteDataCompareTaskResponse, error) {
+	out := new(DeleteDataCompareTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/DeleteDataCompareTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) ShowDataCompareTask(ctx context.Context, in *ShowDataCompareTaskRequest, opts ...grpc.CallOption) (*ShowDataCompareTaskResponse, error) {
+	out := new(ShowDataCompareTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/ShowDataCompareTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *masterClient) OperateTask(ctx context.Context, in *OperateTaskRequest, opts ...grpc.CallOption) (*OperateTaskResponse, error) {
 	out := new(OperateTaskResponse)
 	err := c.cc.Invoke(ctx, "/proto.Master/OperateTask", in, out, opts...)
@@ -244,6 +274,9 @@ type MasterServer interface {
 	UpsertCsvMigrateTask(context.Context, *UpsertCsvMigrateTaskRequest) (*UpsertCsvMigrateTaskResponse, error)
 	DeleteCsvMigrateTask(context.Context, *DeleteCsvMigrateTaskRequest) (*DeleteCsvMigrateTaskResponse, error)
 	ShowCsvMigrateTask(context.Context, *ShowCsvMigrateTaskRequest) (*ShowCsvMigrateTaskResponse, error)
+	UpsertDataCompareTask(context.Context, *UpsertDataCompareTaskRequest) (*UpsertDataCompareTaskResponse, error)
+	DeleteDataCompareTask(context.Context, *DeleteDataCompareTaskRequest) (*DeleteDataCompareTaskResponse, error)
+	ShowDataCompareTask(context.Context, *ShowDataCompareTaskRequest) (*ShowDataCompareTaskResponse, error)
 	OperateTask(context.Context, *OperateTaskRequest) (*OperateTaskResponse, error)
 	mustEmbedUnimplementedMasterServer()
 }
@@ -305,6 +338,15 @@ func (UnimplementedMasterServer) DeleteCsvMigrateTask(context.Context, *DeleteCs
 }
 func (UnimplementedMasterServer) ShowCsvMigrateTask(context.Context, *ShowCsvMigrateTaskRequest) (*ShowCsvMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowCsvMigrateTask not implemented")
+}
+func (UnimplementedMasterServer) UpsertDataCompareTask(context.Context, *UpsertDataCompareTaskRequest) (*UpsertDataCompareTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpsertDataCompareTask not implemented")
+}
+func (UnimplementedMasterServer) DeleteDataCompareTask(context.Context, *DeleteDataCompareTaskRequest) (*DeleteDataCompareTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteDataCompareTask not implemented")
+}
+func (UnimplementedMasterServer) ShowDataCompareTask(context.Context, *ShowDataCompareTaskRequest) (*ShowDataCompareTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShowDataCompareTask not implemented")
 }
 func (UnimplementedMasterServer) OperateTask(context.Context, *OperateTaskRequest) (*OperateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OperateTask not implemented")
@@ -646,6 +688,60 @@ func _Master_ShowCsvMigrateTask_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Master_UpsertDataCompareTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertDataCompareTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).UpsertDataCompareTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/UpsertDataCompareTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).UpsertDataCompareTask(ctx, req.(*UpsertDataCompareTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_DeleteDataCompareTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDataCompareTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).DeleteDataCompareTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/DeleteDataCompareTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).DeleteDataCompareTask(ctx, req.(*DeleteDataCompareTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_ShowDataCompareTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShowDataCompareTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).ShowDataCompareTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/ShowDataCompareTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).ShowDataCompareTask(ctx, req.(*ShowDataCompareTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Master_OperateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(OperateTaskRequest)
 	if err := dec(in); err != nil {
@@ -742,6 +838,18 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShowCsvMigrateTask",
 			Handler:    _Master_ShowCsvMigrateTask_Handler,
+		},
+		{
+			MethodName: "UpsertDataCompareTask",
+			Handler:    _Master_UpsertDataCompareTask_Handler,
+		},
+		{
+			MethodName: "DeleteDataCompareTask",
+			Handler:    _Master_DeleteDataCompareTask_Handler,
+		},
+		{
+			MethodName: "ShowDataCompareTask",
+			Handler:    _Master_ShowDataCompareTask_Handler,
 		},
 		{
 			MethodName: "OperateTask",

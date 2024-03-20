@@ -244,6 +244,7 @@ func (d *Database) GetDatabaseTableColumns(schemaName string, tableName string, 
 			- number(*,0) -> number(38,0)
 			- number(*) -> number(38,127)
 			- number -> number(38,127)
+			- number(5) -> number(5,0)
 			- number(x,y) -> number(x,y)
 	*/
 	if collation {

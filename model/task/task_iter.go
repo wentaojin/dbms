@@ -49,7 +49,7 @@ type IStructMigrateTask interface {
 	UpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]interface{}) (*StructMigrateTask, error)
 	BatchUpdateStructMigrateTask(ctx context.Context, task *StructMigrateTask, updates map[string]interface{}) (*StructMigrateTask, error)
 	FindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
-	FindStructMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructMigrateGroupStatusResult, error)
+	FindStructMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructGroupStatusResult, error)
 	BatchFindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	ListStructMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*StructMigrateTask, error)
@@ -71,14 +71,40 @@ type IDataMigrateTask interface {
 	CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, batchSize int) error
 	UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
 	BatchUpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
+	GetDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error)
 	FindDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
-	FindDataMigrateTaskBySchemaTableChunkStatus(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateGroupTaskStatusResult, error)
-	FindDataMigrateTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataMigrateGroupChunkResult, error)
-	FindDataMigrateTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataMigrateGroupTaskStatusResult, error)
-	FindDataMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataMigrateGroupStatusResult, error)
+	FindDataMigrateTaskBySchemaTableChunkStatus(ctx context.Context, task *DataMigrateTask) ([]*DataGroupTaskStatusResult, error)
+	FindDataMigrateTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error)
+	FindDataMigrateTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataGroupTaskStatusResult, error)
+	FindDataMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataGroupStatusResult, error)
 	ListDataMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataMigrateTask, error)
 	DeleteDataMigrateTask(ctx context.Context, task *DataMigrateTask) error
 	DeleteDataMigrateTaskName(ctx context.Context, taskName []string) error
+}
+
+type IDataCompareSummary interface {
+	CreateDataCompareSummary(ctx context.Context, task *DataCompareSummary) (*DataCompareSummary, error)
+	GetDataCompareSummary(ctx context.Context, task *DataCompareSummary) (*DataCompareSummary, error)
+	UpdateDataCompareSummary(ctx context.Context, task *DataCompareSummary, updates map[string]interface{}) (*DataCompareSummary, error)
+	FindDataCompareSummary(ctx context.Context, task *DataCompareSummary) ([]*DataCompareSummary, error)
+	DeleteDataCompareSummary(ctx context.Context, task *DataCompareSummary) error
+	DeleteDataCompareSummaryName(ctx context.Context, taskName []string) error
+}
+
+type IDataCompareTask interface {
+	CreateDataCompareTask(ctx context.Context, task *DataCompareTask) (*DataCompareTask, error)
+	CreateInBatchDataCompareTask(ctx context.Context, task []*DataCompareTask, batchSize int) error
+	UpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
+	BatchUpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
+	FindDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
+	FindDataCompareTaskBySchemaTableChunkStatus(ctx context.Context, task *DataCompareTask) ([]*DataGroupTaskStatusResult, error)
+	FindDataCompareTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error)
+	FindDataCompareTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataGroupTaskStatusResult, error)
+	FindDataCompareTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataGroupStatusResult, error)
+	QueryDataCompareTaskByTaskStatus(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
+	ListDataCompareTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataCompareTask, error)
+	DeleteDataCompareTask(ctx context.Context, task *DataCompareTask) error
+	DeleteDataCompareTaskName(ctx context.Context, taskName []string) error
 }
 
 type ISqlMigrateSummary interface {
@@ -95,7 +121,7 @@ type ISqlMigrateTask interface {
 	UpdateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask, updates map[string]interface{}) (*SqlMigrateTask, error)
 	BatchUpdateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask, updates map[string]interface{}) (*SqlMigrateTask, error)
 	FindSqlMigrateTaskByTaskStatus(ctx context.Context, task *SqlMigrateTask) ([]*SqlMigrateTask, error)
-	FindSqlMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataMigrateGroupStatusResult, error)
+	FindSqlMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataGroupStatusResult, error)
 	ListSqlMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*SqlMigrateTask, error)
 	DeleteSqlMigrateTask(ctx context.Context, task *SqlMigrateTask) error
 	DeleteSqlMigrateTaskName(ctx context.Context, taskName []string) error

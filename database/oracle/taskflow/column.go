@@ -488,7 +488,7 @@ func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, or
 		datatype, defaultValue string
 		err                    error
 	)
-	columnDatatypes, columnDefaultValues := handleColumnRuleWithColumnHighPriority(columnRules)
+	columnDatatypes, columnDefaultValues := handleColumnRuleWithColumnHighPriority(originColumnName, columnRules)
 
 	globalDatatypes, globalDefaultValues := handelColumnRuleWithTableSchemaTaskPriority(originSourceTable, buildinDefaultValueRules, taskRules, schemaRules, tableRules)
 
@@ -499,7 +499,7 @@ func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, or
 	}
 
 	// column high priority
-	if columnDatatypes == nil && columnDefaultValues == nil {
+	if len(columnDatatypes) == 0 && len(columnDefaultValues) == 0 {
 		// global priority
 		for ruleColumnTypeS, ruleColumnTypeT := range globalDatatypes {
 			datatype = handleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
@@ -513,6 +513,19 @@ func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, or
 	}
 
 	for customColName, columnRuleMap := range columnDatatypes {
+		// global priority
+		if len(columnRuleMap) == 0 {
+			for ruleColumnTypeS, ruleColumnTypeT := range globalDatatypes {
+				datatype = handleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
+				if !strings.EqualFold(datatype, constant.OracleDatabaseColumnDatatypeMatchRuleNotFound) {
+					return datatype, defaultValue, nil
+				}
+			}
+
+			datatype = buildInDatatype
+			return datatype, defaultValue, nil
+		}
+		// column priority
 		// case field rule
 		if originColumnName == customColName {
 			for ruleColumnTypeS, ruleColumnTypeT := range columnRuleMap {
@@ -576,7 +589,7 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 		}
 	}
 
-	if columnCustomDefaultValue == nil && columnGlobalDefaultValue == nil {
+	if len(columnCustomDefaultValue) == 0 && len(columnGlobalDefaultValue) == 0 {
 		// string data charset processing
 		// MigrateStringDataTypeDatabaseCharsetMap
 		dataDefault, err := handleColumnDefaultValueCharset(columnName, defaultVal, constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(sourceCharset)], constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(targetCharset)])
@@ -588,7 +601,7 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 
 	// priority
 	// column > global
-	if columnCustomDefaultValue != nil {
+	if len(columnCustomDefaultValue) != 0 {
 		if vals, exist := columnCustomDefaultValue[columnName]; exist {
 			// The currently created table structure field A varchar2(10) does not have any attributes. If you need to specify changes, you need to specify the defaultValueS value, which is NULLSTRING.
 			// The currently created table structure field A varchar2(10) default NULL. If you need to specify changes, you need to specify the defaultValueS value, which is NULL.
@@ -603,7 +616,7 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 		}
 	}
 
-	if columnGlobalDefaultValue != nil {
+	if len(columnGlobalDefaultValue) != 0 {
 		for k, v := range columnGlobalDefaultValue {
 			if strings.EqualFold(strings.TrimSpace(k), strings.TrimSpace(defaultVal)) {
 				defaultVal = v
@@ -622,12 +635,12 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 
 func handleColumnRuleWithNumberDatatypeCompare(originColumnType, ruleColumnTypeS, ruleColumnTypeT string) string {
 	/*
-		number datatype：function ->  GetDatabaseTableColumn
+		number datatype：GetDatabaseTableColumns
 		- number(*,10) -> number(38,10)
 		- number(*,0) -> number(38,0)
 		- number(*) -> number(38,127)
 		- number -> number(38,127)
-		- number(5) -> number(5)
+		- number(5) -> number(5,0)
 		- number(8,9) -> number(8,9)
 	*/
 	if strings.Contains(stringutil.StringUpper(ruleColumnTypeS), "NUMBER") {
@@ -681,7 +694,7 @@ func handelColumnRuleWithTableSchemaTaskPriority(sourceTable string, buildinDefa
 
 // handleColumnRuleWithColumnHighPriority priority
 // column high priority
-func handleColumnRuleWithColumnHighPriority(columnRules []*migrate.ColumnStructRule) (map[string]map[string]string, map[string]map[string]string) {
+func handleColumnRuleWithColumnHighPriority(columNameS string, columnRules []*migrate.ColumnStructRule) (map[string]map[string]string, map[string]map[string]string) {
 	columnDatatypeMap := make(map[string]map[string]string)
 	columnDefaultValMap := make(map[string]map[string]string)
 
@@ -689,32 +702,26 @@ func handleColumnRuleWithColumnHighPriority(columnRules []*migrate.ColumnStructR
 		return columnDatatypeMap, columnDefaultValMap
 	}
 
-	columnNames := make(map[string]struct{})
+	datatypeMap := make(map[string]string)
+	defaultValMap := make(map[string]string)
 	for _, cr := range columnRules {
-		columnNames[cr.ColumnNameS] = struct{}{}
-	}
-
-	for c, _ := range columnNames {
-		datatypeMap := make(map[string]string)
-		defaultValMap := make(map[string]string)
-		for _, cr := range columnRules {
-			if strings.EqualFold(c, cr.ColumnNameS) {
-				// exclude columnType "", represent it's not configure column datatype rule
-				if !strings.EqualFold(cr.ColumnTypeS, "") && !strings.EqualFold(cr.ColumnTypeT, "") {
-					datatypeMap[cr.ColumnTypeS] = cr.ColumnTypeT
-				}
-				if !strings.EqualFold(cr.DefaultValueS, "") && !strings.EqualFold(cr.DefaultValueT, "") {
-					defaultValMap[cr.DefaultValueS] = cr.DefaultValueT
-				}
+		if strings.EqualFold(columNameS, cr.ColumnNameS) {
+			// exclude columnType "", represent it's not configure column datatype rule
+			if !strings.EqualFold(cr.ColumnTypeS, "") && !strings.EqualFold(cr.ColumnTypeT, "") {
+				datatypeMap[cr.ColumnTypeS] = cr.ColumnTypeT
+			}
+			if !strings.EqualFold(cr.DefaultValueS, "") && !strings.EqualFold(cr.DefaultValueT, "") {
+				defaultValMap[cr.DefaultValueS] = cr.DefaultValueT
 			}
 		}
-		if datatypeMap != nil {
-			columnDatatypeMap[c] = datatypeMap
-		}
-		if defaultValMap != nil {
-			columnDefaultValMap[c] = defaultValMap
-		}
 	}
+	if datatypeMap != nil {
+		columnDatatypeMap[columNameS] = datatypeMap
+	}
+	if defaultValMap != nil {
+		columnDefaultValMap[columNameS] = defaultValMap
+	}
+
 	return columnDatatypeMap, columnDefaultValMap
 }
 
@@ -744,7 +751,25 @@ func handleColumnRuleWithTaskLevel(taskRules []*migrate.TaskStructRule) (map[str
 	for _, t := range taskRules {
 		// exclude columnType "", represent it's not configure column datatype rule
 		if !strings.EqualFold(t.ColumnTypeS, "") && !strings.EqualFold(t.ColumnTypeT, "") {
-			columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+			// repair based on the number data type filled in by the user
+			if strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "NUMBER") {
+				switch {
+				case strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "*") && strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ","):
+					columnDatatypeMap[strings.Replace(t.ColumnTypeS, "*", "38", -1)] = t.ColumnTypeT
+				case strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "*") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ","):
+					columnDatatypeMap["NUMBER(38,127)"] = t.ColumnTypeT
+				case !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "(") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ")"):
+					columnDatatypeMap["NUMBER(38,127)"] = t.ColumnTypeT
+				default:
+					if strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "(") && strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ")") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ",") {
+						columnDatatypeMap[strings.Replace(t.ColumnTypeS, ")", ",0)", -1)] = t.ColumnTypeT
+					} else {
+						columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+					}
+				}
+			} else {
+				columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+			}
 		}
 		if !strings.EqualFold(t.DefaultValueS, "") && !strings.EqualFold(t.DefaultValueT, "") {
 			columnDefaultValMap[t.DefaultValueS] = t.DefaultValueT
@@ -764,7 +789,25 @@ func handleColumnRuleWithSchemaLevel(schemaRules []*migrate.SchemaStructRule) (m
 	for _, t := range schemaRules {
 		// exclude columnType "", represent it's not configure column datatype rule
 		if !strings.EqualFold(t.ColumnTypeS, "") && !strings.EqualFold(t.ColumnTypeT, "") {
-			columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+			// repair based on the number data type filled in by the user
+			if strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "NUMBER") {
+				switch {
+				case strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "*") && strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ","):
+					columnDatatypeMap[strings.Replace(t.ColumnTypeS, "*", "38", -1)] = t.ColumnTypeT
+				case strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "*") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ","):
+					columnDatatypeMap["NUMBER(38,127)"] = t.ColumnTypeT
+				case !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "(") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ")"):
+					columnDatatypeMap["NUMBER(38,127)"] = t.ColumnTypeT
+				default:
+					if strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "(") && strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ")") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ",") {
+						columnDatatypeMap[strings.Replace(t.ColumnTypeS, ")", ",0)", -1)] = t.ColumnTypeT
+					} else {
+						columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+					}
+				}
+			} else {
+				columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+			}
 		}
 		if !strings.EqualFold(t.DefaultValueS, "") && !strings.EqualFold(t.DefaultValueT, "") {
 			columnDefaultValMap[t.DefaultValueS] = t.DefaultValueT
@@ -785,7 +828,25 @@ func handleColumnRuleWithTableLevel(sourceTable string, tableRules []*migrate.Ta
 		if sourceTable == t.TableNameS {
 			// exclude columnType "", represent it's not configure column datatype rule
 			if !strings.EqualFold(t.ColumnTypeS, "") && !strings.EqualFold(t.ColumnTypeT, "") {
-				columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+				// repair based on the number data type filled in by the user
+				if strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "NUMBER") {
+					switch {
+					case strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "*") && strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ","):
+						columnDatatypeMap[strings.Replace(t.ColumnTypeS, "*", "38", -1)] = t.ColumnTypeT
+					case strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "*") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ","):
+						columnDatatypeMap["NUMBER(38,127)"] = t.ColumnTypeT
+					case !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "(") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ")"):
+						columnDatatypeMap["NUMBER(38,127)"] = t.ColumnTypeT
+					default:
+						if strings.Contains(stringutil.StringUpper(t.ColumnTypeS), "(") && strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ")") && !strings.Contains(stringutil.StringUpper(t.ColumnTypeS), ",") {
+							columnDatatypeMap[strings.Replace(t.ColumnTypeS, ")", ",0)", -1)] = t.ColumnTypeT
+						} else {
+							columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+						}
+					}
+				} else {
+					columnDatatypeMap[t.ColumnTypeS] = t.ColumnTypeT
+				}
 			}
 			if !strings.EqualFold(t.DefaultValueS, "") && !strings.EqualFold(t.DefaultValueT, "") {
 				columnDefaultValMap[t.DefaultValueS] = t.DefaultValueT

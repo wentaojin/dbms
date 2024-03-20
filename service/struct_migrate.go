@@ -53,6 +53,10 @@ import (
 )
 
 func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTaskRequest) (string, error) {
+	_, err := DeleteStructMigrateTask(ctx, &pb.DeleteStructMigrateTaskRequest{TaskName: []string{req.TaskName}})
+	if err != nil {
+		return "", err
+	}
 	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
 	if err != nil {
 		return "", err
@@ -625,6 +629,10 @@ func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir s
 			return err
 		}
 		err = w.SyncStructFile()
+		if err != nil {
+			return err
+		}
+		err = w.Close()
 		if err != nil {
 			return err
 		}

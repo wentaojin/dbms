@@ -317,4 +317,5 @@ type IStructMigrateDatabaseWriter interface {
 type IStructMigrateFileWriter interface {
 	InitOutputFile() error
 	SyncStructFile() error
+	Close() error
 }

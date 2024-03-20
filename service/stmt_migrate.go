@@ -36,6 +36,10 @@ import (
 )
 
 func UpsertStmtMigrateTask(ctx context.Context, req *pb.UpsertStmtMigrateTaskRequest) (string, error) {
+	_, err := DeleteStmtMigrateTask(ctx, &pb.DeleteStmtMigrateTaskRequest{TaskName: []string{req.TaskName}})
+	if err != nil {
+		return "", err
+	}
 	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
 	if err != nil {
 		return "", err
@@ -311,10 +315,29 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
+	if !taskParams.EnableCheckpoint {
+		logger.Warn("stmt migrate task clear task records",
+			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			err = model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{taskInfo.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(txnCtx, []string{taskInfo.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
 		logger.Info("stmt migrate task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 		taskTime := time.Now()
-		dataMigrate := &taskflow.DataMigrateTask{
+		dataMigrate := &taskflow.StmtMigrateTask{
 			Ctx:         ctx,
 			Task:        taskInfo,
 			DatasourceS: sourceDatasource,

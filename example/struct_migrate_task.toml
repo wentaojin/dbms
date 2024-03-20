@@ -9,23 +9,24 @@ create-if-not-exist = true
 enable-direct-create = true
 
 [case-field-rule]
-# 控制 strict-migrate-task 配置文件内所有 *-s 参数配置值（default-value-s 除外）以及 column-route-rules 中的 key 值
+# 控制配置文件内所有 *-s 参数配置值（default-value-s 除外）以及 column-route-rules 中的 key 值
 # 1，参数值是 0 代表以当前配置文件为准，与源端对比
-# 2，参数值是 1 代表统一转换值为小写，与源端对比，default-value-s 参数配置始终以参数配置以及源端为准
-# 3，参数值是 2 代表统一转换值为大写，与源端对比，default-value-s 参数配置始终以参数配置以及源端为准
+# 2，参数值是 1 代表统一转换值为小写，与源端对比，default-value-s 参数配置始终以参数配置与源端对比
+# 3，参数值是 2 代表统一转换值为大写，与源端对比，default-value-s 参数配置始终以参数配置与源端对比
 case-field-rule-s = "0"
-# 控制 strict-migrate-task 配置文件 schema-name-t、table-name-t 以及 column-route-rules 中的 value 值，、column-type-t 不受控制默认大写
+# 控制配置文件 schema-name-t、table-name-t 以及 column-route-rules 中的 value 值，、column-type-t/table-attrs-t 不受控制默认大写
 # 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准，非配置文件配置的以上游为准
-# 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写，default-value-t/table-attrs-t 参数配置始终以参数配置以及源端为准
-# 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写，default-value-t/table-attrs-t 参数配置始终以参数配置以及源端为准
+# 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写，default-value-t 参数配置始终以参数配置与源端对比
+# 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写，default-value-t 参数配置始终以参数配置与源端对比
 case-field-rule-t = "0"
 
 
 [schema-route-rule]
-schema-name-s = "FINDPT"
+schema-name-s = "MARVIN"
 schema-name-t = "STEVEN"
-include-table-s = []
-exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
+include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
+exclude-table-s = []
+#exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
 
 [[schema-route-rule.table-route-rules]]
 table-name-s = "MARVIN00"
@@ -36,37 +37,65 @@ table-name-s = "MARVIN01"
 table-name-t = "STEVEN01"
 column-route-rules = {"NAME" = "t_name00"}
 
-
+# 默认值规则设置分为字符类型 OR 数值类型 OR 函数表达式 OR '' 空字符串 OR NULL 字符
+# 字符类型设置需要带单引号
+# 数值类型以及函数表达式设置保持本身即可
+# '' 空字符串设置需要设置保持 '' 即可
+# NULL 字符设置需要 NULLSTRING 代替
 [struct-migrate-rule]
 [[struct-migrate-rule.task-struct-rules]]
-column-type-s = ""
-column-type-t = ""
-default-value-s = ""
-default-value-t = ""
+column-type-s = "NUMBER(38)"
+column-type-t = "BIGINT"
+default-value-s = "5"
+default-value-t = "10"
 [[struct-migrate-rule.schema-struct-rules]]
-schema-name-s = ""
-column-type-s = ""
-column-type-t = ""
+schema-name-s = "MARVIN"
+column-type-s = "NUMBER"
+column-type-t = "SMALLINT(10)"
 default-value-s = ""
 default-value-t = ""
 [[struct-migrate-rule.table-struct-rules]]
-schema-name-s = ""
-source-table = ""
-column-type-s = ""
-column-type-t = ""
+schema-name-s = "MARVIN"
+table-name-s = "MARVIN00"
+column-type-s = "NUMBER"
+column-type-t = "BIGINT(20)"
+default-value-s = "'pw'"
+default-value-t = "'pc'"
+[[struct-migrate-rule.column-struct-rules]]
+schema-name-s = "MARVIN"
+table-name-s = "MARVIN00"
+column-name-s = "ID"
+column-type-s = "NUMBER"
+column-type-t = "INT"
 default-value-s = ""
 default-value-t = ""
 [[struct-migrate-rule.column-struct-rules]]
-schema-name-s = ""
-table-name-s = ""
-column-name-s = ""
+schema-name-s = "MARVIN"
+table-name-s = "MARVIN01"
+column-name-s = "XF"
 column-type-s = ""
 column-type-t = ""
-default-value-s = ""
-default-value-t = ""
+default-value-s = "''"
+default-value-t = "'STRING'"
+[[struct-migrate-rule.column-struct-rules]]
+schema-name-s = "MARVIN"
+table-name-s = "MARVIN01"
+column-name-s = "XFO"
+column-type-s = ""
+column-type-t = ""
+default-value-s = "NULLSTRING"
+default-value-t = "'pingcap'"
+[[struct-migrate-rule.column-struct-rules]]
+schema-name-s = "MARVIN"
+table-name-s = "MARVIN01"
+column-name-s = "XFT"
+column-type-s = ""
+column-type-t = ""
+default-value-s = "NULLSTRING"
+default-value-t = "'marvin'"
 [[struct-migrate-rule.table-attrs-rules]]
-schema-name-s = ""
-table-names-s = []
-table-attrs-t = ""
+schema-name-s = "MARVIN"
+table-names-s = ["MARVIN05"]
+table-attrs-t = "shard_row_id_bits=6"
 
 

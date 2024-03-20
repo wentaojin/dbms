@@ -29,7 +29,7 @@ import (
 
 type IDatabase interface {
 	PrepareContext(ctx context.Context, sqlStr string) (*sql.Stmt, error)
-	QueryContext(ctx context.Context, sqlStr string) (*sql.Rows, error)
+	QueryContext(ctx context.Context, sqlStr string, args ...any) (*sql.Rows, error)
 	ExecContext(ctx context.Context, sqlStr string, args ...any) (sql.Result, error)
 	GeneralQuery(sqlStr string) ([]string, []map[string]string, error)
 	PingDatabaseConnection() error
@@ -37,12 +37,20 @@ type IDatabase interface {
 	IDatabaseObjectFilter
 	IDatabaseStructMigrate
 	IDatabaseDataMigrate
+	IDatabaseDataCompare
 }
 
 type IDatabaseObjectFilter interface {
 	FilterDatabaseSchema() ([]string, error)
 	FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error)
 	FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) ([]string, []string, []string, []string, []string, error)
+}
+
+type IDatabaseSchemaTableRule interface {
+	GenSchemaTableTypeRule() string
+	GenSchemaNameRule() (string, string, error)
+	GenSchemaTableNameRule() (string, string, error)
+	GenSchemaTableColumnRule() (string, string, string, string, error)
 }
 
 func NewDatabase(ctx context.Context, datasource *datasource.Datasource, migrateOracleSchema string) (IDatabase, error) {

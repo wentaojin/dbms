@@ -278,3 +278,45 @@ func (s *Server) ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateT
 		Message: delMsg,
 	}}, nil
 }
+
+func (s *Server) UpsertDataCompareTask(ctx context.Context, req *pb.UpsertDataCompareTaskRequest) (*pb.UpsertDataCompareTaskResponse, error) {
+	showMsg, err := service.UpsertDataCompareTask(ctx, req)
+	if err != nil {
+		return &pb.UpsertDataCompareTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.UpsertDataCompareTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: showMsg,
+	}}, nil
+}
+
+func (s *Server) DeleteDataCompareTask(ctx context.Context, req *pb.DeleteDataCompareTaskRequest) (*pb.DeleteDataCompareTaskResponse, error) {
+	delMsg, err := service.DeleteDataCompareTask(ctx, req)
+	if err != nil {
+		return &pb.DeleteDataCompareTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.DeleteDataCompareTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest) (*pb.ShowDataCompareTaskResponse, error) {
+	delMsg, err := service.ShowDataCompareTask(ctx, req)
+	if err != nil {
+		return &pb.ShowDataCompareTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.ShowDataCompareTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}

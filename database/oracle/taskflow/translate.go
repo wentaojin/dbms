@@ -16,6 +16,7 @@ limitations under the License.
 package taskflow
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/wentaojin/dbms/utils/constant"
@@ -65,4 +66,52 @@ func genMYSQLCompatibleDatabasePrepareBindVarStmt(columns, bindVarBatch int) str
 	}
 
 	return exstrings.Join(bindVars, ",")
+}
+
+func GenMYSQLCompatibleDatabaseInsertStmtSQL(targetSchemaName, targetTableName, sqlHintT string, columnDetailT []string, columnDataT string, columnDataCounts int, safeMode bool) string {
+	var (
+		prefixSQL        string
+		columnDetailTSli []string
+	)
+	for _, c := range columnDetailT {
+		columnDetailTSli = append(columnDetailTSli, stringutil.StringBuilder("`", c, "`"))
+	}
+
+	if safeMode {
+		if strings.EqualFold(sqlHintT, "") {
+			prefixSQL = stringutil.StringBuilder("REPLACE INTO `", targetSchemaName, "`.`", targetTableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
+		} else {
+			prefixSQL = stringutil.StringBuilder("REPLACE ", sqlHintT, " INTO `", targetSchemaName, "`.`", targetTableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
+		}
+	} else {
+		if strings.EqualFold(sqlHintT, "") {
+			prefixSQL = stringutil.StringBuilder("INSERT INTO `", targetSchemaName, "`.`", targetTableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
+		} else {
+			prefixSQL = stringutil.StringBuilder("INSERT ", sqlHintT, " INTO `", targetSchemaName, "`.`", targetTableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
+		}
+	}
+
+	var columnDataSli []string
+	for i := 0; i < columnDataCounts; i++ {
+		columnDataSli = append(columnDataSli, columnDataT)
+	}
+
+	return stringutil.StringBuilder(prefixSQL, `(`, stringutil.StringJoin(columnDataSli, constant.StringSeparatorComma), `)`)
+}
+
+func GenMYSQLCompatibleDatabaseDeleteStmtSQL(targetSchemaName, targetTableName, sqlHintT string, columnDetailT []string, columnDataT []string, columnDataCounts int) string {
+
+	var prefixSQL string
+	if strings.EqualFold(sqlHintT, "") {
+		prefixSQL = stringutil.StringBuilder("DELETE FROM `", targetSchemaName, "`.`", targetTableName, "` WHERE ")
+	} else {
+		prefixSQL = stringutil.StringBuilder("DELETE ", sqlHintT, " FROM `", targetSchemaName, "`.`", targetTableName, "` WHERE ")
+	}
+
+	var columnConds []string
+	for i, c := range columnDetailT {
+		columnConds = append(columnConds, stringutil.StringBuilder("`", c, "`", ` = `, columnDataT[i]))
+	}
+
+	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(columnConds, " AND "), ` LIMIT `, strconv.Itoa(columnDataCounts))
 }

@@ -39,11 +39,13 @@ const (
 )
 
 const (
-	TaskDatabaseStatusWaiting = "WAITING"
-	TaskDatabaseStatusRunning = "RUNNING"
-	TaskDatabaseStatusStopped = "STOPPED"
-	TaskDatabaseStatusFailed  = "FAILED"
-	TaskDatabaseStatusSuccess = "SUCCESS"
+	TaskDatabaseStatusWaiting  = "WAITING"
+	TaskDatabaseStatusRunning  = "RUNNING"
+	TaskDatabaseStatusStopped  = "STOPPED"
+	TaskDatabaseStatusFailed   = "FAILED"
+	TaskDatabaseStatusSuccess  = "SUCCESS"
+	TaskDatabaseStatusEqual    = "EQUAL"
+	TaskDatabaseStatusNotEqual = "NOT_EQUAL"
 )
 
 const (

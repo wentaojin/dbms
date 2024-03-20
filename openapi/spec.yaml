@@ -302,6 +302,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Response'
+  /task/dataCompare:
+    put:
+      tags:
+        - dataCompare
+      description: Put data compare task information
+      operationId: APIPutDataCompare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataCompareTask'
+      responses:
+        '200':
+          description: data compare task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - dataCompare
+      description: List data compare task information
+      operationId: APIListDataCompare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of data compare task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - dataCompare
+      description: Delete data compare rule information
+      operationId: APIDeleteDataCompare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
   /task/csvMigrate:
     put:
       tags:
@@ -590,6 +663,27 @@ components:
             $ref: '#/components/schemas/DataMigrateRule'
         statementMigrateParam:
           $ref: '#/components/schemas/StatementMigrateParam'
+    DataCompareTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        schemaRouteRule:
+          $ref: '#/components/schemas/SchemaRouteRule'
+        dataCompareParam:
+          $ref: '#/components/schemas/DataCompareParam'
     CsvMigrateTask:
       type: object
       properties:
@@ -668,6 +762,33 @@ components:
         enableCheckpoint:
           type: boolean
         enableConsistentRead:
+          type: boolean
+    DataCompareParam:
+      type: object
+      properties:
+        tableThread:
+          type: integer
+          format: uint64
+        batchSize:
+          type: integer
+          format: uint64
+        sqlThread:
+          type: integer
+          format: uint64
+        sqlHintS:
+          type: string
+          format: string
+        sqlHintT:
+          type: string
+          format: string
+        callTimeout:
+          type: integer
+          format: uint64
+        enableCheckpoint:
+          type: boolean
+        enableConsistentRead:
+          type: boolean
+        onlyCompareRow:
           type: boolean
     CsvMigrateParam:
       type: object
