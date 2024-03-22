@@ -17,7 +17,7 @@ package database
 
 type IDatabaseDataCompare interface {
 	FilterDatabaseTableBestColumnDatatype(columnType string) bool
-	FindDatabaseTableBestColumnName(schemaNameS, tableNameS string) ([]string, error)
+	FindDatabaseTableBestColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error)
 	GetDatabaseTableBestColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
 	GetDatabaseTableBestColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error)
 	GetDatabaseTableBestColumnCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error)
@@ -26,6 +26,7 @@ type IDatabaseDataCompare interface {
 // IDataCompareRuleInitializer used for database table rule initializer
 type IDataCompareRuleInitializer interface {
 	GenSchemaTableCompareMethodRule() string
+	GenSchemaTableCustomRule() (string, string, error)
 	IDatabaseSchemaTableRule
 }
 
@@ -40,6 +41,8 @@ type DataCompareAttributesRule struct {
 	ColumnDetailT  string `json:"columnDetailT"`
 	ColumnDetailTO string `json:"columnDetailTO"`
 	CompareMethod  string `json:"compareMethod"`
+	ColumnFieldC   string `json:"columnFieldC"`
+	CompareRangeC  string `json:"compareRangeC"`
 }
 
 func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttributesRule, error) {
@@ -55,6 +58,10 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
+	columnFields, compareRange, err := i.GenSchemaTableCustomRule()
+	if err != nil {
+		return &DataCompareAttributesRule{}, err
+	}
 	return &DataCompareAttributesRule{
 		SchemaNameS:    sourceSchema,
 		SchemaNameT:    targetSchema,
@@ -66,6 +73,8 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 		ColumnDetailTO: targetColumnTO,
 		ColumnDetailT:  targetColumnT,
 		CompareMethod:  i.GenSchemaTableCompareMethodRule(),
+		ColumnFieldC:   columnFields,
+		CompareRangeC:  compareRange,
 	}, nil
 }
 

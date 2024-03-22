@@ -314,6 +314,7 @@ message UpsertDataCompareTaskRequest{
 
   CaseFieldRule caseFieldRule = 5;
   SchemaRouteRule schemaRouteRule = 6;
+  repeated DataCompareRule DataCompareRules = 7;
   DataCompareParam DataCompareParam = 8;
 }
 message UpsertDataCompareTaskResponse{
@@ -486,6 +487,12 @@ message CsvMigrateParam{
   uint64 callTimeout = 15;
   bool enableCheckpoint = 16;
   bool enableConsistentRead = 17;
+}
+
+message DataCompareRule {
+  string tableNameS = 1;
+  string columnField = 2;
+  string compareRange = 3;
 }
 
 message DataCompareParam{

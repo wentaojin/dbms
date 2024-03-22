@@ -29,9 +29,16 @@ type CompareConfig struct {
 	DatasourceNameT string `toml:"datasource-name-t" json:"datasourceNameT"`
 	Comment         string `toml:"comment" json:"comment"`
 
-	CaseFieldRule    CaseFieldRule    `toml:"case-field-rule" json:"caseFieldRule"`
-	SchemaRouteRule  SchemaRouteRule  `toml:"schema-route-rule" json:"schemaRouteRule"`
-	DataCompareParam DataCompareParam `toml:"data-compare-param" json:"dataCompareParam"`
+	CaseFieldRule    CaseFieldRule     `toml:"case-field-rule" json:"caseFieldRule"`
+	SchemaRouteRule  SchemaRouteRule   `toml:"schema-route-rule" json:"schemaRouteRule"`
+	DataCompareRules []DataCompareRule `toml:"data-compare-rules" json:"dataCompareRules"`
+	DataCompareParam DataCompareParam  `toml:"data-compare-param" json:"dataCompareParam"`
+}
+
+type DataCompareRule struct {
+	TableNameS   string `toml:"table-name-s" json:"tableNameS"`
+	ColumnField  string `toml:"column-field" json:"columnField"`
+	CompareRange string `toml:"compare-range" json:"compareRange"`
 }
 
 type DataCompareParam struct {

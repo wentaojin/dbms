@@ -94,7 +94,7 @@ func UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTas
 			return err
 		}
 
-		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule, nil)
+		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -537,7 +537,7 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 			})
 		}
 
-		schemaRouteRule, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
+		schemaRouteRule, _, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
 		if err != nil {
 			return err
 		}

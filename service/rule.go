@@ -30,7 +30,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string, caseFieldRule *pb.CaseFieldRule, schemaRouteRule *pb.SchemaRouteRule, dataMigrateRules []*pb.DataMigrateRule) error {
+func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string, caseFieldRule *pb.CaseFieldRule, schemaRouteRule *pb.SchemaRouteRule, dataMigrateRules []*pb.DataMigrateRule, dataCompareRules []*pb.DataCompareRule) error {
 	datasourceS, err := model.GetIDatasourceRW().GetDatasource(ctx, datasourceNameS)
 	if err != nil {
 		return err
@@ -163,6 +163,7 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 				tableRules        []*rule.TableRouteRule
 				columnRules       []*rule.ColumnRouteRule
 				tableMigrateRules []*rule.DataMigrateRule
+				tableCompareRules []*rule.DataCompareRule
 			)
 			for _, st := range schemaRouteRule.TableRouteRules {
 				if !strings.EqualFold(st.String(), "") {
@@ -271,6 +272,38 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 					return err
 				}
 			}
+
+			for _, st := range dataCompareRules {
+				if !strings.EqualFold(st.String(), "") {
+					var sourceTable string
+
+					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
+						sourceTable = st.TableNameS
+					}
+
+					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
+						sourceTable = stringutil.StringUpper(st.TableNameS)
+					}
+					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
+						sourceTable = stringutil.StringLower(st.TableNameS)
+					}
+
+					tableCompareRules = append(tableCompareRules, &rule.DataCompareRule{
+						TaskName:     taskName,
+						SchemaNameS:  sourceSchema,
+						TableNameS:   sourceTable,
+						ColumnField:  st.ColumnField,
+						CompareRange: st.CompareRange,
+					})
+				}
+			}
+
+			if len(tableCompareRules) > 0 {
+				_, err = model.GetIDataCompareRuleRW().CreateInBatchDataCompareRule(ctx, tableCompareRules, constant.DefaultRecordCreateBatchSize)
+				if err != nil {
+					return err
+				}
+			}
 			return nil
 		})
 		if err != nil {
@@ -306,7 +339,10 @@ func DeleteSchemaRouteRule(ctx context.Context, taskName []string) error {
 		if err != nil {
 			return err
 		}
-
+		err = model.GetIDataCompareRuleRW().DeleteDataCompareRule(txnCtx, taskName)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -315,15 +351,16 @@ func DeleteSchemaRouteRule(ctx context.Context, taskName []string) error {
 	return nil
 }
 
-func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteRule, []*pb.DataMigrateRule, error) {
+func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteRule, []*pb.DataMigrateRule, []*pb.DataCompareRule, error) {
 	var (
-		opSchemaRules *pb.SchemaRouteRule
-		opTableRules  []*pb.DataMigrateRule
+		opSchemaRules  *pb.SchemaRouteRule
+		opTableRules   []*pb.DataMigrateRule
+		opCompareRules []*pb.DataCompareRule
 	)
 
 	tables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(ctx, &rule.MigrateTaskTable{TaskName: taskName})
 	if err != nil {
-		return opSchemaRules, opTableRules, err
+		return opSchemaRules, opTableRules, opCompareRules, err
 	}
 
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
@@ -402,13 +439,28 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 			})
 		}
 
+		migrateCompareRules, err := model.GetIDataCompareRuleRW().FindDataCompareRule(txnCtx, &rule.DataCompareRule{
+			TaskName:    taskName,
+			SchemaNameS: sr.SchemaNameS,
+		})
+		if err != nil {
+			return err
+		}
+		for _, st := range migrateCompareRules {
+			opCompareRules = append(opCompareRules, &pb.DataCompareRule{
+				TableNameS:   st.TableNameS,
+				ColumnField:  st.ColumnField,
+				CompareRange: st.CompareRange,
+			})
+		}
+
 		return nil
 	})
 	if err != nil {
-		return opSchemaRules, opTableRules, err
+		return opSchemaRules, opTableRules, opCompareRules, err
 	}
 
-	return opSchemaRules, opTableRules, nil
+	return opSchemaRules, opTableRules, opCompareRules, nil
 }
 
 func UpsertSqlMigrateRule(ctx context.Context, taskName string, caseFieldRule *pb.CaseFieldRule, sqlRouteRule []*pb.SqlMigrateRule) error {

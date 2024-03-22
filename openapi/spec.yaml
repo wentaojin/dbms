@@ -682,6 +682,10 @@ components:
           $ref: '#/components/schemas/CaseFieldRule'
         schemaRouteRule:
           $ref: '#/components/schemas/SchemaRouteRule'
+        dataCompareRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataCompareRule'
         dataCompareParam:
           $ref: '#/components/schemas/DataCompareParam'
     CsvMigrateTask:
@@ -703,7 +707,7 @@ components:
           $ref: '#/components/schemas/CaseFieldRule'
         schemaRouteRule:
           $ref: '#/components/schemas/SchemaRouteRule'
-        DataMigrateRules:
+        dataMigrateRules:
           type: array
           items:
             $ref: '#/components/schemas/DataMigrateRule'
@@ -763,6 +767,15 @@ components:
           type: boolean
         enableConsistentRead:
           type: boolean
+    DataCompareRule:
+      type: object
+      properties:
+        tableNameS:
+          type: string
+        columnField:
+          type: string
+        compareRange:
+          type: string
     DataCompareParam:
       type: object
       properties:

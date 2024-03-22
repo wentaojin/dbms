@@ -18,13 +18,14 @@ package oracle
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS string) ([]string, error) {
+func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	var err error
 
 	sqlStr := fmt.Sprintf(`SELECT
@@ -122,12 +123,16 @@ func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS strin
 		AND TABLE_NAME = '%s'`, schemaNameS, tableNameS)
 	_, results, err := d.GeneralQuery(sqlStr)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	columnDatatypeMap := make(map[string]string)
 	for _, res := range results {
 		columnDatatypeMap[res["COLUMN_NAME"]] = res["DATA_TYPE"]
+	}
+
+	if !strings.EqualFold(columnNameS, "") && d.FilterDatabaseTableBestColumnDatatype(columnDatatypeMap[columnNameS]) {
+		return []string{columnNameS}, nil
 	}
 
 	pkSlis, err := d.GetDatabaseTablePrimaryKey(schemaNameS, tableNameS)
@@ -307,7 +312,7 @@ ORDER BY ENDPOINT_VALUE ASC`, schemaNameS, tableNameS, columnNameS)
 	}
 	_, res, err := d.GeneralQuery(sqlStr)
 	if err != nil {
-		panic(err)
+		return vals, err
 	}
 
 	for _, r := range res {

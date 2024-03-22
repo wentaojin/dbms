@@ -24,7 +24,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS string) ([]string, error) {
+func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
 }

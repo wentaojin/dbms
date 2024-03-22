@@ -577,7 +577,68 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					return err
 				}
 
-				columnNameSlis, err := databaseS.FindDatabaseTableBestColumnName(attsRule.SchemaNameS, attsRule.TableNameS)
+				if !strings.EqualFold(attsRule.CompareRangeC, "") {
+					encChunk := snappy.Encode(nil, []byte(attsRule.CompareRangeC))
+					encryptChunk, err := stringutil.Encrypt(stringutil.BytesToString(encChunk), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
+						_, err = model.GetIDataCompareTaskRW().CreateDataCompareTask(txnCtx, &task.DataCompareTask{
+							TaskName:        dmt.Task.TaskName,
+							SchemaNameS:     attsRule.SchemaNameS,
+							TableNameS:      attsRule.TableNameS,
+							SchemaNameT:     attsRule.SchemaNameT,
+							TableNameT:      attsRule.TableNameT,
+							TableTypeS:      attsRule.TableTypeS,
+							GlobalScnS:      globalScn,
+							CompareMethod:   attsRule.CompareMethod,
+							ColumnDetailSO:  attsRule.ColumnDetailSO,
+							ColumnDetailS:   attsRule.ColumnDetailS,
+							ColumnDetailTO:  attsRule.ColumnDetailTO,
+							ColumnDetailT:   attsRule.ColumnDetailT,
+							SqlHintS:        dmt.TaskParams.SqlHintS,
+							SqlHintT:        dmt.TaskParams.SqlHintT,
+							ChunkDetailS:    encryptChunk,
+							ChunkDetailT:    encryptChunk,
+							ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
+							TaskStatus:      constant.TaskDatabaseStatusWaiting,
+						})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(txnCtx, &task.DataCompareSummary{
+							TaskName:    dmt.Task.TaskName,
+							SchemaNameS: attsRule.SchemaNameS,
+							TableNameS:  attsRule.TableNameS,
+							SchemaNameT: attsRule.SchemaNameT,
+							TableNameT:  attsRule.TableNameT,
+							GlobalScnS:  globalScn,
+							TableRowsS:  tableRows,
+							TableSizeS:  tableSize,
+							ChunkTotals: 1,
+						})
+						if err != nil {
+							return err
+						}
+						return nil
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+
+				var customColumnS string
+				if !strings.EqualFold(attsRule.ColumnFieldC, "") {
+					convertCharsetColumnS, err := stringutil.CharsetConvert([]byte(attsRule.ColumnFieldC), constant.CharsetUTF8MB4, constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)])
+					if err != nil {
+						return err
+					}
+					customColumnS = stringutil.BytesToString(convertCharsetColumnS)
+				}
+
+				columnNameSlis, err := databaseS.FindDatabaseTableBestColumnName(attsRule.SchemaNameS, attsRule.TableNameS, customColumnS)
 				if err != nil {
 					return err
 				}

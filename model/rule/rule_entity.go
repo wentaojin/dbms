@@ -69,6 +69,16 @@ type DataMigrateRule struct {
 	*common.Entity
 }
 
+type DataCompareRule struct {
+	ID           uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName     string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
+	SchemaNameS  string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
+	TableNameS   string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
+	ColumnField  string `gorm:"type:varchar(120);comment:enable chunk strategy" json:"columnField"`
+	CompareRange string `gorm:"type:varchar(120);comment:source sql query where" json:"compareRange"`
+	*common.Entity
+}
+
 type SqlMigrateRule struct {
 	ID              uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
 	TaskName        string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`

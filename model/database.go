@@ -81,6 +81,7 @@ type database struct {
 	sqlMigrateTaskRW              task.ISqlMigrateTask
 	sqlMigrateSummaryTask         task.ISqlMigrateSummary
 	dataCompareTaskRW             task.IDataCompareTask
+	dataCompareRuleRW             rule.IDataCompareRule
 	dataCompareSummaryTask        task.IDataCompareSummary
 }
 
@@ -227,6 +228,7 @@ func (d *database) initReaderWriters() {
 	DefaultDB.sqlMigrateTaskRW = task.NewSqlMigrateTaskRW(d.base)
 	DefaultDB.sqlMigrateSummaryTask = task.NewSqlMigrateSummaryRW(d.base)
 	DefaultDB.dataCompareTaskRW = task.NewDataCompareTaskRW(d.base)
+	DefaultDB.dataCompareRuleRW = rule.NewDataCompareRuleRW(d.base)
 	DefaultDB.dataCompareSummaryTask = task.NewDataCompareSummaryRW(d.base)
 }
 
@@ -269,6 +271,7 @@ func (d *database) migrateTables() (err error) {
 		new(task.SqlMigrateSummary),
 		new(task.DataCompareTask),
 		new(task.DataCompareSummary),
+		new(rule.DataCompareRule),
 	)
 }
 
@@ -496,6 +499,10 @@ func GetISqlMigrateSummaryRW() task.ISqlMigrateSummary {
 
 func GetIDataCompareTaskRW() task.IDataCompareTask {
 	return DefaultDB.dataCompareTaskRW
+}
+
+func GetIDataCompareRuleRW() rule.IDataCompareRule {
+	return DefaultDB.dataCompareRuleRW
 }
 
 func GetIDataCompareSummaryRW() task.IDataCompareSummary {

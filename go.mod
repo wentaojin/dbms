@@ -6,6 +6,7 @@ toolchain go1.21.5
 
 require (
 	github.com/BurntSushi/toml v1.3.2
+	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/deepmap/oapi-codegen v1.15.0
 	github.com/getkin/kin-openapi v0.118.0
 	github.com/gin-contrib/zap v0.2.0
@@ -22,6 +23,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
 	github.com/spf13/cobra v1.1.3
+	github.com/thanhpk/randstr v1.0.6
 	github.com/thinkeridea/go-extend v1.3.2
 	go.etcd.io/etcd/api/v3 v3.5.9
 	go.etcd.io/etcd/client/pkg/v3 v3.5.9

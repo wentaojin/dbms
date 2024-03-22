@@ -102,16 +102,16 @@ func optimizerDataMigrateColumnS(columnName, datatype, dataScale string) (string
 	}
 }
 
-func optimizerDataCompareColumnST(columnNameS, datatypeS, dataScaleS, columnNameT string) (string, string, error) {
+func optimizerDataCompareColumnST(columnNameS, datatypeS, dataScaleS, columnNameT, dbCharsetSFrom, dbCharsetSDest string) (string, string, error) {
 	switch strings.ToUpper(datatypeS) {
 	// numeric type
 	case "NUMBER":
-		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		return stringutil.StringBuilder(`TO_CLOB(NVL("`, columnNameS, `",0))`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
 	case "DECIMAL", "DEC", "DOUBLE PRECISION", "FLOAT", "INTEGER", "INT", "REAL", "NUMERIC", "BINARY_FLOAT", "BINARY_DOUBLE", "SMALLINT":
-		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		return stringutil.StringBuilder(`TO_CLOB(NVL("`, columnNameS, `",0))`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
 	// character datatype
 	case "CHARACTER", "NCHAR VARYING", "VARCHAR", "CHAR", "NCHAR", "VARCHAR2", "NVARCHAR2":
-		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		return stringutil.StringBuilder(`CONVERT(TO_CLOB(NVL(UPPER(DBMS_CRYPTO.HASH("`, columnNameS, `",2 /*DBMS_CRYPTO.HASH_MD5*/)), 0)), '`, dbCharsetSDest, `','`, dbCharsetSFrom, `')`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(`, columnNameT, `)),0)`), nil
 	case "LONG":
 		return stringutil.StringBuilder(`NVL(UPPER((DBMS_CRYPTO.HASH(TO_LOB("`, columnNameS, `"),2 /*DBMS_CRYPTO.HASH_MD5*/))), 0)`),
 			stringutil.StringBuilder(`IFNULL(UPPER(MD5(`, columnNameT, `)),0)`), nil

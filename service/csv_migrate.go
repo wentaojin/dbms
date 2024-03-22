@@ -78,7 +78,7 @@ func UpsertCsvMigrateTask(ctx context.Context, req *pb.UpsertCsvMigrateTaskReque
 			return err
 		}
 
-		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule, req.DataMigrateRules)
+		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule, req.DataMigrateRules, nil)
 		if err != nil {
 			return err
 		}
@@ -241,7 +241,7 @@ func ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) 
 			EnableConsistentRead: enableConsistentRead,
 		}
 
-		schemaRouteRule, dataMigrateRules, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
+		schemaRouteRule, dataMigrateRules, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
 		if err != nil {
 			return err
 		}

@@ -83,7 +83,7 @@ func UpsertDataCompareTask(ctx context.Context, req *pb.UpsertDataCompareTaskReq
 			return err
 		}
 
-		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule, nil)
+		err = UpsertSchemaRouteRule(txnCtx, req.TaskName, req.DatasourceNameS, req.CaseFieldRule, req.SchemaRouteRule, nil, req.DataCompareRules)
 		if err != nil {
 			return err
 		}
@@ -230,7 +230,7 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			OnlyCompareRow:       onlyCompareRow,
 		}
 
-		schemaRouteRule, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
+		schemaRouteRule, _, dataCompareRules, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
 		if err != nil {
 			return err
 		}
@@ -245,6 +245,7 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			},
 			Comment:          taskInfo.Comment,
 			SchemaRouteRule:  schemaRouteRule,
+			DataCompareRules: dataCompareRules,
 			DataCompareParam: param,
 		}
 

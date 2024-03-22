@@ -64,6 +64,15 @@ type IDataMigrateRule interface {
 	IsContainedDataMigrateRuleRecord(ctx context.Context, rule *DataMigrateRule) (bool, error)
 }
 
+type IDataCompareRule interface {
+	CreateDataCompareRule(ctx context.Context, rule *DataCompareRule) (*DataCompareRule, error)
+	CreateInBatchDataCompareRule(ctx context.Context, rule []*DataCompareRule, batchSize int) ([]*DataCompareRule, error)
+	GetDataCompareRule(ctx context.Context, rule *DataCompareRule) (*DataCompareRule, error)
+	DeleteDataCompareRule(ctx context.Context, taskNames []string) error
+	FindDataCompareRule(ctx context.Context, rule *DataCompareRule) ([]*DataCompareRule, error)
+	IsContainedDataCompareRuleRecord(ctx context.Context, rule *DataCompareRule) (bool, error)
+}
+
 type ISqlMigrateRule interface {
 	CreateSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) (*SqlMigrateRule, error)
 	CreateInBatchSqlMigrateRule(ctx context.Context, rule []*SqlMigrateRule, batchSize int) ([]*SqlMigrateRule, error)

@@ -426,6 +426,98 @@ func (rw *RWDataMigrateRule) IsContainedDataMigrateRuleRecord(ctx context.Contex
 	return true, nil
 }
 
+type RWDataCompareRule struct {
+	common.GormDB
+}
+
+func NewDataCompareRuleRW(db *gorm.DB) *RWDataCompareRule {
+	m := &RWDataCompareRule{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWDataCompareRule) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(DataCompareRule{}).Name())
+}
+
+func (rw *RWDataCompareRule) CreateDataCompareRule(ctx context.Context, rule *DataCompareRule) (*DataCompareRule, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		UpdateAll: true,
+	}).Create(rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWDataCompareRule) CreateInBatchDataCompareRule(ctx context.Context, rule []*DataCompareRule, batchSize int) ([]*DataCompareRule, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		UpdateAll: true,
+	}).CreateInBatches(rule, batchSize).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWDataCompareRule) UpdateDataCompareRule(ctx context.Context, rule *DataCompareRule) (*DataCompareRule, error) {
+	err := rw.DB(ctx).Model(&DataCompareRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).Save(&rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWDataCompareRule) GetDataCompareRule(ctx context.Context, rule *DataCompareRule) (*DataCompareRule, error) {
+	var dataS *DataCompareRule
+	err := rw.DB(ctx).Model(&DataCompareRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataCompareRule) DeleteDataCompareRule(ctx context.Context, taskNames []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskNames).Delete(&DataCompareRule{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWDataCompareRule) FindDataCompareRule(ctx context.Context, rule *DataCompareRule) ([]*DataCompareRule, error) {
+	var dataS []*DataCompareRule
+	err := rw.DB(ctx).Model(&DataCompareRule{}).Where("task_name = ? AND schema_name_s = ?", rule.TaskName, rule.SchemaNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataCompareRule) IsContainedDataCompareRuleRecord(ctx context.Context, rule *DataCompareRule) (bool, error) {
+	var dataS []*DataCompareRule
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return false, fmt.Errorf("get table [%s] record is contained failed: %v", rw.TableName(ctx), err)
+	}
+	if len(dataS) == 0 {
+		return false, nil
+	}
+	return true, nil
+}
+
 type RWSqlMigrateRule struct {
 	common.GormDB
 }

@@ -215,7 +215,7 @@ func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, st
 		}
 
 		columnNameSliTO = append(columnNameSliTO, columnNameT)
-		columnNameS, columnNameT, err = optimizerDataCompareColumnST(columnNameS, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"], columnNameT)
+		columnNameS, columnNameT, err = optimizerDataCompareColumnST(columnNameS, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"], columnNameT, r.DBCharsetS, constant.BuildInOracleCharsetAL32UTF8)
 		if err != nil {
 			return "", "", "", "", err
 		}
@@ -244,4 +244,13 @@ func (r *DataCompareRule) GenSchemaTableCompareMethodRule() string {
 		return constant.DataCompareMethodCheckRows
 	}
 	return constant.DataCompareMethodCheckSum
+}
+
+func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, error) {
+	compareRule, err := model.GetIDataCompareRuleRW().GetDataCompareRule(r.Ctx, &rule.DataCompareRule{
+		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
+	if err != nil {
+		return "", "", err
+	}
+	return compareRule.ColumnField, compareRule.CompareRange, nil
 }
