@@ -1,0 +1,14 @@
+[master]
+data-dir = "/Users/marvin/gostore/dbms/data"
+client-addr = "192.168.205.124:3379"
+peer-addr = "192.168.205.124:3380"
+initial-cluster = "192.168.205.124:2380,192.168.205.124:3380,192.168.205.124:4380"
+#initial-cluster-state = "new"
+#join = "192.168.205.124:2380,192.168.205.124:3380,192.168.205.124:4380"
+
+[log]
+log-level = "info"
+log-file = "/Users/marvin/gostore/dbms/data/dbms-master-3379.log"
+max-size = 128
+max-days = 7
+max-backups = 30

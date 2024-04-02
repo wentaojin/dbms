@@ -385,6 +385,17 @@ func CharsetConvert(data []byte, fromCharset, toCharset string) ([]byte, error) 
 	}
 }
 
+func IsValueNil(i interface{}) bool {
+	v := reflect.ValueOf(i)
+	if v.Kind() == reflect.Ptr {
+		return v.IsNil()
+	} else if v.Kind() == reflect.Invalid {
+		// null value nil
+		return true
+	}
+	return false
+}
+
 // BytesToString used for bytes to string, reduce memory
 // https://segmentfault.com/a/1190000037679588
 func BytesToString(b []byte) string {

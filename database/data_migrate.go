@@ -23,19 +23,16 @@ import (
 type IDatabaseDataMigrate interface {
 	GetDatabaseVersion() (string, error)
 	GetDatabaseCharset() (string, error)
-	GetDatabaseCurrentSCN() (uint64, error)
+	GetDatabaseConsistentPos() (uint64, error)
 	GetDatabaseTableType(schemaName string) (map[string]string, error)
-	GetDatabaseTableColumns(schemaName string, tableName string, collation bool) ([]map[string]string, error)
+	GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error)
 	GetDatabaseTableColumnNameTableDimensions(schemaName, tableName string) ([]string, error)
 	GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]string, map[string]string, map[string]string, error)
-	GetDatabaseTableRowsByStatistics(schemaName, tableName string) (uint64, error)
-	GetDatabaseTableSizeBySegment(schemaName, tableName string) (float64, error)
-	CreateDatabaseTableChunkTask(taskName string) error
-	StartDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) error
-	GetDatabaseTableChunkData(taskName string) ([]map[string]string, error)
-	CloseDatabaseTableChunkTask(taskName string) error
-	QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error
-	QueryDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error
+	GetDatabaseTableRows(schemaName, tableName string) (uint64, error)
+	GetDatabaseTableSize(schemaName, tableName string) (float64, error)
+	GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) ([]map[string]string, error)
+	GetDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error
+	GetDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error
 }
 
 // IDataMigrateRuleInitializer used for database table rule initializer

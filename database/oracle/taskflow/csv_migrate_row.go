@@ -90,8 +90,7 @@ func (r *CsvMigrateRow) MigrateRead() error {
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.QueryDatabaseTableCsvData(execQuerySQL,
-		int(r.TaskParams.CallTimeout), r.TaskFlow, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.TaskParams.EscapeBackslash, r.TaskParams.NullValue, r.TaskParams.Separator, r.TaskParams.Delimiter, r.ReadChan)
+	err = r.DatabaseS.GetDatabaseTableCsvData(execQuerySQL, int(r.TaskParams.CallTimeout), r.TaskFlow, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.TaskParams.EscapeBackslash, r.TaskParams.NullValue, r.TaskParams.Separator, r.TaskParams.Delimiter, r.ReadChan)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}

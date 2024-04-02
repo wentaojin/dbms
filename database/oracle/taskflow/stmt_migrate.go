@@ -173,16 +173,18 @@ func (dmt *StmtMigrateTask) Start() error {
 		)
 		switch {
 		case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
-			limitOneRec, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(dmt.Ctx, &task.DataMigrateTask{TaskName: s.TaskName, SchemaNameS: s.SchemaNameS, TableNameS: s.SchemaNameS})
+			limitOne, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(dmt.Ctx, &task.DataMigrateTask{
+				TaskName:    s.TaskName,
+				SchemaNameS: s.SchemaNameS,
+				TableNameS:  s.TableNameS})
 			if err != nil {
 				return err
 			}
-			sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, dmt.TaskParams.SqlHintT, limitOneRec.ColumnDetailT, int(dmt.TaskParams.BatchSize), true)
+			sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, dmt.TaskParams.SqlHintT, limitOne.ColumnDetailT, int(dmt.TaskParams.BatchSize), true)
 			sqlTSmt, err = databaseT.PrepareContext(dmt.Ctx, sqlStr)
 			if err != nil {
 				return err
 			}
-			defer sqlTSmt.Close()
 		default:
 			return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare isn't support, please contact author", dmt.Task.TaskName, s.SchemaNameS, dmt.Task.TaskMode, dmt.Task.TaskFlow)
 		}
@@ -228,9 +230,6 @@ func (dmt *StmtMigrateTask) Start() error {
 						return errW
 					}
 
-					readChan := make(chan []interface{}, constant.DefaultMigrateTaskQueueSize)
-					writeChan := make(chan []interface{}, constant.DefaultMigrateTaskQueueSize)
-
 					err = database.IDataMigrateProcess(&StmtMigrateRow{
 						Ctx:           dmt.Ctx,
 						TaskMode:      dmt.Task.TaskMode,
@@ -245,8 +244,8 @@ func (dmt *StmtMigrateTask) Start() error {
 						BatchSize:     int(dmt.TaskParams.BatchSize),
 						CallTimeout:   int(dmt.TaskParams.CallTimeout),
 						SafeMode:      true,
-						ReadChan:      readChan,
-						WriteChan:     writeChan,
+						ReadChan:      make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+						WriteChan:     make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 					})
 					if err != nil {
 						return err
@@ -329,6 +328,11 @@ func (dmt *StmtMigrateTask) Start() error {
 					return errW
 				}
 			}
+		}
+
+		err = sqlTSmt.Close()
+		if err != nil {
+			return err
 		}
 
 		endTableTime := time.Now()
@@ -553,7 +557,7 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 		return err
 	}
 
-	globalScn, err = databaseS.GetDatabaseCurrentSCN()
+	globalScn, err = databaseS.GetDatabaseConsistentPos()
 	if err != nil {
 		return err
 	}
@@ -579,11 +583,11 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 					return nil
 				}
 
-				tableRows, err := databaseS.GetDatabaseTableRowsByStatistics(schemaRoute.SchemaNameS, sourceTable)
+				tableRows, err := databaseS.GetDatabaseTableRows(schemaRoute.SchemaNameS, sourceTable)
 				if err != nil {
 					return err
 				}
-				tableSize, err := databaseS.GetDatabaseTableSizeBySegment(schemaRoute.SchemaNameS, sourceTable)
+				tableSize, err := databaseS.GetDatabaseTableSize(schemaRoute.SchemaNameS, sourceTable)
 				if err != nil {
 					return err
 				}
@@ -656,17 +660,7 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 
 				chunkTask := uuid.New().String()
 
-				err = databaseS.CreateDatabaseTableChunkTask(chunkTask)
-				if err != nil {
-					return err
-				}
-
-				err = databaseS.StartDatabaseTableChunkTask(chunkTask, schemaRoute.SchemaNameS, sourceTable, dmt.TaskParams.ChunkSize, dmt.TaskParams.CallTimeout)
-				if err != nil {
-					return err
-				}
-
-				chunks, err := databaseS.GetDatabaseTableChunkData(chunkTask)
+				chunks, err := databaseS.GetDatabaseTableChunkTask(chunkTask, schemaRoute.SchemaNameS, sourceTable, dmt.TaskParams.ChunkSize, dmt.TaskParams.CallTimeout)
 				if err != nil {
 					return err
 				}
@@ -775,10 +769,6 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 					return nil
 				})
 				if err != nil {
-					return err
-				}
-
-				if err = databaseS.CloseDatabaseTableChunkTask(chunkTask); err != nil {
 					return err
 				}
 

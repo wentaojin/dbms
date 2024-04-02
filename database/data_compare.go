@@ -16,11 +16,11 @@ limitations under the License.
 package database
 
 type IDatabaseDataCompare interface {
-	FilterDatabaseTableBestColumnDatatype(columnType string) bool
-	FindDatabaseTableBestColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error)
-	GetDatabaseTableBestColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
-	GetDatabaseTableBestColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error)
-	GetDatabaseTableBestColumnCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error)
+	FilterDatabaseTableColumnDatatype(columnType string) bool
+	FindDatabaseTableColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error)
+	GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
+	GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error)
+	GetDatabaseTableColumnDataCompare(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error)
 }
 
 // IDataCompareRuleInitializer used for database table rule initializer
@@ -97,8 +97,8 @@ func IDataCompareProcess(p IDataCompareProcessor) error {
 	return nil
 }
 
-type IDataCompareFileWriter interface {
-	InitOutputFile() error
-	SyncCompareFile() error
+type IFileWriter interface {
+	InitFile() error
+	SyncFile() error
 	Close() error
 }

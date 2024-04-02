@@ -24,22 +24,22 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
+func (d *Database) FindDatabaseTableColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) FilterDatabaseTableBestColumnDatatype(columnType string) bool {
+func (d *Database) FilterDatabaseTableColumnDatatype(columnType string) bool {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableBestColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
+func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableBestColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error) {
 	sqlStr := fmt.Sprintf(`SELECT
 		TABLE_SCHEMA AS OWNER,
 		TABLE_NAME,
@@ -60,7 +60,7 @@ func (d *Database) GetDatabaseTableBestColumnAttribute(schemaNameS, tableNameS, 
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableBestColumnCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error) {
+func (d *Database) GetDatabaseTableColumnDataCompare(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error) {
 	var (
 		columnNames []string
 		columnTypes []string

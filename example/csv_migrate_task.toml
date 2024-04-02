@@ -18,7 +18,7 @@ case-field-rule-t = "0"
 [schema-route-rule]
 schema-name-s = "MARVIN"
 schema-name-t = "STEVEN"
-include-table-s = ["MARVIN00","MARVIN01"]
+include-table-s = ["MARVIN00","MARVIN01","MARVIN_COLUMN_T"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
 #exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]

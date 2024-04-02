@@ -40,7 +40,7 @@ type Column struct {
 	Comment       string
 }
 
-func DatabaseTableColumnMapMYSQLDatatypeRule(c *Column, buildinDatatypes []*buildin.BuildinDatatypeRule) (string, string, error) {
+func DatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinDatatypes []*buildin.BuildinDatatypeRule) (string, string, error) {
 	var (
 		// origin column datatype
 		originColumnType string
@@ -635,7 +635,7 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 
 func handleColumnRuleWithNumberDatatypeCompare(originColumnType, ruleColumnTypeS, ruleColumnTypeT string) string {
 	/*
-		number datatype：GetDatabaseTableColumns
+		number datatype：GetDatabaseTableColumnInfo
 		- number(*,10) -> number(38,10)
 		- number(*,0) -> number(38,0)
 		- number(*) -> number(38,127)

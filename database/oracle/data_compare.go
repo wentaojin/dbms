@@ -25,7 +25,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
+func (d *Database) FindDatabaseTableColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	var err error
 
 	sqlStr := fmt.Sprintf(`SELECT
@@ -131,7 +131,7 @@ func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, colu
 		columnDatatypeMap[res["COLUMN_NAME"]] = res["DATA_TYPE"]
 	}
 
-	if !strings.EqualFold(columnNameS, "") && d.FilterDatabaseTableBestColumnDatatype(columnDatatypeMap[columnNameS]) {
+	if !strings.EqualFold(columnNameS, "") && d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[columnNameS]) {
 		return []string{columnNameS}, nil
 	}
 
@@ -143,7 +143,7 @@ func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, colu
 		var pkColumns []string
 		pkArrs := stringutil.StringSplit(pkSlis[0]["COLUMN_LIST"], ",")
 		for _, s := range pkArrs {
-			if !d.FilterDatabaseTableBestColumnDatatype(columnDatatypeMap[s]) {
+			if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
 				break
 			} else {
 				pkColumns = append(pkColumns, s)
@@ -165,7 +165,7 @@ func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, colu
 			var ukColumns []string
 			ukArrs := stringutil.StringSplit(uk["COLUMN_LIST"], ",")
 			for _, s := range ukArrs {
-				if !d.FilterDatabaseTableBestColumnDatatype(columnDatatypeMap[s]) {
+				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
 					break
 				} else {
 					ukColumns = append(ukColumns, s)
@@ -186,7 +186,7 @@ func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, colu
 			var uiColumns []string
 			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], ",")
 			for _, s := range uiArrs {
-				if !d.FilterDatabaseTableBestColumnDatatype(columnDatatypeMap[s]) {
+				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
 					break
 				} else {
 					uiColumns = append(uiColumns, s)
@@ -207,7 +207,7 @@ func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, colu
 			var niColumns []string
 			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], ",")
 			for _, s := range niArrs {
-				if !d.FilterDatabaseTableBestColumnDatatype(columnDatatypeMap[s]) {
+				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
 					break
 				} else {
 					niColumns = append(niColumns, s)
@@ -221,7 +221,7 @@ func (d *Database) FindDatabaseTableBestColumnName(schemaNameS, tableNameS, colu
 	return nil, nil
 }
 
-func (d *Database) FilterDatabaseTableBestColumnDatatype(columnType string) bool {
+func (d *Database) FilterDatabaseTableColumnDatatype(columnType string) bool {
 	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportNumberSubtypes, columnType) {
 		return true
 	}
@@ -237,7 +237,7 @@ func (d *Database) FilterDatabaseTableBestColumnDatatype(columnType string) bool
 	return false
 }
 
-func (d *Database) GetDatabaseTableBestColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error) {
 	sqlStr := fmt.Sprintf(`SELECT
 		OWNER,
 		TABLE_NAME,
@@ -257,7 +257,7 @@ func (d *Database) GetDatabaseTableBestColumnAttribute(schemaNameS, tableNameS, 
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableBestColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
+func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
 	var (
 		sqlStr string
 		vals   []string
@@ -321,7 +321,7 @@ ORDER BY ENDPOINT_VALUE ASC`, schemaNameS, tableNameS, columnNameS)
 	return vals, nil
 }
 
-func (d *Database) GetDatabaseTableBestColumnCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error) {
+func (d *Database) GetDatabaseTableColumnDataCompare(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error) {
 	var (
 		columnNames []string
 		columnTypes []string

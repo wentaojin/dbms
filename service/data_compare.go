@@ -544,13 +544,13 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir str
 			taskInfo.TaskName, stringutil.StringLower(taskInfo.TaskStatus), taskInfo.WorkerAddr)
 	}
 
-	var w database.IDataCompareFileWriter
+	var w database.IFileWriter
 	w = taskflow.NewDataCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, outputDir)
-	err = w.InitOutputFile()
+	err = w.InitFile()
 	if err != nil {
 		return err
 	}
-	err = w.SyncCompareFile()
+	err = w.SyncFile()
 	if err != nil {
 		return err
 	}

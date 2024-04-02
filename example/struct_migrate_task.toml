@@ -24,7 +24,7 @@ case-field-rule-t = "0"
 [schema-route-rule]
 schema-name-s = "MARVIN"
 schema-name-t = "STEVEN"
-include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
+include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
 exclude-table-s = []
 #exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
 
@@ -51,7 +51,7 @@ default-value-t = "10"
 [[struct-migrate-rule.schema-struct-rules]]
 schema-name-s = "MARVIN"
 column-type-s = "NUMBER"
-column-type-t = "SMALLINT(10)"
+column-type-t = "BIGINT"
 default-value-s = ""
 default-value-t = ""
 [[struct-migrate-rule.table-struct-rules]]

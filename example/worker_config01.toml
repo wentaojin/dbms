@@ -1,0 +1,11 @@
+[worker]
+endpoint = "192.168.205.124:2379,192.168.205.124:3379,192.168.205.124:4379"
+worker-addr = "192.168.205.124:8361"
+keepalive-ttl = 30
+
+[log]
+log-level = "info"
+log-file = "/Users/marvin/gostore/dbms/data/dbms-worker-8361.log"
+max-size = 128
+max-days = 7
+max-backups = 30

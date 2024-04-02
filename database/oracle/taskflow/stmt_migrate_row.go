@@ -96,7 +96,7 @@ func (r *StmtMigrateRow) MigrateRead() error {
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.QueryDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
+	err = r.DatabaseS.GetDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}
@@ -148,7 +148,7 @@ func (r *StmtMigrateRow) MigrateApply() error {
 			if len(vals) == argRowsNums {
 				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
 				if err != nil {
-					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
+					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute params [%v] failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, vals, err)
 				}
 			} else {
 				bathSize := len(vals) / columnDetailSCounts
@@ -157,7 +157,7 @@ func (r *StmtMigrateRow) MigrateApply() error {
 					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.Dmt.SqlHintT, r.Dmt.ColumnDetailT, bathSize, r.SafeMode)
 					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
 					if err != nil {
-						return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, err)
+						return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute params [%v] failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, vals, err)
 					}
 				default:
 					return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)

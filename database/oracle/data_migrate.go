@@ -18,9 +18,13 @@ package oracle
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/godror/godror"
 
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -28,7 +32,7 @@ import (
 	"github.com/greatcloak/decimal"
 )
 
-func (d *Database) GetDatabaseCurrentSCN() (uint64, error) {
+func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
 	_, res, err := d.GeneralQuery("SELECT MIN(CURRENT_SCN) CURRENT_SCN FROM GV$DATABASE")
 	var globalSCN uint64
 	if err != nil {
@@ -82,7 +86,7 @@ func (d *Database) GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]str
 	return columns, columnTypeMap, columnScaleMap, nil
 }
 
-func (d *Database) GetDatabaseTableRowsByStatistics(schemaName, tableName string) (uint64, error) {
+func (d *Database) GetDatabaseTableRows(schemaName, tableName string) (uint64, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT NVL(NUM_ROWS,0) AS NUM_ROWS
   FROM DBA_TABLES
  WHERE OWNER = '%s'
@@ -102,7 +106,7 @@ func (d *Database) GetDatabaseTableRowsByStatistics(schemaName, tableName string
 	return numRows, nil
 }
 
-func (d *Database) GetDatabaseTableSizeBySegment(schemaName, tableName string) (float64, error) {
+func (d *Database) GetDatabaseTableSize(schemaName, tableName string) (float64, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT ROUND(bytes/1024/1024,2) AS SIZE_MB
   FROM DBA_SEGMENTS
  WHERE OWNER = '%s'
@@ -126,60 +130,71 @@ func (d *Database) GetDatabaseTableSizeBySegment(schemaName, tableName string) (
 	return sizeMB, nil
 }
 
-func (d *Database) CreateDatabaseTableChunkTask(taskName string) error {
-	sqlStr := fmt.Sprintf(`BEGIN
-  DBMS_PARALLEL_EXECUTE.CREATE_TASK (TASK_NAME => '%s');
-END;`, taskName)
-	_, err := d.ExecContext(d.Ctx, sqlStr)
+func (d *Database) GetDatabaseDirectoryName(directory string) (string, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+       DIRECTORY_PATH
+  FROM DBA_DIRECTORIES
+ WHERE DIRECTORY_NAME = '%s'`, directory))
 	if err != nil {
-		return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create task failed: %v, sql: %v", err, sqlStr)
+		return "", err
 	}
-	return nil
+	if len(res) > 1 || len(res) == 0 {
+		return "", fmt.Errorf("get oracle database directory [%v] path falied, results: [%v]", directory, res)
+	}
+	return res[0]["DIRECTORY_PATH"], nil
 }
 
-func (d *Database) StartDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) error {
+func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) ([]map[string]string, error) {
+	sqlStr00 := fmt.Sprintf(`BEGIN
+  DBMS_PARALLEL_EXECUTE.CREATE_TASK (TASK_NAME => '%s');
+END;`, taskName)
+	_, err := d.ExecContext(d.Ctx, sqlStr00)
+	if err != nil {
+		return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create task failed: %v, sql: %v", err, sqlStr00)
+	}
+
 	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
 	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
 	defer cancel()
-	sqlStr := fmt.Sprintf(`BEGIN
+
+	sqlStr01 := fmt.Sprintf(`BEGIN
   DBMS_PARALLEL_EXECUTE.CREATE_CHUNKS_BY_ROWID (TASK_NAME   => '%s',
                                                TABLE_OWNER => '%s',
                                                TABLE_NAME  => '%s',
                                                BY_ROW      => TRUE,
                                                CHUNK_SIZE  => %v);
 END;`, taskName, schemaName, tableName, chunkSize)
-	_, err := d.ExecContext(ctx, sqlStr)
-	if err != nil {
-		return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid task failed: %v, sql: %v", err, sqlStr)
-	}
-	return nil
-}
 
-func (d *Database) GetDatabaseTableChunkData(taskName string) ([]map[string]string, error) {
-	sqlStr := fmt.Sprintf(`SELECT 'ROWID BETWEEN ''' || START_ROWID || ''' AND ''' || END_ROWID || '''' CMD FROM DBA_PARALLEL_EXECUTE_CHUNKS WHERE  TASK_NAME = '%s' ORDER BY CHUNK_ID`, taskName)
-	_, res, err := d.GeneralQuery(sqlStr)
+	sqlStr02 := fmt.Sprintf(`BEGIN
+  DBMS_PARALLEL_EXECUTE.DROP_TASK ('%s');
+END;`, taskName)
+
+	_, err = d.ExecContext(ctx, sqlStr01)
 	if err != nil {
-		return res, err
+		_, err = d.ExecContext(d.Ctx, sqlStr02)
+		if err != nil {
+			return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid drop task failed: %v, sql: %v", err, sqlStr02)
+		}
+		return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid task failed: %v, sql: %v", err, sqlStr01)
+	}
+
+	sqlStr03 := fmt.Sprintf(`SELECT 'ROWID BETWEEN ''' || START_ROWID || ''' AND ''' || END_ROWID || '''' CMD FROM DBA_PARALLEL_EXECUTE_CHUNKS WHERE  TASK_NAME = '%s' ORDER BY CHUNK_ID`, taskName)
+	_, res, err := d.GeneralQuery(sqlStr03)
+	if err != nil {
+		_, err = d.ExecContext(d.Ctx, sqlStr02)
+		if err != nil {
+			return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed: %v, sql: %v", err, sqlStr02)
+		}
+		return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid task failed: %v, sql: %v", err, sqlStr03)
 	}
 	return res, nil
 }
 
-func (d *Database) CloseDatabaseTableChunkTask(taskName string) error {
-	sqlStr := fmt.Sprintf(`BEGIN
-  DBMS_PARALLEL_EXECUTE.DROP_TASK ('%s');
-END;`, taskName)
-	_, err := d.ExecContext(d.Ctx, sqlStr)
-	if err != nil {
-		return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE drop task failed: %v, sql: %v", err, sqlStr)
-	}
-	return nil
-}
-
-func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
+func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
 	var (
-		columnNames []string
-		columnTypes []string
-		err         error
+		columnNames   []string
+		databaseTypes []string
+		err           error
 	)
 	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
 	columnNameOrdersCounts := len(columnNameOrders)
@@ -217,83 +232,102 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 			return fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
 		}
 		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
-		// database field type DatabaseTypeName() maps go type ScanType()
-		columnTypes = append(columnTypes, ct.ScanType().String())
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
 	}
 
 	// data scan
 	columnNums := len(columnNames)
-	rawResult := make([][]byte, columnNums)
-	dest := make([]interface{}, columnNums)
-	for i := range rawResult {
-		dest[i] = &rawResult[i]
-	}
+	values := make([]interface{}, columnNums)
+	valuePtrs := make([]interface{}, columnNums)
 
 	for rows.Next() {
-		err = rows.Scan(dest...)
+		for i := 0; i < columnNums; i++ {
+			valuePtrs[i] = &values[i]
+		}
+		err = rows.Scan(valuePtrs...)
 		if err != nil {
 			return err
 		}
 
-		for i, raw := range rawResult {
-			if raw == nil {
+		for i, colName := range columnNames {
+			valRes := values[i]
+			if stringutil.IsValueNil(valRes) {
 				//rowsMap[cols[i]] = `NULL` -> sql
-				rowData[columnNameOrderIndexMap[columnNames[i]]] = nil
-			} else if stringutil.BytesToString(raw) == "" {
-				//rowsMap[cols[i]] = `NULL` -> sql
-				rowData[columnNameOrderIndexMap[columnNames[i]]] = nil
+				rowData[columnNameOrderIndexMap[colName]] = nil
 			} else {
-				switch columnTypes[i] {
-				case "int64":
-					r, err := stringutil.StrconvIntBitSize(stringutil.BytesToString(raw), 64)
+				value := reflect.ValueOf(valRes).Interface()
+				switch val := value.(type) {
+				case godror.Number:
+					rfs, err := decimal.NewFromString(val.String())
 					if err != nil {
-						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaseTypes[i], val, err)
 					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
-				case "uint64":
-					r, err := stringutil.StrconvUintBitSize(stringutil.BytesToString(raw), 64)
+					rowData[columnNameOrderIndexMap[colName]] = rfs
+				case *godror.Lob:
+					lobD, err := val.Hijack()
 					if err != nil {
-						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack failed, %v", colName, databaseTypes[i], val, err)
 					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
-				case "float32":
-					r, err := stringutil.StrconvFloatBitSize(stringutil.BytesToString(raw), 32)
-					if err != nil {
-						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
-					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
-				case "float64":
-					r, err := stringutil.StrconvFloatBitSize(stringutil.BytesToString(raw), 64)
-					if err != nil {
-						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
-					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
-				case "rune":
-					r, err := stringutil.StrconvRune(stringutil.BytesToString(raw))
-					if err != nil {
-						return fmt.Errorf("column [%s] strconv failed, %v", columnNames[i], err)
-					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
-				case "godror.Number":
-					r, err := decimal.NewFromString(stringutil.BytesToString(raw))
-					if err != nil {
-						return fmt.Errorf("column [%s] NewFromString strconv failed, %v", columnNames[i], err)
-					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = r
-				case "[]uint8":
-					// binary data -> raw、long raw、blob
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = raw
-				default:
-					convertUtf8Raw, err := stringutil.CharsetConvert(raw, dbCharsetS, constant.CharsetUTF8MB4)
-					if err != nil {
-						return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
-					}
+					if strings.EqualFold(databaseTypes[i], "BFILE") {
+						dir, file, err := lobD.GetFileName()
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack getfilename failed, %v", colName, databaseTypes[i], val, err)
+						}
+						dirPath, err := d.GetDatabaseDirectoryName(dir)
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack get directory name failed, %v", colName, databaseTypes[i], val, err)
+						}
+						rowData[columnNameOrderIndexMap[colName]] = filepath.Join(dirPath, file)
+					} else {
+						// get actual data
+						lobSize, err := lobD.Size()
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack size failed, %v", colName, databaseTypes[i], val, err)
+						}
 
-					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
-					if err != nil {
-						return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+						buf := make([]byte, lobSize)
+
+						var (
+							res    strings.Builder
+							offset int64
+						)
+						for {
+							count, err := lobD.ReadAt(buf, offset)
+							if err != nil {
+								return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack readAt failed, %v", colName, databaseTypes[i], val, err)
+							}
+							if int64(count) > lobSize/int64(4) {
+								count = int(lobSize / 4)
+							}
+							offset += int64(count)
+							res.Write(buf[:count])
+							if count == 0 {
+								break
+							}
+						}
+						rowData[columnNameOrderIndexMap[colName]] = res.String()
 					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(convertTargetRaw)
+					err = lobD.Close()
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack close failed, %v", colName, databaseTypes[i], val, err)
+					}
+				case string:
+					if strings.EqualFold(val, "") {
+						//rowsMap[cols[i]] = `NULL` -> sql
+						rowData[columnNameOrderIndexMap[colName]] = nil
+					} else {
+						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+						}
+						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+						}
+						rowData[columnNameOrderIndexMap[colName]] = stringutil.BytesToString(convertTargetRaw)
+					}
+				default:
+					rowData[columnNameOrderIndexMap[colName]] = val
 				}
 			}
 		}
@@ -307,7 +341,6 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 		// batch
 		if len(batchRowsData) == argsNums {
 			dataChan <- batchRowsData
-
 			// clear
 			batchRowsData = make([]interface{}, 0, argsNums)
 		}
@@ -325,11 +358,11 @@ func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callT
 	return nil
 }
 
-func (d *Database) QueryDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
+func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
 	var (
-		columnNames []string
-		columnTypes []string
-		err         error
+		columnNames   []string
+		databaseTypes []string
+		err           error
 	)
 	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
 	columnNameOrdersCounts := len(columnNameOrders)
@@ -363,89 +396,143 @@ func (d *Database) QueryDatabaseTableCsvData(querySQL string, callTimeout int, t
 			return fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
 		}
 		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
-		// database field type DatabaseTypeName() maps go type ScanType()
-		columnTypes = append(columnTypes, ct.ScanType().String())
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
 	}
 
 	// data scan
 	columnNums := len(columnNames)
-	rawResult := make([][]byte, columnNums)
-	dest := make([]interface{}, columnNums)
-	for i := range rawResult {
-		dest[i] = &rawResult[i]
-	}
+	values := make([]interface{}, columnNums)
+	valuePtrs := make([]interface{}, columnNums)
 
 	for rows.Next() {
-		err = rows.Scan(dest...)
+		for i := 0; i < columnNums; i++ {
+			valuePtrs[i] = &values[i]
+		}
+		err = rows.Scan(valuePtrs...)
 		if err != nil {
 			return err
 		}
 
-		for i, raw := range rawResult {
+		for i, colName := range columnNames {
+			valRes := values[i]
 			// ORACLE database NULL and "" are the same
-			if raw == nil {
-				if !strings.EqualFold(nullValue, "") {
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = nullValue
-				} else {
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
-				}
-			} else if stringutil.BytesToString(raw) == "" {
+			if stringutil.IsValueNil(valRes) {
 				if !strings.EqualFold(nullValue, "") {
 					rowData[columnNameOrderIndexMap[columnNames[i]]] = nullValue
 				} else {
 					rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
 				}
 			} else {
-				switch columnTypes[i] {
-				case "int64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "uint64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "float32":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "float64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "rune":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "godror.Number":
-					rfs, err := decimal.NewFromString(stringutil.BytesToString(raw))
+				value := reflect.ValueOf(valRes).Interface()
+				switch val := value.(type) {
+				case godror.Number:
+					rfs, err := decimal.NewFromString(val.String())
 					if err != nil {
-						return fmt.Errorf("column [%s] NewFromString strconv failed, %v", columnNames[i], err)
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaseTypes[i], val, err)
 					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = rfs.String()
-				case "[]uint8":
-					// binary data -> raw、long raw、blob
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.EscapeBinaryCSV(raw, escapeBackslash, delimiter, separator)
-				default:
-					var convertTargetRaw []byte
-					convertUtf8Raw, err := stringutil.CharsetConvert(raw, dbCharsetS, constant.CharsetUTF8MB4)
+					rowData[columnNameOrderIndexMap[colName]] = rfs.String()
+				case *godror.Lob:
+					lobD, err := val.Hijack()
 					if err != nil {
-						return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack failed, %v", colName, databaseTypes[i], val, err)
 					}
 
-					// Handling character sets, special character escapes, string reference delimiters
-					if escapeBackslash {
-						switch {
-						case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-							convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
-							if err != nil {
-								return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
-							}
-						default:
-							return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+					if strings.EqualFold(databaseTypes[i], "BFILE") {
+						dir, file, err := lobD.GetFileName()
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack getfilename failed, %v", colName, databaseTypes[i], val, err)
+						}
+						dirPath, err := d.GetDatabaseDirectoryName(dir)
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack get directory name failed, %v", colName, databaseTypes[i], val, err)
+						}
+						rowData[columnNameOrderIndexMap[colName]] = filepath.Join(dirPath, file)
+					} else {
+						// get actual data
+						lobSize, err := lobD.Size()
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack size failed, %v", colName, databaseTypes[i], val, err)
 						}
 
+						buf := make([]byte, lobSize)
+
+						var (
+							res    strings.Builder
+							offset int64
+						)
+						for {
+							count, err := lobD.ReadAt(buf, offset)
+							if err != nil {
+								return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack readAt failed, %v", colName, databaseTypes[i], val, err)
+							}
+							if int64(count) > lobSize/int64(4) {
+								count = int(lobSize / 4)
+							}
+							offset += int64(count)
+							res.Write(buf[:count])
+							if count == 0 {
+								break
+							}
+						}
+						rowData[columnNameOrderIndexMap[colName]] = res.String()
+					}
+					err = lobD.Close()
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] hijack close failed, %v", colName, databaseTypes[i], val, err)
+					}
+				case []uint8:
+					// binary data -> raw、long raw、blob
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.EscapeBinaryCSV(val, escapeBackslash, delimiter, separator)
+				case int64:
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = decimal.NewFromInt(val).String()
+				case uint64:
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = strconv.FormatUint(val, 10)
+				case float32:
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = decimal.NewFromFloat32(val).String()
+				case float64:
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = decimal.NewFromFloat(val).String()
+				case int32:
+					rowData[columnNameOrderIndexMap[columnNames[i]]] = decimal.NewFromInt32(val).String()
+				case string:
+					if strings.EqualFold(val, "") {
+						if !strings.EqualFold(nullValue, "") {
+							rowData[columnNameOrderIndexMap[columnNames[i]]] = nullValue
+						} else {
+							rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
+						}
 					} else {
-						convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						var convertTargetRaw []byte
+						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
 						if err != nil {
 							return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
 						}
+
+						// Handling character sets, special character escapes, string reference delimiters
+						if escapeBackslash {
+							switch {
+							case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
+								convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
+								if err != nil {
+									return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+								}
+							default:
+								return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+							}
+
+						} else {
+							convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+							if err != nil {
+								return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+							}
+						}
+						if delimiter == "" {
+							rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(convertTargetRaw)
+						} else {
+							rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
+						}
 					}
-					if delimiter == "" {
-						rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(convertTargetRaw)
-					} else {
-						rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
-					}
+				default:
+					return fmt.Errorf("the task_flow [%s] column [%s] unsupported type: %T", taskFlow, colName, value)
 				}
 			}
 		}

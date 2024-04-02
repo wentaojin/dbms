@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/Pallinder/go-randomdata"
+
 	"github.com/thanhpk/randstr"
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/model/datasource"
@@ -31,8 +32,8 @@ func main() {
 	databaseS, err := database.NewDatabase(ctx, &datasource.Datasource{
 		DbType:         "oracle",
 		Username:       "findpt",
-		Password:       "findpt",
-		Host:           "10.2.103.33",
+		Password:       "finpt",
+		Host:           "10.21.13.33",
 		Port:           1521,
 		ConnectCharset: "zhs16gbk",
 		ServiceName:    "gbk",

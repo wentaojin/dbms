@@ -17,7 +17,7 @@ package constant
 
 // TaskMode represents a certain type of task
 const (
-	TaskModeObjectAssess  = "OBJECT_ASSESS"
+	TaskModeAssessMigrate = "ASSESS_MIGRATE"
 	TaskModeStructMigrate = "STRUCT_MIGRATE"
 	TaskModeStmtMigrate   = "STMT_MIGRATE"
 	TaskModeSqlMigrate    = "SQL_MIGRATE"

@@ -124,6 +124,52 @@ func (s *Server) listDatasource(ctx context.Context, req openapi.APIListDatasour
 	return "", errors.New(resp.Response.Message)
 }
 
+func (s *Server) upsertAssessMigrateTask(ctx context.Context, req openapi.APIPutAssessMigrateJSONRequestBody) (string, error) {
+	resp, err := s.UpsertAssessMigrateTask(ctx, &pb.UpsertAssessMigrateTaskRequest{
+		TaskName:        *req.TaskName,
+		DatasourceNameS: *req.DatasourceNameS,
+		DatasourceNameT: *req.DatasourceNameT,
+		Comment:         *req.Comment,
+		AssessMigrateParam: &pb.AssessMigrateParam{
+			CaseFieldRuleS: *req.AssessMigrateParam.CaseFieldRuleS,
+			SchemaNameS:    *req.AssessMigrateParam.SchemaNameS,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) deleteAssessMigrateTask(ctx context.Context, req openapi.APIDeleteAssessMigrateJSONRequestBody) (string, error) {
+	resp, err := s.DeleteAssessMigrateTask(ctx, &pb.DeleteAssessMigrateTaskRequest{TaskName: *req.Param})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) listAssessMigrateTask(ctx context.Context, req openapi.APIListAssessMigrateJSONRequestBody) (string, error) {
+	resp, err := s.ShowAssessMigrateTask(ctx, &pb.ShowAssessMigrateTaskRequest{
+		TaskName: *req.Param,
+		Page:     *req.Page,
+		PageSize: *req.PageSize,
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
 func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPutStructMigrateJSONRequestBody) (string, error) {
 	var (
 		taskLevelRules   []*pb.TaskStructRule

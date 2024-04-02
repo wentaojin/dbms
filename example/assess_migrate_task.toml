@@ -1,0 +1,11 @@
+task-name = "gct_33to45"
+datasource-name-s = "oracle33"
+datasource-name-t = "tidb145"
+comment = "测试数据源"
+
+[assess-migrate-param]
+# 1，参数值是 0 代表以当前配置文件为准，与源端对比
+# 2，参数值是 1 代表统一转换值为小写，与源端对比
+# 3，参数值是 2 代表统一转换值为大写，与源端对比
+case-field-rule-s = "0"
+schema-name-s = "MARVIN"

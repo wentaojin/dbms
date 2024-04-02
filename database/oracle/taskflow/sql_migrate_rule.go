@@ -30,8 +30,8 @@ type SqlMigrateRule struct {
 	TaskName        string             `json:"taskName"`
 	TaskMode        string             `json:"taskMode"`
 	TaskFlow        string             `json:"taskFlow"`
-	SchemaNameT     string             `json:"schemaNameS"`
-	TableNameT      string             `json:"tableNameS"`
+	SchemaNameT     string             `json:"schemaNameT"`
+	TableNameT      string             `json:"tableNameT"`
 	SqlHintT        string             `json:"sqlHintT"`
 	GlobalSqlHintT  string             `json:"globalSqlHintT"`
 	DatabaseS       database.IDatabase `json:"databaseS"`

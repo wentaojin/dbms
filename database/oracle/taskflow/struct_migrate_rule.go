@@ -218,7 +218,7 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 		// task flow
 		switch {
 		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-			originColumnType, buildInColumnType, err = DatabaseTableColumnMapMYSQLDatatypeRule(&Column{
+			originColumnType, buildInColumnType, err = DatabaseTableColumnMapMYSQLCompatibleDatatypeRule(&Column{
 				ColumnName:    c["COLUMN_NAME"],
 				Datatype:      c["DATA_TYPE"],
 				CharUsed:      c["CHAR_USED"],

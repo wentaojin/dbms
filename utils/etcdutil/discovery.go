@@ -33,7 +33,7 @@ import (
 
 type Discovery struct {
 	etcdClient *clientv3.Client
-	nodes      map[string]string // health node list
+	nodes      map[string]string
 	lock       sync.Mutex
 }
 
@@ -131,72 +131,94 @@ func (d *Discovery) GetAllNodeAddr() map[string]string {
 }
 
 // GetFreeWorker used for get free service node addr
-func (d *Discovery) GetFreeWorker() (string, error) {
+func (d *Discovery) GetFreeWorker(taskName string) (string, error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	keyResp, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey), clientv3.WithPrefix())
+	var nodes []string
+	registerKeyResp, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerRegisterPrefixKey), clientv3.WithPrefix())
 	if err != nil {
 		return "", err
 	}
-
-	nodeAddr := make(map[string]string)
-	for k, v := range d.nodes {
-		keyS := stringutil.StringSplit(k, constant.StringSeparatorSlash)
-		instAddr := keyS[len(keyS)-1]
-		nodeAddr[instAddr] = v
-	}
-
-	var freeWorkers []string
-	for k, v := range nodeAddr {
-		switch {
-		case len(keyResp.Kvs) == 0:
-			return k, nil
-		default:
+	if len(registerKeyResp.Kvs) == 0 {
+		return "", fmt.Errorf("there are not active node currently, please waiting register or scale-out worker node")
+	} else {
+		for _, ev := range registerKeyResp.Kvs {
 			var n *Node
-			err = stringutil.UnmarshalJSON([]byte(v), &n)
+			err = stringutil.UnmarshalJSON(ev.Value, &n)
 			if err != nil {
 				return "", err
 			}
-			for _, ev := range keyResp.Kvs {
-				addr := stringutil.BytesToString(ev.Key)
-				if strings.EqualFold(addr, k) {
-					var w *Worker
-					err = stringutil.UnmarshalJSON(ev.Value, &w)
-					if err != nil {
-						return "", err
-					}
-					if strings.EqualFold(w.State, constant.DefaultWorkerFreeState) {
-						freeWorkers = append(freeWorkers, k)
-					}
-					if strings.EqualFold(w.State, constant.DefaultWorkerBoundState) && strings.EqualFold(w.TaskName, "") {
-						freeWorkers = append(freeWorkers, k)
-					}
-					if strings.EqualFold(w.State, constant.DefaultWorkerStoppedState) && !strings.EqualFold(w.TaskName, "") {
-						return k, nil
-					}
-					if strings.EqualFold(w.State, constant.DefaultWorkerFailedState) && !strings.EqualFold(w.TaskName, "") {
-						return k, nil
-					}
-					if strings.EqualFold(w.State, constant.DefaultWorkerFailedState) && strings.EqualFold(w.TaskName, "") {
-						freeWorkers = append(freeWorkers, k)
-					}
-				}
-			}
-
-			freeWorkers = append(freeWorkers, k)
+			nodes = append(nodes, n.Addr)
 		}
 	}
 
-	if len(freeWorkers) == 0 {
-		return "", fmt.Errorf("there are not free node currently, please waiting or scale-out worker node")
-	}
-
-	elem, err := stringutil.GetRandomElem(freeWorkers)
+	stateKeyResp, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey), clientv3.WithPrefix())
 	if err != nil {
 		return "", err
 	}
-	return elem, nil
+
+	var (
+		freeWorkers   []string
+		activeWorkers []string
+	)
+
+	if len(stateKeyResp.Kvs) == 0 {
+		return nodes[0], nil
+	} else {
+		for _, ev := range stateKeyResp.Kvs {
+			var w *Worker
+			err = stringutil.UnmarshalJSON(ev.Value, &w)
+			if err != nil {
+				return "", err
+			}
+
+			switch {
+			case strings.EqualFold(w.State, constant.DefaultWorkerStoppedState) && strings.EqualFold(w.TaskName, taskName):
+				if stringutil.IsContainedString(nodes, w.Addr) {
+					return w.Addr, nil
+				}
+
+			case strings.EqualFold(w.State, constant.DefaultWorkerFailedState) && strings.EqualFold(w.TaskName, taskName):
+				if stringutil.IsContainedString(nodes, w.Addr) {
+					return w.Addr, nil
+				}
+			case strings.EqualFold(w.State, constant.DefaultWorkerBoundState) && strings.EqualFold(w.TaskName, taskName):
+				if stringutil.IsContainedString(nodes, w.Addr) {
+					return w.Addr, nil
+				}
+			case strings.EqualFold(w.State, constant.DefaultWorkerFreeState) && strings.EqualFold(w.TaskName, ""):
+				if stringutil.IsContainedString(nodes, w.Addr) {
+					freeWorkers = append(freeWorkers, w.Addr)
+				}
+			case strings.EqualFold(w.State, constant.DefaultWorkerBoundState) && strings.EqualFold(w.TaskName, ""):
+				if stringutil.IsContainedString(nodes, w.Addr) {
+					freeWorkers = append(freeWorkers, w.Addr)
+				}
+			case strings.EqualFold(w.State, constant.DefaultWorkerFailedState) && strings.EqualFold(w.TaskName, ""):
+				if stringutil.IsContainedString(nodes, w.Addr) {
+					freeWorkers = append(freeWorkers, w.Addr)
+				}
+			default:
+				activeWorkers = append(activeWorkers, w.Addr)
+			}
+		}
+	}
+	if len(freeWorkers) == 0 {
+		elem, err := stringutil.GetRandomElem(stringutil.StringItemsFilterDifference(nodes, activeWorkers))
+		if err != nil {
+			return "", err
+		}
+		return elem, nil
+	}
+	if len(freeWorkers) > 0 {
+		elem, err := stringutil.GetRandomElem(freeWorkers)
+		if err != nil {
+			return "", err
+		}
+		return elem, nil
+	}
+	return "", fmt.Errorf("there are not free node currently, please waiting or scale-out worker node")
 }
 
 // Close used for close service

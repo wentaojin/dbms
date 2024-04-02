@@ -156,6 +156,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Response'
+  /task/assessMigrate:
+    put:
+      tags:
+        - assessMigrate
+      description: Put assess migrate task information
+      operationId: APIPutAssessMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssessMigrateTask'
+      responses:
+        '200':
+          description: assess migrate task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - assessMigrate
+      description: List assess migrate task information
+      operationId: APIListAssessMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of assess migrate task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - assessMigrate
+      description: Delete assess migrate rule information
+      operationId: APIDeleteAssessMigrate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
   /task/structMigrate:
     put:
       tags:
@@ -638,6 +711,23 @@ components:
           $ref: '#/components/schemas/StructMigrateParam'
         structMigrateRule:
           $ref: '#/components/schemas/StructMigrateRule'
+    AssessMigrateTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        assessMigrateParam:
+          $ref: '#/components/schemas/AssessMigrateParam'
     StmtMigrateTask:
       type: object
       properties:
@@ -736,6 +826,13 @@ components:
             $ref: '#/components/schemas/SqlMigrateRule'
         sqlMigrateParam:
           $ref: '#/components/schemas/SqlMigrateParam'
+    AssessMigrateParam:
+      type: object
+      properties:
+        caseFieldRuleS:
+          type: string
+        schemaNameS:
+          type: string
     StatementMigrateParam:
       type: object
       properties:

@@ -260,9 +260,6 @@ func (cmt *CsvMigrateTask) Start() error {
 						return errW
 					}
 
-					readChan := make(chan []string, constant.DefaultMigrateTaskQueueSize)
-					writeChan := make(chan string, constant.DefaultMigrateTaskQueueSize)
-
 					err = database.IDataMigrateProcess(&CsvMigrateRow{
 						Ctx:        cmt.Ctx,
 						TaskMode:   cmt.Task.TaskMode,
@@ -273,8 +270,8 @@ func (cmt *CsvMigrateTask) Start() error {
 						DBCharsetS: constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(cmt.DatasourceS.ConnectCharset)],
 						DBCharsetT: stringutil.StringUpper(cmt.DatasourceT.ConnectCharset),
 						TaskParams: cmt.TaskParams,
-						ReadChan:   readChan,
-						WriteChan:  writeChan,
+						ReadChan:   make(chan []string, constant.DefaultMigrateTaskQueueSize),
+						WriteChan:  make(chan string, constant.DefaultMigrateTaskQueueSize),
 					})
 					if err != nil {
 						return err
@@ -582,7 +579,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 		return err
 	}
 
-	globalScn, err = databaseS.GetDatabaseCurrentSCN()
+	globalScn, err = databaseS.GetDatabaseConsistentPos()
 	if err != nil {
 		return err
 	}
@@ -608,11 +605,11 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 					return nil
 				}
 
-				tableRows, err := databaseS.GetDatabaseTableRowsByStatistics(schemaRoute.SchemaNameS, sourceTable)
+				tableRows, err := databaseS.GetDatabaseTableRows(schemaRoute.SchemaNameS, sourceTable)
 				if err != nil {
 					return err
 				}
-				tableSize, err := databaseS.GetDatabaseTableSizeBySegment(schemaRoute.SchemaNameS, sourceTable)
+				tableSize, err := databaseS.GetDatabaseTableSize(schemaRoute.SchemaNameS, sourceTable)
 				if err != nil {
 					return err
 				}
@@ -685,18 +682,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 				}
 
 				chunkTask := uuid.New().String()
-
-				err = databaseS.CreateDatabaseTableChunkTask(chunkTask)
-				if err != nil {
-					return err
-				}
-
-				err = databaseS.StartDatabaseTableChunkTask(chunkTask, schemaRoute.SchemaNameS, sourceTable, cmt.TaskParams.ChunkSize, cmt.TaskParams.CallTimeout)
-				if err != nil {
-					return err
-				}
-
-				chunks, err := databaseS.GetDatabaseTableChunkData(chunkTask)
+				chunks, err := databaseS.GetDatabaseTableChunkTask(chunkTask, schemaRoute.SchemaNameS, sourceTable, cmt.TaskParams.ChunkSize, cmt.TaskParams.CallTimeout)
 				if err != nil {
 					return err
 				}
@@ -808,10 +794,6 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 					return nil
 				})
 				if err != nil {
-					return err
-				}
-
-				if err = databaseS.CloseDatabaseTableChunkTask(chunkTask); err != nil {
 					return err
 				}
 

@@ -155,9 +155,9 @@ var BuildInOracleO2MDatatypeNameMap = map[string]string{
 	BuildInOracleDatatypeLongRAW:                     "LONGBLOB",
 	BuildInOracleDatatypeBinaryFloat:                 "DOUBLE",
 	BuildInOracleDatatypeBinaryDouble:                "DOUBLE",
-	BuildInOracleDatatypeNchar:                       "VARCHAR",
+	BuildInOracleDatatypeNchar:                       "NCHAR",
 	BuildInOracleDatatypeNcharVarying:                "NCHAR VARYING",
-	BuildInOracleDatatypeNclob:                       "TEXT",
+	BuildInOracleDatatypeNclob:                       "LONGTEXT",
 	BuildInOracleDatatypeNumeric:                     "NUMERIC",
 	BuildInOracleDatatypeNvarchar2:                   "VARCHAR",
 	BuildInOracleDatatypeRaw:                         "VARBINARY",
@@ -210,80 +210,6 @@ var BuildInOracleO2MDatatypeNameMap = map[string]string{
 	BuildInOracleDatatypeTimestampWithLocalTimeZone8: "DATETIME",
 	BuildInOracleDatatypeTimestampWithLocalTimeZone9: "DATETIME",
 	BuildInOracleDatatypeIntervalDay:                 "VARCHAR",
-}
-
-// MYSQL datatype
-const (
-	BuildInMySQLDatatypeBigint          = "BIGINT"
-	BuildInMySQLDatatypeDecimal         = "DECIMAL"
-	BuildInMySQLDatatypeDouble          = "DOUBLE"
-	BuildInMySQLDatatypeDoublePrecision = "DOUBLE PRECISION"
-	BuildInMySQLDatatypeFloat           = "FLOAT"
-	BuildInMySQLDatatypeInt             = "INT"
-	BuildInMySQLDatatypeInteger         = "INTEGER"
-	BuildInMySQLDatatypeMediumint       = "MEDIUMINT"
-	BuildInMySQLDatatypeNumeric         = "NUMERIC"
-	BuildInMySQLDatatypeReal            = "REAL"
-	BuildInMySQLDatatypeSmallint        = "SMALLINT"
-	BuildInMySQLDatatypeTinyint         = "TINYINT"
-	BuildInMySQLDatatypeBit             = "BIT"
-	BuildInMySQLDatatypeDate            = "DATE"
-	BuildInMySQLDatatypeDatetime        = "DATETIME"
-	BuildInMySQLDatatypeTimestamp       = "TIMESTAMP"
-	BuildInMySQLDatatypeTime            = "TIME"
-	BuildInMySQLDatatypeYear            = "YEAR"
-
-	BuildInMySQLDatatypeBlob       = "BLOB"
-	BuildInMySQLDatatypeChar       = "CHAR"
-	BuildInMySQLDatatypeLongBlob   = "LONGBLOB"
-	BuildInMySQLDatatypeLongText   = "LONGTEXT"
-	BuildInMySQLDatatypeMediumBlob = "MEDIUMBLOB"
-	BuildInMySQLDatatypeMediumText = "MEDIUMTEXT"
-	BuildInMySQLDatatypeText       = "TEXT"
-	BuildInMySQLDatatypeTinyBlob   = "TINYBLOB"
-	BuildInMySQLDatatypeTinyText   = "TINYTEXT"
-	BuildInMySQLDatatypeVarchar    = "VARCHAR"
-
-	BuildInMySQLDatatypeBinary    = "BINARY"
-	BuildInMySQLDatatypeVarbinary = "VARBINARY"
-
-	// ORACLE ISN'T SUPPORT
-	BuildInMySQLDatatypeSet  = "SET"
-	BuildInMySQLDatatypeEnum = "ENUM"
-)
-
-// MYSQL TO ORACLE column datatype mapping rule
-var BuildInMySQLM2ODatatypeNameMap = map[string]string{
-	BuildInMySQLDatatypeSmallint:        "NUMBER",
-	BuildInMySQLDatatypeTinyint:         "NUMBER",
-	BuildInMySQLDatatypeBigint:          "NUMBER",
-	BuildInMySQLDatatypeDecimal:         "DECIMAL",
-	BuildInMySQLDatatypeDouble:          "BINARY_DOUBLE",
-	BuildInMySQLDatatypeDoublePrecision: "BINARY_DOUBLE",
-	BuildInMySQLDatatypeFloat:           "BINARY_FLOAT",
-	BuildInMySQLDatatypeInt:             "NUMBER",
-	BuildInMySQLDatatypeInteger:         "NUMBER",
-	BuildInMySQLDatatypeMediumint:       "NUMBER",
-	BuildInMySQLDatatypeNumeric:         "NUMBER",
-	BuildInMySQLDatatypeReal:            "BINARY_FLOAT",
-	BuildInMySQLDatatypeBit:             "RAW",
-	BuildInMySQLDatatypeDate:            "DATE",
-	BuildInMySQLDatatypeDatetime:        "DATE",
-	BuildInMySQLDatatypeTimestamp:       "TIMESTAMP",
-	BuildInMySQLDatatypeTime:            "DATE",
-	BuildInMySQLDatatypeYear:            "NUMBER",
-	BuildInMySQLDatatypeBlob:            "BLOB",
-	BuildInMySQLDatatypeChar:            "CHAR",
-	BuildInMySQLDatatypeLongBlob:        "BLOB",
-	BuildInMySQLDatatypeLongText:        "CLOB",
-	BuildInMySQLDatatypeMediumBlob:      "BLOB",
-	BuildInMySQLDatatypeMediumText:      "CLOB",
-	BuildInMySQLDatatypeText:            "CLOB",
-	BuildInMySQLDatatypeTinyBlob:        "BLOB",
-	BuildInMySQLDatatypeTinyText:        "VARCHAR2",
-	BuildInMySQLDatatypeVarchar:         "VARCHAR2",
-	BuildInMySQLDatatypeBinary:          "RAW",
-	BuildInMySQLDatatypeVarbinary:       "RAW",
 }
 
 /*
@@ -397,7 +323,7 @@ const (
 
 // Assess Name
 const (
-	AssessNameDBOverview = "DB_OVERVIEW"
+	AssessNameDatabaseOverview = "DATABASE_OVERVIEW"
 
 	AssessNameTableTypeCompatible          = "TABLE_TYPE_COMPATIBLE"
 	AssessNameColumnTypeCompatible         = "COLUMN_TYPE_COMPATIBLE"

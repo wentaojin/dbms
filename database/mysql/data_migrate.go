@@ -47,7 +47,7 @@ func (d *Database) GetDatabaseCharset() (string, error) {
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseCurrentSCN() (uint64, error) {
+func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -57,7 +57,7 @@ func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, e
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableColumns(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -72,42 +72,27 @@ func (d *Database) GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]str
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableRowsByStatistics(schemaName, tableName string) (uint64, error) {
+func (d *Database) GetDatabaseTableRows(schemaName, tableName string) (uint64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableSizeBySegment(schemaName, tableName string) (float64, error) {
+func (d *Database) GetDatabaseTableSize(schemaName, tableName string) (float64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) CreateDatabaseTableChunkTask(taskName string) error {
+func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) ([]map[string]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) StartDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) error {
+func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableChunkData(taskName string) ([]map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) CloseDatabaseTableChunkTask(taskName string) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) QueryDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) QueryDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
+func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
 	//TODO implement me
 	panic("implement me")
 }

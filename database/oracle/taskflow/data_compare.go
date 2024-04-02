@@ -512,7 +512,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 		return err
 	}
 
-	globalScn, err = databaseS.GetDatabaseCurrentSCN()
+	globalScn, err = databaseS.GetDatabaseConsistentPos()
 	if err != nil {
 		return err
 	}
@@ -545,11 +545,11 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					// skip
 					return nil
 				}
-				tableRows, err := databaseS.GetDatabaseTableRowsByStatistics(schemaRoute.SchemaNameS, sourceTable)
+				tableRows, err := databaseS.GetDatabaseTableRows(schemaRoute.SchemaNameS, sourceTable)
 				if err != nil {
 					return err
 				}
-				tableSize, err := databaseS.GetDatabaseTableSizeBySegment(schemaRoute.SchemaNameS, sourceTable)
+				tableSize, err := databaseS.GetDatabaseTableSize(schemaRoute.SchemaNameS, sourceTable)
 				if err != nil {
 					return err
 				}
@@ -638,7 +638,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					customColumnS = stringutil.BytesToString(convertCharsetColumnS)
 				}
 
-				columnNameSlis, err := databaseS.FindDatabaseTableBestColumnName(attsRule.SchemaNameS, attsRule.TableNameS, customColumnS)
+				columnNameSlis, err := databaseS.FindDatabaseTableColumnName(attsRule.SchemaNameS, attsRule.TableNameS, customColumnS)
 				if err != nil {
 					return err
 				}
@@ -731,15 +731,15 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					} else {
 						columnT = columnUtf8S
 					}
-					attriS, err := databaseS.GetDatabaseTableBestColumnAttribute(attsRule.SchemaNameS, attsRule.TableNameS, column)
+					attriS, err := databaseS.GetDatabaseTableColumnAttribute(attsRule.SchemaNameS, attsRule.TableNameS, column)
 					if err != nil {
 						return err
 					}
-					attriT, err := databaseT.GetDatabaseTableBestColumnAttribute(attsRule.SchemaNameT, attsRule.TableNameT, columnT)
+					attriT, err := databaseT.GetDatabaseTableColumnAttribute(attsRule.SchemaNameT, attsRule.TableNameT, columnT)
 					if err != nil {
 						return err
 					}
-					columnBucketS, err := databaseS.GetDatabaseTableBestColumnBucket(attsRule.SchemaNameS, attsRule.TableNameS, column, attriS[0]["DATA_TYPE"])
+					columnBucketS, err := databaseS.GetDatabaseTableColumnBucket(attsRule.SchemaNameS, attsRule.TableNameS, column, attriS[0]["DATA_TYPE"])
 					if err != nil {
 						return err
 					}

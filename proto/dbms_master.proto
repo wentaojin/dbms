@@ -42,6 +42,24 @@ service Master {
       body: "*"
     };
   }
+  rpc UpsertAssessMigrateTask(UpsertAssessMigrateTaskRequest) returns (UpsertAssessMigrateTaskResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/assessMigrateTask"
+      body: "*"
+    };
+  }
+  rpc DeleteAssessMigrateTask(DeleteAssessMigrateTaskRequest) returns (DeleteAssessMigrateTaskResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/assessMigrateTask"
+      body: "*"
+    };
+  }
+  rpc ShowAssessMigrateTask(ShowAssessMigrateTaskRequest) returns (ShowAssessMigrateTaskResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/assessMigrateTask"
+      body: "*"
+    };
+  }
   rpc UpsertStructMigrateTask(UpsertStructMigrateTaskRequest) returns (UpsertStructMigrateTaskResponse){
     option (google.api.http) = {
       put: "/apis/v1alpha1/structMigrateTask"
@@ -180,6 +198,34 @@ message ShowDatasourceRequest{
   uint64 pageSize = 3;
 }
 message ShowDatasourceResponse{
+  Response response = 1;
+}
+
+message UpsertAssessMigrateTaskRequest{
+  string taskName = 1;
+  string datasourceNameS = 2;
+  string datasourceNameT = 3;
+  string comment = 4;
+
+  AssessMigrateParam assessMigrateParam = 5;
+}
+message UpsertAssessMigrateTaskResponse{
+  Response response = 1;
+}
+
+message DeleteAssessMigrateTaskRequest{
+  repeated string taskName = 1;
+}
+message DeleteAssessMigrateTaskResponse{
+  Response response = 1;
+}
+
+message ShowAssessMigrateTaskRequest{
+  string taskName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowAssessMigrateTaskResponse{
   Response response = 1;
 }
 
@@ -392,6 +438,11 @@ message TableRouteRule {
   string tableNameS = 1;
   string tableNameT = 2;
   map<string,string> columnRouteRules = 3;
+}
+
+message AssessMigrateParam {
+  string caseFieldRuleS = 1;
+  string schemaNameS = 2;
 }
 
 message StructMigrateParam {

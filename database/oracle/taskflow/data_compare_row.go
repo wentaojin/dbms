@@ -362,7 +362,7 @@ func (r *DataCompareRow) CompareDiff() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			columnS, columnDataS, err := r.DatabaseS.GetDatabaseTableBestColumnCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4)
+			columnS, columnDataS, err := r.DatabaseS.GetDatabaseTableColumnDataCompare(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] comparing failed: [%v]", execQueryS, err)
 			}
@@ -377,7 +377,7 @@ func (r *DataCompareRow) CompareDiff() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			columnT, columnDataT, err := r.DatabaseT.GetDatabaseTableBestColumnCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4)
+			columnT, columnDataT, err := r.DatabaseT.GetDatabaseTableColumnDataCompare(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] comparing failed: [%v]", execQueryT, err)
 			}

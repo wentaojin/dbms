@@ -28,6 +28,9 @@ type MasterClient interface {
 	UpsertDatasource(ctx context.Context, in *UpsertDatasourceRequest, opts ...grpc.CallOption) (*UpsertDatasourceResponse, error)
 	DeleteDatasource(ctx context.Context, in *DeleteDatasourceRequest, opts ...grpc.CallOption) (*DeleteDatasourceResponse, error)
 	ShowDatasource(ctx context.Context, in *ShowDatasourceRequest, opts ...grpc.CallOption) (*ShowDatasourceResponse, error)
+	UpsertAssessMigrateTask(ctx context.Context, in *UpsertAssessMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertAssessMigrateTaskResponse, error)
+	DeleteAssessMigrateTask(ctx context.Context, in *DeleteAssessMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteAssessMigrateTaskResponse, error)
+	ShowAssessMigrateTask(ctx context.Context, in *ShowAssessMigrateTaskRequest, opts ...grpc.CallOption) (*ShowAssessMigrateTaskResponse, error)
 	UpsertStructMigrateTask(ctx context.Context, in *UpsertStructMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertStructMigrateTaskResponse, error)
 	DeleteStructMigrateTask(ctx context.Context, in *DeleteStructMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteStructMigrateTaskResponse, error)
 	ShowStructMigrateTask(ctx context.Context, in *ShowStructMigrateTaskRequest, opts ...grpc.CallOption) (*ShowStructMigrateTaskResponse, error)
@@ -102,6 +105,33 @@ func (c *masterClient) DeleteDatasource(ctx context.Context, in *DeleteDatasourc
 func (c *masterClient) ShowDatasource(ctx context.Context, in *ShowDatasourceRequest, opts ...grpc.CallOption) (*ShowDatasourceResponse, error) {
 	out := new(ShowDatasourceResponse)
 	err := c.cc.Invoke(ctx, "/proto.Master/ShowDatasource", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) UpsertAssessMigrateTask(ctx context.Context, in *UpsertAssessMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertAssessMigrateTaskResponse, error) {
+	out := new(UpsertAssessMigrateTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/UpsertAssessMigrateTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) DeleteAssessMigrateTask(ctx context.Context, in *DeleteAssessMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteAssessMigrateTaskResponse, error) {
+	out := new(DeleteAssessMigrateTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/DeleteAssessMigrateTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) ShowAssessMigrateTask(ctx context.Context, in *ShowAssessMigrateTaskRequest, opts ...grpc.CallOption) (*ShowAssessMigrateTaskResponse, error) {
+	out := new(ShowAssessMigrateTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/ShowAssessMigrateTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -262,6 +292,9 @@ type MasterServer interface {
 	UpsertDatasource(context.Context, *UpsertDatasourceRequest) (*UpsertDatasourceResponse, error)
 	DeleteDatasource(context.Context, *DeleteDatasourceRequest) (*DeleteDatasourceResponse, error)
 	ShowDatasource(context.Context, *ShowDatasourceRequest) (*ShowDatasourceResponse, error)
+	UpsertAssessMigrateTask(context.Context, *UpsertAssessMigrateTaskRequest) (*UpsertAssessMigrateTaskResponse, error)
+	DeleteAssessMigrateTask(context.Context, *DeleteAssessMigrateTaskRequest) (*DeleteAssessMigrateTaskResponse, error)
+	ShowAssessMigrateTask(context.Context, *ShowAssessMigrateTaskRequest) (*ShowAssessMigrateTaskResponse, error)
 	UpsertStructMigrateTask(context.Context, *UpsertStructMigrateTaskRequest) (*UpsertStructMigrateTaskResponse, error)
 	DeleteStructMigrateTask(context.Context, *DeleteStructMigrateTaskRequest) (*DeleteStructMigrateTaskResponse, error)
 	ShowStructMigrateTask(context.Context, *ShowStructMigrateTaskRequest) (*ShowStructMigrateTaskResponse, error)
@@ -302,6 +335,15 @@ func (UnimplementedMasterServer) DeleteDatasource(context.Context, *DeleteDataso
 }
 func (UnimplementedMasterServer) ShowDatasource(context.Context, *ShowDatasourceRequest) (*ShowDatasourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowDatasource not implemented")
+}
+func (UnimplementedMasterServer) UpsertAssessMigrateTask(context.Context, *UpsertAssessMigrateTaskRequest) (*UpsertAssessMigrateTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpsertAssessMigrateTask not implemented")
+}
+func (UnimplementedMasterServer) DeleteAssessMigrateTask(context.Context, *DeleteAssessMigrateTaskRequest) (*DeleteAssessMigrateTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteAssessMigrateTask not implemented")
+}
+func (UnimplementedMasterServer) ShowAssessMigrateTask(context.Context, *ShowAssessMigrateTaskRequest) (*ShowAssessMigrateTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShowAssessMigrateTask not implemented")
 }
 func (UnimplementedMasterServer) UpsertStructMigrateTask(context.Context, *UpsertStructMigrateTaskRequest) (*UpsertStructMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpsertStructMigrateTask not implemented")
@@ -468,6 +510,60 @@ func _Master_ShowDatasource_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MasterServer).ShowDatasource(ctx, req.(*ShowDatasourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_UpsertAssessMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertAssessMigrateTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).UpsertAssessMigrateTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/UpsertAssessMigrateTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).UpsertAssessMigrateTask(ctx, req.(*UpsertAssessMigrateTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_DeleteAssessMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAssessMigrateTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).DeleteAssessMigrateTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/DeleteAssessMigrateTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).DeleteAssessMigrateTask(ctx, req.(*DeleteAssessMigrateTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_ShowAssessMigrateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShowAssessMigrateTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).ShowAssessMigrateTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/ShowAssessMigrateTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).ShowAssessMigrateTask(ctx, req.(*ShowAssessMigrateTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -790,6 +886,18 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShowDatasource",
 			Handler:    _Master_ShowDatasource_Handler,
+		},
+		{
+			MethodName: "UpsertAssessMigrateTask",
+			Handler:    _Master_UpsertAssessMigrateTask_Handler,
+		},
+		{
+			MethodName: "DeleteAssessMigrateTask",
+			Handler:    _Master_DeleteAssessMigrateTask_Handler,
+		},
+		{
+			MethodName: "ShowAssessMigrateTask",
+			Handler:    _Master_ShowAssessMigrateTask_Handler,
 		},
 		{
 			MethodName: "UpsertStructMigrateTask",

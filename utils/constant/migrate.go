@@ -455,3 +455,17 @@ const (
 	ParamValueDataCompareCaseFieldRuleLower  = "1"
 	ParamValueDataCompareCaseFieldRuleUpper  = "2"
 )
+
+// assess migrate parameters
+const (
+	ParamNameAssessMigrateCaseFieldRuleS = "caseFieldRuleS"
+	ParamNameAssessMigrateSchemaNameS    = "schemaNameS"
+
+	// ParamValueAssessMigrateCaseFieldRuleOrigin case-field-name params value
+	// - 0 represent keeping origin
+	// - 1 represent keeping lower
+	// - 2 represent keeping upper
+	ParamValueAssessMigrateCaseFieldRuleOrigin = "0"
+	ParamValueAssessMigrateCaseFieldRuleLower  = "1"
+	ParamValueAssessMigrateCaseFieldRuleUpper  = "2"
+)

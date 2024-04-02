@@ -143,6 +143,83 @@ func (rw *RWLog) DeleteLog(ctx context.Context, taskName []string) error {
 	return nil
 }
 
+type RWAssessMigrateTask struct {
+	common.GormDB
+}
+
+func NewAssessMigrateTaskRW(db *gorm.DB) *RWAssessMigrateTask {
+	m := &RWAssessMigrateTask{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWAssessMigrateTask) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(AssessMigrateTask{}).Name())
+}
+
+func (rw *RWAssessMigrateTask) CreateAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) (*AssessMigrateTask, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}},
+		UpdateAll: true,
+	}).Create(task).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWAssessMigrateTask) GetAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) ([]*AssessMigrateTask, error) {
+	var dataS []*AssessMigrateTask
+	err := rw.DB(ctx).Model(&AssessMigrateTask{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWAssessMigrateTask) QueryAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) ([]*AssessMigrateTask, error) {
+	var dataS []*AssessMigrateTask
+	err := rw.DB(ctx).Model(&AssessMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWAssessMigrateTask) UpdateAssessMigrateTask(ctx context.Context, task *AssessMigrateTask, updates map[string]interface{}) (*AssessMigrateTask, error) {
+	err := rw.DB(ctx).Model(&AssessMigrateTask{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWAssessMigrateTask) ListAssessMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*AssessMigrateTask, error) {
+	var dataS []*AssessMigrateTask
+	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&AssessMigrateTask{}).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("list table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWAssessMigrateTask) DeleteAssessMigrateTask(ctx context.Context, taskID uint64) error {
+	err := rw.DB(ctx).Where("id = ?", taskID).Delete(&AssessMigrateTask{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] id [%v] record failed: %v", rw.TableName(ctx), taskID, err)
+	}
+	return nil
+}
+
+func (rw *RWAssessMigrateTask) DeleteAssessMigrateTaskName(ctx context.Context, taskName []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&AssessMigrateTask{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] task [%v] record failed: %v", rw.TableName(ctx), taskName, err)
+	}
+	return nil
+}
+
 type RWStructMigrateSummary struct {
 	common.GormDB
 }
@@ -460,7 +537,7 @@ func (rw *RWDataMigrateTask) GetDataMigrateTask(ctx context.Context, task *DataM
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
-	return task, nil
+	return dataS, nil
 }
 
 func (rw *RWDataMigrateTask) FindDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error) {

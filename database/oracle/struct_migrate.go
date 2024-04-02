@@ -228,7 +228,7 @@ WHERE
 	return res[0]["VALUE"], nil
 }
 
-func (d *Database) GetDatabaseTableColumns(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
 	var queryStr string
 	/*
 			1、dataPrecision Accuracy range ORA-01727: numeric precision specifier is out of range (1 to 38)

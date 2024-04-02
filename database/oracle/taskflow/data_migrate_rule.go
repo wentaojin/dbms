@@ -168,7 +168,7 @@ func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, st
 		columnNameSilS, columnNameSliT []string
 	)
 
-	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumns(r.SchemaNameS, r.TableNameS, r.DBCollationS)
+	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS, r.DBCollationS)
 	if err != nil {
 		return "", "", "", "", err
 	}

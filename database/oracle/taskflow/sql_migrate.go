@@ -174,8 +174,6 @@ func (smt *SqlMigrateTask) Start() error {
 					}
 					defer stmt.Close()
 
-					readChan := make(chan []interface{}, constant.DefaultMigrateTaskQueueSize)
-					writeChan := make(chan []interface{}, constant.DefaultMigrateTaskQueueSize)
 					err = database.IDataMigrateProcess(&SqlMigrateRow{
 						Ctx:           smt.Ctx,
 						TaskMode:      smt.Task.TaskMode,
@@ -190,8 +188,8 @@ func (smt *SqlMigrateTask) Start() error {
 						BatchSize:     int(smt.TaskParams.BatchSize),
 						CallTimeout:   int(smt.TaskParams.CallTimeout),
 						SafeMode:      true,
-						ReadChan:      readChan,
-						WriteChan:     writeChan,
+						ReadChan:      make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+						WriteChan:     make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 					})
 					if err != nil {
 						return err
@@ -305,7 +303,7 @@ func (smt *SqlMigrateTask) InitSqlMigrateTask(databaseS database.IDatabase) erro
 		repeatedDoneInfos[stringutil.StringBuilder(m.TaskName, m.SchemaNameT, m.TableNameT, m.SqlQueryS)] = struct{}{}
 	}
 
-	globalScn, err := databaseS.GetDatabaseCurrentSCN()
+	globalScn, err := databaseS.GetDatabaseConsistentPos()
 	if err != nil {
 		return err
 	}

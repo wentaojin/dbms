@@ -34,10 +34,13 @@ column-route-rules = {"NAME" = "t_name00"}
 
 [[data-compare-rules]]
 table-name-s = ""
-column-field = ""
+compare-field = ""
 # 指定检查数据范围或者查询条件
 # range 优先级高于 column-field
 compare-range = ""
+# 忽略对比字段列
+# long/long raw
+ignore-fields = []
 
 # 表串行运行，表内并发
 [data-compare-param]

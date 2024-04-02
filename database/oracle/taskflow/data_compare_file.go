@@ -54,7 +54,7 @@ func NewDataCompareFile(ctx context.Context,
 	}
 }
 
-func (s *DataCompareFile) InitOutputFile() error {
+func (s *DataCompareFile) InitFile() error {
 	err := s.initOutputCompareFile()
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (s *DataCompareFile) InitOutputFile() error {
 	return nil
 }
 
-func (s *DataCompareFile) SyncCompareFile() error {
+func (s *DataCompareFile) SyncFile() error {
 	var (
 		err          error
 		migrateTasks []*task.DataCompareTask

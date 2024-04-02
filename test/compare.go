@@ -36,9 +36,9 @@ func main() {
 
 	databaseS, err := database.NewDatabase(ctx, &datasource.Datasource{
 		DbType:         "oracle",
-		Username:       "findpt",
-		Password:       "findpt",
-		Host:           "10.2.103.33",
+		Username:       "finpt",
+		Password:       "findt",
+		Host:           "10.21.13.33",
 		Port:           1521,
 		ConnectCharset: "zhs16gbk",
 		ServiceName:    "gbk",
@@ -50,7 +50,7 @@ func main() {
 	schemaNameS := "MARVIN"
 	tableNameS := "MARVIN05"
 
-	columns, err := FindDatabaseTableBestColumnName(schemaNameS, tableNameS, databaseS)
+	columns, err := FindDatabaseTableColumnName(schemaNameS, tableNameS, databaseS)
 	if err != nil {
 		panic(err)
 	}
@@ -99,7 +99,7 @@ func GetDatabaseTableColumnBucketRange(schemaNameS, tableNameS string, databaseS
 	)
 
 	for i, column := range columnNameS {
-		columnBuckets, err := GetDatabaseTableBestColumnBucket(schemaNameS, tableNameS, column, databaseS)
+		columnBuckets, err := GetDatabaseTableColumnBucket(schemaNameS, tableNameS, column, databaseS)
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +137,7 @@ func GetDatabaseTableColumnBucketRange(schemaNameS, tableNameS string, databaseS
 	return chunks, nil
 }
 
-func GetDatabaseTableBestColumnBucket(schemaNameS, tableNameS string, columnNameS string, databaseS database.IDatabase) ([]string, error) {
+func GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS string, databaseS database.IDatabase) ([]string, error) {
 	var vals []string
 	/*
 	 * 统计信息查询
@@ -229,7 +229,7 @@ ORDER BY ENDPOINT_VALUE ASC`, schemaNameS, tableNameS, columnNameS)
 	return vals, nil
 }
 
-func FindDatabaseTableBestColumnName(schemaNameS, tableNameS string, databaseS database.IDatabase) ([]string, error) {
+func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS database.IDatabase) ([]string, error) {
 	var err error
 
 	sqlStr := fmt.Sprintf(`SELECT

@@ -62,7 +62,7 @@ func (d *Datasource) GetTableComment() ([]map[string]string, error) {
 }
 
 func (d *Datasource) GetTableColumns() ([]map[string]string, error) {
-	return d.DatabaseS.GetDatabaseTableColumns(d.SchemaNameS, d.TableNameS, d.CollationS)
+	return d.DatabaseS.GetDatabaseTableColumnInfo(d.SchemaNameS, d.TableNameS, d.CollationS)
 }
 
 func (d *Datasource) GetTableColumnComment() ([]map[string]string, error) {

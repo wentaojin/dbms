@@ -40,7 +40,7 @@ import (
 )
 
 func StartTask(ctx context.Context, cli *clientv3.Client, discoveries *etcdutil.Discovery, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
-	workerAddr, err := discoveries.GetFreeWorker()
+	workerAddr, err := discoveries.GetFreeWorker(req.TaskName)
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,

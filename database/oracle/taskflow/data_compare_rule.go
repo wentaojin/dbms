@@ -169,7 +169,7 @@ func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, st
 		columnNameSilS, columnNameSilSO, columnNameSliT, columnNameSliTO []string
 	)
 
-	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumns(r.SchemaNameS, r.TableNameS, r.DBCollationS)
+	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS, r.DBCollationS)
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -215,7 +215,7 @@ func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, st
 		}
 
 		columnNameSliTO = append(columnNameSliTO, columnNameT)
-		columnNameS, columnNameT, err = optimizerDataCompareColumnST(columnNameS, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"], columnNameT, r.DBCharsetS, constant.BuildInOracleCharsetAL32UTF8)
+		columnNameS, columnNameT, err = optimizerDataCompareColumnST(r.TaskFlow, columnNameS, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"], columnNameT, r.DBCharsetS, constant.BuildInOracleCharsetAL32UTF8, constant.BuildInMYSQLCharsetUTF8MB4)
 		if err != nil {
 			return "", "", "", "", err
 		}

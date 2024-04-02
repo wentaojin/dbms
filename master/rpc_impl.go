@@ -111,6 +111,48 @@ func (s *Server) ShowDatasource(ctx context.Context, req *pb.ShowDatasourceReque
 	}}, nil
 }
 
+func (s *Server) UpsertAssessMigrateTask(ctx context.Context, req *pb.UpsertAssessMigrateTaskRequest) (*pb.UpsertAssessMigrateTaskResponse, error) {
+	showMsg, err := service.UpsertAssessMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.UpsertAssessMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.UpsertAssessMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: showMsg,
+	}}, nil
+}
+
+func (s *Server) DeleteAssessMigrateTask(ctx context.Context, req *pb.DeleteAssessMigrateTaskRequest) (*pb.DeleteAssessMigrateTaskResponse, error) {
+	delMsg, err := service.DeleteAssessMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.DeleteAssessMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.DeleteAssessMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) ShowAssessMigrateTask(ctx context.Context, req *pb.ShowAssessMigrateTaskRequest) (*pb.ShowAssessMigrateTaskResponse, error) {
+	delMsg, err := service.ShowAssessMigrateTask(ctx, req)
+	if err != nil {
+		return &pb.ShowAssessMigrateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.ShowAssessMigrateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
 func (s *Server) UpsertStructMigrateTask(ctx context.Context, req *pb.UpsertStructMigrateTaskRequest) (*pb.UpsertStructMigrateTaskResponse, error) {
 	showMsg, err := service.UpsertStructMigrateTask(ctx, req)
 	if err != nil {

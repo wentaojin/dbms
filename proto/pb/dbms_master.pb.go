@@ -584,6 +584,336 @@ func (x *ShowDatasourceResponse) GetResponse() *Response {
 	return nil
 }
 
+type UpsertAssessMigrateTaskRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	TaskName           string              `protobuf:"bytes,1,opt,name=taskName,proto3" json:"taskName,omitempty"`
+	DatasourceNameS    string              `protobuf:"bytes,2,opt,name=datasourceNameS,proto3" json:"datasourceNameS,omitempty"`
+	DatasourceNameT    string              `protobuf:"bytes,3,opt,name=datasourceNameT,proto3" json:"datasourceNameT,omitempty"`
+	Comment            string              `protobuf:"bytes,4,opt,name=comment,proto3" json:"comment,omitempty"`
+	AssessMigrateParam *AssessMigrateParam `protobuf:"bytes,5,opt,name=assessMigrateParam,proto3" json:"assessMigrateParam,omitempty"`
+}
+
+func (x *UpsertAssessMigrateTaskRequest) Reset() {
+	*x = UpsertAssessMigrateTaskRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_dbms_master_proto_msgTypes[12]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpsertAssessMigrateTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertAssessMigrateTaskRequest) ProtoMessage() {}
+
+func (x *UpsertAssessMigrateTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dbms_master_proto_msgTypes[12]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertAssessMigrateTaskRequest.ProtoReflect.Descriptor instead.
+func (*UpsertAssessMigrateTaskRequest) Descriptor() ([]byte, []int) {
+	return file_dbms_master_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UpsertAssessMigrateTaskRequest) GetTaskName() string {
+	if x != nil {
+		return x.TaskName
+	}
+	return ""
+}
+
+func (x *UpsertAssessMigrateTaskRequest) GetDatasourceNameS() string {
+	if x != nil {
+		return x.DatasourceNameS
+	}
+	return ""
+}
+
+func (x *UpsertAssessMigrateTaskRequest) GetDatasourceNameT() string {
+	if x != nil {
+		return x.DatasourceNameT
+	}
+	return ""
+}
+
+func (x *UpsertAssessMigrateTaskRequest) GetComment() string {
+	if x != nil {
+		return x.Comment
+	}
+	return ""
+}
+
+func (x *UpsertAssessMigrateTaskRequest) GetAssessMigrateParam() *AssessMigrateParam {
+	if x != nil {
+		return x.AssessMigrateParam
+	}
+	return nil
+}
+
+type UpsertAssessMigrateTaskResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Response *Response `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
+}
+
+func (x *UpsertAssessMigrateTaskResponse) Reset() {
+	*x = UpsertAssessMigrateTaskResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_dbms_master_proto_msgTypes[13]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpsertAssessMigrateTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertAssessMigrateTaskResponse) ProtoMessage() {}
+
+func (x *UpsertAssessMigrateTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dbms_master_proto_msgTypes[13]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertAssessMigrateTaskResponse.ProtoReflect.Descriptor instead.
+func (*UpsertAssessMigrateTaskResponse) Descriptor() ([]byte, []int) {
+	return file_dbms_master_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *UpsertAssessMigrateTaskResponse) GetResponse() *Response {
+	if x != nil {
+		return x.Response
+	}
+	return nil
+}
+
+type DeleteAssessMigrateTaskRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	TaskName []string `protobuf:"bytes,1,rep,name=taskName,proto3" json:"taskName,omitempty"`
+}
+
+func (x *DeleteAssessMigrateTaskRequest) Reset() {
+	*x = DeleteAssessMigrateTaskRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_dbms_master_proto_msgTypes[14]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeleteAssessMigrateTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAssessMigrateTaskRequest) ProtoMessage() {}
+
+func (x *DeleteAssessMigrateTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dbms_master_proto_msgTypes[14]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAssessMigrateTaskRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAssessMigrateTaskRequest) Descriptor() ([]byte, []int) {
+	return file_dbms_master_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *DeleteAssessMigrateTaskRequest) GetTaskName() []string {
+	if x != nil {
+		return x.TaskName
+	}
+	return nil
+}
+
+type DeleteAssessMigrateTaskResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Response *Response `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
+}
+
+func (x *DeleteAssessMigrateTaskResponse) Reset() {
+	*x = DeleteAssessMigrateTaskResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_dbms_master_proto_msgTypes[15]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeleteAssessMigrateTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAssessMigrateTaskResponse) ProtoMessage() {}
+
+func (x *DeleteAssessMigrateTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dbms_master_proto_msgTypes[15]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAssessMigrateTaskResponse.ProtoReflect.Descriptor instead.
+func (*DeleteAssessMigrateTaskResponse) Descriptor() ([]byte, []int) {
+	return file_dbms_master_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *DeleteAssessMigrateTaskResponse) GetResponse() *Response {
+	if x != nil {
+		return x.Response
+	}
+	return nil
+}
+
+type ShowAssessMigrateTaskRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	TaskName string `protobuf:"bytes,1,opt,name=taskName,proto3" json:"taskName,omitempty"`
+	Page     uint64 `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize uint64 `protobuf:"varint,3,opt,name=pageSize,proto3" json:"pageSize,omitempty"`
+}
+
+func (x *ShowAssessMigrateTaskRequest) Reset() {
+	*x = ShowAssessMigrateTaskRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_dbms_master_proto_msgTypes[16]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ShowAssessMigrateTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShowAssessMigrateTaskRequest) ProtoMessage() {}
+
+func (x *ShowAssessMigrateTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dbms_master_proto_msgTypes[16]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShowAssessMigrateTaskRequest.ProtoReflect.Descriptor instead.
+func (*ShowAssessMigrateTaskRequest) Descriptor() ([]byte, []int) {
+	return file_dbms_master_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ShowAssessMigrateTaskRequest) GetTaskName() string {
+	if x != nil {
+		return x.TaskName
+	}
+	return ""
+}
+
+func (x *ShowAssessMigrateTaskRequest) GetPage() uint64 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ShowAssessMigrateTaskRequest) GetPageSize() uint64 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type ShowAssessMigrateTaskResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Response *Response `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
+}
+
+func (x *ShowAssessMigrateTaskResponse) Reset() {
+	*x = ShowAssessMigrateTaskResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_dbms_master_proto_msgTypes[17]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ShowAssessMigrateTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShowAssessMigrateTaskResponse) ProtoMessage() {}
+
+func (x *ShowAssessMigrateTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dbms_master_proto_msgTypes[17]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShowAssessMigrateTaskResponse.ProtoReflect.Descriptor instead.
+func (*ShowAssessMigrateTaskResponse) Descriptor() ([]byte, []int) {
+	return file_dbms_master_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ShowAssessMigrateTaskResponse) GetResponse() *Response {
+	if x != nil {
+		return x.Response
+	}
+	return nil
+}
+
 type UpsertStructMigrateTaskRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -602,7 +932,7 @@ type UpsertStructMigrateTaskRequest struct {
 func (x *UpsertStructMigrateTaskRequest) Reset() {
 	*x = UpsertStructMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[12]
+		mi := &file_dbms_master_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -615,7 +945,7 @@ func (x *UpsertStructMigrateTaskRequest) String() string {
 func (*UpsertStructMigrateTaskRequest) ProtoMessage() {}
 
 func (x *UpsertStructMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[12]
+	mi := &file_dbms_master_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -628,7 +958,7 @@ func (x *UpsertStructMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertStructMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*UpsertStructMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{12}
+	return file_dbms_master_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *UpsertStructMigrateTaskRequest) GetTaskName() string {
@@ -698,7 +1028,7 @@ type UpsertStructMigrateTaskResponse struct {
 func (x *UpsertStructMigrateTaskResponse) Reset() {
 	*x = UpsertStructMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[13]
+		mi := &file_dbms_master_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -711,7 +1041,7 @@ func (x *UpsertStructMigrateTaskResponse) String() string {
 func (*UpsertStructMigrateTaskResponse) ProtoMessage() {}
 
 func (x *UpsertStructMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[13]
+	mi := &file_dbms_master_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -724,7 +1054,7 @@ func (x *UpsertStructMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertStructMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*UpsertStructMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{13}
+	return file_dbms_master_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *UpsertStructMigrateTaskResponse) GetResponse() *Response {
@@ -745,7 +1075,7 @@ type DeleteStructMigrateTaskRequest struct {
 func (x *DeleteStructMigrateTaskRequest) Reset() {
 	*x = DeleteStructMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[14]
+		mi := &file_dbms_master_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -758,7 +1088,7 @@ func (x *DeleteStructMigrateTaskRequest) String() string {
 func (*DeleteStructMigrateTaskRequest) ProtoMessage() {}
 
 func (x *DeleteStructMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[14]
+	mi := &file_dbms_master_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -771,7 +1101,7 @@ func (x *DeleteStructMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStructMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStructMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{14}
+	return file_dbms_master_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DeleteStructMigrateTaskRequest) GetTaskName() []string {
@@ -792,7 +1122,7 @@ type DeleteStructMigrateTaskResponse struct {
 func (x *DeleteStructMigrateTaskResponse) Reset() {
 	*x = DeleteStructMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[15]
+		mi := &file_dbms_master_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -805,7 +1135,7 @@ func (x *DeleteStructMigrateTaskResponse) String() string {
 func (*DeleteStructMigrateTaskResponse) ProtoMessage() {}
 
 func (x *DeleteStructMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[15]
+	mi := &file_dbms_master_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -818,7 +1148,7 @@ func (x *DeleteStructMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStructMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*DeleteStructMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{15}
+	return file_dbms_master_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DeleteStructMigrateTaskResponse) GetResponse() *Response {
@@ -841,7 +1171,7 @@ type ShowStructMigrateTaskRequest struct {
 func (x *ShowStructMigrateTaskRequest) Reset() {
 	*x = ShowStructMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[16]
+		mi := &file_dbms_master_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -854,7 +1184,7 @@ func (x *ShowStructMigrateTaskRequest) String() string {
 func (*ShowStructMigrateTaskRequest) ProtoMessage() {}
 
 func (x *ShowStructMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[16]
+	mi := &file_dbms_master_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +1197,7 @@ func (x *ShowStructMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowStructMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*ShowStructMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{16}
+	return file_dbms_master_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ShowStructMigrateTaskRequest) GetTaskName() string {
@@ -902,7 +1232,7 @@ type ShowStructMigrateTaskResponse struct {
 func (x *ShowStructMigrateTaskResponse) Reset() {
 	*x = ShowStructMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[17]
+		mi := &file_dbms_master_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -915,7 +1245,7 @@ func (x *ShowStructMigrateTaskResponse) String() string {
 func (*ShowStructMigrateTaskResponse) ProtoMessage() {}
 
 func (x *ShowStructMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[17]
+	mi := &file_dbms_master_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -928,7 +1258,7 @@ func (x *ShowStructMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowStructMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*ShowStructMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{17}
+	return file_dbms_master_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ShowStructMigrateTaskResponse) GetResponse() *Response {
@@ -956,7 +1286,7 @@ type UpsertStmtMigrateTaskRequest struct {
 func (x *UpsertStmtMigrateTaskRequest) Reset() {
 	*x = UpsertStmtMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[18]
+		mi := &file_dbms_master_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -969,7 +1299,7 @@ func (x *UpsertStmtMigrateTaskRequest) String() string {
 func (*UpsertStmtMigrateTaskRequest) ProtoMessage() {}
 
 func (x *UpsertStmtMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[18]
+	mi := &file_dbms_master_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -982,7 +1312,7 @@ func (x *UpsertStmtMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertStmtMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*UpsertStmtMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{18}
+	return file_dbms_master_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *UpsertStmtMigrateTaskRequest) GetTaskName() string {
@@ -1052,7 +1382,7 @@ type UpsertStmtMigrateTaskResponse struct {
 func (x *UpsertStmtMigrateTaskResponse) Reset() {
 	*x = UpsertStmtMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[19]
+		mi := &file_dbms_master_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1065,7 +1395,7 @@ func (x *UpsertStmtMigrateTaskResponse) String() string {
 func (*UpsertStmtMigrateTaskResponse) ProtoMessage() {}
 
 func (x *UpsertStmtMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[19]
+	mi := &file_dbms_master_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1408,7 @@ func (x *UpsertStmtMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertStmtMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*UpsertStmtMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{19}
+	return file_dbms_master_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *UpsertStmtMigrateTaskResponse) GetResponse() *Response {
@@ -1099,7 +1429,7 @@ type DeleteStmtMigrateTaskRequest struct {
 func (x *DeleteStmtMigrateTaskRequest) Reset() {
 	*x = DeleteStmtMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[20]
+		mi := &file_dbms_master_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1112,7 +1442,7 @@ func (x *DeleteStmtMigrateTaskRequest) String() string {
 func (*DeleteStmtMigrateTaskRequest) ProtoMessage() {}
 
 func (x *DeleteStmtMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[20]
+	mi := &file_dbms_master_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1125,7 +1455,7 @@ func (x *DeleteStmtMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStmtMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStmtMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{20}
+	return file_dbms_master_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DeleteStmtMigrateTaskRequest) GetTaskName() []string {
@@ -1146,7 +1476,7 @@ type DeleteStmtMigrateTaskResponse struct {
 func (x *DeleteStmtMigrateTaskResponse) Reset() {
 	*x = DeleteStmtMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[21]
+		mi := &file_dbms_master_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1159,7 +1489,7 @@ func (x *DeleteStmtMigrateTaskResponse) String() string {
 func (*DeleteStmtMigrateTaskResponse) ProtoMessage() {}
 
 func (x *DeleteStmtMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[21]
+	mi := &file_dbms_master_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1172,7 +1502,7 @@ func (x *DeleteStmtMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStmtMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*DeleteStmtMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{21}
+	return file_dbms_master_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DeleteStmtMigrateTaskResponse) GetResponse() *Response {
@@ -1195,7 +1525,7 @@ type ShowStmtMigrateTaskRequest struct {
 func (x *ShowStmtMigrateTaskRequest) Reset() {
 	*x = ShowStmtMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[22]
+		mi := &file_dbms_master_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1208,7 +1538,7 @@ func (x *ShowStmtMigrateTaskRequest) String() string {
 func (*ShowStmtMigrateTaskRequest) ProtoMessage() {}
 
 func (x *ShowStmtMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[22]
+	mi := &file_dbms_master_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1221,7 +1551,7 @@ func (x *ShowStmtMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowStmtMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*ShowStmtMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{22}
+	return file_dbms_master_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ShowStmtMigrateTaskRequest) GetTaskName() string {
@@ -1256,7 +1586,7 @@ type ShowStmtMigrateTaskResponse struct {
 func (x *ShowStmtMigrateTaskResponse) Reset() {
 	*x = ShowStmtMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[23]
+		mi := &file_dbms_master_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1269,7 +1599,7 @@ func (x *ShowStmtMigrateTaskResponse) String() string {
 func (*ShowStmtMigrateTaskResponse) ProtoMessage() {}
 
 func (x *ShowStmtMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[23]
+	mi := &file_dbms_master_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1282,7 +1612,7 @@ func (x *ShowStmtMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowStmtMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*ShowStmtMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{23}
+	return file_dbms_master_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ShowStmtMigrateTaskResponse) GetResponse() *Response {
@@ -1309,7 +1639,7 @@ type UpsertSqlMigrateTaskRequest struct {
 func (x *UpsertSqlMigrateTaskRequest) Reset() {
 	*x = UpsertSqlMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[24]
+		mi := &file_dbms_master_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1322,7 +1652,7 @@ func (x *UpsertSqlMigrateTaskRequest) String() string {
 func (*UpsertSqlMigrateTaskRequest) ProtoMessage() {}
 
 func (x *UpsertSqlMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[24]
+	mi := &file_dbms_master_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1335,7 +1665,7 @@ func (x *UpsertSqlMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertSqlMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*UpsertSqlMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{24}
+	return file_dbms_master_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *UpsertSqlMigrateTaskRequest) GetTaskName() string {
@@ -1398,7 +1728,7 @@ type UpsertSqlMigrateTaskResponse struct {
 func (x *UpsertSqlMigrateTaskResponse) Reset() {
 	*x = UpsertSqlMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[25]
+		mi := &file_dbms_master_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1411,7 +1741,7 @@ func (x *UpsertSqlMigrateTaskResponse) String() string {
 func (*UpsertSqlMigrateTaskResponse) ProtoMessage() {}
 
 func (x *UpsertSqlMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[25]
+	mi := &file_dbms_master_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1424,7 +1754,7 @@ func (x *UpsertSqlMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertSqlMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*UpsertSqlMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{25}
+	return file_dbms_master_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *UpsertSqlMigrateTaskResponse) GetResponse() *Response {
@@ -1445,7 +1775,7 @@ type DeleteSqlMigrateTaskRequest struct {
 func (x *DeleteSqlMigrateTaskRequest) Reset() {
 	*x = DeleteSqlMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[26]
+		mi := &file_dbms_master_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1458,7 +1788,7 @@ func (x *DeleteSqlMigrateTaskRequest) String() string {
 func (*DeleteSqlMigrateTaskRequest) ProtoMessage() {}
 
 func (x *DeleteSqlMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[26]
+	mi := &file_dbms_master_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1471,7 +1801,7 @@ func (x *DeleteSqlMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSqlMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSqlMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{26}
+	return file_dbms_master_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *DeleteSqlMigrateTaskRequest) GetTaskName() []string {
@@ -1492,7 +1822,7 @@ type DeleteSqlMigrateTaskResponse struct {
 func (x *DeleteSqlMigrateTaskResponse) Reset() {
 	*x = DeleteSqlMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[27]
+		mi := &file_dbms_master_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1505,7 +1835,7 @@ func (x *DeleteSqlMigrateTaskResponse) String() string {
 func (*DeleteSqlMigrateTaskResponse) ProtoMessage() {}
 
 func (x *DeleteSqlMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[27]
+	mi := &file_dbms_master_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1518,7 +1848,7 @@ func (x *DeleteSqlMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSqlMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSqlMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{27}
+	return file_dbms_master_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DeleteSqlMigrateTaskResponse) GetResponse() *Response {
@@ -1541,7 +1871,7 @@ type ShowSqlMigrateTaskRequest struct {
 func (x *ShowSqlMigrateTaskRequest) Reset() {
 	*x = ShowSqlMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[28]
+		mi := &file_dbms_master_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1554,7 +1884,7 @@ func (x *ShowSqlMigrateTaskRequest) String() string {
 func (*ShowSqlMigrateTaskRequest) ProtoMessage() {}
 
 func (x *ShowSqlMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[28]
+	mi := &file_dbms_master_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1567,7 +1897,7 @@ func (x *ShowSqlMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowSqlMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*ShowSqlMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{28}
+	return file_dbms_master_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ShowSqlMigrateTaskRequest) GetTaskName() string {
@@ -1602,7 +1932,7 @@ type ShowSqlMigrateTaskResponse struct {
 func (x *ShowSqlMigrateTaskResponse) Reset() {
 	*x = ShowSqlMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[29]
+		mi := &file_dbms_master_proto_msgTypes[35]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1615,7 +1945,7 @@ func (x *ShowSqlMigrateTaskResponse) String() string {
 func (*ShowSqlMigrateTaskResponse) ProtoMessage() {}
 
 func (x *ShowSqlMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[29]
+	mi := &file_dbms_master_proto_msgTypes[35]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1628,7 +1958,7 @@ func (x *ShowSqlMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowSqlMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*ShowSqlMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{29}
+	return file_dbms_master_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ShowSqlMigrateTaskResponse) GetResponse() *Response {
@@ -1656,7 +1986,7 @@ type UpsertCsvMigrateTaskRequest struct {
 func (x *UpsertCsvMigrateTaskRequest) Reset() {
 	*x = UpsertCsvMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[30]
+		mi := &file_dbms_master_proto_msgTypes[36]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1669,7 +1999,7 @@ func (x *UpsertCsvMigrateTaskRequest) String() string {
 func (*UpsertCsvMigrateTaskRequest) ProtoMessage() {}
 
 func (x *UpsertCsvMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[30]
+	mi := &file_dbms_master_proto_msgTypes[36]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1682,7 +2012,7 @@ func (x *UpsertCsvMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertCsvMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*UpsertCsvMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{30}
+	return file_dbms_master_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *UpsertCsvMigrateTaskRequest) GetTaskName() string {
@@ -1752,7 +2082,7 @@ type UpsertCsvMigrateTaskResponse struct {
 func (x *UpsertCsvMigrateTaskResponse) Reset() {
 	*x = UpsertCsvMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[31]
+		mi := &file_dbms_master_proto_msgTypes[37]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1765,7 +2095,7 @@ func (x *UpsertCsvMigrateTaskResponse) String() string {
 func (*UpsertCsvMigrateTaskResponse) ProtoMessage() {}
 
 func (x *UpsertCsvMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[31]
+	mi := &file_dbms_master_proto_msgTypes[37]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1778,7 +2108,7 @@ func (x *UpsertCsvMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertCsvMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*UpsertCsvMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{31}
+	return file_dbms_master_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *UpsertCsvMigrateTaskResponse) GetResponse() *Response {
@@ -1799,7 +2129,7 @@ type DeleteCsvMigrateTaskRequest struct {
 func (x *DeleteCsvMigrateTaskRequest) Reset() {
 	*x = DeleteCsvMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[32]
+		mi := &file_dbms_master_proto_msgTypes[38]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1812,7 +2142,7 @@ func (x *DeleteCsvMigrateTaskRequest) String() string {
 func (*DeleteCsvMigrateTaskRequest) ProtoMessage() {}
 
 func (x *DeleteCsvMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[32]
+	mi := &file_dbms_master_proto_msgTypes[38]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1825,7 +2155,7 @@ func (x *DeleteCsvMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCsvMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*DeleteCsvMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{32}
+	return file_dbms_master_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DeleteCsvMigrateTaskRequest) GetTaskName() []string {
@@ -1846,7 +2176,7 @@ type DeleteCsvMigrateTaskResponse struct {
 func (x *DeleteCsvMigrateTaskResponse) Reset() {
 	*x = DeleteCsvMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[33]
+		mi := &file_dbms_master_proto_msgTypes[39]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1859,7 +2189,7 @@ func (x *DeleteCsvMigrateTaskResponse) String() string {
 func (*DeleteCsvMigrateTaskResponse) ProtoMessage() {}
 
 func (x *DeleteCsvMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[33]
+	mi := &file_dbms_master_proto_msgTypes[39]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1872,7 +2202,7 @@ func (x *DeleteCsvMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCsvMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*DeleteCsvMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{33}
+	return file_dbms_master_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *DeleteCsvMigrateTaskResponse) GetResponse() *Response {
@@ -1895,7 +2225,7 @@ type ShowCsvMigrateTaskRequest struct {
 func (x *ShowCsvMigrateTaskRequest) Reset() {
 	*x = ShowCsvMigrateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[34]
+		mi := &file_dbms_master_proto_msgTypes[40]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1908,7 +2238,7 @@ func (x *ShowCsvMigrateTaskRequest) String() string {
 func (*ShowCsvMigrateTaskRequest) ProtoMessage() {}
 
 func (x *ShowCsvMigrateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[34]
+	mi := &file_dbms_master_proto_msgTypes[40]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1921,7 +2251,7 @@ func (x *ShowCsvMigrateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowCsvMigrateTaskRequest.ProtoReflect.Descriptor instead.
 func (*ShowCsvMigrateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{34}
+	return file_dbms_master_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ShowCsvMigrateTaskRequest) GetTaskName() string {
@@ -1956,7 +2286,7 @@ type ShowCsvMigrateTaskResponse struct {
 func (x *ShowCsvMigrateTaskResponse) Reset() {
 	*x = ShowCsvMigrateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[35]
+		mi := &file_dbms_master_proto_msgTypes[41]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1969,7 +2299,7 @@ func (x *ShowCsvMigrateTaskResponse) String() string {
 func (*ShowCsvMigrateTaskResponse) ProtoMessage() {}
 
 func (x *ShowCsvMigrateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[35]
+	mi := &file_dbms_master_proto_msgTypes[41]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1982,7 +2312,7 @@ func (x *ShowCsvMigrateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowCsvMigrateTaskResponse.ProtoReflect.Descriptor instead.
 func (*ShowCsvMigrateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{35}
+	return file_dbms_master_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ShowCsvMigrateTaskResponse) GetResponse() *Response {
@@ -2010,7 +2340,7 @@ type UpsertDataCompareTaskRequest struct {
 func (x *UpsertDataCompareTaskRequest) Reset() {
 	*x = UpsertDataCompareTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[36]
+		mi := &file_dbms_master_proto_msgTypes[42]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2023,7 +2353,7 @@ func (x *UpsertDataCompareTaskRequest) String() string {
 func (*UpsertDataCompareTaskRequest) ProtoMessage() {}
 
 func (x *UpsertDataCompareTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[36]
+	mi := &file_dbms_master_proto_msgTypes[42]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2036,7 +2366,7 @@ func (x *UpsertDataCompareTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertDataCompareTaskRequest.ProtoReflect.Descriptor instead.
 func (*UpsertDataCompareTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{36}
+	return file_dbms_master_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *UpsertDataCompareTaskRequest) GetTaskName() string {
@@ -2106,7 +2436,7 @@ type UpsertDataCompareTaskResponse struct {
 func (x *UpsertDataCompareTaskResponse) Reset() {
 	*x = UpsertDataCompareTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[37]
+		mi := &file_dbms_master_proto_msgTypes[43]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2119,7 +2449,7 @@ func (x *UpsertDataCompareTaskResponse) String() string {
 func (*UpsertDataCompareTaskResponse) ProtoMessage() {}
 
 func (x *UpsertDataCompareTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[37]
+	mi := &file_dbms_master_proto_msgTypes[43]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2132,7 +2462,7 @@ func (x *UpsertDataCompareTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertDataCompareTaskResponse.ProtoReflect.Descriptor instead.
 func (*UpsertDataCompareTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{37}
+	return file_dbms_master_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *UpsertDataCompareTaskResponse) GetResponse() *Response {
@@ -2153,7 +2483,7 @@ type DeleteDataCompareTaskRequest struct {
 func (x *DeleteDataCompareTaskRequest) Reset() {
 	*x = DeleteDataCompareTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[38]
+		mi := &file_dbms_master_proto_msgTypes[44]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2166,7 +2496,7 @@ func (x *DeleteDataCompareTaskRequest) String() string {
 func (*DeleteDataCompareTaskRequest) ProtoMessage() {}
 
 func (x *DeleteDataCompareTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[38]
+	mi := &file_dbms_master_proto_msgTypes[44]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2179,7 +2509,7 @@ func (x *DeleteDataCompareTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDataCompareTaskRequest.ProtoReflect.Descriptor instead.
 func (*DeleteDataCompareTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{38}
+	return file_dbms_master_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *DeleteDataCompareTaskRequest) GetTaskName() []string {
@@ -2200,7 +2530,7 @@ type DeleteDataCompareTaskResponse struct {
 func (x *DeleteDataCompareTaskResponse) Reset() {
 	*x = DeleteDataCompareTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[39]
+		mi := &file_dbms_master_proto_msgTypes[45]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2213,7 +2543,7 @@ func (x *DeleteDataCompareTaskResponse) String() string {
 func (*DeleteDataCompareTaskResponse) ProtoMessage() {}
 
 func (x *DeleteDataCompareTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[39]
+	mi := &file_dbms_master_proto_msgTypes[45]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2226,7 +2556,7 @@ func (x *DeleteDataCompareTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDataCompareTaskResponse.ProtoReflect.Descriptor instead.
 func (*DeleteDataCompareTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{39}
+	return file_dbms_master_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *DeleteDataCompareTaskResponse) GetResponse() *Response {
@@ -2249,7 +2579,7 @@ type ShowDataCompareTaskRequest struct {
 func (x *ShowDataCompareTaskRequest) Reset() {
 	*x = ShowDataCompareTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[40]
+		mi := &file_dbms_master_proto_msgTypes[46]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2262,7 +2592,7 @@ func (x *ShowDataCompareTaskRequest) String() string {
 func (*ShowDataCompareTaskRequest) ProtoMessage() {}
 
 func (x *ShowDataCompareTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[40]
+	mi := &file_dbms_master_proto_msgTypes[46]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2275,7 +2605,7 @@ func (x *ShowDataCompareTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowDataCompareTaskRequest.ProtoReflect.Descriptor instead.
 func (*ShowDataCompareTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{40}
+	return file_dbms_master_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ShowDataCompareTaskRequest) GetTaskName() string {
@@ -2310,7 +2640,7 @@ type ShowDataCompareTaskResponse struct {
 func (x *ShowDataCompareTaskResponse) Reset() {
 	*x = ShowDataCompareTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[41]
+		mi := &file_dbms_master_proto_msgTypes[47]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2323,7 +2653,7 @@ func (x *ShowDataCompareTaskResponse) String() string {
 func (*ShowDataCompareTaskResponse) ProtoMessage() {}
 
 func (x *ShowDataCompareTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[41]
+	mi := &file_dbms_master_proto_msgTypes[47]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2336,7 +2666,7 @@ func (x *ShowDataCompareTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShowDataCompareTaskResponse.ProtoReflect.Descriptor instead.
 func (*ShowDataCompareTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{41}
+	return file_dbms_master_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ShowDataCompareTaskResponse) GetResponse() *Response {
@@ -2359,7 +2689,7 @@ type OperateTaskRequest struct {
 func (x *OperateTaskRequest) Reset() {
 	*x = OperateTaskRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[42]
+		mi := &file_dbms_master_proto_msgTypes[48]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2372,7 +2702,7 @@ func (x *OperateTaskRequest) String() string {
 func (*OperateTaskRequest) ProtoMessage() {}
 
 func (x *OperateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[42]
+	mi := &file_dbms_master_proto_msgTypes[48]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2385,7 +2715,7 @@ func (x *OperateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperateTaskRequest.ProtoReflect.Descriptor instead.
 func (*OperateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{42}
+	return file_dbms_master_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *OperateTaskRequest) GetOperate() string {
@@ -2420,7 +2750,7 @@ type OperateTaskResponse struct {
 func (x *OperateTaskResponse) Reset() {
 	*x = OperateTaskResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[43]
+		mi := &file_dbms_master_proto_msgTypes[49]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2433,7 +2763,7 @@ func (x *OperateTaskResponse) String() string {
 func (*OperateTaskResponse) ProtoMessage() {}
 
 func (x *OperateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[43]
+	mi := &file_dbms_master_proto_msgTypes[49]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2446,7 +2776,7 @@ func (x *OperateTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperateTaskResponse.ProtoReflect.Descriptor instead.
 func (*OperateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{43}
+	return file_dbms_master_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *OperateTaskResponse) GetResponse() *Response {
@@ -2473,7 +2803,7 @@ type Database struct {
 func (x *Database) Reset() {
 	*x = Database{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[44]
+		mi := &file_dbms_master_proto_msgTypes[50]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2486,7 +2816,7 @@ func (x *Database) String() string {
 func (*Database) ProtoMessage() {}
 
 func (x *Database) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[44]
+	mi := &file_dbms_master_proto_msgTypes[50]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2499,7 +2829,7 @@ func (x *Database) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Database.ProtoReflect.Descriptor instead.
 func (*Database) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{44}
+	return file_dbms_master_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *Database) GetUsername() string {
@@ -2566,7 +2896,7 @@ type Datasource struct {
 func (x *Datasource) Reset() {
 	*x = Datasource{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[45]
+		mi := &file_dbms_master_proto_msgTypes[51]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2579,7 +2909,7 @@ func (x *Datasource) String() string {
 func (*Datasource) ProtoMessage() {}
 
 func (x *Datasource) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[45]
+	mi := &file_dbms_master_proto_msgTypes[51]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2592,7 +2922,7 @@ func (x *Datasource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Datasource.ProtoReflect.Descriptor instead.
 func (*Datasource) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{45}
+	return file_dbms_master_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *Datasource) GetDatasourceName() string {
@@ -2694,7 +3024,7 @@ type SchemaRouteRule struct {
 func (x *SchemaRouteRule) Reset() {
 	*x = SchemaRouteRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[46]
+		mi := &file_dbms_master_proto_msgTypes[52]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2707,7 +3037,7 @@ func (x *SchemaRouteRule) String() string {
 func (*SchemaRouteRule) ProtoMessage() {}
 
 func (x *SchemaRouteRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[46]
+	mi := &file_dbms_master_proto_msgTypes[52]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2720,7 +3050,7 @@ func (x *SchemaRouteRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SchemaRouteRule.ProtoReflect.Descriptor instead.
 func (*SchemaRouteRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{46}
+	return file_dbms_master_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SchemaRouteRule) GetSchemaNameS() string {
@@ -2770,7 +3100,7 @@ type CaseFieldRule struct {
 func (x *CaseFieldRule) Reset() {
 	*x = CaseFieldRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[47]
+		mi := &file_dbms_master_proto_msgTypes[53]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2783,7 +3113,7 @@ func (x *CaseFieldRule) String() string {
 func (*CaseFieldRule) ProtoMessage() {}
 
 func (x *CaseFieldRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[47]
+	mi := &file_dbms_master_proto_msgTypes[53]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2796,7 +3126,7 @@ func (x *CaseFieldRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaseFieldRule.ProtoReflect.Descriptor instead.
 func (*CaseFieldRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{47}
+	return file_dbms_master_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *CaseFieldRule) GetCaseFieldRuleS() string {
@@ -2826,7 +3156,7 @@ type TableRouteRule struct {
 func (x *TableRouteRule) Reset() {
 	*x = TableRouteRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[48]
+		mi := &file_dbms_master_proto_msgTypes[54]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2839,7 +3169,7 @@ func (x *TableRouteRule) String() string {
 func (*TableRouteRule) ProtoMessage() {}
 
 func (x *TableRouteRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[48]
+	mi := &file_dbms_master_proto_msgTypes[54]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2852,7 +3182,7 @@ func (x *TableRouteRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableRouteRule.ProtoReflect.Descriptor instead.
 func (*TableRouteRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{48}
+	return file_dbms_master_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *TableRouteRule) GetTableNameS() string {
@@ -2876,6 +3206,61 @@ func (x *TableRouteRule) GetColumnRouteRules() map[string]string {
 	return nil
 }
 
+type AssessMigrateParam struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	CaseFieldRuleS string `protobuf:"bytes,1,opt,name=caseFieldRuleS,proto3" json:"caseFieldRuleS,omitempty"`
+	SchemaNameS    string `protobuf:"bytes,2,opt,name=schemaNameS,proto3" json:"schemaNameS,omitempty"`
+}
+
+func (x *AssessMigrateParam) Reset() {
+	*x = AssessMigrateParam{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_dbms_master_proto_msgTypes[55]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AssessMigrateParam) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssessMigrateParam) ProtoMessage() {}
+
+func (x *AssessMigrateParam) ProtoReflect() protoreflect.Message {
+	mi := &file_dbms_master_proto_msgTypes[55]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssessMigrateParam.ProtoReflect.Descriptor instead.
+func (*AssessMigrateParam) Descriptor() ([]byte, []int) {
+	return file_dbms_master_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *AssessMigrateParam) GetCaseFieldRuleS() string {
+	if x != nil {
+		return x.CaseFieldRuleS
+	}
+	return ""
+}
+
+func (x *AssessMigrateParam) GetSchemaNameS() string {
+	if x != nil {
+		return x.SchemaNameS
+	}
+	return ""
+}
+
 type StructMigrateParam struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2889,7 +3274,7 @@ type StructMigrateParam struct {
 func (x *StructMigrateParam) Reset() {
 	*x = StructMigrateParam{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[49]
+		mi := &file_dbms_master_proto_msgTypes[56]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2902,7 +3287,7 @@ func (x *StructMigrateParam) String() string {
 func (*StructMigrateParam) ProtoMessage() {}
 
 func (x *StructMigrateParam) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[49]
+	mi := &file_dbms_master_proto_msgTypes[56]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2915,7 +3300,7 @@ func (x *StructMigrateParam) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StructMigrateParam.ProtoReflect.Descriptor instead.
 func (*StructMigrateParam) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{49}
+	return file_dbms_master_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *StructMigrateParam) GetMigrateThread() uint64 {
@@ -2954,7 +3339,7 @@ type StructMigrateRule struct {
 func (x *StructMigrateRule) Reset() {
 	*x = StructMigrateRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[50]
+		mi := &file_dbms_master_proto_msgTypes[57]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2967,7 +3352,7 @@ func (x *StructMigrateRule) String() string {
 func (*StructMigrateRule) ProtoMessage() {}
 
 func (x *StructMigrateRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[50]
+	mi := &file_dbms_master_proto_msgTypes[57]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2980,7 +3365,7 @@ func (x *StructMigrateRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StructMigrateRule.ProtoReflect.Descriptor instead.
 func (*StructMigrateRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{50}
+	return file_dbms_master_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *StructMigrateRule) GetTaskStructRules() []*TaskStructRule {
@@ -3033,7 +3418,7 @@ type TaskStructRule struct {
 func (x *TaskStructRule) Reset() {
 	*x = TaskStructRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[51]
+		mi := &file_dbms_master_proto_msgTypes[58]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3046,7 +3431,7 @@ func (x *TaskStructRule) String() string {
 func (*TaskStructRule) ProtoMessage() {}
 
 func (x *TaskStructRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[51]
+	mi := &file_dbms_master_proto_msgTypes[58]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3059,7 +3444,7 @@ func (x *TaskStructRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskStructRule.ProtoReflect.Descriptor instead.
 func (*TaskStructRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{51}
+	return file_dbms_master_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *TaskStructRule) GetColumnTypeS() string {
@@ -3112,7 +3497,7 @@ type SchemaStructRule struct {
 func (x *SchemaStructRule) Reset() {
 	*x = SchemaStructRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[52]
+		mi := &file_dbms_master_proto_msgTypes[59]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3125,7 +3510,7 @@ func (x *SchemaStructRule) String() string {
 func (*SchemaStructRule) ProtoMessage() {}
 
 func (x *SchemaStructRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[52]
+	mi := &file_dbms_master_proto_msgTypes[59]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3138,7 +3523,7 @@ func (x *SchemaStructRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SchemaStructRule.ProtoReflect.Descriptor instead.
 func (*SchemaStructRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{52}
+	return file_dbms_master_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *SchemaStructRule) GetSchemaNameS() string {
@@ -3192,7 +3577,7 @@ type TableStructRule struct {
 func (x *TableStructRule) Reset() {
 	*x = TableStructRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[53]
+		mi := &file_dbms_master_proto_msgTypes[60]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3205,7 +3590,7 @@ func (x *TableStructRule) String() string {
 func (*TableStructRule) ProtoMessage() {}
 
 func (x *TableStructRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[53]
+	mi := &file_dbms_master_proto_msgTypes[60]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3218,7 +3603,7 @@ func (x *TableStructRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableStructRule.ProtoReflect.Descriptor instead.
 func (*TableStructRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{53}
+	return file_dbms_master_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *TableStructRule) GetSchemaNameS() string {
@@ -3280,7 +3665,7 @@ type ColumnStructRule struct {
 func (x *ColumnStructRule) Reset() {
 	*x = ColumnStructRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[54]
+		mi := &file_dbms_master_proto_msgTypes[61]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3293,7 +3678,7 @@ func (x *ColumnStructRule) String() string {
 func (*ColumnStructRule) ProtoMessage() {}
 
 func (x *ColumnStructRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[54]
+	mi := &file_dbms_master_proto_msgTypes[61]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3306,7 +3691,7 @@ func (x *ColumnStructRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ColumnStructRule.ProtoReflect.Descriptor instead.
 func (*ColumnStructRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{54}
+	return file_dbms_master_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *ColumnStructRule) GetSchemaNameS() string {
@@ -3371,7 +3756,7 @@ type TableAttrsRule struct {
 func (x *TableAttrsRule) Reset() {
 	*x = TableAttrsRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[55]
+		mi := &file_dbms_master_proto_msgTypes[62]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3384,7 +3769,7 @@ func (x *TableAttrsRule) String() string {
 func (*TableAttrsRule) ProtoMessage() {}
 
 func (x *TableAttrsRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[55]
+	mi := &file_dbms_master_proto_msgTypes[62]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3397,7 +3782,7 @@ func (x *TableAttrsRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableAttrsRule.ProtoReflect.Descriptor instead.
 func (*TableAttrsRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{55}
+	return file_dbms_master_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *TableAttrsRule) GetSchemaNameS() string {
@@ -3435,7 +3820,7 @@ type DataMigrateRule struct {
 func (x *DataMigrateRule) Reset() {
 	*x = DataMigrateRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[56]
+		mi := &file_dbms_master_proto_msgTypes[63]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3448,7 +3833,7 @@ func (x *DataMigrateRule) String() string {
 func (*DataMigrateRule) ProtoMessage() {}
 
 func (x *DataMigrateRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[56]
+	mi := &file_dbms_master_proto_msgTypes[63]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3461,7 +3846,7 @@ func (x *DataMigrateRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataMigrateRule.ProtoReflect.Descriptor instead.
 func (*DataMigrateRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{56}
+	return file_dbms_master_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *DataMigrateRule) GetTableNameS() string {
@@ -3512,7 +3897,7 @@ type StatementMigrateParam struct {
 func (x *StatementMigrateParam) Reset() {
 	*x = StatementMigrateParam{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[57]
+		mi := &file_dbms_master_proto_msgTypes[64]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3525,7 +3910,7 @@ func (x *StatementMigrateParam) String() string {
 func (*StatementMigrateParam) ProtoMessage() {}
 
 func (x *StatementMigrateParam) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[57]
+	mi := &file_dbms_master_proto_msgTypes[64]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3538,7 +3923,7 @@ func (x *StatementMigrateParam) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatementMigrateParam.ProtoReflect.Descriptor instead.
 func (*StatementMigrateParam) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{57}
+	return file_dbms_master_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *StatementMigrateParam) GetTableThread() uint64 {
@@ -3638,7 +4023,7 @@ type CsvMigrateParam struct {
 func (x *CsvMigrateParam) Reset() {
 	*x = CsvMigrateParam{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[58]
+		mi := &file_dbms_master_proto_msgTypes[65]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3651,7 +4036,7 @@ func (x *CsvMigrateParam) String() string {
 func (*CsvMigrateParam) ProtoMessage() {}
 
 func (x *CsvMigrateParam) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[58]
+	mi := &file_dbms_master_proto_msgTypes[65]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3664,7 +4049,7 @@ func (x *CsvMigrateParam) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CsvMigrateParam.ProtoReflect.Descriptor instead.
 func (*CsvMigrateParam) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{58}
+	return file_dbms_master_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *CsvMigrateParam) GetTableThread() uint64 {
@@ -3799,7 +4184,7 @@ type DataCompareRule struct {
 func (x *DataCompareRule) Reset() {
 	*x = DataCompareRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[59]
+		mi := &file_dbms_master_proto_msgTypes[66]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3812,7 +4197,7 @@ func (x *DataCompareRule) String() string {
 func (*DataCompareRule) ProtoMessage() {}
 
 func (x *DataCompareRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[59]
+	mi := &file_dbms_master_proto_msgTypes[66]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3825,7 +4210,7 @@ func (x *DataCompareRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataCompareRule.ProtoReflect.Descriptor instead.
 func (*DataCompareRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{59}
+	return file_dbms_master_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *DataCompareRule) GetTableNameS() string {
@@ -3868,7 +4253,7 @@ type DataCompareParam struct {
 func (x *DataCompareParam) Reset() {
 	*x = DataCompareParam{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[60]
+		mi := &file_dbms_master_proto_msgTypes[67]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3881,7 +4266,7 @@ func (x *DataCompareParam) String() string {
 func (*DataCompareParam) ProtoMessage() {}
 
 func (x *DataCompareParam) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[60]
+	mi := &file_dbms_master_proto_msgTypes[67]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3894,7 +4279,7 @@ func (x *DataCompareParam) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataCompareParam.ProtoReflect.Descriptor instead.
 func (*DataCompareParam) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{60}
+	return file_dbms_master_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *DataCompareParam) GetTableThread() uint64 {
@@ -3975,7 +4360,7 @@ type SqlMigrateRule struct {
 func (x *SqlMigrateRule) Reset() {
 	*x = SqlMigrateRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[61]
+		mi := &file_dbms_master_proto_msgTypes[68]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3988,7 +4373,7 @@ func (x *SqlMigrateRule) String() string {
 func (*SqlMigrateRule) ProtoMessage() {}
 
 func (x *SqlMigrateRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[61]
+	mi := &file_dbms_master_proto_msgTypes[68]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4001,7 +4386,7 @@ func (x *SqlMigrateRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SqlMigrateRule.ProtoReflect.Descriptor instead.
 func (*SqlMigrateRule) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{61}
+	return file_dbms_master_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *SqlMigrateRule) GetSqlQueryS() string {
@@ -4055,7 +4440,7 @@ type SqlMigrateParam struct {
 func (x *SqlMigrateParam) Reset() {
 	*x = SqlMigrateParam{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_dbms_master_proto_msgTypes[62]
+		mi := &file_dbms_master_proto_msgTypes[69]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4068,7 +4453,7 @@ func (x *SqlMigrateParam) String() string {
 func (*SqlMigrateParam) ProtoMessage() {}
 
 func (x *SqlMigrateParam) ProtoReflect() protoreflect.Message {
-	mi := &file_dbms_master_proto_msgTypes[62]
+	mi := &file_dbms_master_proto_msgTypes[69]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4081,7 +4466,7 @@ func (x *SqlMigrateParam) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SqlMigrateParam.ProtoReflect.Descriptor instead.
 func (*SqlMigrateParam) Descriptor() ([]byte, []int) {
-	return file_dbms_master_proto_rawDescGZIP(), []int{62}
+	return file_dbms_master_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *SqlMigrateParam) GetBatchSize() uint64 {
@@ -4181,6 +4566,47 @@ var file_dbms_master_proto_rawDesc = []byte{
 	0x65, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x08, 0x70, 0x61, 0x67,
 	0x65, 0x53, 0x69, 0x7a, 0x65, 0x22, 0x45, 0x0a, 0x16, 0x53, 0x68, 0x6f, 0x77, 0x44, 0x61, 0x74,
 	0x61, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x2b, 0x0a, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x52, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0xf5, 0x01, 0x0a,
+	0x1e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67,
+	0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x1a, 0x0a, 0x08, 0x74, 0x61, 0x73, 0x6b, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x08, 0x74, 0x61, 0x73, 0x6b, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x28, 0x0a, 0x0f, 0x64,
+	0x61, 0x74, 0x61, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x53, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0f, 0x64, 0x61, 0x74, 0x61, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65,
+	0x4e, 0x61, 0x6d, 0x65, 0x53, 0x12, 0x28, 0x0a, 0x0f, 0x64, 0x61, 0x74, 0x61, 0x73, 0x6f, 0x75,
+	0x72, 0x63, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x54, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0f,
+	0x64, 0x61, 0x74, 0x61, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x54, 0x12,
+	0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x65, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x49, 0x0a, 0x12, 0x61, 0x73, 0x73,
+	0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x18,
+	0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x41, 0x73,
+	0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x50, 0x61, 0x72, 0x61, 0x6d,
+	0x52, 0x12, 0x61, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x50,
+	0x61, 0x72, 0x61, 0x6d, 0x22, 0x4e, 0x0a, 0x1f, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x41, 0x73,
+	0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2b, 0x0a, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x08, 0x72, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x3c, 0x0a, 0x1e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x41, 0x73,
+	0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x74, 0x61, 0x73, 0x6b, 0x4e, 0x61,
+	0x6d, 0x65, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x08, 0x74, 0x61, 0x73, 0x6b, 0x4e, 0x61,
+	0x6d, 0x65, 0x22, 0x4e, 0x0a, 0x1f, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x41, 0x73, 0x73, 0x65,
+	0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2b, 0x0a, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x6a, 0x0a, 0x1c, 0x53, 0x68, 0x6f, 0x77, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73,
+	0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x74, 0x61, 0x73, 0x6b, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x61, 0x73, 0x6b, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x12,
+	0x0a, 0x04, 0x70, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x04, 0x70, 0x61,
+	0x67, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x61, 0x67, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x04, 0x52, 0x08, 0x70, 0x61, 0x67, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x22, 0x4c,
+	0x0a, 0x1d, 0x53, 0x68, 0x6f, 0x77, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72,
+	0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
 	0x2b, 0x0a, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
 	0x73, 0x65, 0x52, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0xbb, 0x03, 0x0a,
@@ -4521,6 +4947,12 @@ var file_dbms_master_proto_rawDesc = []byte{
 	0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
 	0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02,
 	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22,
+	0x5e, 0x0a, 0x12, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65,
+	0x50, 0x61, 0x72, 0x61, 0x6d, 0x12, 0x26, 0x0a, 0x0e, 0x63, 0x61, 0x73, 0x65, 0x46, 0x69, 0x65,
+	0x6c, 0x64, 0x52, 0x75, 0x6c, 0x65, 0x53, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x63,
+	0x61, 0x73, 0x65, 0x46, 0x69, 0x65, 0x6c, 0x64, 0x52, 0x75, 0x6c, 0x65, 0x53, 0x12, 0x20, 0x0a,
+	0x0b, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x4e, 0x61, 0x6d, 0x65, 0x53, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x0b, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x4e, 0x61, 0x6d, 0x65, 0x53, 0x22,
 	0x96, 0x01, 0x0a, 0x12, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
 	0x65, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x12, 0x24, 0x0a, 0x0d, 0x6d, 0x69, 0x67, 0x72, 0x61, 0x74,
 	0x65, 0x54, 0x68, 0x72, 0x65, 0x61, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0d, 0x6d,
@@ -4749,7 +5181,7 @@ var file_dbms_master_proto_rawDesc = []byte{
 	0x65, 0x6f, 0x75, 0x74, 0x12, 0x32, 0x0a, 0x14, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x43, 0x6f,
 	0x6e, 0x73, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x61, 0x64, 0x18, 0x06, 0x20, 0x01,
 	0x28, 0x08, 0x52, 0x14, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x43, 0x6f, 0x6e, 0x73, 0x69, 0x73,
-	0x74, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x61, 0x64, 0x32, 0xfe, 0x16, 0x0a, 0x06, 0x4d, 0x61, 0x73,
+	0x74, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x61, 0x64, 0x32, 0xc0, 0x1a, 0x0a, 0x06, 0x4d, 0x61, 0x73,
 	0x74, 0x65, 0x72, 0x12, 0x71, 0x0a, 0x0e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x44, 0x61, 0x74,
 	0x61, 0x62, 0x61, 0x73, 0x65, 0x12, 0x1c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70,
 	0x73, 0x65, 0x72, 0x74, 0x44, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x52, 0x65, 0x71, 0x75,
@@ -4794,147 +5226,175 @@ var file_dbms_master_proto_rawDesc = []byte{
 	0x72, 0x63, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x24, 0x82, 0xd3, 0xe4,
 	0x93, 0x02, 0x1e, 0x22, 0x19, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70,
 	0x68, 0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x3a, 0x01,
-	0x2a, 0x12, 0x95, 0x01, 0x0a, 0x17, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x74, 0x72, 0x75,
-	0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x25, 0x2e,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x74, 0x72, 0x75,
-	0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71,
+	0x2a, 0x12, 0x95, 0x01, 0x0a, 0x17, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x41, 0x73, 0x73, 0x65,
+	0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x25, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x41, 0x73, 0x73, 0x65,
+	0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73,
-	0x65, 0x72, 0x74, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65,
+	0x65, 0x72, 0x74, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65,
 	0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2b, 0x82, 0xd3,
 	0xe4, 0x93, 0x02, 0x25, 0x1a, 0x20, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c,
-	0x70, 0x68, 0x61, 0x31, 0x2f, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61,
+	0x70, 0x68, 0x61, 0x31, 0x2f, 0x61, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61,
 	0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x95, 0x01, 0x0a, 0x17, 0x44, 0x65,
-	0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
+	0x6c, 0x65, 0x74, 0x65, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
 	0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x25, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65,
-	0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
+	0x6c, 0x65, 0x74, 0x65, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
 	0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x72, 0x75, 0x63,
-	0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x41, 0x73, 0x73, 0x65, 0x73,
+	0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70,
 	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2b, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x25, 0x2a, 0x20, 0x2f, 0x61,
-	0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x73, 0x74, 0x72,
-	0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01,
-	0x2a, 0x12, 0x8f, 0x01, 0x0a, 0x15, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74,
+	0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x61, 0x73, 0x73,
+	0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01,
+	0x2a, 0x12, 0x8f, 0x01, 0x0a, 0x15, 0x53, 0x68, 0x6f, 0x77, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73,
 	0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x23, 0x2e, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69,
+	0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x41, 0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69,
 	0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x72,
-	0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65,
+	0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x41, 0x73, 0x73,
+	0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65,
 	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2b, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x25, 0x22, 0x20,
+	0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x61,
+	0x73, 0x73, 0x65, 0x73, 0x73, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
+	0x3a, 0x01, 0x2a, 0x12, 0x95, 0x01, 0x0a, 0x17, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x74,
+	0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12,
+	0x25, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x74,
+	0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55,
+	0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61,
+	0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2b,
+	0x82, 0xd3, 0xe4, 0x93, 0x02, 0x25, 0x1a, 0x20, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31,
+	0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67,
+	0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x95, 0x01, 0x0a, 0x17,
+	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72,
+	0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x25, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
+	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72,
+	0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x72,
+	0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2b, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x25, 0x2a, 0x20,
 	0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x73,
 	0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x3a, 0x01, 0x2a, 0x12, 0x8d, 0x01, 0x0a, 0x15, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x74,
-	0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x23, 0x2e,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x74, 0x6d, 0x74,
+	0x3a, 0x01, 0x2a, 0x12, 0x8f, 0x01, 0x0a, 0x15, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x72, 0x75,
+	0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x23, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74,
 	0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72,
-	0x74, 0x53, 0x74, 0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23,
-	0x1a, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31,
-	0x2f, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x3a, 0x01, 0x2a, 0x12, 0x8d, 0x01, 0x0a, 0x15, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74,
-	0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x23, 0x2e,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x6d, 0x74,
-	0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74,
-	0x65, 0x53, 0x74, 0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23,
-	0x2a, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31,
-	0x2f, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x3a, 0x01, 0x2a, 0x12, 0x87, 0x01, 0x0a, 0x13, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x6d, 0x74,
-	0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x21, 0x2e, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72,
-	0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x22,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x6d, 0x74, 0x4d,
-	0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23, 0x22, 0x1e, 0x2f, 0x61, 0x70, 0x69,
-	0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x4d,
-	0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x89, 0x01,
-	0x0a, 0x14, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61,
-	0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55,
-	0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54,
-	0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72,
-	0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x1a, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76,
-	0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x73, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61,
-	0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x89, 0x01, 0x0a, 0x14, 0x44, 0x65,
-	0x6c, 0x65, 0x74, 0x65, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
-	0x73, 0x6b, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74,
-	0x65, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44,
-	0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54,
-	0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x28, 0x82, 0xd3, 0xe4,
-	0x93, 0x02, 0x22, 0x2a, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70,
-	0x68, 0x61, 0x31, 0x2f, 0x73, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
-	0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x83, 0x01, 0x0a, 0x12, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x71,
-	0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x20, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72,
-	0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x71, 0x6c, 0x4d, 0x69,
+	0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53,
+	0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2b, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x25,
+	0x22, 0x20, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31,
+	0x2f, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x8d, 0x01, 0x0a, 0x15, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74,
+	0x53, 0x74, 0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12,
+	0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x74,
+	0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73,
+	0x65, 0x72, 0x74, 0x53, 0x74, 0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93,
+	0x02, 0x23, 0x1a, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68,
+	0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x8d, 0x01, 0x0a, 0x15, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x53, 0x74, 0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12,
+	0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74,
+	0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c,
+	0x65, 0x74, 0x65, 0x53, 0x74, 0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93,
+	0x02, 0x23, 0x2a, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68,
+	0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x87, 0x01, 0x0a, 0x13, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74,
+	0x6d, 0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x21, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x6d, 0x74, 0x4d, 0x69,
+	0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x74, 0x6d,
+	0x74, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23, 0x22, 0x1e, 0x2f, 0x61,
+	0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x64, 0x61, 0x74,
+	0x61, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12,
+	0x89, 0x01, 0x0a, 0x14, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67,
+	0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
+	0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x53, 0x71, 0x6c, 0x4d, 0x69,
 	0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x22, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73,
+	0x65, 0x22, 0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x1a, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73,
 	0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x73, 0x71, 0x6c, 0x4d, 0x69, 0x67,
 	0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x89, 0x01, 0x0a, 0x14,
-	0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65,
-	0x54, 0x61, 0x73, 0x6b, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73,
-	0x65, 0x72, 0x74, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73,
+	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65,
+	0x54, 0x61, 0x73, 0x6b, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c,
+	0x65, 0x74, 0x65, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73,
 	0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
+	0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
 	0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x28, 0x82,
-	0xd3, 0xe4, 0x93, 0x02, 0x22, 0x1a, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61,
-	0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x63, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65,
-	0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x89, 0x01, 0x0a, 0x14, 0x44, 0x65, 0x6c, 0x65,
-	0x74, 0x65, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x43,
-	0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c,
-	0x65, 0x74, 0x65, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73,
-	0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02,
-	0x22, 0x2a, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61,
-	0x31, 0x2f, 0x63, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x3a, 0x01, 0x2a, 0x12, 0x83, 0x01, 0x0a, 0x12, 0x53, 0x68, 0x6f, 0x77, 0x43, 0x73, 0x76, 0x4d,
-	0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x20, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74,
-	0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72,
+	0xd3, 0xe4, 0x93, 0x02, 0x22, 0x2a, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61,
+	0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x73, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65,
+	0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x83, 0x01, 0x0a, 0x12, 0x53, 0x68, 0x6f, 0x77,
+	0x53, 0x71, 0x6c, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x20,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x71, 0x6c, 0x4d, 0x69,
+	0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x21, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x53, 0x71, 0x6c,
+	0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x22, 0x1d, 0x2f, 0x61, 0x70,
+	0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x73, 0x71, 0x6c, 0x4d,
+	0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x89, 0x01,
+	0x0a, 0x14, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61,
+	0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55,
+	0x70, 0x73, 0x65, 0x72, 0x74, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54,
+	0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72,
 	0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x22, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76,
+	0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x1a, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76,
 	0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x63, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61,
-	0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x8d, 0x01, 0x0a, 0x15, 0x55, 0x70,
+	0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x89, 0x01, 0x0a, 0x14, 0x44, 0x65,
+	0x6c, 0x65, 0x74, 0x65, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74,
+	0x65, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44,
+	0x65, 0x6c, 0x65, 0x74, 0x65, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54,
+	0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x28, 0x82, 0xd3, 0xe4,
+	0x93, 0x02, 0x22, 0x2a, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70,
+	0x68, 0x61, 0x31, 0x2f, 0x63, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x83, 0x01, 0x0a, 0x12, 0x53, 0x68, 0x6f, 0x77, 0x43, 0x73,
+	0x76, 0x4d, 0x69, 0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x20, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x43, 0x73, 0x76, 0x4d, 0x69, 0x67, 0x72,
+	0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x43, 0x73, 0x76, 0x4d, 0x69,
+	0x67, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x22, 0x28, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x22, 0x1d, 0x2f, 0x61, 0x70, 0x69, 0x73,
+	0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x63, 0x73, 0x76, 0x4d, 0x69, 0x67,
+	0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x8d, 0x01, 0x0a, 0x15,
+	0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72,
+	0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70,
 	0x73, 0x65, 0x72, 0x74, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54,
-	0x61, 0x73, 0x6b, 0x12, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65,
-	0x72, 0x74, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73,
-	0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61,
-	0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29,
-	0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23, 0x1a, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31,
-	0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61,
-	0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x8d, 0x01, 0x0a, 0x15, 0x44, 0x65,
+	0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x55, 0x70, 0x73, 0x65, 0x72, 0x74, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d,
+	0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23, 0x1a, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f,
+	0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d,
+	0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x8d, 0x01, 0x0a, 0x15,
+	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72,
+	0x65, 0x54, 0x61, 0x73, 0x6b, 0x12, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65,
 	0x6c, 0x65, 0x74, 0x65, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54,
-	0x61, 0x73, 0x6b, 0x12, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65,
-	0x74, 0x65, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73,
-	0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61,
-	0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29,
-	0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23, 0x2a, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31,
-	0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61,
-	0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x87, 0x01, 0x0a, 0x13, 0x53, 0x68,
-	0x6f, 0x77, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73,
-	0x6b, 0x12, 0x21, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77, 0x44, 0x61,
-	0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f,
-	0x77, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23,
-	0x22, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31,
-	0x2f, 0x64, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73, 0x6b,
-	0x3a, 0x01, 0x2a, 0x12, 0x64, 0x0a, 0x0b, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61,
-	0x73, 0x6b, 0x12, 0x19, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61,
-	0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73,
-	0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1e, 0x82, 0xd3, 0xe4, 0x93, 0x02,
-	0x18, 0x1a, 0x13, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61,
-	0x31, 0x2f, 0x74, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x42, 0x0a, 0x5a, 0x08, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d,
+	0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x23, 0x2a, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f,
+	0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d,
+	0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x87, 0x01, 0x0a, 0x13,
+	0x53, 0x68, 0x6f, 0x77, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54,
+	0x61, 0x73, 0x6b, 0x12, 0x21, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68, 0x6f, 0x77,
+	0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53,
+	0x68, 0x6f, 0x77, 0x44, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x29, 0x82, 0xd3, 0xe4, 0x93,
+	0x02, 0x23, 0x22, 0x1e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68,
+	0x61, 0x31, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x72, 0x65, 0x54, 0x61,
+	0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x12, 0x64, 0x0a, 0x0b, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x65,
+	0x54, 0x61, 0x73, 0x6b, 0x12, 0x19, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4f, 0x70, 0x65,
+	0x72, 0x61, 0x74, 0x65, 0x54, 0x61, 0x73, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x1a, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x65, 0x54,
+	0x61, 0x73, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1e, 0x82, 0xd3, 0xe4,
+	0x93, 0x02, 0x18, 0x1a, 0x13, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70,
+	0x68, 0x61, 0x31, 0x2f, 0x74, 0x61, 0x73, 0x6b, 0x3a, 0x01, 0x2a, 0x42, 0x0a, 0x5a, 0x08, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -4949,7 +5409,7 @@ func file_dbms_master_proto_rawDescGZIP() []byte {
 	return file_dbms_master_proto_rawDescData
 }
 
-var file_dbms_master_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
+var file_dbms_master_proto_msgTypes = make([]protoimpl.MessageInfo, 72)
 var file_dbms_master_proto_goTypes = []interface{}{
 	(*UpsertDatabaseRequest)(nil),           // 0: proto.UpsertDatabaseRequest
 	(*UpsertDatabaseResponse)(nil),          // 1: proto.UpsertDatabaseResponse
@@ -4963,162 +5423,179 @@ var file_dbms_master_proto_goTypes = []interface{}{
 	(*DeleteDatasourceResponse)(nil),        // 9: proto.DeleteDatasourceResponse
 	(*ShowDatasourceRequest)(nil),           // 10: proto.ShowDatasourceRequest
 	(*ShowDatasourceResponse)(nil),          // 11: proto.ShowDatasourceResponse
-	(*UpsertStructMigrateTaskRequest)(nil),  // 12: proto.UpsertStructMigrateTaskRequest
-	(*UpsertStructMigrateTaskResponse)(nil), // 13: proto.UpsertStructMigrateTaskResponse
-	(*DeleteStructMigrateTaskRequest)(nil),  // 14: proto.DeleteStructMigrateTaskRequest
-	(*DeleteStructMigrateTaskResponse)(nil), // 15: proto.DeleteStructMigrateTaskResponse
-	(*ShowStructMigrateTaskRequest)(nil),    // 16: proto.ShowStructMigrateTaskRequest
-	(*ShowStructMigrateTaskResponse)(nil),   // 17: proto.ShowStructMigrateTaskResponse
-	(*UpsertStmtMigrateTaskRequest)(nil),    // 18: proto.UpsertStmtMigrateTaskRequest
-	(*UpsertStmtMigrateTaskResponse)(nil),   // 19: proto.UpsertStmtMigrateTaskResponse
-	(*DeleteStmtMigrateTaskRequest)(nil),    // 20: proto.DeleteStmtMigrateTaskRequest
-	(*DeleteStmtMigrateTaskResponse)(nil),   // 21: proto.DeleteStmtMigrateTaskResponse
-	(*ShowStmtMigrateTaskRequest)(nil),      // 22: proto.ShowStmtMigrateTaskRequest
-	(*ShowStmtMigrateTaskResponse)(nil),     // 23: proto.ShowStmtMigrateTaskResponse
-	(*UpsertSqlMigrateTaskRequest)(nil),     // 24: proto.UpsertSqlMigrateTaskRequest
-	(*UpsertSqlMigrateTaskResponse)(nil),    // 25: proto.UpsertSqlMigrateTaskResponse
-	(*DeleteSqlMigrateTaskRequest)(nil),     // 26: proto.DeleteSqlMigrateTaskRequest
-	(*DeleteSqlMigrateTaskResponse)(nil),    // 27: proto.DeleteSqlMigrateTaskResponse
-	(*ShowSqlMigrateTaskRequest)(nil),       // 28: proto.ShowSqlMigrateTaskRequest
-	(*ShowSqlMigrateTaskResponse)(nil),      // 29: proto.ShowSqlMigrateTaskResponse
-	(*UpsertCsvMigrateTaskRequest)(nil),     // 30: proto.UpsertCsvMigrateTaskRequest
-	(*UpsertCsvMigrateTaskResponse)(nil),    // 31: proto.UpsertCsvMigrateTaskResponse
-	(*DeleteCsvMigrateTaskRequest)(nil),     // 32: proto.DeleteCsvMigrateTaskRequest
-	(*DeleteCsvMigrateTaskResponse)(nil),    // 33: proto.DeleteCsvMigrateTaskResponse
-	(*ShowCsvMigrateTaskRequest)(nil),       // 34: proto.ShowCsvMigrateTaskRequest
-	(*ShowCsvMigrateTaskResponse)(nil),      // 35: proto.ShowCsvMigrateTaskResponse
-	(*UpsertDataCompareTaskRequest)(nil),    // 36: proto.UpsertDataCompareTaskRequest
-	(*UpsertDataCompareTaskResponse)(nil),   // 37: proto.UpsertDataCompareTaskResponse
-	(*DeleteDataCompareTaskRequest)(nil),    // 38: proto.DeleteDataCompareTaskRequest
-	(*DeleteDataCompareTaskResponse)(nil),   // 39: proto.DeleteDataCompareTaskResponse
-	(*ShowDataCompareTaskRequest)(nil),      // 40: proto.ShowDataCompareTaskRequest
-	(*ShowDataCompareTaskResponse)(nil),     // 41: proto.ShowDataCompareTaskResponse
-	(*OperateTaskRequest)(nil),              // 42: proto.OperateTaskRequest
-	(*OperateTaskResponse)(nil),             // 43: proto.OperateTaskResponse
-	(*Database)(nil),                        // 44: proto.Database
-	(*Datasource)(nil),                      // 45: proto.Datasource
-	(*SchemaRouteRule)(nil),                 // 46: proto.SchemaRouteRule
-	(*CaseFieldRule)(nil),                   // 47: proto.CaseFieldRule
-	(*TableRouteRule)(nil),                  // 48: proto.TableRouteRule
-	(*StructMigrateParam)(nil),              // 49: proto.StructMigrateParam
-	(*StructMigrateRule)(nil),               // 50: proto.StructMigrateRule
-	(*TaskStructRule)(nil),                  // 51: proto.TaskStructRule
-	(*SchemaStructRule)(nil),                // 52: proto.SchemaStructRule
-	(*TableStructRule)(nil),                 // 53: proto.TableStructRule
-	(*ColumnStructRule)(nil),                // 54: proto.ColumnStructRule
-	(*TableAttrsRule)(nil),                  // 55: proto.TableAttrsRule
-	(*DataMigrateRule)(nil),                 // 56: proto.DataMigrateRule
-	(*StatementMigrateParam)(nil),           // 57: proto.StatementMigrateParam
-	(*CsvMigrateParam)(nil),                 // 58: proto.CsvMigrateParam
-	(*DataCompareRule)(nil),                 // 59: proto.DataCompareRule
-	(*DataCompareParam)(nil),                // 60: proto.DataCompareParam
-	(*SqlMigrateRule)(nil),                  // 61: proto.SqlMigrateRule
-	(*SqlMigrateParam)(nil),                 // 62: proto.SqlMigrateParam
-	nil,                                     // 63: proto.TableRouteRule.ColumnRouteRulesEntry
-	nil,                                     // 64: proto.SqlMigrateRule.ColumnRouteRulesEntry
-	(*Response)(nil),                        // 65: proto.Response
+	(*UpsertAssessMigrateTaskRequest)(nil),  // 12: proto.UpsertAssessMigrateTaskRequest
+	(*UpsertAssessMigrateTaskResponse)(nil), // 13: proto.UpsertAssessMigrateTaskResponse
+	(*DeleteAssessMigrateTaskRequest)(nil),  // 14: proto.DeleteAssessMigrateTaskRequest
+	(*DeleteAssessMigrateTaskResponse)(nil), // 15: proto.DeleteAssessMigrateTaskResponse
+	(*ShowAssessMigrateTaskRequest)(nil),    // 16: proto.ShowAssessMigrateTaskRequest
+	(*ShowAssessMigrateTaskResponse)(nil),   // 17: proto.ShowAssessMigrateTaskResponse
+	(*UpsertStructMigrateTaskRequest)(nil),  // 18: proto.UpsertStructMigrateTaskRequest
+	(*UpsertStructMigrateTaskResponse)(nil), // 19: proto.UpsertStructMigrateTaskResponse
+	(*DeleteStructMigrateTaskRequest)(nil),  // 20: proto.DeleteStructMigrateTaskRequest
+	(*DeleteStructMigrateTaskResponse)(nil), // 21: proto.DeleteStructMigrateTaskResponse
+	(*ShowStructMigrateTaskRequest)(nil),    // 22: proto.ShowStructMigrateTaskRequest
+	(*ShowStructMigrateTaskResponse)(nil),   // 23: proto.ShowStructMigrateTaskResponse
+	(*UpsertStmtMigrateTaskRequest)(nil),    // 24: proto.UpsertStmtMigrateTaskRequest
+	(*UpsertStmtMigrateTaskResponse)(nil),   // 25: proto.UpsertStmtMigrateTaskResponse
+	(*DeleteStmtMigrateTaskRequest)(nil),    // 26: proto.DeleteStmtMigrateTaskRequest
+	(*DeleteStmtMigrateTaskResponse)(nil),   // 27: proto.DeleteStmtMigrateTaskResponse
+	(*ShowStmtMigrateTaskRequest)(nil),      // 28: proto.ShowStmtMigrateTaskRequest
+	(*ShowStmtMigrateTaskResponse)(nil),     // 29: proto.ShowStmtMigrateTaskResponse
+	(*UpsertSqlMigrateTaskRequest)(nil),     // 30: proto.UpsertSqlMigrateTaskRequest
+	(*UpsertSqlMigrateTaskResponse)(nil),    // 31: proto.UpsertSqlMigrateTaskResponse
+	(*DeleteSqlMigrateTaskRequest)(nil),     // 32: proto.DeleteSqlMigrateTaskRequest
+	(*DeleteSqlMigrateTaskResponse)(nil),    // 33: proto.DeleteSqlMigrateTaskResponse
+	(*ShowSqlMigrateTaskRequest)(nil),       // 34: proto.ShowSqlMigrateTaskRequest
+	(*ShowSqlMigrateTaskResponse)(nil),      // 35: proto.ShowSqlMigrateTaskResponse
+	(*UpsertCsvMigrateTaskRequest)(nil),     // 36: proto.UpsertCsvMigrateTaskRequest
+	(*UpsertCsvMigrateTaskResponse)(nil),    // 37: proto.UpsertCsvMigrateTaskResponse
+	(*DeleteCsvMigrateTaskRequest)(nil),     // 38: proto.DeleteCsvMigrateTaskRequest
+	(*DeleteCsvMigrateTaskResponse)(nil),    // 39: proto.DeleteCsvMigrateTaskResponse
+	(*ShowCsvMigrateTaskRequest)(nil),       // 40: proto.ShowCsvMigrateTaskRequest
+	(*ShowCsvMigrateTaskResponse)(nil),      // 41: proto.ShowCsvMigrateTaskResponse
+	(*UpsertDataCompareTaskRequest)(nil),    // 42: proto.UpsertDataCompareTaskRequest
+	(*UpsertDataCompareTaskResponse)(nil),   // 43: proto.UpsertDataCompareTaskResponse
+	(*DeleteDataCompareTaskRequest)(nil),    // 44: proto.DeleteDataCompareTaskRequest
+	(*DeleteDataCompareTaskResponse)(nil),   // 45: proto.DeleteDataCompareTaskResponse
+	(*ShowDataCompareTaskRequest)(nil),      // 46: proto.ShowDataCompareTaskRequest
+	(*ShowDataCompareTaskResponse)(nil),     // 47: proto.ShowDataCompareTaskResponse
+	(*OperateTaskRequest)(nil),              // 48: proto.OperateTaskRequest
+	(*OperateTaskResponse)(nil),             // 49: proto.OperateTaskResponse
+	(*Database)(nil),                        // 50: proto.Database
+	(*Datasource)(nil),                      // 51: proto.Datasource
+	(*SchemaRouteRule)(nil),                 // 52: proto.SchemaRouteRule
+	(*CaseFieldRule)(nil),                   // 53: proto.CaseFieldRule
+	(*TableRouteRule)(nil),                  // 54: proto.TableRouteRule
+	(*AssessMigrateParam)(nil),              // 55: proto.AssessMigrateParam
+	(*StructMigrateParam)(nil),              // 56: proto.StructMigrateParam
+	(*StructMigrateRule)(nil),               // 57: proto.StructMigrateRule
+	(*TaskStructRule)(nil),                  // 58: proto.TaskStructRule
+	(*SchemaStructRule)(nil),                // 59: proto.SchemaStructRule
+	(*TableStructRule)(nil),                 // 60: proto.TableStructRule
+	(*ColumnStructRule)(nil),                // 61: proto.ColumnStructRule
+	(*TableAttrsRule)(nil),                  // 62: proto.TableAttrsRule
+	(*DataMigrateRule)(nil),                 // 63: proto.DataMigrateRule
+	(*StatementMigrateParam)(nil),           // 64: proto.StatementMigrateParam
+	(*CsvMigrateParam)(nil),                 // 65: proto.CsvMigrateParam
+	(*DataCompareRule)(nil),                 // 66: proto.DataCompareRule
+	(*DataCompareParam)(nil),                // 67: proto.DataCompareParam
+	(*SqlMigrateRule)(nil),                  // 68: proto.SqlMigrateRule
+	(*SqlMigrateParam)(nil),                 // 69: proto.SqlMigrateParam
+	nil,                                     // 70: proto.TableRouteRule.ColumnRouteRulesEntry
+	nil,                                     // 71: proto.SqlMigrateRule.ColumnRouteRulesEntry
+	(*Response)(nil),                        // 72: proto.Response
 }
 var file_dbms_master_proto_depIdxs = []int32{
-	44, // 0: proto.UpsertDatabaseRequest.database:type_name -> proto.Database
-	65, // 1: proto.UpsertDatabaseResponse.response:type_name -> proto.Response
-	65, // 2: proto.DeleteDatabaseResponse.response:type_name -> proto.Response
-	65, // 3: proto.ShowDatabaseResponse.response:type_name -> proto.Response
-	45, // 4: proto.UpsertDatasourceRequest.datasource:type_name -> proto.Datasource
-	65, // 5: proto.UpsertDatasourceResponse.response:type_name -> proto.Response
-	65, // 6: proto.DeleteDatasourceResponse.response:type_name -> proto.Response
-	65, // 7: proto.ShowDatasourceResponse.response:type_name -> proto.Response
-	47, // 8: proto.UpsertStructMigrateTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
-	46, // 9: proto.UpsertStructMigrateTaskRequest.schemaRouteRule:type_name -> proto.SchemaRouteRule
-	49, // 10: proto.UpsertStructMigrateTaskRequest.structMigrateParam:type_name -> proto.StructMigrateParam
-	50, // 11: proto.UpsertStructMigrateTaskRequest.structMigrateRule:type_name -> proto.StructMigrateRule
-	65, // 12: proto.UpsertStructMigrateTaskResponse.response:type_name -> proto.Response
-	65, // 13: proto.DeleteStructMigrateTaskResponse.response:type_name -> proto.Response
-	65, // 14: proto.ShowStructMigrateTaskResponse.response:type_name -> proto.Response
-	47, // 15: proto.UpsertStmtMigrateTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
-	46, // 16: proto.UpsertStmtMigrateTaskRequest.schemaRouteRule:type_name -> proto.SchemaRouteRule
-	56, // 17: proto.UpsertStmtMigrateTaskRequest.DataMigrateRules:type_name -> proto.DataMigrateRule
-	57, // 18: proto.UpsertStmtMigrateTaskRequest.statementMigrateParam:type_name -> proto.StatementMigrateParam
-	65, // 19: proto.UpsertStmtMigrateTaskResponse.response:type_name -> proto.Response
-	65, // 20: proto.DeleteStmtMigrateTaskResponse.response:type_name -> proto.Response
-	65, // 21: proto.ShowStmtMigrateTaskResponse.response:type_name -> proto.Response
-	47, // 22: proto.UpsertSqlMigrateTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
-	61, // 23: proto.UpsertSqlMigrateTaskRequest.SqlMigrateRules:type_name -> proto.SqlMigrateRule
-	62, // 24: proto.UpsertSqlMigrateTaskRequest.sqlMigrateParam:type_name -> proto.SqlMigrateParam
-	65, // 25: proto.UpsertSqlMigrateTaskResponse.response:type_name -> proto.Response
-	65, // 26: proto.DeleteSqlMigrateTaskResponse.response:type_name -> proto.Response
-	65, // 27: proto.ShowSqlMigrateTaskResponse.response:type_name -> proto.Response
-	47, // 28: proto.UpsertCsvMigrateTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
-	46, // 29: proto.UpsertCsvMigrateTaskRequest.schemaRouteRule:type_name -> proto.SchemaRouteRule
-	56, // 30: proto.UpsertCsvMigrateTaskRequest.DataMigrateRules:type_name -> proto.DataMigrateRule
-	58, // 31: proto.UpsertCsvMigrateTaskRequest.CsvMigrateParam:type_name -> proto.CsvMigrateParam
-	65, // 32: proto.UpsertCsvMigrateTaskResponse.response:type_name -> proto.Response
-	65, // 33: proto.DeleteCsvMigrateTaskResponse.response:type_name -> proto.Response
-	65, // 34: proto.ShowCsvMigrateTaskResponse.response:type_name -> proto.Response
-	47, // 35: proto.UpsertDataCompareTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
-	46, // 36: proto.UpsertDataCompareTaskRequest.schemaRouteRule:type_name -> proto.SchemaRouteRule
-	59, // 37: proto.UpsertDataCompareTaskRequest.DataCompareRules:type_name -> proto.DataCompareRule
-	60, // 38: proto.UpsertDataCompareTaskRequest.DataCompareParam:type_name -> proto.DataCompareParam
-	65, // 39: proto.UpsertDataCompareTaskResponse.response:type_name -> proto.Response
-	65, // 40: proto.DeleteDataCompareTaskResponse.response:type_name -> proto.Response
-	65, // 41: proto.ShowDataCompareTaskResponse.response:type_name -> proto.Response
-	65, // 42: proto.OperateTaskResponse.response:type_name -> proto.Response
-	48, // 43: proto.SchemaRouteRule.tableRouteRules:type_name -> proto.TableRouteRule
-	63, // 44: proto.TableRouteRule.columnRouteRules:type_name -> proto.TableRouteRule.ColumnRouteRulesEntry
-	51, // 45: proto.StructMigrateRule.taskStructRules:type_name -> proto.TaskStructRule
-	52, // 46: proto.StructMigrateRule.schemaStructRules:type_name -> proto.SchemaStructRule
-	53, // 47: proto.StructMigrateRule.tableStructRules:type_name -> proto.TableStructRule
-	54, // 48: proto.StructMigrateRule.columnStructRules:type_name -> proto.ColumnStructRule
-	55, // 49: proto.StructMigrateRule.tableAttrsRules:type_name -> proto.TableAttrsRule
-	64, // 50: proto.SqlMigrateRule.columnRouteRules:type_name -> proto.SqlMigrateRule.ColumnRouteRulesEntry
-	0,  // 51: proto.Master.UpsertDatabase:input_type -> proto.UpsertDatabaseRequest
-	2,  // 52: proto.Master.DeleteDatabase:input_type -> proto.DeleteDatabaseRequest
-	4,  // 53: proto.Master.ShowDatabase:input_type -> proto.ShowDatabaseRequest
-	6,  // 54: proto.Master.UpsertDatasource:input_type -> proto.UpsertDatasourceRequest
-	8,  // 55: proto.Master.DeleteDatasource:input_type -> proto.DeleteDatasourceRequest
-	10, // 56: proto.Master.ShowDatasource:input_type -> proto.ShowDatasourceRequest
-	12, // 57: proto.Master.UpsertStructMigrateTask:input_type -> proto.UpsertStructMigrateTaskRequest
-	14, // 58: proto.Master.DeleteStructMigrateTask:input_type -> proto.DeleteStructMigrateTaskRequest
-	16, // 59: proto.Master.ShowStructMigrateTask:input_type -> proto.ShowStructMigrateTaskRequest
-	18, // 60: proto.Master.UpsertStmtMigrateTask:input_type -> proto.UpsertStmtMigrateTaskRequest
-	20, // 61: proto.Master.DeleteStmtMigrateTask:input_type -> proto.DeleteStmtMigrateTaskRequest
-	22, // 62: proto.Master.ShowStmtMigrateTask:input_type -> proto.ShowStmtMigrateTaskRequest
-	24, // 63: proto.Master.UpsertSqlMigrateTask:input_type -> proto.UpsertSqlMigrateTaskRequest
-	26, // 64: proto.Master.DeleteSqlMigrateTask:input_type -> proto.DeleteSqlMigrateTaskRequest
-	28, // 65: proto.Master.ShowSqlMigrateTask:input_type -> proto.ShowSqlMigrateTaskRequest
-	30, // 66: proto.Master.UpsertCsvMigrateTask:input_type -> proto.UpsertCsvMigrateTaskRequest
-	32, // 67: proto.Master.DeleteCsvMigrateTask:input_type -> proto.DeleteCsvMigrateTaskRequest
-	34, // 68: proto.Master.ShowCsvMigrateTask:input_type -> proto.ShowCsvMigrateTaskRequest
-	36, // 69: proto.Master.UpsertDataCompareTask:input_type -> proto.UpsertDataCompareTaskRequest
-	38, // 70: proto.Master.DeleteDataCompareTask:input_type -> proto.DeleteDataCompareTaskRequest
-	40, // 71: proto.Master.ShowDataCompareTask:input_type -> proto.ShowDataCompareTaskRequest
-	42, // 72: proto.Master.OperateTask:input_type -> proto.OperateTaskRequest
-	1,  // 73: proto.Master.UpsertDatabase:output_type -> proto.UpsertDatabaseResponse
-	3,  // 74: proto.Master.DeleteDatabase:output_type -> proto.DeleteDatabaseResponse
-	5,  // 75: proto.Master.ShowDatabase:output_type -> proto.ShowDatabaseResponse
-	7,  // 76: proto.Master.UpsertDatasource:output_type -> proto.UpsertDatasourceResponse
-	9,  // 77: proto.Master.DeleteDatasource:output_type -> proto.DeleteDatasourceResponse
-	11, // 78: proto.Master.ShowDatasource:output_type -> proto.ShowDatasourceResponse
-	13, // 79: proto.Master.UpsertStructMigrateTask:output_type -> proto.UpsertStructMigrateTaskResponse
-	15, // 80: proto.Master.DeleteStructMigrateTask:output_type -> proto.DeleteStructMigrateTaskResponse
-	17, // 81: proto.Master.ShowStructMigrateTask:output_type -> proto.ShowStructMigrateTaskResponse
-	19, // 82: proto.Master.UpsertStmtMigrateTask:output_type -> proto.UpsertStmtMigrateTaskResponse
-	21, // 83: proto.Master.DeleteStmtMigrateTask:output_type -> proto.DeleteStmtMigrateTaskResponse
-	23, // 84: proto.Master.ShowStmtMigrateTask:output_type -> proto.ShowStmtMigrateTaskResponse
-	25, // 85: proto.Master.UpsertSqlMigrateTask:output_type -> proto.UpsertSqlMigrateTaskResponse
-	27, // 86: proto.Master.DeleteSqlMigrateTask:output_type -> proto.DeleteSqlMigrateTaskResponse
-	29, // 87: proto.Master.ShowSqlMigrateTask:output_type -> proto.ShowSqlMigrateTaskResponse
-	31, // 88: proto.Master.UpsertCsvMigrateTask:output_type -> proto.UpsertCsvMigrateTaskResponse
-	33, // 89: proto.Master.DeleteCsvMigrateTask:output_type -> proto.DeleteCsvMigrateTaskResponse
-	35, // 90: proto.Master.ShowCsvMigrateTask:output_type -> proto.ShowCsvMigrateTaskResponse
-	37, // 91: proto.Master.UpsertDataCompareTask:output_type -> proto.UpsertDataCompareTaskResponse
-	39, // 92: proto.Master.DeleteDataCompareTask:output_type -> proto.DeleteDataCompareTaskResponse
-	41, // 93: proto.Master.ShowDataCompareTask:output_type -> proto.ShowDataCompareTaskResponse
-	43, // 94: proto.Master.OperateTask:output_type -> proto.OperateTaskResponse
-	73, // [73:95] is the sub-list for method output_type
-	51, // [51:73] is the sub-list for method input_type
-	51, // [51:51] is the sub-list for extension type_name
-	51, // [51:51] is the sub-list for extension extendee
-	0,  // [0:51] is the sub-list for field type_name
+	50, // 0: proto.UpsertDatabaseRequest.database:type_name -> proto.Database
+	72, // 1: proto.UpsertDatabaseResponse.response:type_name -> proto.Response
+	72, // 2: proto.DeleteDatabaseResponse.response:type_name -> proto.Response
+	72, // 3: proto.ShowDatabaseResponse.response:type_name -> proto.Response
+	51, // 4: proto.UpsertDatasourceRequest.datasource:type_name -> proto.Datasource
+	72, // 5: proto.UpsertDatasourceResponse.response:type_name -> proto.Response
+	72, // 6: proto.DeleteDatasourceResponse.response:type_name -> proto.Response
+	72, // 7: proto.ShowDatasourceResponse.response:type_name -> proto.Response
+	55, // 8: proto.UpsertAssessMigrateTaskRequest.assessMigrateParam:type_name -> proto.AssessMigrateParam
+	72, // 9: proto.UpsertAssessMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 10: proto.DeleteAssessMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 11: proto.ShowAssessMigrateTaskResponse.response:type_name -> proto.Response
+	53, // 12: proto.UpsertStructMigrateTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
+	52, // 13: proto.UpsertStructMigrateTaskRequest.schemaRouteRule:type_name -> proto.SchemaRouteRule
+	56, // 14: proto.UpsertStructMigrateTaskRequest.structMigrateParam:type_name -> proto.StructMigrateParam
+	57, // 15: proto.UpsertStructMigrateTaskRequest.structMigrateRule:type_name -> proto.StructMigrateRule
+	72, // 16: proto.UpsertStructMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 17: proto.DeleteStructMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 18: proto.ShowStructMigrateTaskResponse.response:type_name -> proto.Response
+	53, // 19: proto.UpsertStmtMigrateTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
+	52, // 20: proto.UpsertStmtMigrateTaskRequest.schemaRouteRule:type_name -> proto.SchemaRouteRule
+	63, // 21: proto.UpsertStmtMigrateTaskRequest.DataMigrateRules:type_name -> proto.DataMigrateRule
+	64, // 22: proto.UpsertStmtMigrateTaskRequest.statementMigrateParam:type_name -> proto.StatementMigrateParam
+	72, // 23: proto.UpsertStmtMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 24: proto.DeleteStmtMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 25: proto.ShowStmtMigrateTaskResponse.response:type_name -> proto.Response
+	53, // 26: proto.UpsertSqlMigrateTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
+	68, // 27: proto.UpsertSqlMigrateTaskRequest.SqlMigrateRules:type_name -> proto.SqlMigrateRule
+	69, // 28: proto.UpsertSqlMigrateTaskRequest.sqlMigrateParam:type_name -> proto.SqlMigrateParam
+	72, // 29: proto.UpsertSqlMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 30: proto.DeleteSqlMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 31: proto.ShowSqlMigrateTaskResponse.response:type_name -> proto.Response
+	53, // 32: proto.UpsertCsvMigrateTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
+	52, // 33: proto.UpsertCsvMigrateTaskRequest.schemaRouteRule:type_name -> proto.SchemaRouteRule
+	63, // 34: proto.UpsertCsvMigrateTaskRequest.DataMigrateRules:type_name -> proto.DataMigrateRule
+	65, // 35: proto.UpsertCsvMigrateTaskRequest.CsvMigrateParam:type_name -> proto.CsvMigrateParam
+	72, // 36: proto.UpsertCsvMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 37: proto.DeleteCsvMigrateTaskResponse.response:type_name -> proto.Response
+	72, // 38: proto.ShowCsvMigrateTaskResponse.response:type_name -> proto.Response
+	53, // 39: proto.UpsertDataCompareTaskRequest.caseFieldRule:type_name -> proto.CaseFieldRule
+	52, // 40: proto.UpsertDataCompareTaskRequest.schemaRouteRule:type_name -> proto.SchemaRouteRule
+	66, // 41: proto.UpsertDataCompareTaskRequest.DataCompareRules:type_name -> proto.DataCompareRule
+	67, // 42: proto.UpsertDataCompareTaskRequest.DataCompareParam:type_name -> proto.DataCompareParam
+	72, // 43: proto.UpsertDataCompareTaskResponse.response:type_name -> proto.Response
+	72, // 44: proto.DeleteDataCompareTaskResponse.response:type_name -> proto.Response
+	72, // 45: proto.ShowDataCompareTaskResponse.response:type_name -> proto.Response
+	72, // 46: proto.OperateTaskResponse.response:type_name -> proto.Response
+	54, // 47: proto.SchemaRouteRule.tableRouteRules:type_name -> proto.TableRouteRule
+	70, // 48: proto.TableRouteRule.columnRouteRules:type_name -> proto.TableRouteRule.ColumnRouteRulesEntry
+	58, // 49: proto.StructMigrateRule.taskStructRules:type_name -> proto.TaskStructRule
+	59, // 50: proto.StructMigrateRule.schemaStructRules:type_name -> proto.SchemaStructRule
+	60, // 51: proto.StructMigrateRule.tableStructRules:type_name -> proto.TableStructRule
+	61, // 52: proto.StructMigrateRule.columnStructRules:type_name -> proto.ColumnStructRule
+	62, // 53: proto.StructMigrateRule.tableAttrsRules:type_name -> proto.TableAttrsRule
+	71, // 54: proto.SqlMigrateRule.columnRouteRules:type_name -> proto.SqlMigrateRule.ColumnRouteRulesEntry
+	0,  // 55: proto.Master.UpsertDatabase:input_type -> proto.UpsertDatabaseRequest
+	2,  // 56: proto.Master.DeleteDatabase:input_type -> proto.DeleteDatabaseRequest
+	4,  // 57: proto.Master.ShowDatabase:input_type -> proto.ShowDatabaseRequest
+	6,  // 58: proto.Master.UpsertDatasource:input_type -> proto.UpsertDatasourceRequest
+	8,  // 59: proto.Master.DeleteDatasource:input_type -> proto.DeleteDatasourceRequest
+	10, // 60: proto.Master.ShowDatasource:input_type -> proto.ShowDatasourceRequest
+	12, // 61: proto.Master.UpsertAssessMigrateTask:input_type -> proto.UpsertAssessMigrateTaskRequest
+	14, // 62: proto.Master.DeleteAssessMigrateTask:input_type -> proto.DeleteAssessMigrateTaskRequest
+	16, // 63: proto.Master.ShowAssessMigrateTask:input_type -> proto.ShowAssessMigrateTaskRequest
+	18, // 64: proto.Master.UpsertStructMigrateTask:input_type -> proto.UpsertStructMigrateTaskRequest
+	20, // 65: proto.Master.DeleteStructMigrateTask:input_type -> proto.DeleteStructMigrateTaskRequest
+	22, // 66: proto.Master.ShowStructMigrateTask:input_type -> proto.ShowStructMigrateTaskRequest
+	24, // 67: proto.Master.UpsertStmtMigrateTask:input_type -> proto.UpsertStmtMigrateTaskRequest
+	26, // 68: proto.Master.DeleteStmtMigrateTask:input_type -> proto.DeleteStmtMigrateTaskRequest
+	28, // 69: proto.Master.ShowStmtMigrateTask:input_type -> proto.ShowStmtMigrateTaskRequest
+	30, // 70: proto.Master.UpsertSqlMigrateTask:input_type -> proto.UpsertSqlMigrateTaskRequest
+	32, // 71: proto.Master.DeleteSqlMigrateTask:input_type -> proto.DeleteSqlMigrateTaskRequest
+	34, // 72: proto.Master.ShowSqlMigrateTask:input_type -> proto.ShowSqlMigrateTaskRequest
+	36, // 73: proto.Master.UpsertCsvMigrateTask:input_type -> proto.UpsertCsvMigrateTaskRequest
+	38, // 74: proto.Master.DeleteCsvMigrateTask:input_type -> proto.DeleteCsvMigrateTaskRequest
+	40, // 75: proto.Master.ShowCsvMigrateTask:input_type -> proto.ShowCsvMigrateTaskRequest
+	42, // 76: proto.Master.UpsertDataCompareTask:input_type -> proto.UpsertDataCompareTaskRequest
+	44, // 77: proto.Master.DeleteDataCompareTask:input_type -> proto.DeleteDataCompareTaskRequest
+	46, // 78: proto.Master.ShowDataCompareTask:input_type -> proto.ShowDataCompareTaskRequest
+	48, // 79: proto.Master.OperateTask:input_type -> proto.OperateTaskRequest
+	1,  // 80: proto.Master.UpsertDatabase:output_type -> proto.UpsertDatabaseResponse
+	3,  // 81: proto.Master.DeleteDatabase:output_type -> proto.DeleteDatabaseResponse
+	5,  // 82: proto.Master.ShowDatabase:output_type -> proto.ShowDatabaseResponse
+	7,  // 83: proto.Master.UpsertDatasource:output_type -> proto.UpsertDatasourceResponse
+	9,  // 84: proto.Master.DeleteDatasource:output_type -> proto.DeleteDatasourceResponse
+	11, // 85: proto.Master.ShowDatasource:output_type -> proto.ShowDatasourceResponse
+	13, // 86: proto.Master.UpsertAssessMigrateTask:output_type -> proto.UpsertAssessMigrateTaskResponse
+	15, // 87: proto.Master.DeleteAssessMigrateTask:output_type -> proto.DeleteAssessMigrateTaskResponse
+	17, // 88: proto.Master.ShowAssessMigrateTask:output_type -> proto.ShowAssessMigrateTaskResponse
+	19, // 89: proto.Master.UpsertStructMigrateTask:output_type -> proto.UpsertStructMigrateTaskResponse
+	21, // 90: proto.Master.DeleteStructMigrateTask:output_type -> proto.DeleteStructMigrateTaskResponse
+	23, // 91: proto.Master.ShowStructMigrateTask:output_type -> proto.ShowStructMigrateTaskResponse
+	25, // 92: proto.Master.UpsertStmtMigrateTask:output_type -> proto.UpsertStmtMigrateTaskResponse
+	27, // 93: proto.Master.DeleteStmtMigrateTask:output_type -> proto.DeleteStmtMigrateTaskResponse
+	29, // 94: proto.Master.ShowStmtMigrateTask:output_type -> proto.ShowStmtMigrateTaskResponse
+	31, // 95: proto.Master.UpsertSqlMigrateTask:output_type -> proto.UpsertSqlMigrateTaskResponse
+	33, // 96: proto.Master.DeleteSqlMigrateTask:output_type -> proto.DeleteSqlMigrateTaskResponse
+	35, // 97: proto.Master.ShowSqlMigrateTask:output_type -> proto.ShowSqlMigrateTaskResponse
+	37, // 98: proto.Master.UpsertCsvMigrateTask:output_type -> proto.UpsertCsvMigrateTaskResponse
+	39, // 99: proto.Master.DeleteCsvMigrateTask:output_type -> proto.DeleteCsvMigrateTaskResponse
+	41, // 100: proto.Master.ShowCsvMigrateTask:output_type -> proto.ShowCsvMigrateTaskResponse
+	43, // 101: proto.Master.UpsertDataCompareTask:output_type -> proto.UpsertDataCompareTaskResponse
+	45, // 102: proto.Master.DeleteDataCompareTask:output_type -> proto.DeleteDataCompareTaskResponse
+	47, // 103: proto.Master.ShowDataCompareTask:output_type -> proto.ShowDataCompareTaskResponse
+	49, // 104: proto.Master.OperateTask:output_type -> proto.OperateTaskResponse
+	80, // [80:105] is the sub-list for method output_type
+	55, // [55:80] is the sub-list for method input_type
+	55, // [55:55] is the sub-list for extension type_name
+	55, // [55:55] is the sub-list for extension extendee
+	0,  // [0:55] is the sub-list for field type_name
 }
 
 func init() { file_dbms_master_proto_init() }
@@ -5273,7 +5750,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertStructMigrateTaskRequest); i {
+			switch v := v.(*UpsertAssessMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5285,7 +5762,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertStructMigrateTaskResponse); i {
+			switch v := v.(*UpsertAssessMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5297,7 +5774,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteStructMigrateTaskRequest); i {
+			switch v := v.(*DeleteAssessMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5309,7 +5786,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteStructMigrateTaskResponse); i {
+			switch v := v.(*DeleteAssessMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5321,7 +5798,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowStructMigrateTaskRequest); i {
+			switch v := v.(*ShowAssessMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5333,7 +5810,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowStructMigrateTaskResponse); i {
+			switch v := v.(*ShowAssessMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5345,7 +5822,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertStmtMigrateTaskRequest); i {
+			switch v := v.(*UpsertStructMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5357,7 +5834,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertStmtMigrateTaskResponse); i {
+			switch v := v.(*UpsertStructMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5369,7 +5846,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteStmtMigrateTaskRequest); i {
+			switch v := v.(*DeleteStructMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5381,7 +5858,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteStmtMigrateTaskResponse); i {
+			switch v := v.(*DeleteStructMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5393,7 +5870,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowStmtMigrateTaskRequest); i {
+			switch v := v.(*ShowStructMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5405,7 +5882,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowStmtMigrateTaskResponse); i {
+			switch v := v.(*ShowStructMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5417,7 +5894,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertSqlMigrateTaskRequest); i {
+			switch v := v.(*UpsertStmtMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5429,7 +5906,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertSqlMigrateTaskResponse); i {
+			switch v := v.(*UpsertStmtMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5441,7 +5918,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteSqlMigrateTaskRequest); i {
+			switch v := v.(*DeleteStmtMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5453,7 +5930,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteSqlMigrateTaskResponse); i {
+			switch v := v.(*DeleteStmtMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5465,7 +5942,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowSqlMigrateTaskRequest); i {
+			switch v := v.(*ShowStmtMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5477,7 +5954,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowSqlMigrateTaskResponse); i {
+			switch v := v.(*ShowStmtMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5489,7 +5966,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertCsvMigrateTaskRequest); i {
+			switch v := v.(*UpsertSqlMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5501,7 +5978,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertCsvMigrateTaskResponse); i {
+			switch v := v.(*UpsertSqlMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5513,7 +5990,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteCsvMigrateTaskRequest); i {
+			switch v := v.(*DeleteSqlMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5525,7 +6002,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteCsvMigrateTaskResponse); i {
+			switch v := v.(*DeleteSqlMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5537,7 +6014,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowCsvMigrateTaskRequest); i {
+			switch v := v.(*ShowSqlMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5549,7 +6026,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowCsvMigrateTaskResponse); i {
+			switch v := v.(*ShowSqlMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5561,7 +6038,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertDataCompareTaskRequest); i {
+			switch v := v.(*UpsertCsvMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5573,7 +6050,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpsertDataCompareTaskResponse); i {
+			switch v := v.(*UpsertCsvMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5585,7 +6062,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[38].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteDataCompareTaskRequest); i {
+			switch v := v.(*DeleteCsvMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5597,7 +6074,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[39].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteDataCompareTaskResponse); i {
+			switch v := v.(*DeleteCsvMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5609,7 +6086,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[40].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowDataCompareTaskRequest); i {
+			switch v := v.(*ShowCsvMigrateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5621,7 +6098,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[41].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ShowDataCompareTaskResponse); i {
+			switch v := v.(*ShowCsvMigrateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5633,7 +6110,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[42].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OperateTaskRequest); i {
+			switch v := v.(*UpsertDataCompareTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5645,7 +6122,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[43].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OperateTaskResponse); i {
+			switch v := v.(*UpsertDataCompareTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5657,7 +6134,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[44].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Database); i {
+			switch v := v.(*DeleteDataCompareTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5669,7 +6146,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[45].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Datasource); i {
+			switch v := v.(*DeleteDataCompareTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5681,7 +6158,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[46].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SchemaRouteRule); i {
+			switch v := v.(*ShowDataCompareTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5693,7 +6170,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[47].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CaseFieldRule); i {
+			switch v := v.(*ShowDataCompareTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5705,7 +6182,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[48].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TableRouteRule); i {
+			switch v := v.(*OperateTaskRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5717,7 +6194,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[49].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StructMigrateParam); i {
+			switch v := v.(*OperateTaskResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5729,7 +6206,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[50].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StructMigrateRule); i {
+			switch v := v.(*Database); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5741,7 +6218,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[51].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TaskStructRule); i {
+			switch v := v.(*Datasource); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5753,7 +6230,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[52].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SchemaStructRule); i {
+			switch v := v.(*SchemaRouteRule); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5765,7 +6242,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[53].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TableStructRule); i {
+			switch v := v.(*CaseFieldRule); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5777,7 +6254,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[54].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ColumnStructRule); i {
+			switch v := v.(*TableRouteRule); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5789,7 +6266,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[55].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TableAttrsRule); i {
+			switch v := v.(*AssessMigrateParam); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5801,7 +6278,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[56].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DataMigrateRule); i {
+			switch v := v.(*StructMigrateParam); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5813,7 +6290,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[57].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StatementMigrateParam); i {
+			switch v := v.(*StructMigrateRule); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5825,7 +6302,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[58].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CsvMigrateParam); i {
+			switch v := v.(*TaskStructRule); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5837,7 +6314,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[59].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DataCompareRule); i {
+			switch v := v.(*SchemaStructRule); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5849,7 +6326,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[60].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DataCompareParam); i {
+			switch v := v.(*TableStructRule); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5861,7 +6338,7 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[61].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SqlMigrateRule); i {
+			switch v := v.(*ColumnStructRule); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5873,6 +6350,90 @@ func file_dbms_master_proto_init() {
 			}
 		}
 		file_dbms_master_proto_msgTypes[62].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TableAttrsRule); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_dbms_master_proto_msgTypes[63].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DataMigrateRule); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_dbms_master_proto_msgTypes[64].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StatementMigrateParam); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_dbms_master_proto_msgTypes[65].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CsvMigrateParam); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_dbms_master_proto_msgTypes[66].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DataCompareRule); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_dbms_master_proto_msgTypes[67].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DataCompareParam); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_dbms_master_proto_msgTypes[68].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SqlMigrateRule); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_dbms_master_proto_msgTypes[69].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*SqlMigrateParam); i {
 			case 0:
 				return &v.state
@@ -5891,7 +6452,7 @@ func file_dbms_master_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_dbms_master_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   65,
+			NumMessages:   72,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

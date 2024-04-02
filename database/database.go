@@ -35,6 +35,7 @@ type IDatabase interface {
 	PingDatabaseConnection() error
 	Close() error
 	IDatabaseObjectFilter
+	IDatabaseAssessMigrate
 	IDatabaseStructMigrate
 	IDatabaseDataMigrate
 	IDatabaseDataCompare
