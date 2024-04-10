@@ -18,9 +18,12 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/wentaojin/dbms/database"
+	"github.com/wentaojin/dbms/logger"
+	"go.uber.org/zap"
 
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/rule"
@@ -37,7 +40,9 @@ type DataCompareRule struct {
 	TableNameS     string             `json:"tableNameS"`
 	GlobalSqlHintS string             `json:"globalSqlHintS"`
 	TableTypeS     map[string]string  `json:"tableTypeS"`
+	IgnoreFields   []string           `json:"ignoreFields"`
 	OnlyCompareRow bool               `json:"onlyCompareRow"`
+	OnlyCompareCRC bool               `json:"onlyCompareCRC"`
 	DatabaseS      database.IDatabase `json:"databaseS"`
 	DBCharsetS     string             `json:"DBCharsetS"`
 	DBCharsetT     string             `json:"DBCharsetT"`
@@ -123,7 +128,7 @@ func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, st
 		return "", "", "", "", err
 	}
 
-	for _, c := range sourceColumnNameS {
+	for _, c := range stringutil.StringItemsFilterDifference(sourceColumnNameS, r.IgnoreFields) {
 		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return "", "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, c, err)
@@ -166,7 +171,7 @@ func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, st
 	}
 
 	var (
-		columnNameSilS, columnNameSilSO, columnNameSliT, columnNameSliTO []string
+		columnNameSilSC, columnNameSilSO, columnNameSliTC, columnNameSliTO, ignoreTypes []string
 	)
 
 	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS, r.DBCollationS)
@@ -176,6 +181,20 @@ func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, st
 
 	for _, rowCol := range sourceColumnInfos {
 		columnNameS := rowCol["COLUMN_NAME"]
+		datatypeS := rowCol["DATA_TYPE"]
+		dataPrecisionS := rowCol["DATA_PRECISION"]
+		dataScaleS := rowCol["DATA_SCALE"]
+		charLen := rowCol["CHAR_LENGTH"]
+		dataLen := rowCol["DATA_LENGTH"]
+
+		charLenC, err := strconv.ParseInt(charLen, 10, 64)
+		if err != nil {
+			return "", "", "", "", err
+		}
+		dataLenC, err := strconv.ParseInt(dataLen, 10, 64)
+		if err != nil {
+			return "", "", "", "", err
+		}
 
 		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
@@ -183,7 +202,12 @@ func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, st
 		}
 		columnNameS = stringutil.BytesToString(columnNameUtf8Raw)
 
-		columnNameSO, err := optimizerDataMigrateColumnS(columnNameS, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
+		// skip ignore field
+		if stringutil.IsContainedStringIgnoreCase(r.IgnoreFields, columnNameS) {
+			continue
+		}
+
+		columnNameSO, err := optimizerDataMigrateColumnS(columnNameS, datatypeS, dataScaleS)
 		if err != nil {
 			return "", "", "", "", err
 		}
@@ -215,24 +239,49 @@ func (r *DataCompareRule) GenSchemaTableColumnRule() (string, string, string, st
 		}
 
 		columnNameSliTO = append(columnNameSliTO, columnNameT)
-		columnNameS, columnNameT, err = optimizerDataCompareColumnST(r.TaskFlow, columnNameS, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"], columnNameT, r.DBCharsetS, constant.BuildInOracleCharsetAL32UTF8, constant.BuildInMYSQLCharsetUTF8MB4)
-		if err != nil {
-			return "", "", "", "", err
+
+		switch {
+		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+			columnNameSC, columnNameTC, err := optimizerMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS, stringutil.Min(charLenC, dataLenC), dataPrecisionS, dataScaleS, stringutil.StringUpper(r.DBCharsetS), constant.BuildInOracleCharsetAL32UTF8, columnNameT, constant.BuildInMYSQLCharsetUTF8MB4)
+			if err != nil {
+				return "", "", "", "", err
+			}
+			columnNameSilSC = append(columnNameSilSC, columnNameSC)
+			columnNameSliTC = append(columnNameSliTC, columnNameTC)
+
+			if strings.EqualFold(datatypeS, constant.BuildInOracleDatatypeLong) || strings.EqualFold(datatypeS, constant.BuildInOracleDatatypeLongRAW) || strings.EqualFold(datatypeS, constant.BuildInOracleDatatypeBfile) {
+				ignoreTypes = append(ignoreTypes, columnNameS)
+			}
+		default:
+			return "", "", "", "", fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect", r.TaskFlow)
 		}
-		columnNameSilS = append(columnNameSilS, columnNameS)
-		columnNameSliT = append(columnNameSliT, columnNameT)
 	}
 
 	if r.OnlyCompareRow {
 		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma), "COUNT(1) AS ROWSCOUNT", stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma), "COUNT(1) AS ROWSCOUNT", nil
 	}
+
+	// if the database table column is existed in long and long raw datatype, the data compare task degenerate into program CRC32 data check
+	// you can circumvent this by setting ignore-fields
+	if len(ignoreTypes) > 0 {
+		r.OnlyCompareCRC = true
+		logger.Warn("data compare task column datatype rollback action",
+			zap.String("task_name", r.TaskName),
+			zap.String("task_mode", r.TaskMode),
+			zap.String("task_flow", r.TaskFlow),
+			zap.String("schema_name_s", r.SchemaNameS),
+			zap.String("table_name_s", r.TableNameS),
+			zap.Strings("column_name_s", ignoreTypes),
+			zap.String("rollback action", "compare_crc32"))
+		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma), "", stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma), "", nil
+	}
+
 	return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
-		fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(UTL_I18N.STRING_TO_RAW(%s,'%s'), 2 /*DBMS_CRYPTO.HASH_MD5*/)) AS ROWSCHECKSUM`,
-			stringutil.StringJoin(columnNameSilS, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8),
+		fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(UTL_I18N.STRING_TO_RAW(%s,'%s'), 2)) AS ROWSCHECKSUM`,
+			stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8),
 		stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
 		fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
-			stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4),
-		nil
+			stringutil.StringJoin(columnNameSliTC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4), nil
 }
 
 func (r *DataCompareRule) GenSchemaTableTypeRule() string {
@@ -243,7 +292,10 @@ func (r *DataCompareRule) GenSchemaTableCompareMethodRule() string {
 	if r.OnlyCompareRow {
 		return constant.DataCompareMethodCheckRows
 	}
-	return constant.DataCompareMethodCheckSum
+	if r.OnlyCompareCRC {
+		return constant.DataCompareMethodCheckCRC32
+	}
+	return constant.DataCompareMethodCheckMD5
 }
 
 func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, error) {
@@ -252,5 +304,8 @@ func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	return compareRule.ColumnField, compareRule.CompareRange, nil
+	if !strings.EqualFold(compareRule.IgnoreFields, "") {
+		r.IgnoreFields = stringutil.StringSplit(compareRule.IgnoreFields, constant.StringSeparatorComma)
+	}
+	return compareRule.CompareField, compareRule.CompareRange, nil
 }

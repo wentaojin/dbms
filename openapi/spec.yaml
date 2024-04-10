@@ -869,10 +869,14 @@ components:
       properties:
         tableNameS:
           type: string
-        columnField:
+        compareField:
           type: string
         compareRange:
           type: string
+        ignoreFields:
+          type: array
+          items:
+            type: string
     DataCompareParam:
       type: object
       properties:

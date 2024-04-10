@@ -21,6 +21,11 @@ import (
 	"github.com/wentaojin/dbms/utils/constant"
 )
 
+func (d *Database) GetDatabaseRole() (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (d *Database) GetDatabaseVersion() (string, error) {
 	_, res, err := d.GeneralQuery(`SELECT VERSION() AS VERSION`)
 	if err != nil {

@@ -185,6 +185,16 @@ func IsContainedString(items []string, item string) bool {
 	return false
 }
 
+// IsContainedStringIgnoreCase used for judge items whether is contained the item, and if it's contained, return true
+func IsContainedStringIgnoreCase(items []string, item string) bool {
+	for _, eachItem := range items {
+		if strings.EqualFold(eachItem, item) {
+			return true
+		}
+	}
+	return false
+}
+
 // StringSplitSlice used for the according to splitCounts, split slice
 func StringSplitSlice(items []string, splitCounts int) [][]string {
 	subArraySize := len(items) / splitCounts
@@ -394,6 +404,29 @@ func IsValueNil(i interface{}) bool {
 		return true
 	}
 	return false
+}
+
+func Min(x, y int64) int64 {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Max(x, y int64) int64 {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+func PaddingString(padNums int, padStr string, lastPadStr string) string {
+	var str strings.Builder
+	for i := 0; i < padNums-1; i++ {
+		str.WriteString(padStr)
+	}
+	str.WriteString(lastPadStr)
+	return str.String()
 }
 
 // BytesToString used for bytes to string, reduce memory

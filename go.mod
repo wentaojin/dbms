@@ -22,6 +22,7 @@ require (
 	github.com/labstack/gommon v0.4.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
+	github.com/shopspring/decimal v1.3.1
 	github.com/spf13/cobra v1.1.3
 	github.com/thanhpk/randstr v1.0.6
 	github.com/thinkeridea/go-extend v1.3.2

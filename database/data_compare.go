@@ -15,12 +15,17 @@ limitations under the License.
 */
 package database
 
+import (
+	"fmt"
+
+	"github.com/wentaojin/dbms/utils/constant"
+)
+
 type IDatabaseDataCompare interface {
-	FilterDatabaseTableColumnDatatype(columnType string) bool
-	FindDatabaseTableColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error)
-	GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
+	FindDatabaseTableCompareColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error)
 	GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error)
-	GetDatabaseTableColumnDataCompare(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error)
+	GetDatabaseTableCompareBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
+	GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error)
 }
 
 // IDataCompareRuleInitializer used for database table rule initializer
@@ -46,6 +51,10 @@ type DataCompareAttributesRule struct {
 }
 
 func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttributesRule, error) {
+	columnFields, compareRange, err := i.GenSchemaTableCustomRule()
+	if err != nil {
+		return &DataCompareAttributesRule{}, err
+	}
 	sourceSchema, targetSchema, err := i.GenSchemaNameRule()
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
@@ -55,10 +64,6 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 		return &DataCompareAttributesRule{}, err
 	}
 	sourceColumnSO, sourceColumnS, targetColumnTO, targetColumnT, err := i.GenSchemaTableColumnRule()
-	if err != nil {
-		return &DataCompareAttributesRule{}, err
-	}
-	columnFields, compareRange, err := i.GenSchemaTableCustomRule()
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
@@ -79,22 +84,23 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 }
 
 type IDataCompareProcessor interface {
-	CompareRows() (bool, error)
-	CompareDiff() error
+	CompareMethod() string
+	CompareRows() error
+	CompareMD5() error
+	CompareCRC32() error
 }
 
 func IDataCompareProcess(p IDataCompareProcessor) error {
-	isEqual, err := p.CompareRows()
-	if err != nil {
-		return err
+	switch p.CompareMethod() {
+	case constant.DataCompareMethodCheckRows:
+		return p.CompareRows()
+	case constant.DataCompareMethodCheckCRC32:
+		return p.CompareCRC32()
+	case constant.DataCompareMethodCheckMD5:
+		return p.CompareMD5()
+	default:
+		return fmt.Errorf("not support compare method [%s]", p.CompareMethod())
 	}
-	if !isEqual {
-		err = p.CompareDiff()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type IFileWriter interface {

@@ -32,6 +32,14 @@ import (
 	"github.com/greatcloak/decimal"
 )
 
+func (d *Database) GetDatabaseRole() (string, error) {
+	_, res, err := d.GeneralQuery("SELECT DATABASE_ROLE FROM GV$DATABASE")
+	if err != nil {
+		return "", err
+	}
+	return res[0]["DATABASE_ROLE"], nil
+}
+
 func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
 	_, res, err := d.GeneralQuery("SELECT MIN(CURRENT_SCN) CURRENT_SCN FROM GV$DATABASE")
 	var globalSCN uint64
@@ -192,7 +200,6 @@ END;`, taskName)
 
 func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
 	var (
-		columnNames   []string
 		databaseTypes []string
 		err           error
 	)
@@ -227,29 +234,23 @@ func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTim
 	}
 
 	for _, ct := range colTypes {
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(ct.Name()), dbCharsetS, constant.CharsetUTF8MB4)
-		if err != nil {
-			return fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
-		}
-		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
 		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
 	}
 
 	// data scan
-	columnNums := len(columnNames)
-	values := make([]interface{}, columnNums)
-	valuePtrs := make([]interface{}, columnNums)
+	values := make([]interface{}, columnNameOrdersCounts)
+	valuePtrs := make([]interface{}, columnNameOrdersCounts)
+	for i, _ := range columnNameOrders {
+		valuePtrs[i] = &values[i]
+	}
 
 	for rows.Next() {
-		for i := 0; i < columnNums; i++ {
-			valuePtrs[i] = &values[i]
-		}
 		err = rows.Scan(valuePtrs...)
 		if err != nil {
 			return err
 		}
 
-		for i, colName := range columnNames {
+		for i, colName := range columnNameOrders {
 			valRes := values[i]
 			if stringutil.IsValueNil(valRes) {
 				//rowsMap[cols[i]] = `NULL` -> sql
@@ -360,7 +361,6 @@ func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTim
 
 func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
 	var (
-		columnNames   []string
 		databaseTypes []string
 		err           error
 	)
@@ -391,36 +391,29 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, tas
 	}
 
 	for _, ct := range colTypes {
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(ct.Name()), dbCharsetS, constant.CharsetUTF8MB4)
-		if err != nil {
-			return fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
-		}
-		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
 		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
 	}
 
 	// data scan
-	columnNums := len(columnNames)
-	values := make([]interface{}, columnNums)
-	valuePtrs := make([]interface{}, columnNums)
+	values := make([]interface{}, columnNameOrdersCounts)
+	valuePtrs := make([]interface{}, columnNameOrdersCounts)
+	for i, _ := range columnNameOrders {
+		valuePtrs[i] = &values[i]
+	}
 
 	for rows.Next() {
-		for i := 0; i < columnNums; i++ {
-			valuePtrs[i] = &values[i]
-		}
 		err = rows.Scan(valuePtrs...)
 		if err != nil {
 			return err
 		}
-
-		for i, colName := range columnNames {
+		for i, colName := range columnNameOrders {
 			valRes := values[i]
 			// ORACLE database NULL and "" are the same
 			if stringutil.IsValueNil(valRes) {
 				if !strings.EqualFold(nullValue, "") {
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = nullValue
+					rowData[columnNameOrderIndexMap[colName]] = nullValue
 				} else {
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
+					rowData[columnNameOrderIndexMap[colName]] = `NULL`
 				}
 			} else {
 				value := reflect.ValueOf(valRes).Interface()
@@ -482,29 +475,29 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, tas
 					}
 				case []uint8:
 					// binary data -> raw、long raw、blob
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.EscapeBinaryCSV(val, escapeBackslash, delimiter, separator)
+					rowData[columnNameOrderIndexMap[colName]] = stringutil.EscapeBinaryCSV(val, escapeBackslash, delimiter, separator)
 				case int64:
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = decimal.NewFromInt(val).String()
+					rowData[columnNameOrderIndexMap[colName]] = decimal.NewFromInt(val).String()
 				case uint64:
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = strconv.FormatUint(val, 10)
+					rowData[columnNameOrderIndexMap[colName]] = strconv.FormatUint(val, 10)
 				case float32:
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = decimal.NewFromFloat32(val).String()
+					rowData[columnNameOrderIndexMap[colName]] = decimal.NewFromFloat32(val).String()
 				case float64:
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = decimal.NewFromFloat(val).String()
+					rowData[columnNameOrderIndexMap[colName]] = decimal.NewFromFloat(val).String()
 				case int32:
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = decimal.NewFromInt32(val).String()
+					rowData[columnNameOrderIndexMap[colName]] = decimal.NewFromInt32(val).String()
 				case string:
 					if strings.EqualFold(val, "") {
 						if !strings.EqualFold(nullValue, "") {
-							rowData[columnNameOrderIndexMap[columnNames[i]]] = nullValue
+							rowData[columnNameOrderIndexMap[colName]] = nullValue
 						} else {
-							rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
+							rowData[columnNameOrderIndexMap[colName]] = `NULL`
 						}
 					} else {
 						var convertTargetRaw []byte
 						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
 						if err != nil {
-							return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+							return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 						}
 
 						// Handling character sets, special character escapes, string reference delimiters
@@ -513,7 +506,7 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, tas
 							case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
 								convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
 								if err != nil {
-									return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+									return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 								}
 							default:
 								return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
@@ -522,13 +515,13 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, tas
 						} else {
 							convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
 							if err != nil {
-								return fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+								return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 							}
 						}
 						if delimiter == "" {
-							rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(convertTargetRaw)
+							rowData[columnNameOrderIndexMap[colName]] = stringutil.BytesToString(convertTargetRaw)
 						} else {
-							rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
+							rowData[columnNameOrderIndexMap[colName]] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
 						}
 					}
 				default:

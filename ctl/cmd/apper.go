@@ -41,13 +41,14 @@ func (a *App) Cmd() *cobra.Command {
 }
 
 func (a *App) PersistentPreRunE(cmd *cobra.Command, args []string) error {
-	if strings.EqualFold(a.Server, "") {
-		err := cmd.Help()
-		if err != nil {
-			return err
+	if !strings.EqualFold(cmd.Name(), "decrypt") {
+		if strings.EqualFold(a.Server, "") {
+			err := cmd.Help()
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("flag parameter [server] are requirement, can not null")
 		}
-		return fmt.Errorf("flag parameter [server] are requirement, can not null")
 	}
-
 	return nil
 }

@@ -144,11 +144,11 @@ func GetDatabaseTableChunkData(ctx context.Context, databaseS database.IDatabase
 	columnNums := len(columnNames)
 	values := make([]interface{}, columnNums)
 	valuePtrs := make([]interface{}, columnNums)
+	for i := 0; i < columnNums; i++ {
+		valuePtrs[i] = &values[i]
+	}
 
 	for rows.Next() {
-		for i := 0; i < columnNums; i++ {
-			valuePtrs[i] = &values[i]
-		}
 		err = rows.Scan(valuePtrs...)
 		if err != nil {
 			return nil, err

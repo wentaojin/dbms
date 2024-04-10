@@ -227,10 +227,6 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 				Message: err.Error(),
 			}}, err
 		}
-		return &pb.OperateWorkerResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
-		}}, nil
 	case constant.TaskModeStructMigrate:
 		err = s.operateStructMigrateTask(cancelCtx, t, req)
 		if err != nil {
@@ -239,10 +235,6 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 				Message: err.Error(),
 			}}, err
 		}
-		return &pb.OperateWorkerResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
-		}}, nil
 	case constant.TaskModeStmtMigrate:
 		err = s.operateStmtMigrateTask(cancelCtx, t, req)
 		if err != nil {
@@ -251,10 +243,6 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 				Message: err.Error(),
 			}}, err
 		}
-		return &pb.OperateWorkerResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
-		}}, nil
 	case constant.TaskModeCSVMigrate:
 		err = s.operateCsvMigrateTask(cancelCtx, t, req)
 		if err != nil {
@@ -263,10 +251,6 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 				Message: err.Error(),
 			}}, err
 		}
-		return &pb.OperateWorkerResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
-		}}, nil
 	case constant.TaskModeSqlMigrate:
 		err = s.operateSqlMigrateTask(cancelCtx, t, req)
 		if err != nil {
@@ -275,10 +259,6 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 				Message: err.Error(),
 			}}, err
 		}
-		return &pb.OperateWorkerResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
-		}}, nil
 	case constant.TaskModeDataCompare:
 		err = s.operateDataCompareTask(cancelCtx, t, req)
 		if err != nil {
@@ -287,14 +267,22 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 				Message: err.Error(),
 			}}, err
 		}
-		return &pb.OperateWorkerResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
-		}}, nil
 	default:
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result: openapi.ResponseResultStatusFailed,
 		}}, fmt.Errorf("current worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode)
+	}
+
+	if strings.EqualFold(req.Operate, constant.TaskOperationStart) {
+		return &pb.OperateWorkerResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusSuccess,
+			Message: fmt.Sprintf("the task [%v] is running asynchronously by the task mode [%v] in the worker [%v], please query the task status and waitting finished", t.TaskName, stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
+		}}, nil
+	} else {
+		return &pb.OperateWorkerResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusSuccess,
+			Message: fmt.Sprintf("the task [%v] operation is [%v] by the task mode [%v] in the worker [%v], please query the task status", t.TaskName, stringutil.StringLower(req.Operate), stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
+		}}, nil
 	}
 }
 

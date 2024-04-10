@@ -76,11 +76,14 @@ var (
 		BuildInOracleDatatypeTimestampWithLocalTimeZone9,
 	}
 
-	DataCompareSymbolLt        = "<"
-	DataCompareSymbolLte       = "<="
-	DataCompareSymbolGt        = ">"
-	DataCompareMethodCheckSum  = "CHECKSUM"
-	DataCompareMethodCheckRows = "CHECKROWS"
+	DataCompareSymbolLt         = "<"
+	DataCompareSymbolLte        = "<="
+	DataCompareSymbolGt         = ">"
+	DataCompareMethodCheckMD5   = "CHECKMD5"
+	DataCompareMethodCheckRows  = "CHECKROWS"
+	DataCompareMethodCheckCRC32 = "CHECKCRC32"
+
+	DataCompareMethodCheckMD5ValueLength = 32
 
 	DataCompareMYSQLCompatibleDatabaseColumnDatatypeSupportCollation = []string{
 		BuildInMySQLDatatypeChar,

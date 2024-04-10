@@ -18,23 +18,22 @@ package mysql
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
+	"strings"
+	"sync/atomic"
 	"time"
 
+	"github.com/greatcloak/decimal"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) FindDatabaseTableColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
+func (d *Database) FindDatabaseTableCompareColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) FilterDatabaseTableColumnDatatype(columnType string) bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
+func (d *Database) GetDatabaseTableCompareBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -60,12 +59,18 @@ func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, colu
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableColumnDataCompare(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error) {
+func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error) {
 	var (
-		columnNames []string
-		columnTypes []string
-		err         error
+		rowData        []string
+		columnNames    []string
+		databaaseTypes []string
+		scanTypes      []string
+		err            error
+		crc32Sum       uint32
 	)
+
+	var crc32Val uint32 = 0
+
 	// record repeat counts
 	batchRowsM := make(map[string]int64)
 
@@ -76,96 +81,96 @@ func (d *Database) GetDatabaseTableColumnDataCompare(querySQL string, callTimeou
 
 	rows, err := d.QueryContext(ctx, querySQL)
 	if err != nil {
-		return nil, nil, err
+		return nil, crc32Sum, nil, err
 	}
 	defer rows.Close()
 
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
-		return nil, nil, err
+		return nil, crc32Sum, nil, err
 	}
 
 	for _, ct := range colTypes {
 		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(ct.Name()), dbCharsetS, constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
+			return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
 		}
 		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
-		// database field type DatabaseTypeName() maps go type ScanType()
-		columnTypes = append(columnTypes, ct.ScanType().String())
+		databaaseTypes = append(databaaseTypes, ct.DatabaseTypeName())
+		scanTypes = append(scanTypes, ct.ScanType().String())
 	}
 
-	columnNameOrdersCounts := len(columnNames)
-	rowData := make([]string, columnNameOrdersCounts)
-	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
-
-	for i, c := range columnNames {
-		columnNameOrderIndexMap[c] = i
-	}
+	columnNums := len(columnNames)
 
 	// data scan
-	columnNums := len(columnNames)
 	rawResult := make([][]byte, columnNums)
-	dest := make([]interface{}, columnNums)
-	for i := range rawResult {
-		dest[i] = &rawResult[i]
+	valuePtrs := make([]interface{}, columnNums)
+	for i, _ := range columnNames {
+		valuePtrs[i] = &rawResult[i]
 	}
 
 	for rows.Next() {
-		err = rows.Scan(dest...)
+		err = rows.Scan(valuePtrs...)
 		if err != nil {
-			return nil, nil, err
+			return nil, crc32Sum, nil, err
 		}
 
-		for i, raw := range rawResult {
-			if raw == nil {
-				rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
-			} else if stringutil.BytesToString(raw) == "" {
-				rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
+		for i, colName := range columnNames {
+			val := rawResult[i]
+			// ORACLE database NULL and "" are the same
+			if val == nil {
+				rowData = append(rowData, `NULL`)
+			} else if stringutil.BytesToString(val) == "" {
+				rowData = append(rowData, `NULL`)
 			} else {
-				switch columnTypes[i] {
-				case "int64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "uint64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "float32":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "float64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "rune":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "[]uint8":
-					// binary data -> raw、long raw、blob
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = fmt.Sprintf("'%v'", stringutil.BytesToString(raw))
+				switch scanTypes[i] {
+				case "sql.NullInt16":
+					rowData = append(rowData, stringutil.BytesToString(val))
+				case "sql.NullInt32":
+					rowData = append(rowData, stringutil.BytesToString(val))
+				case "sql.NullInt64":
+					rowData = append(rowData, stringutil.BytesToString(val))
+				case "sql.NullFloat64":
+					rowData = append(rowData, stringutil.BytesToString(val))
 				default:
-					convertUtf8Raw, err := stringutil.CharsetConvert(raw, dbCharsetS, constant.CharsetUTF8MB4)
-					if err != nil {
-						return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+					if strings.EqualFold(databaaseTypes[i], "DECIMAL") {
+						rfs, err := decimal.NewFromString(stringutil.BytesToString(val))
+						if err != nil {
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaaseTypes[i], val, err)
+						}
+						rowData = append(rowData, rfs.String())
+					} else {
+						convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+						if err != nil {
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						}
+						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						if err != nil {
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						}
+						rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
 					}
-
-					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
-					if err != nil {
-						return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
-					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw))
 				}
 			}
 		}
 
 		// append
 		batchKey := stringutil.StringJoin(rowData, constant.StringSeparatorComma)
+
+		crc32Sum = atomic.AddUint32(&crc32Val, crc32.ChecksumIEEE([]byte(batchKey)))
+
 		if val, ok := batchRowsM[batchKey]; ok {
 			batchRowsM[batchKey] = val + 1
 		} else {
 			batchRowsM[batchKey] = 1
 		}
 		// clear
-		rowData = make([]string, columnNameOrdersCounts)
+		rowData = rowData[0:0]
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, nil, err
+		return nil, crc32Sum, nil, err
 	}
 
-	return columnNames, batchRowsM, nil
+	return columnNames, crc32Sum, batchRowsM, nil
 }

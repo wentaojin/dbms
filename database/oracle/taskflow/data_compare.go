@@ -577,6 +577,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					return err
 				}
 
+				// optimizer
 				if !strings.EqualFold(attsRule.CompareRangeC, "") {
 					encChunk := snappy.Encode(nil, []byte(attsRule.CompareRangeC))
 					encryptChunk, err := stringutil.Encrypt(stringutil.BytesToString(encChunk), []byte(constant.DefaultDataEncryptDecryptKey))
@@ -638,7 +639,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					customColumnS = stringutil.BytesToString(convertCharsetColumnS)
 				}
 
-				columnNameSlis, err := databaseS.FindDatabaseTableColumnName(attsRule.SchemaNameS, attsRule.TableNameS, customColumnS)
+				columnNameSlis, err := databaseS.FindDatabaseTableCompareColumn(attsRule.SchemaNameS, attsRule.TableNameS, customColumnS)
 				if err != nil {
 					return err
 				}
@@ -739,7 +740,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					if err != nil {
 						return err
 					}
-					columnBucketS, err := databaseS.GetDatabaseTableColumnBucket(attsRule.SchemaNameS, attsRule.TableNameS, column, attriS[0]["DATA_TYPE"])
+					columnBucketS, err := databaseS.GetDatabaseTableCompareBucket(attsRule.SchemaNameS, attsRule.TableNameS, column, attriS[0]["DATA_TYPE"])
 					if err != nil {
 						return err
 					}

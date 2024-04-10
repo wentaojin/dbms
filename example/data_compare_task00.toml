@@ -18,7 +18,8 @@ case-field-rule-t = "0"
 [schema-route-rule]
 schema-name-s = "MARVIN"
 schema-name-t = "STEVEN"
-include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
+include-table-s = ["MARVIN_COLUMN_T"]
+#include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
 #exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
@@ -39,7 +40,6 @@ compare-field = ""
 # range 优先级高于 column-field
 compare-range = ""
 # 忽略对比字段列
-# long/long raw
 ignore-fields = []
 
 # 表串行运行，表内并发

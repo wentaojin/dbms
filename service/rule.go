@@ -275,25 +275,36 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 
 			for _, st := range dataCompareRules {
 				if !strings.EqualFold(st.String(), "") {
-					var sourceTable string
+					var (
+						sourceTable  string
+						ignoreFields []string
+					)
 
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
 						sourceTable = st.TableNameS
+						ignoreFields = st.IgnoreFields
 					}
 
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
 						sourceTable = stringutil.StringUpper(st.TableNameS)
+						for _, f := range st.IgnoreFields {
+							ignoreFields = append(ignoreFields, stringutil.StringUpper(f))
+						}
 					}
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
 						sourceTable = stringutil.StringLower(st.TableNameS)
+						for _, f := range st.IgnoreFields {
+							ignoreFields = append(ignoreFields, stringutil.StringLower(f))
+						}
 					}
 
 					tableCompareRules = append(tableCompareRules, &rule.DataCompareRule{
 						TaskName:     taskName,
 						SchemaNameS:  sourceSchema,
 						TableNameS:   sourceTable,
-						ColumnField:  st.ColumnField,
+						CompareField: st.CompareField,
 						CompareRange: st.CompareRange,
+						IgnoreFields: stringutil.StringJoin(ignoreFields, constant.StringSeparatorComma),
 					})
 				}
 			}
@@ -449,8 +460,9 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 		for _, st := range migrateCompareRules {
 			opCompareRules = append(opCompareRules, &pb.DataCompareRule{
 				TableNameS:   st.TableNameS,
-				ColumnField:  st.ColumnField,
+				CompareField: st.CompareField,
 				CompareRange: st.CompareRange,
+				IgnoreFields: stringutil.StringSplit(st.IgnoreFields, constant.StringSeparatorComma),
 			})
 		}
 

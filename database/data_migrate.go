@@ -21,6 +21,7 @@ import (
 
 // IDatabaseDataMigrate used for database table data migrate
 type IDatabaseDataMigrate interface {
+	GetDatabaseRole() (string, error)
 	GetDatabaseVersion() (string, error)
 	GetDatabaseCharset() (string, error)
 	GetDatabaseConsistentPos() (uint64, error)

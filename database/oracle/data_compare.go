@@ -18,104 +18,123 @@ package oracle
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
+	"path/filepath"
+	"reflect"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
+
+	"github.com/godror/godror"
+	"github.com/shopspring/decimal"
 
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) FindDatabaseTableColumnName(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
+func (d *Database) FindDatabaseTableCompareColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	var err error
+
+	//sqlStr := fmt.Sprintf(`SELECT
+	//	OWNER,
+	//	TABLE_NAME,
+	//	COLUMN_NAME,
+	//	DATA_TYPE,
+	//	NUM_DISTINCT,
+	//	CASE
+	//		-- IF IT IS TIMESTAMP WITH TIMEZONE, CONVERT FROM UTC TO LOCAL TIME
+	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%WITH TIME ZONE' THEN
+	//			TO_CHAR(
+	//			FROM_TZ(
+	//				TO_TIMESTAMP(LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(LOW_VALUE, 1, 2), 'XX')
+	//+ TO_NUMBER(SUBSTR(LOW_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
+	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
+	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
+	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
+	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
+	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
+	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
+	//				, 'UTC' ) AT LOCAL
+	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
+	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%' THEN
+	//			TO_CHAR(
+	//			TO_TIMESTAMP( LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(LOW_VALUE, 1, 2), 'XX')
+	//+ TO_NUMBER(SUBSTR(LOW_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
+	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
+	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
+	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
+	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
+	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
+	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
+	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
+	//		WHEN DATA_TYPE = 'NUMBER' THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_NUMBER(LOW_VALUE))
+	//		WHEN DATA_TYPE IN ('VARCHAR2', 'CHAR') THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_VARCHAR2(LOW_VALUE))
+	//		WHEN DATA_TYPE = 'NVARCHAR2' THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_NVARCHAR2(LOW_VALUE))
+	//		WHEN DATA_TYPE = 'BINARY_DOUBLE' THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_DOUBLE(LOW_VALUE))
+	//		WHEN DATA_TYPE = 'BINARY_FLOAT' THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_FLOAT(LOW_VALUE))
+	//		WHEN DATA_TYPE = 'DATE' THEN
+	//			TO_CHAR(DBMS_STATS.CONVERT_RAW_TO_DATE(LOW_VALUE), 'YYYY-MM-DD HH24:MI:SS')
+	//		ELSE
+	//			'UNKNOWN DATA_TYPE'
+	//	END LOW_VALUE,
+	//	CASE
+	//		-- IF IT IS TIMESTAMP WITH TIMEZONE, CONVERT FROM UTC TO LOCAL TIME
+	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%WITH TIME ZONE' THEN
+	//			TO_CHAR(
+	//			FROM_TZ(
+	//				TO_TIMESTAMP(LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(HIGH_VALUE, 1, 2), 'XX')
+	//+ TO_NUMBER(SUBSTR(HIGH_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
+	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
+	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
+	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
+	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
+	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
+	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
+	//				, 'UTC' ) AT LOCAL
+	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
+	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%' THEN
+	//			TO_CHAR(
+	//			TO_TIMESTAMP( LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(HIGH_VALUE, 1, 2), 'XX')
+	//+ TO_NUMBER(SUBSTR(HIGH_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
+	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
+	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
+	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
+	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
+	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
+	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
+	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
+	//		WHEN DATA_TYPE = 'NUMBER' THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_NUMBER(HIGH_VALUE))
+	//		WHEN DATA_TYPE IN ('VARCHAR2', 'CHAR') THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_VARCHAR2(HIGH_VALUE))
+	//		WHEN DATA_TYPE = 'NVARCHAR2' THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_NVARCHAR2(HIGH_VALUE))
+	//		WHEN DATA_TYPE = 'BINARY_DOUBLE' THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_DOUBLE(HIGH_VALUE))
+	//		WHEN DATA_TYPE = 'BINARY_FLOAT' THEN
+	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_FLOAT(HIGH_VALUE))
+	//		WHEN DATA_TYPE = 'DATE' THEN
+	//			TO_CHAR(DBMS_STATS.CONVERT_RAW_TO_DATE(HIGH_VALUE), 'YYYY-MM-DD HH24:MI:SS')
+	//		ELSE
+	//			'UNKNOWN DATA_TYPE'
+	//	END HIGH_VALUE
+	//FROM
+	//	DBA_TAB_COLUMNS
+	//WHERE
+	//	OWNER = '%s'
+	//	AND TABLE_NAME = '%s'`, schemaNameS, tableNameS)
 
 	sqlStr := fmt.Sprintf(`SELECT
 		OWNER,
 		TABLE_NAME,
 		COLUMN_NAME,
-		DATA_TYPE,
-		NUM_DISTINCT,
-		CASE
-			-- IF IT IS TIMESTAMP WITH TIMEZONE, CONVERT FROM UTC TO LOCAL TIME
-			WHEN DATA_TYPE LIKE 'TIMESTAMP%%WITH TIME ZONE' THEN 
-				TO_CHAR(
-				FROM_TZ(
-					TO_TIMESTAMP(LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(LOW_VALUE, 1, 2), 'XX')
-	+ TO_NUMBER(SUBSTR(LOW_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
-	|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
-	|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
-	|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
-	|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
-	|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
-	|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
-					, 'UTC' ) AT LOCAL
-				, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
-			WHEN DATA_TYPE LIKE 'TIMESTAMP%%' THEN
-				TO_CHAR(
-				TO_TIMESTAMP( LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(LOW_VALUE, 1, 2), 'XX')
-	+ TO_NUMBER(SUBSTR(LOW_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
-	|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
-	|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
-	|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
-	|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
-	|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
-	|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
-				, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
-			WHEN DATA_TYPE = 'NUMBER' THEN
-				TO_CHAR(UTL_RAW.CAST_TO_NUMBER(LOW_VALUE))
-			WHEN DATA_TYPE IN ('VARCHAR2', 'CHAR') THEN
-				TO_CHAR(UTL_RAW.CAST_TO_VARCHAR2(LOW_VALUE))
-			WHEN DATA_TYPE = 'NVARCHAR2' THEN
-				TO_CHAR(UTL_RAW.CAST_TO_NVARCHAR2(LOW_VALUE))
-			WHEN DATA_TYPE = 'BINARY_DOUBLE' THEN
-				TO_CHAR(UTL_RAW.CAST_TO_BINARY_DOUBLE(LOW_VALUE))
-			WHEN DATA_TYPE = 'BINARY_FLOAT' THEN
-				TO_CHAR(UTL_RAW.CAST_TO_BINARY_FLOAT(LOW_VALUE))
-			WHEN DATA_TYPE = 'DATE' THEN
-				TO_CHAR(DBMS_STATS.CONVERT_RAW_TO_DATE(LOW_VALUE), 'YYYY-MM-DD HH24:MI:SS')
-			ELSE
-				'UNKNOWN DATA_TYPE'
-		END LOW_VALUE,
-		CASE
-			-- IF IT IS TIMESTAMP WITH TIMEZONE, CONVERT FROM UTC TO LOCAL TIME
-			WHEN DATA_TYPE LIKE 'TIMESTAMP%%WITH TIME ZONE' THEN 
-				TO_CHAR(
-				FROM_TZ(
-					TO_TIMESTAMP(LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(HIGH_VALUE, 1, 2), 'XX')
-	+ TO_NUMBER(SUBSTR(HIGH_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
-	|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
-	|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
-	|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
-	|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
-	|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
-	|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
-					, 'UTC' ) AT LOCAL
-				, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
-			WHEN DATA_TYPE LIKE 'TIMESTAMP%%' THEN
-				TO_CHAR(
-				TO_TIMESTAMP( LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(HIGH_VALUE, 1, 2), 'XX')
-	+ TO_NUMBER(SUBSTR(HIGH_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
-	|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
-	|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
-	|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
-	|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
-	|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
-	|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
-				, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
-			WHEN DATA_TYPE = 'NUMBER' THEN
-				TO_CHAR(UTL_RAW.CAST_TO_NUMBER(HIGH_VALUE))
-			WHEN DATA_TYPE IN ('VARCHAR2', 'CHAR') THEN
-				TO_CHAR(UTL_RAW.CAST_TO_VARCHAR2(HIGH_VALUE))
-			WHEN DATA_TYPE = 'NVARCHAR2' THEN
-				TO_CHAR(UTL_RAW.CAST_TO_NVARCHAR2(HIGH_VALUE))
-			WHEN DATA_TYPE = 'BINARY_DOUBLE' THEN
-				TO_CHAR(UTL_RAW.CAST_TO_BINARY_DOUBLE(HIGH_VALUE))
-			WHEN DATA_TYPE = 'BINARY_FLOAT' THEN
-				TO_CHAR(UTL_RAW.CAST_TO_BINARY_FLOAT(HIGH_VALUE))
-			WHEN DATA_TYPE = 'DATE' THEN
-				TO_CHAR(DBMS_STATS.CONVERT_RAW_TO_DATE(HIGH_VALUE), 'YYYY-MM-DD HH24:MI:SS')
-			ELSE
-				'UNKNOWN DATA_TYPE'
-		END HIGH_VALUE
+		DATA_TYPE 
 	FROM
 		DBA_TAB_COLUMNS
 	WHERE
@@ -257,7 +276,7 @@ func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, colu
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
+func (d *Database) GetDatabaseTableCompareBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
 	var (
 		sqlStr string
 		vals   []string
@@ -321,12 +340,17 @@ ORDER BY ENDPOINT_VALUE ASC`, schemaNameS, tableNameS, columnNameS)
 	return vals, nil
 }
 
-func (d *Database) GetDatabaseTableColumnDataCompare(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, map[string]int64, error) {
+func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error) {
 	var (
-		columnNames []string
-		columnTypes []string
-		err         error
+		rowData       []string
+		columnNames   []string
+		databaseTypes []string
+		err           error
+		crc32Sum      uint32
 	)
+
+	var crc32Val uint32 = 0
+
 	// record repeat counts
 	batchRowsM := make(map[string]int64)
 
@@ -337,98 +361,153 @@ func (d *Database) GetDatabaseTableColumnDataCompare(querySQL string, callTimeou
 
 	rows, err := d.QueryContext(ctx, querySQL)
 	if err != nil {
-		return nil, nil, err
+		return nil, crc32Sum, nil, err
 	}
 	defer rows.Close()
 
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
-		return nil, nil, err
+		return nil, crc32Sum, nil, err
 	}
 
 	for _, ct := range colTypes {
 		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(ct.Name()), dbCharsetS, constant.CharsetUTF8MB4)
 		if err != nil {
-			return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
+			return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
 		}
 		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
-		// database field type DatabaseTypeName() maps go type ScanType()
-		columnTypes = append(columnTypes, ct.ScanType().String())
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
 	}
 
-	columnNameOrdersCounts := len(columnNames)
-	rowData := make([]string, columnNameOrdersCounts)
-	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
-
-	for i, c := range columnNames {
-		columnNameOrderIndexMap[c] = i
-	}
+	columnNums := len(columnNames)
 
 	// data scan
-	columnNums := len(columnNames)
-	rawResult := make([][]byte, columnNums)
-	dest := make([]interface{}, columnNums)
-	for i := range rawResult {
-		dest[i] = &rawResult[i]
+	rawResult := make([]interface{}, columnNums)
+	valuePtrs := make([]interface{}, columnNums)
+	for i, _ := range columnNames {
+		valuePtrs[i] = &rawResult[i]
 	}
 
 	for rows.Next() {
-		err = rows.Scan(dest...)
+		err = rows.Scan(valuePtrs...)
 		if err != nil {
-			return nil, nil, err
+			return nil, crc32Sum, nil, err
 		}
 
-		for i, raw := range rawResult {
-			if raw == nil {
-				rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
-			} else if stringutil.BytesToString(raw) == "" {
-				rowData[columnNameOrderIndexMap[columnNames[i]]] = `NULL`
+		for i, colName := range columnNames {
+			valRes := rawResult[i]
+			// ORACLE database NULL and "" are the same
+			if stringutil.IsValueNil(valRes) {
+				rowData = append(rowData, `NULL`)
 			} else {
-				switch columnTypes[i] {
-				case "int64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "uint64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "float32":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "float64":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "rune":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "godror.Number":
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = stringutil.BytesToString(raw)
-				case "[]uint8":
-					// binary data -> raw、long raw、blob
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = fmt.Sprintf("'%v'", stringutil.BytesToString(raw))
-				default:
-					convertUtf8Raw, err := stringutil.CharsetConvert(raw, dbCharsetS, constant.CharsetUTF8MB4)
+				value := reflect.ValueOf(valRes).Interface()
+				switch val := value.(type) {
+				case godror.Number:
+					rfs, err := decimal.NewFromString(val.String())
 					if err != nil {
-						return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+						return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaseTypes[i], val, err)
+					}
+					rowData = append(rowData, rfs.String())
+				case *godror.Lob:
+					lobD, err := val.Hijack()
+					if err != nil {
+						return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack failed, %v", colName, databaseTypes[i], val, err)
 					}
 
-					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
-					if err != nil {
-						return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", columnNames[i], err)
+					if strings.EqualFold(databaseTypes[i], "BFILE") {
+						dir, file, err := lobD.GetFileName()
+						if err != nil {
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack getfilename failed, %v", colName, databaseTypes[i], val, err)
+						}
+						dirPath, err := d.GetDatabaseDirectoryName(dir)
+						if err != nil {
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack get directory name failed, %v", colName, databaseTypes[i], val, err)
+						}
+						rowData = append(rowData, fmt.Sprintf("'%v'", filepath.Join(dirPath, file)))
+					} else {
+						// get actual data
+						lobSize, err := lobD.Size()
+						if err != nil {
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack size failed, %v", colName, databaseTypes[i], val, err)
+						}
+
+						buf := make([]byte, lobSize)
+
+						var (
+							res    strings.Builder
+							offset int64
+						)
+						for {
+							count, err := lobD.ReadAt(buf, offset)
+							if err != nil {
+								return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack readAt failed, %v", colName, databaseTypes[i], val, err)
+							}
+							if int64(count) > lobSize/int64(4) {
+								count = int(lobSize / 4)
+							}
+							offset += int64(count)
+							res.Write(buf[:count])
+							if count == 0 {
+								break
+							}
+						}
+						rowData = append(rowData, fmt.Sprintf("'%v'", res.String()))
 					}
-					rowData[columnNameOrderIndexMap[columnNames[i]]] = fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw))
+					err = lobD.Close()
+					if err != nil {
+						return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack close failed, %v", colName, databaseTypes[i], val, err)
+					}
+				case []uint8:
+					// binary data -> raw、long raw、blob
+					rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(val)))
+				case int64:
+					rowData = append(rowData, decimal.NewFromInt(val).String())
+				case uint64:
+					rowData = append(rowData, strconv.FormatUint(val, 10))
+				case float32:
+					rowData = append(rowData, decimal.NewFromFloat32(val).String())
+				case float64:
+					rowData = append(rowData, decimal.NewFromFloat(val).String())
+				case int32:
+					rowData = append(rowData, decimal.NewFromInt32(val).String())
+				case string:
+					if strings.EqualFold(val, "") {
+						rowData = append(rowData, `NULL`)
+					} else {
+						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+						if err != nil {
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						}
+
+						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						if err != nil {
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						}
+						rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+					}
+				default:
+					return nil, crc32Sum, nil, fmt.Errorf("column [%s] unsupported type: %T", colName, value)
 				}
 			}
 		}
 
 		// append
 		batchKey := stringutil.StringJoin(rowData, constant.StringSeparatorComma)
+
+		crc32Sum = atomic.AddUint32(&crc32Val, crc32.ChecksumIEEE([]byte(batchKey)))
+
 		if val, ok := batchRowsM[batchKey]; ok {
 			batchRowsM[batchKey] = val + 1
 		} else {
 			batchRowsM[batchKey] = 1
 		}
 		// clear
-		rowData = make([]string, columnNameOrdersCounts)
+		rowData = rowData[0:0]
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, nil, err
+		return nil, crc32Sum, nil, err
 	}
 
-	return columnNames, batchRowsM, nil
+	return columnNames, crc32Sum, batchRowsM, nil
 }

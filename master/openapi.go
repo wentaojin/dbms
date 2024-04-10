@@ -393,6 +393,7 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 	var (
 		migrateSchemaRs *pb.SchemaRouteRule
 		tableRoutes     []*pb.TableRouteRule
+		compareRules    []*pb.DataCompareRule
 	)
 
 	for _, t := range *req.SchemaRouteRule.TableRouteRules {
@@ -400,6 +401,15 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 			TableNameS:       *t.TableNameS,
 			TableNameT:       *t.TableNameT,
 			ColumnRouteRules: *t.ColumnRouteRules,
+		})
+	}
+
+	for _, r := range *req.DataCompareRules {
+		compareRules = append(compareRules, &pb.DataCompareRule{
+			TableNameS:   *r.TableNameS,
+			CompareField: *r.CompareField,
+			CompareRange: *r.CompareRange,
+			IgnoreFields: *r.IgnoreFields,
 		})
 	}
 
@@ -420,7 +430,8 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
 			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
 		},
-		SchemaRouteRule: migrateSchemaRs,
+		SchemaRouteRule:  migrateSchemaRs,
+		DataCompareRules: compareRules,
 		DataCompareParam: &pb.DataCompareParam{
 			TableThread:          *req.DataCompareParam.TableThread,
 			BatchSize:            *req.DataCompareParam.BatchSize,

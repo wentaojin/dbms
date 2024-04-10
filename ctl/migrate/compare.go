@@ -36,9 +36,10 @@ type CompareConfig struct {
 }
 
 type DataCompareRule struct {
-	TableNameS   string `toml:"table-name-s" json:"tableNameS"`
-	ColumnField  string `toml:"column-field" json:"columnField"`
-	CompareRange string `toml:"compare-range" json:"compareRange"`
+	TableNameS   string   `toml:"table-name-s" json:"tableNameS"`
+	CompareField string   `toml:"compare-field" json:"compareField"`
+	CompareRange string   `toml:"compare-range" json:"compareRange"`
+	IgnoreFields []string `toml:"ignore-fields" json:"ignoreFields"`
 }
 
 type DataCompareParam struct {

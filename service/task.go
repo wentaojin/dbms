@@ -130,7 +130,7 @@ func StopTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequ
 	}
 
 	// send worker request
-	grpcConn, err := grpc.DialContext(ctx, t.WorkerAddr)
+	grpcConn, err := grpc.DialContext(ctx, t.WorkerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
@@ -154,7 +154,7 @@ func StopTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequ
 	}
 	return &pb.OperateTaskResponse{Response: &pb.Response{
 		Result:  openapi.ResponseResultStatusSuccess,
-		Message: w.String(),
+		Message: w.Response.Message,
 	}}, nil
 }
 
@@ -197,7 +197,7 @@ func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRe
 		}
 
 		// send worker request
-		grpcConn, err := grpc.DialContext(ctx, t.WorkerAddr)
+		grpcConn, err := grpc.DialContext(ctx, t.WorkerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return &pb.OperateTaskResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -221,7 +221,7 @@ func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRe
 		}
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusSuccess,
-			Message: w.String(),
+			Message: w.Response.Message,
 		}}, nil
 	}
 }
@@ -255,8 +255,9 @@ func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskRe
 		if err != nil {
 			return err
 		}
-		resp.LogDetail = l[0].LogDetail
-
+		if !strings.EqualFold(l[0].LogDetail, "") {
+			resp.LogDetail = l[0].LogDetail
+		}
 		return nil
 	})
 	if err != nil {

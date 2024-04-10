@@ -542,8 +542,9 @@ message CsvMigrateParam{
 
 message DataCompareRule {
   string tableNameS = 1;
-  string columnField = 2;
+  string compareField = 2;
   string compareRange = 3;
+  repeated string ignoreFields = 4;
 }
 
 message DataCompareParam{
