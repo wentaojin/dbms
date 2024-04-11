@@ -16,6 +16,10 @@ limitations under the License.
 package constant
 
 const (
+	// Allow Oracle database role PRIMARY、LOGICAL STANDBY、PHYSICAL STANDBY
+	OracleDatabasePrimaryRole = "PRIMARY"
+	// Allow Oracle table migrate rowid require version
+	OracleDatabaseTableMigrateRowidRequireVersion = "11"
 	// Allow Oracle table, field Collation, requires oracle 12.2g and above
 	OracleDatabaseTableAndColumnSupportVersion = "12.2"
 

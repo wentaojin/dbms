@@ -28,24 +28,25 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) FindDatabaseTableCompareColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
+func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableCompareBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
+func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error) {
 	sqlStr := fmt.Sprintf(`SELECT
 		TABLE_SCHEMA AS OWNER,
 		TABLE_NAME,
 		COLUMN_NAME,
 		DATA_TYPE,
 		NUMERIC_SCALE,
-		DATETIME_PRECISION
+		DATETIME_PRECISION,
+		COLLATION_NAME AS COLLATION
 	FROM
 		INFORMATION_SCHEMA.COLUMNS
 	WHERE

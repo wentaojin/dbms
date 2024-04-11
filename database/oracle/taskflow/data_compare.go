@@ -23,8 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wentaojin/dbms/utils/chunk"
-
 	"github.com/golang/snappy"
 
 	"github.com/wentaojin/dbms/database"
@@ -79,7 +77,7 @@ func (dmt *DataCompareTask) Start() error {
 	logger.Info("data compare task inspect migrate task",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 
-	dbCollationS, err := InspectMigrateTask(databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
+	_, dbCollationS, err := inspectMigrateTask(databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
@@ -517,14 +515,6 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 		return err
 	}
 
-	nlsComp, nlsSort, err := databaseS.GetDatabaseCharsetCollation()
-	if err != nil {
-		return err
-	}
-	if !strings.EqualFold(nlsComp, nlsSort) {
-		return fmt.Errorf("the database server nls_comp [%s] and nls_sort [%s] aren't different, current not support, please contact author or reselect", nlsComp, nlsSort)
-	}
-
 	// database tables
 	// init database table
 	logger.Info("data compare task init",
@@ -639,7 +629,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					customColumnS = stringutil.BytesToString(convertCharsetColumnS)
 				}
 
-				columnNameSlis, err := databaseS.FindDatabaseTableCompareColumn(attsRule.SchemaNameS, attsRule.TableNameS, customColumnS)
+				columnNameSlis, err := databaseS.FindDatabaseTableBestColumn(attsRule.SchemaNameS, attsRule.TableNameS, customColumnS)
 				if err != nil {
 					return err
 				}
@@ -697,128 +687,10 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 				}
 
 				// bucket ranges
-				var (
-					bucketRanges   []*chunk.Range
-					randomValueSli [][]string
-					newColumnNameS []string
-				)
-
-				columnAttriS := make(map[string]map[string]string)
-				columnAttriT := make(map[string]map[string]string)
-				columnRouteS := make(map[string]string)
-				columnRouteNewS := make(map[string]string)
-
-				routeRules, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(dmt.Ctx, &rule.ColumnRouteRule{
-					TaskName:    dmt.Task.TaskName,
-					SchemaNameS: attsRule.SchemaNameS,
-					TableNameS:  attsRule.TableNameS,
-				})
+				bucketRanges, err := getDatabaseTableColumnBucket(dmt.Ctx, databaseS, databaseT, dmt.Task.TaskName, dmt.Task.TaskFlow, attsRule.SchemaNameS, attsRule.SchemaNameT, attsRule.TableNameS, attsRule.TableNameT, dbCollationS, columnNameSlis, dmt.DatasourceS.ConnectCharset, dmt.DatasourceT.ConnectCharset)
 				if err != nil {
 					return err
 				}
-				for _, r := range routeRules {
-					columnRouteS[r.ColumnNameS] = r.ColumnNameT
-				}
-
-				for i, column := range columnNameSlis {
-					var columnT string
-					convertUtf8Raws, err := stringutil.CharsetConvert([]byte(column), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)], constant.CharsetUTF8MB4)
-					if err != nil {
-						return err
-					}
-					columnUtf8S := stringutil.BytesToString(convertUtf8Raws)
-					if val, ok := columnRouteS[columnUtf8S]; ok {
-						columnT = val
-					} else {
-						columnT = columnUtf8S
-					}
-					attriS, err := databaseS.GetDatabaseTableColumnAttribute(attsRule.SchemaNameS, attsRule.TableNameS, column)
-					if err != nil {
-						return err
-					}
-					attriT, err := databaseT.GetDatabaseTableColumnAttribute(attsRule.SchemaNameT, attsRule.TableNameT, columnT)
-					if err != nil {
-						return err
-					}
-					columnBucketS, err := databaseS.GetDatabaseTableCompareBucket(attsRule.SchemaNameS, attsRule.TableNameS, column, attriS[0]["DATA_TYPE"])
-					if err != nil {
-						return err
-					}
-					// first elems
-					if i == 0 && len(columnBucketS) == 0 {
-						break
-					} else if i > 0 && len(columnBucketS) == 0 {
-						continue
-					} else {
-						columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(column), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)], constant.CharsetUTF8MB4)
-						if err != nil {
-							return fmt.Errorf("[InitDataCompareTask] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", attsRule.SchemaNameS, attsRule.TableNameS, column, err)
-						}
-
-						columnNameS := stringutil.BytesToString(columnNameUtf8Raw)
-						randomValueSli = append(randomValueSli, columnBucketS)
-						newColumnNameS = append(newColumnNameS, columnNameS)
-						columnAttriS[columnNameS] = attriS[0]
-						columnAttriT[columnNameS] = map[string]string{
-							columnT: attriT[0]["DATA_TYPE"],
-						}
-						columnRouteNewS[columnNameS] = columnT
-					}
-				}
-
-				if len(randomValueSli) > 0 {
-					randomValues, randomValuesLen := stringutil.StringSliceAlignLen(randomValueSli)
-					for i := 0; i <= randomValuesLen; i++ {
-						newChunk := chunk.NewRange()
-
-						for j, columnS := range newColumnNameS {
-							if i == 0 {
-								if len(randomValues[j]) == 0 {
-									break
-								}
-								err = newChunk.Update(dmt.Task.TaskFlow,
-									stringutil.StringUpper(dmt.DatasourceS.ConnectCharset),
-									stringutil.StringUpper(dmt.DatasourceT.ConnectCharset),
-									columnS,
-									columnRouteNewS[columnS],
-									nlsComp,
-									columnAttriS[columnS],
-									columnAttriT[columnS],
-									"", randomValues[j][i], false, true)
-								if err != nil {
-									return err
-								}
-							} else if i == len(randomValues[0]) {
-								err = newChunk.Update(dmt.Task.TaskFlow,
-									stringutil.StringUpper(dmt.DatasourceS.ConnectCharset),
-									stringutil.StringUpper(dmt.DatasourceT.ConnectCharset),
-									columnS,
-									columnRouteNewS[columnS],
-									nlsComp,
-									columnAttriS[columnS],
-									columnAttriT[columnS], randomValues[j][i-1], "", true, false)
-								if err != nil {
-									return err
-								}
-							} else {
-								err = newChunk.Update(dmt.Task.TaskFlow,
-									stringutil.StringUpper(dmt.DatasourceS.ConnectCharset),
-									stringutil.StringUpper(dmt.DatasourceT.ConnectCharset),
-									columnS,
-									columnRouteNewS[columnS],
-									nlsComp,
-									columnAttriS[columnS],
-									columnAttriT[columnS], randomValues[j][i-1], randomValues[j][i], true, true)
-								if err != nil {
-									return err
-								}
-							}
-						}
-						bucketRanges = append(bucketRanges, newChunk)
-					}
-
-				}
-
 				if len(bucketRanges) == 0 {
 					encChunk := snappy.Encode(nil, []byte("1 = 1"))
 					encryptChunk, err := stringutil.Encrypt(stringutil.BytesToString(encChunk), []byte(constant.DefaultDataEncryptDecryptKey))

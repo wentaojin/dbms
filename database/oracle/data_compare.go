@@ -33,7 +33,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) FindDatabaseTableCompareColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
+func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	var err error
 
 	//sqlStr := fmt.Sprintf(`SELECT
@@ -256,19 +256,50 @@ func (d *Database) FilterDatabaseTableColumnDatatype(columnType string) bool {
 	return false
 }
 
-func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error) {
-	sqlStr := fmt.Sprintf(`SELECT
-		OWNER,
-		TABLE_NAME,
-		COLUMN_NAME,
-		DATA_TYPE,
-		DATA_SCALE
-	FROM
-		DBA_TAB_COLUMNS
-	WHERE
-		OWNER = '%s' 
-		AND TABLE_NAME = '%s'
-		AND COLUMN_NAME = '%s'`, schemaNameS, tableNameS, columnNameS)
+func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error) {
+	var sqlStr string
+
+	if collationS {
+		sqlStr = fmt.Sprintf(`SELECT 
+		T.OWNER,
+		T.TABLE_NAME,
+		T.COLUMN_NAME,
+	    T.DATA_TYPE,
+		T.CHAR_LENGTH,
+		NVL(T.CHAR_USED, 'UNKNOWN') CHAR_USED,
+	    NVL(T.DATA_LENGTH, 0) AS DATA_LENGTH,
+	    DECODE(NVL(TO_CHAR(T.DATA_PRECISION), '*'), '*', '38', TO_CHAR(T.DATA_PRECISION)) AS DATA_PRECISION,
+	    DECODE(NVL(TO_CHAR(T.DATA_SCALE), '*'), '*', '127', TO_CHAR(T.DATA_SCALE)) AS DATA_SCALE,
+		DECODE(T.COLLATION, 'USING_NLS_COMP',(SELECT VALUE FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_COMP'), T.COLLATION) COLLATION
+FROM
+	DBA_TAB_COLUMNS T
+WHERE
+    T.OWNER = '%s'
+	AND T.TABLE_NAME = '%s'
+	AND T.COLUMN_NAME = '%s'
+ORDER BY
+	T.COLUMN_ID`, schemaNameS, tableNameS, columnNameS)
+	} else {
+		sqlStr = fmt.Sprintf(`SELECT 
+		T.OWNER,
+		T.TABLE_NAME,
+		T.COLUMN_NAME,
+	    T.DATA_TYPE,
+		T.CHAR_LENGTH,
+		NVL(T.CHAR_USED, 'UNKNOWN') CHAR_USED,
+	    NVL(T.DATA_LENGTH, 0) AS DATA_LENGTH,
+	    DECODE(NVL(TO_CHAR(T.DATA_PRECISION), '*'), '*', '38', TO_CHAR(T.DATA_PRECISION)) AS DATA_PRECISION,
+	    DECODE(NVL(TO_CHAR(T.DATA_SCALE), '*'), '*', '127', TO_CHAR(T.DATA_SCALE)) AS DATA_SCALE,
+		(SELECT VALUE FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_COMP') AS COLLATION
+FROM
+	DBA_TAB_COLUMNS T
+WHERE
+    T.OWNER = '%s'
+	AND T.TABLE_NAME = '%s'
+	AND T.COLUMN_NAME = '%s'
+ORDER BY
+	T.COLUMN_ID`, schemaNameS, tableNameS, columnNameS)
+	}
 	_, res, err := d.GeneralQuery(sqlStr)
 	if err != nil {
 		return res, err
@@ -276,7 +307,7 @@ func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, colu
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableCompareBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
+func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
 	var (
 		sqlStr string
 		vals   []string

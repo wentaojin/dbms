@@ -22,9 +22,9 @@ import (
 )
 
 type IDatabaseDataCompare interface {
-	FindDatabaseTableCompareColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error)
-	GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string) ([]map[string]string, error)
-	GetDatabaseTableCompareBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
+	FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error)
+	GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error)
+	GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
 	GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error)
 }
 

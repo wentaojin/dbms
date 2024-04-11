@@ -24,8 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wentaojin/dbms/errconcurrent"
+	"github.com/golang/snappy"
 
+	"github.com/wentaojin/dbms/errconcurrent"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/google/uuid"
@@ -49,54 +50,53 @@ type StmtMigrateTask struct {
 	TaskParams  *pb.StatementMigrateParam
 }
 
-func (dmt *StmtMigrateTask) Start() error {
+func (stm *StmtMigrateTask) Start() error {
 	schemaTaskTime := time.Now()
 	logger.Info("stmt migrate task get schema route",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
-	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(dmt.Ctx, &rule.SchemaRouteRule{TaskName: dmt.Task.TaskName})
+		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
+	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(stm.Ctx, &rule.SchemaRouteRule{TaskName: stm.Task.TaskName})
 	if err != nil {
 		return err
 	}
 
 	logger.Info("stmt migrate task init database connection",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
 
-	sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(dmt.Ctx, dmt.Task.DatasourceNameS)
+	sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(stm.Ctx, stm.Task.DatasourceNameS)
 	if err != nil {
 		return err
 	}
-	databaseS, err := database.NewDatabase(dmt.Ctx, sourceDatasource, schemaRoute.SchemaNameS)
+	databaseS, err := database.NewDatabase(stm.Ctx, sourceDatasource, schemaRoute.SchemaNameS)
 	if err != nil {
 		return err
 	}
 	defer databaseS.Close()
-	databaseT, err := database.NewDatabase(dmt.Ctx, dmt.DatasourceT, "")
+	databaseT, err := database.NewDatabase(stm.Ctx, stm.DatasourceT, "")
 	if err != nil {
 		return err
 	}
 	defer databaseT.Close()
 
 	logger.Info("stmt migrate task inspect migrate task",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
 
-	dbCollationS, err := InspectMigrateTask(databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
+	dbVersion, dbCollationS, err := inspectMigrateTask(databaseS, stringutil.StringUpper(stm.DatasourceS.ConnectCharset), stringutil.StringUpper(stm.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
 
 	logger.Info("stmt migrate task init task",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
-
-	err = dmt.InitDataMigrateTask(databaseS, dbCollationS, schemaRoute)
+		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
+	err = stm.initStmtMigrateTask(databaseS, databaseT, dbVersion, dbCollationS, schemaRoute)
 	if err != nil {
 		return err
 	}
 
 	logger.Info("stmt migrate task get tables",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
 
-	summaries, err := model.GetIDataMigrateSummaryRW().FindDataMigrateSummary(dmt.Ctx, &task.DataMigrateSummary{
-		TaskName:    dmt.Task.TaskName,
+	summaries, err := model.GetIDataMigrateSummaryRW().FindDataMigrateSummary(stm.Ctx, &task.DataMigrateSummary{
+		TaskName:    stm.Task.TaskName,
 		SchemaNameS: schemaRoute.SchemaNameS,
 	})
 	if err != nil {
@@ -106,14 +106,14 @@ func (dmt *StmtMigrateTask) Start() error {
 	for _, s := range summaries {
 		startTableTime := time.Now()
 		logger.Info("stmt migrate task process table",
-			zap.String("task_name", dmt.Task.TaskName),
-			zap.String("task_mode", dmt.Task.TaskMode),
-			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("task_name", stm.Task.TaskName),
+			zap.String("task_mode", stm.Task.TaskMode),
+			zap.String("task_flow", stm.Task.TaskFlow),
 			zap.String("schema_name_s", s.SchemaNameS),
 			zap.String("table_name_s", s.TableNameS))
 
 		var migrateTasks []*task.DataMigrateTask
-		err = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+		err = model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 			// get migrate task tables
 			migrateTasks, err = model.GetIDataMigrateTaskRW().FindDataMigrateTask(txnCtx,
 				&task.DataMigrateTask{
@@ -162,9 +162,9 @@ func (dmt *StmtMigrateTask) Start() error {
 		}
 
 		logger.Info("stmt migrate task process chunks",
-			zap.String("task_name", dmt.Task.TaskName),
-			zap.String("task_mode", dmt.Task.TaskMode),
-			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("task_name", stm.Task.TaskName),
+			zap.String("task_mode", stm.Task.TaskMode),
+			zap.String("task_flow", stm.Task.TaskFlow),
 			zap.String("schema_name_s", s.SchemaNameS),
 			zap.String("table_name_s", s.TableNameS))
 
@@ -172,34 +172,34 @@ func (dmt *StmtMigrateTask) Start() error {
 			sqlTSmt *sql.Stmt
 		)
 		switch {
-		case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
-			limitOne, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(dmt.Ctx, &task.DataMigrateTask{
+		case strings.EqualFold(stm.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(stm.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
+			limitOne, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(stm.Ctx, &task.DataMigrateTask{
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SchemaNameS,
 				TableNameS:  s.TableNameS})
 			if err != nil {
 				return err
 			}
-			sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, dmt.TaskParams.SqlHintT, limitOne.ColumnDetailT, int(dmt.TaskParams.BatchSize), true)
-			sqlTSmt, err = databaseT.PrepareContext(dmt.Ctx, sqlStr)
+			sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, stm.TaskParams.SqlHintT, limitOne.ColumnDetailT, int(stm.TaskParams.BatchSize), true)
+			sqlTSmt, err = databaseT.PrepareContext(stm.Ctx, sqlStr)
 			if err != nil {
 				return err
 			}
 		default:
-			return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare isn't support, please contact author", dmt.Task.TaskName, s.SchemaNameS, dmt.Task.TaskMode, dmt.Task.TaskFlow)
+			return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare isn't support, please contact author", stm.Task.TaskName, s.SchemaNameS, stm.Task.TaskMode, stm.Task.TaskFlow)
 		}
 
 		g := errconcurrent.NewGroup()
-		g.SetLimit(int(dmt.TaskParams.SqlThreadS))
+		g.SetLimit(int(stm.TaskParams.SqlThreadS))
 		for _, j := range migrateTasks {
 			gTime := time.Now()
 			g.Go(j, gTime, func(j interface{}) error {
 				select {
-				case <-dmt.Ctx.Done():
+				case <-stm.Ctx.Done():
 					return nil
 				default:
 					dt := j.(*task.DataMigrateTask)
-					errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+					errW := model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
 							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkDetailS: dt.ChunkDetailS},
 							map[string]interface{}{
@@ -216,7 +216,7 @@ func (dmt *StmtMigrateTask) Start() error {
 								stringutil.CurrentTimeFormatString(),
 								stringutil.StringLower(constant.TaskModeStmtMigrate),
 								dt.TaskName,
-								dmt.Task.TaskMode,
+								stm.Task.TaskMode,
 								dt.SchemaNameS,
 								dt.TableNameS,
 								dt.ChunkDetailS),
@@ -231,18 +231,18 @@ func (dmt *StmtMigrateTask) Start() error {
 					}
 
 					err = database.IDataMigrateProcess(&StmtMigrateRow{
-						Ctx:           dmt.Ctx,
-						TaskMode:      dmt.Task.TaskMode,
-						TaskFlow:      dmt.Task.TaskFlow,
+						Ctx:           stm.Ctx,
+						TaskMode:      stm.Task.TaskMode,
+						TaskFlow:      stm.Task.TaskFlow,
 						Dmt:           dt,
 						DatabaseS:     databaseS,
 						DatabaseT:     databaseT,
 						DatabaseTStmt: sqlTSmt,
-						DBCharsetS:    constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)],
-						DBCharsetT:    stringutil.StringUpper(dmt.DatasourceT.ConnectCharset),
-						SqlThreadT:    int(dmt.TaskParams.SqlThreadT),
-						BatchSize:     int(dmt.TaskParams.BatchSize),
-						CallTimeout:   int(dmt.TaskParams.CallTimeout),
+						DBCharsetS:    constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(stm.DatasourceS.ConnectCharset)],
+						DBCharsetT:    stringutil.StringUpper(stm.DatasourceT.ConnectCharset),
+						SqlThreadT:    int(stm.TaskParams.SqlThreadT),
+						BatchSize:     int(stm.TaskParams.BatchSize),
+						CallTimeout:   int(stm.TaskParams.CallTimeout),
 						SafeMode:      true,
 						ReadChan:      make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 						WriteChan:     make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
@@ -251,7 +251,7 @@ func (dmt *StmtMigrateTask) Start() error {
 						return err
 					}
 
-					errW = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+					errW = model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
 							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkDetailS: dt.ChunkDetailS},
 							map[string]interface{}{
@@ -269,7 +269,7 @@ func (dmt *StmtMigrateTask) Start() error {
 								stringutil.CurrentTimeFormatString(),
 								stringutil.StringLower(constant.TaskModeStmtMigrate),
 								dt.TaskName,
-								dmt.Task.TaskMode,
+								stm.Task.TaskMode,
 								dt.SchemaNameS,
 								dt.TableNameS,
 								dt.ChunkDetailS),
@@ -289,16 +289,16 @@ func (dmt *StmtMigrateTask) Start() error {
 
 		for _, r := range g.Wait() {
 			if r.Err != nil {
-				smt := r.Task.(*task.DataMigrateTask)
+				mt := r.Task.(*task.DataMigrateTask)
 				logger.Warn("stmt migrate task process tables",
-					zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow),
-					zap.String("schema_name_s", smt.SchemaNameS),
-					zap.String("table_name_s", smt.TableNameS),
+					zap.String("task_name", mt.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow),
+					zap.String("schema_name_s", mt.SchemaNameS),
+					zap.String("table_name_s", mt.TableNameS),
 					zap.Error(r.Err))
 
-				errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+				errW := model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 					_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-						&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkDetailS: smt.ChunkDetailS},
+						&task.DataMigrateTask{TaskName: mt.TaskName, SchemaNameS: mt.SchemaNameS, TableNameS: mt.TableNameS, ChunkDetailS: mt.ChunkDetailS},
 						map[string]interface{}{
 							"TaskStatus":  constant.TaskDatabaseStatusFailed,
 							"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
@@ -308,16 +308,16 @@ func (dmt *StmtMigrateTask) Start() error {
 						return err
 					}
 					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-						TaskName:    smt.TaskName,
-						SchemaNameS: smt.SchemaNameS,
-						TableNameS:  smt.TableNameS,
+						TaskName:    mt.TaskName,
+						SchemaNameS: mt.SchemaNameS,
+						TableNameS:  mt.TableNameS,
 						LogDetail: fmt.Sprintf("%v [%v] stmt migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
 							stringutil.CurrentTimeFormatString(),
 							stringutil.StringLower(constant.TaskModeStmtMigrate),
-							smt.TaskName,
-							dmt.Task.TaskMode,
-							smt.SchemaNameS,
-							smt.TableNameS),
+							mt.TaskName,
+							stm.Task.TaskMode,
+							mt.SchemaNameS,
+							mt.TableNameS),
 					})
 					if err != nil {
 						return err
@@ -336,7 +336,7 @@ func (dmt *StmtMigrateTask) Start() error {
 		}
 
 		endTableTime := time.Now()
-		err = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+		err = model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 			tableStatusRecs, err := model.GetIDataMigrateTaskRW().FindDataMigrateTaskBySchemaTableChunkStatus(txnCtx, &task.DataMigrateTask{
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SchemaNameS,
@@ -403,7 +403,7 @@ func (dmt *StmtMigrateTask) Start() error {
 						return err
 					}
 				default:
-					return fmt.Errorf("the task [%v] task_mode [%s] task_flow [%v] schema_name_s [%v] table_name_s [%v] task_status [%v] panic, please contact auhtor or reselect", s.TaskName, dmt.Task.TaskMode, dmt.Task.TaskFlow, rec.SchemaNameS, rec.TableNameS, rec.TaskStatus)
+					return fmt.Errorf("the task [%v] task_mode [%s] task_flow [%v] schema_name_s [%v] table_name_s [%v] task_status [%v] panic, please contact auhtor or reselect", s.TaskName, stm.Task.TaskMode, stm.Task.TaskFlow, rec.SchemaNameS, rec.TableNameS, rec.TaskStatus)
 				}
 			}
 
@@ -424,22 +424,26 @@ func (dmt *StmtMigrateTask) Start() error {
 		}
 
 		logger.Info("stmt migrate task process table",
-			zap.String("task_name", dmt.Task.TaskName),
-			zap.String("task_mode", dmt.Task.TaskMode),
-			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("task_name", stm.Task.TaskName),
+			zap.String("task_mode", stm.Task.TaskMode),
+			zap.String("task_flow", stm.Task.TaskFlow),
 			zap.String("schema_name_s", s.SchemaNameS),
 			zap.String("table_name_s", s.TableNameS),
 			zap.String("cost", endTableTime.Sub(startTableTime).String()))
 	}
 	logger.Info("stmt migrate task",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow),
+		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow),
 		zap.String("cost", time.Now().Sub(schemaTaskTime).String()))
 	return nil
 }
 
-func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.IDatabase, dbVersion string, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+	dbRole, err := databaseS.GetDatabaseRole()
+	if err != nil {
+		return err
+	}
 	// filter database table
-	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(dmt.Ctx, &rule.MigrateTaskTable{
+	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(stm.Ctx, &rule.MigrateTaskTable{
 		TaskName:    schemaRoute.TaskName,
 		SchemaNameS: schemaRoute.SchemaNameS,
 	})
@@ -470,7 +474,7 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 
 	// clear the stmt migrate task table
 	// repeatInitTableMap used for store the struct_migrate_task table name has be finished, avoid repeated initialization
-	migrateGroupTasks, err := model.GetIDataMigrateTaskRW().FindDataMigrateTaskGroupByTaskSchemaTable(dmt.Ctx, dmt.Task.TaskName)
+	migrateGroupTasks, err := model.GetIDataMigrateTaskRW().FindDataMigrateTaskGroupByTaskSchemaTable(stm.Ctx, stm.Task.TaskName)
 	if err != nil {
 		return err
 	}
@@ -481,22 +485,22 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 		for _, t := range databaseTables {
 			taskTablesMap[t] = struct{}{}
 		}
-		for _, smt := range migrateGroupTasks {
-			if smt.SchemaNameS == schemaRoute.SchemaNameS {
-				if _, ok := taskTablesMap[smt.TableNameS]; !ok {
-					err = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+		for _, mt := range migrateGroupTasks {
+			if mt.SchemaNameS == schemaRoute.SchemaNameS {
+				if _, ok := taskTablesMap[mt.TableNameS]; !ok {
+					err = model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 						err = model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:    smt.TaskName,
-							SchemaNameS: smt.SchemaNameS,
-							TableNameS:  smt.TableNameS,
+							TaskName:    mt.TaskName,
+							SchemaNameS: mt.SchemaNameS,
+							TableNameS:  mt.TableNameS,
 						})
 						if err != nil {
 							return err
 						}
 						err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTask(txnCtx, &task.DataMigrateTask{
-							TaskName:    smt.TaskName,
-							SchemaNameS: smt.SchemaNameS,
-							TableNameS:  smt.TableNameS,
+							TaskName:    mt.TaskName,
+							SchemaNameS: mt.SchemaNameS,
+							TableNameS:  mt.TableNameS,
 						})
 						if err != nil {
 							return err
@@ -511,29 +515,29 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 				}
 				var summary *task.DataMigrateSummary
 
-				summary, err = model.GetIDataMigrateSummaryRW().GetDataMigrateSummary(dmt.Ctx, &task.DataMigrateSummary{
-					TaskName:    smt.TaskName,
-					SchemaNameS: smt.SchemaNameS,
-					TableNameS:  smt.TableNameS,
+				summary, err = model.GetIDataMigrateSummaryRW().GetDataMigrateSummary(stm.Ctx, &task.DataMigrateSummary{
+					TaskName:    mt.TaskName,
+					SchemaNameS: mt.SchemaNameS,
+					TableNameS:  mt.TableNameS,
 				})
 				if err != nil {
 					return err
 				}
 
-				if int64(summary.ChunkTotals) != smt.ChunkTotals {
-					err = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+				if int64(summary.ChunkTotals) != mt.ChunkTotals {
+					err = model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 						err = model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:    smt.TaskName,
-							SchemaNameS: smt.SchemaNameS,
-							TableNameS:  smt.TableNameS,
+							TaskName:    mt.TaskName,
+							SchemaNameS: mt.SchemaNameS,
+							TableNameS:  mt.TableNameS,
 						})
 						if err != nil {
 							return err
 						}
 						err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTask(txnCtx, &task.DataMigrateTask{
-							TaskName:    smt.TaskName,
-							SchemaNameS: smt.SchemaNameS,
-							TableNameS:  smt.TableNameS,
+							TaskName:    mt.TaskName,
+							SchemaNameS: mt.SchemaNameS,
+							TableNameS:  mt.TableNameS,
 						})
 						if err != nil {
 							return err
@@ -547,7 +551,7 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 					continue
 				}
 
-				repeatInitTableMap[smt.TableNameS] = struct{}{}
+				repeatInitTableMap[mt.TableNameS] = struct{}{}
 			}
 		}
 	}
@@ -565,10 +569,10 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 	// database tables
 	// init database table
 	logger.Info("stmt migrate task init",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
 
-	g, gCtx := errgroup.WithContext(dmt.Ctx)
-	g.SetLimit(int(dmt.TaskParams.TableThread))
+	g, gCtx := errgroup.WithContext(stm.Ctx)
+	g.SetLimit(int(stm.TaskParams.TableThread))
 
 	for _, taskJob := range databaseTables {
 		sourceTable := taskJob
@@ -594,18 +598,18 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 
 				dataRule := &DataMigrateRule{
 					Ctx:            gCtx,
-					TaskMode:       dmt.Task.TaskMode,
-					TaskName:       dmt.Task.TaskName,
-					TaskFlow:       dmt.Task.TaskFlow,
+					TaskMode:       stm.Task.TaskMode,
+					TaskName:       stm.Task.TaskName,
+					TaskFlow:       stm.Task.TaskFlow,
 					DatabaseS:      databaseS,
 					DBCollationS:   dbCollationS,
 					SchemaNameS:    schemaRoute.SchemaNameS,
 					TableNameS:     sourceTable,
 					TableTypeS:     databaseTableTypeMap,
-					DBCharsetS:     dmt.DatasourceS.ConnectCharset,
-					CaseFieldRuleS: dmt.Task.CaseFieldRuleS,
-					CaseFieldRuleT: dmt.Task.CaseFieldRuleT,
-					GlobalSqlHintS: dmt.TaskParams.SqlHintS,
+					DBCharsetS:     stm.DatasourceS.ConnectCharset,
+					CaseFieldRuleS: stm.Task.CaseFieldRuleS,
+					CaseFieldRuleT: stm.Task.CaseFieldRuleT,
+					GlobalSqlHintS: stm.TaskParams.SqlHintS,
 				}
 
 				attsRule, err := database.IDataMigrateAttributesRule(dataRule)
@@ -615,9 +619,15 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 
 				// only where range
 				if !attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, "") {
+					encChunkS := snappy.Encode(nil, []byte(attsRule.WhereRange))
+
+					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
 					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
-							TaskName:        dmt.Task.TaskName,
+							TaskName:        stm.Task.TaskName,
 							SchemaNameS:     attsRule.SchemaNameS,
 							TableNameS:      attsRule.TableNameS,
 							SchemaNameT:     attsRule.SchemaNameT,
@@ -628,16 +638,16 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
-							SqlHintT:        dmt.TaskParams.SqlHintT,
-							ChunkDetailS:    attsRule.WhereRange,
-							ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
+							SqlHintT:        stm.TaskParams.SqlHintT,
+							ChunkDetailS:    encryptChunkS,
+							ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						})
 						if err != nil {
 							return err
 						}
 						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:    dmt.Task.TaskName,
+							TaskName:    stm.Task.TaskName,
 							SchemaNameS: attsRule.SchemaNameS,
 							TableNameS:  attsRule.TableNameS,
 							SchemaNameT: attsRule.SchemaNameT,
@@ -658,26 +668,169 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 					return nil
 				}
 
-				chunkTask := uuid.New().String()
-
-				chunks, err := databaseS.GetDatabaseTableChunkTask(chunkTask, schemaRoute.SchemaNameS, sourceTable, dmt.TaskParams.ChunkSize, dmt.TaskParams.CallTimeout)
-				if err != nil {
-					return err
-				}
-
 				var whereRange string
 
-				if len(chunks) == 0 {
-					switch {
-					case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-						whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
-					default:
-						whereRange = `1 = 1`
+				// statistic
+				if !strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) || (strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) && stringutil.VersionOrdinal(dbVersion) < stringutil.VersionOrdinal(constant.OracleDatabaseTableMigrateRowidRequireVersion)) {
+					columnNameSlis, err := databaseS.FindDatabaseTableBestColumn(attsRule.SchemaNameS, attsRule.TableNameS, "")
+					if err != nil {
+						return err
+					}
+					if len(columnNameSlis) == 0 {
+						logger.Warn("stmt migrate task table",
+							zap.String("task_name", stm.Task.TaskName),
+							zap.String("task_mode", stm.Task.TaskMode),
+							zap.String("task_flow", stm.Task.TaskFlow),
+							zap.String("schema_name_s", attsRule.SchemaNameS),
+							zap.String("table_name_s", attsRule.TableNameS),
+							zap.String("database_version", dbVersion),
+							zap.String("database_role", dbRole),
+							zap.String("migrate_method", "scan"))
+						switch {
+						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
+							whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
+						default:
+							whereRange = `1 = 1`
+						}
+
+						encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+						if err != nil {
+							return err
+						}
+
+						err = model.Transaction(gCtx, func(txnCtx context.Context) error {
+							_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
+								TaskName:        stm.Task.TaskName,
+								SchemaNameS:     attsRule.SchemaNameS,
+								TableNameS:      attsRule.TableNameS,
+								SchemaNameT:     attsRule.SchemaNameT,
+								TableNameT:      attsRule.TableNameT,
+								TableTypeS:      attsRule.TableTypeS,
+								GlobalScnS:      globalScn,
+								ColumnDetailO:   attsRule.ColumnDetailO,
+								ColumnDetailS:   attsRule.ColumnDetailS,
+								ColumnDetailT:   attsRule.ColumnDetailT,
+								SqlHintS:        attsRule.SqlHintS,
+								SqlHintT:        stm.TaskParams.SqlHintT,
+								ChunkDetailS:    encryptChunkS,
+								ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
+								TaskStatus:      constant.TaskDatabaseStatusWaiting,
+							})
+							if err != nil {
+								return err
+							}
+							_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
+								TaskName:    stm.Task.TaskName,
+								SchemaNameS: attsRule.SchemaNameS,
+								TableNameS:  attsRule.TableNameS,
+								SchemaNameT: attsRule.SchemaNameT,
+								TableNameT:  attsRule.TableNameT,
+								GlobalScnS:  globalScn,
+								TableRowsS:  tableRows,
+								TableSizeS:  tableSize,
+								ChunkTotals: 1,
+							})
+							if err != nil {
+								return err
+							}
+							return nil
+						})
+						if err != nil {
+							return err
+						}
+						return nil
 					}
 
-					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-						_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
-							TaskName:        dmt.Task.TaskName,
+					bucketRanges, err := getDatabaseTableColumnBucket(stm.Ctx, databaseS, databaseT, stm.Task.TaskName, stm.Task.TaskFlow, attsRule.SchemaNameS, attsRule.SchemaNameT, attsRule.TableNameS, attsRule.TableNameT, dbCollationS, columnNameSlis, stm.DatasourceS.ConnectCharset, stm.DatasourceT.ConnectCharset)
+					if err != nil {
+						return err
+					}
+					logger.Warn("stmt migrate task table",
+						zap.String("task_name", stm.Task.TaskName),
+						zap.String("task_mode", stm.Task.TaskMode),
+						zap.String("task_flow", stm.Task.TaskFlow),
+						zap.String("schema_name_s", attsRule.SchemaNameS),
+						zap.String("table_name_s", attsRule.TableNameS),
+						zap.String("database_version", dbVersion),
+						zap.String("database_role", dbRole),
+						zap.String("migrate_method", "statistic"))
+					if len(bucketRanges) == 0 {
+						switch {
+						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
+							whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
+						default:
+							whereRange = `1 = 1`
+						}
+
+						encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+						if err != nil {
+							return err
+						}
+
+						err = model.Transaction(gCtx, func(txnCtx context.Context) error {
+							_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
+								TaskName:        stm.Task.TaskName,
+								SchemaNameS:     attsRule.SchemaNameS,
+								TableNameS:      attsRule.TableNameS,
+								SchemaNameT:     attsRule.SchemaNameT,
+								TableNameT:      attsRule.TableNameT,
+								TableTypeS:      attsRule.TableTypeS,
+								GlobalScnS:      globalScn,
+								ColumnDetailO:   attsRule.ColumnDetailO,
+								ColumnDetailS:   attsRule.ColumnDetailS,
+								ColumnDetailT:   attsRule.ColumnDetailT,
+								SqlHintS:        attsRule.SqlHintS,
+								SqlHintT:        stm.TaskParams.SqlHintT,
+								ChunkDetailS:    encryptChunkS,
+								ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
+								TaskStatus:      constant.TaskDatabaseStatusWaiting,
+							})
+							if err != nil {
+								return err
+							}
+							_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
+								TaskName:    stm.Task.TaskName,
+								SchemaNameS: attsRule.SchemaNameS,
+								TableNameS:  attsRule.TableNameS,
+								SchemaNameT: attsRule.SchemaNameT,
+								TableNameT:  attsRule.TableNameT,
+								GlobalScnS:  globalScn,
+								TableRowsS:  tableRows,
+								TableSizeS:  tableSize,
+								ChunkTotals: 1,
+							})
+							if err != nil {
+								return err
+							}
+							return nil
+						})
+						if err != nil {
+							return err
+						}
+						return nil
+					}
+
+					var metas []*task.DataMigrateTask
+					for _, r := range bucketRanges {
+						switch {
+						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
+							whereRange = stringutil.StringBuilder(r.ToStringS(), ` AND `, attsRule.WhereRange)
+						default:
+							whereRange = r.ToStringS()
+						}
+
+						encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+						if err != nil {
+							return err
+						}
+						metas = append(metas, &task.DataMigrateTask{
+							TaskName:        stm.Task.TaskName,
 							SchemaNameS:     attsRule.SchemaNameS,
 							TableNameS:      attsRule.TableNameS,
 							SchemaNameT:     attsRule.SchemaNameT,
@@ -688,16 +841,85 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
-							SqlHintT:        dmt.TaskParams.SqlHintT,
-							ChunkDetailS:    whereRange,
-							ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
+							SqlHintT:        stm.TaskParams.SqlHintT,
+							ChunkDetailS:    encryptChunkS,
+							ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
+							TaskStatus:      constant.TaskDatabaseStatusWaiting,
+						})
+					}
+
+					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
+						err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(txnCtx, metas, int(stm.TaskParams.BatchSize))
+						if err != nil {
+							return err
+						}
+						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
+							TaskName:    stm.Task.TaskName,
+							SchemaNameS: attsRule.SchemaNameS,
+							TableNameS:  attsRule.TableNameS,
+							SchemaNameT: attsRule.SchemaNameT,
+							TableNameT:  attsRule.TableNameT,
+							GlobalScnS:  globalScn,
+							TableRowsS:  tableRows,
+							TableSizeS:  tableSize,
+							ChunkTotals: uint64(len(bucketRanges)),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+
+				chunkTask := uuid.New().String()
+
+				chunks, err := databaseS.GetDatabaseTableChunkTask(chunkTask, schemaRoute.SchemaNameS, sourceTable, stm.TaskParams.ChunkSize, stm.TaskParams.CallTimeout)
+				if err != nil {
+					return err
+				}
+
+				if len(chunks) == 0 {
+					switch {
+					case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
+						whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
+					default:
+						whereRange = `1 = 1`
+					}
+
+					encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+
+					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
+						_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
+							TaskName:        stm.Task.TaskName,
+							SchemaNameS:     attsRule.SchemaNameS,
+							TableNameS:      attsRule.TableNameS,
+							SchemaNameT:     attsRule.SchemaNameT,
+							TableNameT:      attsRule.TableNameT,
+							TableTypeS:      attsRule.TableTypeS,
+							GlobalScnS:      globalScn,
+							ColumnDetailO:   attsRule.ColumnDetailO,
+							ColumnDetailS:   attsRule.ColumnDetailS,
+							ColumnDetailT:   attsRule.ColumnDetailT,
+							SqlHintS:        attsRule.SqlHintS,
+							SqlHintT:        stm.TaskParams.SqlHintT,
+							ChunkDetailS:    encryptChunkS,
+							ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						})
 						if err != nil {
 							return err
 						}
 						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:    dmt.Task.TaskName,
+							TaskName:    stm.Task.TaskName,
 							SchemaNameS: attsRule.SchemaNameS,
 							TableNameS:  attsRule.TableNameS,
 							SchemaNameT: attsRule.SchemaNameT,
@@ -728,8 +950,15 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 						whereRange = r["CMD"]
 					}
 
+					encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+
 					metas = append(metas, &task.DataMigrateTask{
-						TaskName:        dmt.Task.TaskName,
+						TaskName:        stm.Task.TaskName,
 						SchemaNameS:     attsRule.SchemaNameS,
 						TableNameS:      attsRule.TableNameS,
 						SchemaNameT:     attsRule.SchemaNameT,
@@ -740,20 +969,20 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 						ColumnDetailS:   attsRule.ColumnDetailS,
 						ColumnDetailT:   attsRule.ColumnDetailT,
 						SqlHintS:        attsRule.SqlHintS,
-						SqlHintT:        dmt.TaskParams.SqlHintT,
-						ChunkDetailS:    whereRange,
-						ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
+						SqlHintT:        stm.TaskParams.SqlHintT,
+						ChunkDetailS:    encryptChunkS,
+						ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
 						TaskStatus:      constant.TaskDatabaseStatusWaiting,
 					})
 				}
 
 				err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-					err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(txnCtx, metas, int(dmt.TaskParams.BatchSize))
+					err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(txnCtx, metas, int(stm.TaskParams.BatchSize))
 					if err != nil {
 						return err
 					}
 					_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-						TaskName:    dmt.Task.TaskName,
+						TaskName:    stm.Task.TaskName,
 						SchemaNameS: attsRule.SchemaNameS,
 						TableNameS:  attsRule.TableNameS,
 						SchemaNameT: attsRule.SchemaNameT,
@@ -773,9 +1002,9 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 				}
 
 				logger.Info("stmt migrate task init",
-					zap.String("task_name", dmt.Task.TaskName),
-					zap.String("task_mode", dmt.Task.TaskMode),
-					zap.String("task_flow", dmt.Task.TaskFlow),
+					zap.String("task_name", stm.Task.TaskName),
+					zap.String("task_mode", stm.Task.TaskMode),
+					zap.String("task_flow", stm.Task.TaskFlow),
 					zap.String("schema_name_s", attsRule.SchemaNameS),
 					zap.String("table_name_s", attsRule.TableNameS),
 					zap.String("cost", time.Now().Sub(startTime).String()))
@@ -787,7 +1016,7 @@ func (dmt *StmtMigrateTask) InitDataMigrateTask(databaseS database.IDatabase, db
 	// ignore context canceled error
 	if err = g.Wait(); !errors.Is(err, context.Canceled) {
 		logger.Warn("stmt migrate task init",
-			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow),
 			zap.String("schema_name_s", schemaRoute.SchemaNameS),
 			zap.Error(err))
 		return err

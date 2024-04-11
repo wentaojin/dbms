@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/snappy"
+
 	"github.com/wentaojin/dbms/proto/pb"
 
 	"github.com/wentaojin/dbms/database"
@@ -63,6 +65,16 @@ func (r *CsvMigrateRow) MigrateRead() error {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	columnDetailS = stringutil.BytesToString(convertRaw)
+
+	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
+	if err != nil {
+		return err
+	}
+	decChunkDetailS, err := snappy.Decode(nil, []byte(desChunkDetailS))
+	if err != nil {
+		return err
+	}
+	r.Dmt.ChunkDetailS = stringutil.BytesToString(decChunkDetailS)
 
 	switch {
 	case strings.EqualFold(r.Dmt.ConsistentReadS, "YES") && strings.EqualFold(r.Dmt.SqlHintS, ""):

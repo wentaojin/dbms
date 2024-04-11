@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/snappy"
+
 	"github.com/google/uuid"
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/errconcurrent"
@@ -76,14 +78,14 @@ func (cmt *CsvMigrateTask) Start() error {
 
 	logger.Info("csv migrate task inspect migrate task",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
-	dbCollationS, err := InspectMigrateTask(databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
+	dbVersion, dbCollationS, err := inspectMigrateTask(databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
 
 	logger.Info("csv migrate task init task",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
-	err = cmt.InitCsvMigrateTask(databaseS, dbCollationS, schemaRoute)
+	err = cmt.InitCsvMigrateTask(databaseS, dbVersion, dbCollationS, schemaRoute)
 	if err != nil {
 		return err
 	}
@@ -459,7 +461,12 @@ func (cmt *CsvMigrateTask) Start() error {
 	return nil
 }
 
-func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVersion string, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+	dbRole, err := databaseS.GetDatabaseRole()
+	if err != nil {
+		return err
+	}
+
 	// filter database table
 	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(cmt.Ctx, &rule.MigrateTaskTable{
 		TaskName:    schemaRoute.TaskName,
@@ -637,6 +644,12 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 
 				// only where range
 				if !attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, "") {
+					encChunkS := snappy.Encode(nil, []byte(attsRule.WhereRange))
+
+					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
 					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
 							TaskName:        cmt.Task.TaskName,
@@ -650,7 +663,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
-							ChunkDetailS:    attsRule.WhereRange,
+							ChunkDetailS:    encryptChunkS,
 							ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 							CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
@@ -681,13 +694,215 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 					return nil
 				}
 
+				var whereRange string
+				// statistic
+				if !strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) || (strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) && stringutil.VersionOrdinal(dbVersion) < stringutil.VersionOrdinal(constant.OracleDatabaseTableMigrateRowidRequireVersion)) {
+					columnNameSlis, err := databaseS.FindDatabaseTableBestColumn(attsRule.SchemaNameS, attsRule.TableNameS, "")
+					if err != nil {
+						return err
+					}
+					if len(columnNameSlis) == 0 {
+						logger.Warn("csv migrate task table",
+							zap.String("task_name", cmt.Task.TaskName),
+							zap.String("task_mode", cmt.Task.TaskMode),
+							zap.String("task_flow", cmt.Task.TaskFlow),
+							zap.String("schema_name_s", attsRule.SchemaNameS),
+							zap.String("table_name_s", attsRule.TableNameS),
+							zap.String("database_version", dbVersion),
+							zap.String("database_role", dbRole),
+							zap.String("migrate_method", "scan"))
+						switch {
+						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
+							whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
+						default:
+							whereRange = `1 = 1`
+						}
+
+						encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+						if err != nil {
+							return err
+						}
+
+						err = model.Transaction(gCtx, func(txnCtx context.Context) error {
+							_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
+								TaskName:        cmt.Task.TaskName,
+								SchemaNameS:     attsRule.SchemaNameS,
+								TableNameS:      attsRule.TableNameS,
+								SchemaNameT:     attsRule.SchemaNameT,
+								TableNameT:      attsRule.TableNameT,
+								TableTypeS:      attsRule.TableTypeS,
+								GlobalScnS:      globalScn,
+								ColumnDetailO:   attsRule.ColumnDetailO,
+								ColumnDetailS:   attsRule.ColumnDetailS,
+								ColumnDetailT:   attsRule.ColumnDetailT,
+								SqlHintS:        attsRule.SqlHintS,
+								ChunkDetailS:    encryptChunkS,
+								ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
+								TaskStatus:      constant.TaskDatabaseStatusWaiting,
+							})
+							if err != nil {
+								return err
+							}
+							_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
+								TaskName:    cmt.Task.TaskName,
+								SchemaNameS: attsRule.SchemaNameS,
+								TableNameS:  attsRule.TableNameS,
+								SchemaNameT: attsRule.SchemaNameT,
+								TableNameT:  attsRule.TableNameT,
+								GlobalScnS:  globalScn,
+								TableRowsS:  tableRows,
+								TableSizeS:  tableSize,
+								ChunkTotals: 1,
+							})
+							if err != nil {
+								return err
+							}
+							return nil
+						})
+						if err != nil {
+							return err
+						}
+						return nil
+					}
+
+					bucketRanges, err := getDatabaseTableColumnBucket(cmt.Ctx, databaseS, nil, cmt.Task.TaskName, cmt.Task.TaskFlow, attsRule.SchemaNameS, attsRule.SchemaNameT, attsRule.TableNameS, attsRule.TableNameT, dbCollationS, columnNameSlis, cmt.DatasourceS.ConnectCharset, cmt.DatasourceT.ConnectCharset)
+					if err != nil {
+						return err
+					}
+					logger.Warn("csv migrate task table",
+						zap.String("task_name", cmt.Task.TaskName),
+						zap.String("task_mode", cmt.Task.TaskMode),
+						zap.String("task_flow", cmt.Task.TaskFlow),
+						zap.String("schema_name_s", attsRule.SchemaNameS),
+						zap.String("table_name_s", attsRule.TableNameS),
+						zap.String("database_version", dbVersion),
+						zap.String("database_role", dbRole),
+						zap.String("migrate_method", "statistic"))
+					if len(bucketRanges) == 0 {
+						switch {
+						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
+							whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
+						default:
+							whereRange = `1 = 1`
+						}
+
+						encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+						if err != nil {
+							return err
+						}
+
+						err = model.Transaction(gCtx, func(txnCtx context.Context) error {
+							_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
+								TaskName:        cmt.Task.TaskName,
+								SchemaNameS:     attsRule.SchemaNameS,
+								TableNameS:      attsRule.TableNameS,
+								SchemaNameT:     attsRule.SchemaNameT,
+								TableNameT:      attsRule.TableNameT,
+								TableTypeS:      attsRule.TableTypeS,
+								GlobalScnS:      globalScn,
+								ColumnDetailO:   attsRule.ColumnDetailO,
+								ColumnDetailS:   attsRule.ColumnDetailS,
+								ColumnDetailT:   attsRule.ColumnDetailT,
+								SqlHintS:        attsRule.SqlHintS,
+								ChunkDetailS:    encryptChunkS,
+								ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
+								TaskStatus:      constant.TaskDatabaseStatusWaiting,
+							})
+							if err != nil {
+								return err
+							}
+							_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
+								TaskName:    cmt.Task.TaskName,
+								SchemaNameS: attsRule.SchemaNameS,
+								TableNameS:  attsRule.TableNameS,
+								SchemaNameT: attsRule.SchemaNameT,
+								TableNameT:  attsRule.TableNameT,
+								GlobalScnS:  globalScn,
+								TableRowsS:  tableRows,
+								TableSizeS:  tableSize,
+								ChunkTotals: 1,
+							})
+							if err != nil {
+								return err
+							}
+							return nil
+						})
+						if err != nil {
+							return err
+						}
+						return nil
+					}
+
+					var metas []*task.DataMigrateTask
+					for _, r := range bucketRanges {
+						switch {
+						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
+							whereRange = stringutil.StringBuilder(r.ToStringS(), ` AND `, attsRule.WhereRange)
+						default:
+							whereRange = r.ToStringS()
+						}
+
+						encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+						if err != nil {
+							return err
+						}
+						metas = append(metas, &task.DataMigrateTask{
+							TaskName:        cmt.Task.TaskName,
+							SchemaNameS:     attsRule.SchemaNameS,
+							TableNameS:      attsRule.TableNameS,
+							SchemaNameT:     attsRule.SchemaNameT,
+							TableNameT:      attsRule.TableNameT,
+							TableTypeS:      attsRule.TableTypeS,
+							GlobalScnS:      globalScn,
+							ColumnDetailO:   attsRule.ColumnDetailO,
+							ColumnDetailS:   attsRule.ColumnDetailS,
+							ColumnDetailT:   attsRule.ColumnDetailT,
+							SqlHintS:        attsRule.SqlHintS,
+							ChunkDetailS:    encryptChunkS,
+							ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
+							TaskStatus:      constant.TaskDatabaseStatusWaiting,
+						})
+					}
+
+					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
+						err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(txnCtx, metas, int(cmt.TaskParams.BatchSize))
+						if err != nil {
+							return err
+						}
+						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
+							TaskName:    cmt.Task.TaskName,
+							SchemaNameS: attsRule.SchemaNameS,
+							TableNameS:  attsRule.TableNameS,
+							SchemaNameT: attsRule.SchemaNameT,
+							TableNameT:  attsRule.TableNameT,
+							GlobalScnS:  globalScn,
+							TableRowsS:  tableRows,
+							TableSizeS:  tableSize,
+							ChunkTotals: uint64(len(bucketRanges)),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
+					})
+					if err != nil {
+						return err
+					}
+
+					return nil
+				}
+
 				chunkTask := uuid.New().String()
 				chunks, err := databaseS.GetDatabaseTableChunkTask(chunkTask, schemaRoute.SchemaNameS, sourceTable, cmt.TaskParams.ChunkSize, cmt.TaskParams.CallTimeout)
 				if err != nil {
 					return err
 				}
-
-				var whereRange string
 
 				if len(chunks) == 0 {
 					switch {
@@ -695,6 +910,13 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 						whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
 					default:
 						whereRange = `1 = 1`
+					}
+
+					encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
 					}
 
 					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
@@ -710,7 +932,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
-							ChunkDetailS:    whereRange,
+							ChunkDetailS:    encryptChunkS,
 							ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 							CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
@@ -753,6 +975,13 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 						whereRange = r["CMD"]
 					}
 
+					encChunkS := snappy.Encode(nil, []byte(whereRange))
+
+					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+
 					metas = append(metas, &task.DataMigrateTask{
 						TaskName:        cmt.Task.TaskName,
 						SchemaNameS:     attsRule.SchemaNameS,
@@ -765,7 +994,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbCo
 						ColumnDetailS:   attsRule.ColumnDetailS,
 						ColumnDetailT:   attsRule.ColumnDetailT,
 						SqlHintS:        attsRule.SqlHintS,
-						ChunkDetailS:    whereRange,
+						ChunkDetailS:    encryptChunkS,
 						ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 						TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						CsvFile:         csvFile,

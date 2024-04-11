@@ -16,9 +16,14 @@ limitations under the License.
 package taskflow
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/wentaojin/dbms/model"
+	"github.com/wentaojin/dbms/model/rule"
+	"github.com/wentaojin/dbms/utils/chunk"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/constant"
@@ -26,38 +31,178 @@ import (
 	"go.uber.org/zap"
 )
 
-func InspectMigrateTask(databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (bool, error) {
-	oracleDBVersion, err := databaseS.GetDatabaseVersion()
+func inspectMigrateTask(databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (string, bool, error) {
+	version, err := databaseS.GetDatabaseVersion()
 	if err != nil {
-		return false, err
-	}
-
-	if stringutil.VersionOrdinal(oracleDBVersion) < stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
-		return false, fmt.Errorf("oracle db version [%v] is less than 11g, can't be using the current platform", oracleDBVersion)
+		return version, false, err
 	}
 
 	oracleCollation := false
-	if stringutil.VersionOrdinal(oracleDBVersion) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+	if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
 		oracleCollation = true
+	} else {
+		nlsComp, nlsSort, err := databaseS.GetDatabaseCharsetCollation()
+		if err != nil {
+			return version, false, err
+		}
+		if !strings.EqualFold(nlsComp, nlsSort) {
+			return version, false, fmt.Errorf("the database server nls_comp [%s] and nls_sort [%s] aren't different, current not support, please contact author or reselect", nlsComp, nlsSort)
+		}
 	}
 
 	dbCharsetS, err := databaseS.GetDatabaseCharset()
 	if err != nil {
-		return false, err
+		return version, false, err
 	}
 	if !strings.EqualFold(connectDBCharsetS, dbCharsetS) {
 		zap.L().Warn("oracle charset and oracle config charset",
 			zap.String("oracle database charset", dbCharsetS),
 			zap.String("oracle config charset", connectDBCharsetS))
-		return false, fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", dbCharsetS, connectDBCharsetS)
+		return version, false, fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", dbCharsetS, connectDBCharsetS)
 	}
 	if _, ok := constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(connectDBCharsetS)]; !ok {
-		return false, fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
+		return version, false, fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
 	}
 	if !stringutil.IsContainedString(constant.MigrateDataSupportCharset, stringutil.StringUpper(connectDBCharsetT)) {
-		return false, fmt.Errorf("mysql current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
+		return version, false, fmt.Errorf("mysql current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
 	}
-	return oracleCollation, nil
+	return version, oracleCollation, nil
+}
+
+func getDatabaseTableColumnBucket(ctx context.Context,
+	databaseS, databaseT database.IDatabase, taskName, taskFlow, schemaNameS, schemaNameT, tableNameS, tableNameT string, collationS bool, columnNameSlis []string, connCharsetS, connCharsetT string) ([]*chunk.Range, error) {
+	var (
+		bucketRanges   []*chunk.Range
+		randomValueSli [][]string
+		newColumnNameS []string
+	)
+
+	columnAttriS := make(map[string]map[string]string)
+	columnAttriT := make(map[string]map[string]string)
+	columnRouteS := make(map[string]string)
+	columnRouteNewS := make(map[string]string)
+	columnCollationS := make(map[string]string)
+
+	routeRules, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(ctx, &rule.ColumnRouteRule{
+		TaskName:    taskName,
+		SchemaNameS: schemaNameS,
+		TableNameS:  tableNameS,
+	})
+	if err != nil {
+		return bucketRanges, err
+	}
+	for _, r := range routeRules {
+		columnRouteS[r.ColumnNameS] = r.ColumnNameT
+	}
+
+	for i, column := range columnNameSlis {
+		var columnT string
+		convertUtf8Raws, err := stringutil.CharsetConvert([]byte(column), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(connCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return bucketRanges, err
+		}
+		columnUtf8S := stringutil.BytesToString(convertUtf8Raws)
+		if val, ok := columnRouteS[columnUtf8S]; ok {
+			columnT = val
+		} else {
+			columnT = columnUtf8S
+		}
+		attriS, err := databaseS.GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, column, collationS)
+		if err != nil {
+			return bucketRanges, err
+		}
+
+		var attriT []map[string]string
+		if databaseT != nil {
+			attriT, err = databaseT.GetDatabaseTableColumnAttribute(schemaNameT, tableNameT, columnT, collationS)
+			if err != nil {
+				return bucketRanges, err
+			}
+		}
+
+		columnBucketS, err := databaseS.GetDatabaseTableColumnBucket(schemaNameS, tableNameS, column, attriS[0]["DATA_TYPE"])
+		if err != nil {
+			return bucketRanges, err
+		}
+		// first elems
+		if i == 0 && len(columnBucketS) == 0 {
+			break
+		} else if i > 0 && len(columnBucketS) == 0 {
+			continue
+		} else {
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(column), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(connCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return bucketRanges, fmt.Errorf("[InitDataCompareTask] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", schemaNameS, tableNameS, column, err)
+			}
+
+			columnNameS := stringutil.BytesToString(columnNameUtf8Raw)
+			randomValueSli = append(randomValueSli, columnBucketS)
+			newColumnNameS = append(newColumnNameS, columnNameS)
+			columnAttriS[columnNameS] = attriS[0]
+			if len(attriT) > 0 && databaseT != nil {
+				columnAttriT[columnNameS] = map[string]string{
+					columnT: attriT[0]["DATA_TYPE"],
+				}
+			} else {
+				columnAttriT[columnNameS] = attriS[0]
+			}
+			columnRouteNewS[columnNameS] = columnT
+			columnCollationS[columnNameS] = attriS[0]["COLLATION"]
+		}
+	}
+
+	if len(randomValueSli) > 0 {
+		randomValues, randomValuesLen := stringutil.StringSliceAlignLen(randomValueSli)
+		for i := 0; i <= randomValuesLen; i++ {
+			newChunk := chunk.NewRange()
+
+			for j, columnS := range newColumnNameS {
+				if i == 0 {
+					if len(randomValues[j]) == 0 {
+						break
+					}
+					err = newChunk.Update(taskFlow,
+						stringutil.StringUpper(connCharsetS),
+						stringutil.StringUpper(connCharsetT),
+						columnS,
+						columnRouteNewS[columnS],
+						columnCollationS[columnS],
+						columnAttriS[columnS],
+						columnAttriT[columnS],
+						"", randomValues[j][i], false, true)
+					if err != nil {
+						return bucketRanges, err
+					}
+				} else if i == len(randomValues[0]) {
+					err = newChunk.Update(taskFlow,
+						stringutil.StringUpper(connCharsetS),
+						stringutil.StringUpper(connCharsetT),
+						columnS,
+						columnRouteNewS[columnS],
+						columnCollationS[columnS],
+						columnAttriS[columnS],
+						columnAttriT[columnS], randomValues[j][i-1], "", true, false)
+					if err != nil {
+						return bucketRanges, err
+					}
+				} else {
+					err = newChunk.Update(taskFlow,
+						stringutil.StringUpper(connCharsetS),
+						stringutil.StringUpper(connCharsetT),
+						columnS,
+						columnRouteNewS[columnS],
+						columnCollationS[columnS],
+						columnAttriS[columnS],
+						columnAttriT[columnS], randomValues[j][i-1], randomValues[j][i], true, true)
+					if err != nil {
+						return bucketRanges, err
+					}
+				}
+			}
+			bucketRanges = append(bucketRanges, newChunk)
+		}
+	}
+	return bucketRanges, nil
 }
 
 func optimizerDataMigrateColumnS(columnName, datatype, dataScale string) (string, error) {
