@@ -512,7 +512,7 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 
 	writerTime := time.Now()
 	var w database.ISequenceMigrateDatabaseWriter
-	w = NewSequenceMigrateDatabase(st.Ctx, st.Task.TaskName, st.Task.TaskFlow, databaseT, startTime, seqCreates)
+	w = NewSequenceMigrateDatabase(st.Ctx, st.Task.TaskName, st.Task.TaskFlow, st.SchemaNameS, st.SchemaNameT, databaseT, startTime, seqCreates)
 
 	if st.TaskParams.EnableDirectCreate {
 		err = w.SyncSequenceDatabase()
