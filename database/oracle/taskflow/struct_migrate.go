@@ -116,11 +116,11 @@ func (st *StructMigrateTask) Start() error {
 	_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(st.Ctx, &task.StructMigrateTask{
 		TaskName:        st.Task.TaskName,
 		SchemaNameS:     st.SchemaNameS,
-		TableTypeS:      constant.OracleDatabaseTableTypeSchema,
+		TableTypeS:      constant.DatabaseStructMigrateSqlSchemaCategory,
 		SchemaNameT:     st.SchemaNameT,
 		TaskStatus:      constant.TaskDatabaseStatusSuccess,
 		TargetSqlDigest: encryptCreateSchema,
-		IsSchemaCreate:  constant.DatabaseIsSchemaCreateSqlYES,
+		Category:        constant.DatabaseStructMigrateSqlSchemaCategory,
 		Duration:        time.Now().Sub(schemaCreateTime).Seconds(),
 	})
 	if err != nil {
@@ -145,33 +145,33 @@ func (st *StructMigrateTask) Start() error {
 		// get migrate task tables
 		migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
 			&task.StructMigrateTask{
-				TaskName:       st.Task.TaskName,
-				TaskStatus:     constant.TaskDatabaseStatusWaiting,
-				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+				TaskName:   st.Task.TaskName,
+				TaskStatus: constant.TaskDatabaseStatusWaiting,
+				Category:   constant.DatabaseStructMigrateSqlTableCategory})
 		if err != nil {
 			return err
 		}
 		migrateFailedTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
 			&task.StructMigrateTask{
-				TaskName:       st.Task.TaskName,
-				TaskStatus:     constant.TaskDatabaseStatusFailed,
-				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+				TaskName:   st.Task.TaskName,
+				TaskStatus: constant.TaskDatabaseStatusFailed,
+				Category:   constant.DatabaseStructMigrateSqlTableCategory})
 		if err != nil {
 			return err
 		}
 		migrateRunningTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
 			&task.StructMigrateTask{
-				TaskName:       st.Task.TaskName,
-				TaskStatus:     constant.TaskDatabaseStatusRunning,
-				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+				TaskName:   st.Task.TaskName,
+				TaskStatus: constant.TaskDatabaseStatusRunning,
+				Category:   constant.DatabaseStructMigrateSqlTableCategory})
 		if err != nil {
 			return err
 		}
 		migrateStopTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
 			&task.StructMigrateTask{
-				TaskName:       st.Task.TaskName,
-				TaskStatus:     constant.TaskDatabaseStatusStopped,
-				IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+				TaskName:   st.Task.TaskName,
+				TaskStatus: constant.TaskDatabaseStatusStopped,
+				Category:   constant.DatabaseStructMigrateSqlTableCategory})
 		if err != nil {
 			return err
 		}
@@ -477,6 +477,73 @@ func (st *StructMigrateTask) structMigrateStart(
 	return nil
 }
 
+func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.IDatabase) error {
+	startTime := time.Now()
+	logger.Info("sequence migrate task process",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("start_time", startTime.String()))
+	sequences, err := databaseS.GetDatabaseSequence(st.SchemaNameS)
+	if err != nil {
+		return err
+	}
+
+	var seqCreates []string
+	for _, seq := range sequences {
+		lastNumber, err := stringutil.StrconvIntBitSize(seq["LAST_NUMBER"], 64)
+		if err != nil {
+			return err
+		}
+		cacheSize, err := stringutil.StrconvIntBitSize(seq["CACHE_SIZE"], 64)
+		if err != nil {
+			return err
+		}
+		// disable cache
+		if cacheSize == 0 {
+			lastNumber = lastNumber + 5000
+		} else {
+			lastNumber = lastNumber + (cacheSize * 2)
+		}
+
+		seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seq["SEQUENCE_NAME"], lastNumber, seq["INCREMENT_BY"], seq["MIN_VALUE"], seq["MAX_VALUE"], seq["CACHE_SIZE"], seq["CYCLE_FLAG"]))
+	}
+
+	writerTime := time.Now()
+	var w database.ISequenceMigrateDatabaseWriter
+	w = NewSequenceMigrateDatabase(st.Ctx, st.Task.TaskName, st.Task.TaskFlow, databaseT, startTime, seqCreates)
+
+	if st.TaskParams.EnableDirectCreate {
+		err = w.SyncSequenceDatabase()
+		if err != nil {
+			return err
+		}
+		logger.Info("sequence migrate task process",
+			zap.String("task_name", st.Task.TaskName),
+			zap.String("task_mode", st.Task.TaskMode),
+			zap.String("task_flow", st.Task.TaskFlow),
+			zap.String("schema_name_s", st.SchemaNameS),
+			zap.String("task_stage", "struct sequence database"),
+			zap.String("cost", time.Now().Sub(writerTime).String()))
+
+		return nil
+	}
+
+	err = w.WriteSequenceDatabase()
+	if err != nil {
+		return err
+	}
+	logger.Info("sequence migrate task process",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("task_stage", "struct sequence database"),
+		zap.String("cost", time.Now().Sub(writerTime).String()))
+	return nil
+}
+
 func InspectStructMigrateTask(taskName, taskFlow string, schemaNameS string, databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (string, string, map[string]string, bool, error) {
 	var (
 		schemaCollationS string
@@ -499,14 +566,14 @@ func InspectStructMigrateTask(taskName, taskFlow string, schemaNameS string, dat
 	}
 	if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharset]]; !ok {
 		return schemaCollationS, nlsComp, tableCollationS, false,
-			fmt.Errorf("oracle database nls comp [%s] , mysql db isn't support", nlsComp)
+			fmt.Errorf("oracle database nls comp [%s] , mysql compatible database isn't support", nlsComp)
 	}
 	if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsSort)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharset]]; !ok {
-		return schemaCollationS, nlsComp, tableCollationS, false, fmt.Errorf("oracle database nls sort [%s] , mysql db isn't support", nlsSort)
+		return schemaCollationS, nlsComp, tableCollationS, false, fmt.Errorf("oracle database nls sort [%s] , mysql compatible database isn't support", nlsSort)
 	}
 
 	if !strings.EqualFold(nlsSort, nlsComp) {
-		return schemaCollationS, nlsComp, tableCollationS, false, fmt.Errorf("oracle database nls_sort [%s] and nls_comp [%s] isn't different, need be equal; because mysql db isn't support", nlsSort, nlsComp)
+		return schemaCollationS, nlsComp, tableCollationS, false, fmt.Errorf("oracle database nls_sort [%s] and nls_comp [%s] isn't different, need be equal; because mysql compatible database isn't support", nlsSort, nlsComp)
 	}
 
 	// whether the oracle version can specify table and field collation，if the oracle database version is 12.2 and the above version, it's specify table and field collation, otherwise can't specify

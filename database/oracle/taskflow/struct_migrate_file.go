@@ -84,10 +84,10 @@ func (s *StructMigrateFile) SyncStructFile() error {
 	)
 	// schema
 	migrateSchema, err := model.GetIStructMigrateTaskRW().GetStructMigrateTask(s.Ctx, &task.StructMigrateTask{
-		TaskName:       s.TaskName,
-		SchemaNameS:    s.SchemaNameS,
-		TaskStatus:     constant.TaskDatabaseStatusSuccess,
-		IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlYES,
+		TaskName:    s.TaskName,
+		SchemaNameS: s.SchemaNameS,
+		TaskStatus:  constant.TaskDatabaseStatusSuccess,
+		Category:    constant.DatabaseStructMigrateSqlSchemaCategory,
 	})
 	if err != nil {
 		return err
@@ -111,10 +111,10 @@ func (s *StructMigrateFile) SyncStructFile() error {
 
 	// tables
 	migrateTables, err := model.GetIStructMigrateTaskRW().GetStructMigrateTask(s.Ctx, &task.StructMigrateTask{
-		TaskName:       s.TaskName,
-		SchemaNameS:    s.SchemaNameS,
-		TaskStatus:     constant.TaskDatabaseStatusSuccess,
-		IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO,
+		TaskName:    s.TaskName,
+		SchemaNameS: s.SchemaNameS,
+		TaskStatus:  constant.TaskDatabaseStatusSuccess,
+		Category:    constant.DatabaseStructMigrateSqlTableCategory,
 	})
 	if err != nil {
 		return err
@@ -216,6 +216,88 @@ func (s *StructMigrateFile) SyncStructFile() error {
 	}
 	if !strings.EqualFold(sqlInComp.String(), "") {
 		_, err = s.writeStructIncompatibleFile(sqlInComp.String())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *StructMigrateFile) SyncSequenceFile() error {
+	// sequence
+	migrateTables, err := model.GetIStructMigrateTaskRW().GetStructMigrateTask(s.Ctx, &task.StructMigrateTask{
+		TaskName:    s.TaskName,
+		SchemaNameS: s.SchemaNameS,
+		TaskStatus:  constant.TaskDatabaseStatusSuccess,
+		Category:    constant.DatabaseStructMigrateSqlSequenceCategory,
+	})
+	if err != nil {
+		return err
+	}
+
+	var (
+		seqCreates       []string
+		seqIncompCreates []string
+	)
+	for _, t := range migrateTables {
+		if !strings.EqualFold(t.TargetSqlDigest, "") {
+			targetSqls, err := stringutil.Decrypt(t.TargetSqlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
+			if err != nil {
+				return err
+			}
+			seqCreates = append(seqCreates, targetSqls)
+		}
+
+		// incompatible
+		if !strings.EqualFold(t.IncompSqlDigest, "") {
+			incompSqls, err := stringutil.Decrypt(t.IncompSqlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
+			if err != nil {
+				return err
+			}
+			seqIncompCreates = append(seqIncompCreates, incompSqls)
+		}
+
+	}
+
+	if len(seqCreates) > 0 {
+		var sqlComp strings.Builder
+
+		sqlComp.WriteString("/*\n")
+		sqlComp.WriteString(" database table sequence migrate sql \n")
+
+		w := table.NewWriter()
+		w.SetStyle(table.StyleLight)
+		w.AppendHeader(table.Row{"#", "TABLE TYPE", "SCHEMA_NAME_S", "SCHEMA_NAME_T", "SUGGEST"})
+		w.AppendRows([]table.Row{
+			{"TABLE", "SEQUENCE", s.SchemaNameS, s.SchemaNameT, "Create Sequence"},
+		})
+
+		sqlComp.WriteString(fmt.Sprintf("%v\n", w.Render()))
+
+		sqlComp.WriteString(stringutil.StringJoin(seqCreates, "\n"))
+		_, err = s.writeStructCompatibleFile(sqlComp.String())
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(seqIncompCreates) > 0 {
+		var sqlIncomp strings.Builder
+
+		sqlIncomp.WriteString("/*\n")
+		sqlIncomp.WriteString(" database table sequence migrate sql incompatible \n")
+
+		w := table.NewWriter()
+		w.SetStyle(table.StyleLight)
+		w.AppendHeader(table.Row{"#", "TABLE TYPE", "SCHEMA_NAME_S", "SCHEMA_NAME_T", "SUGGEST"})
+		w.AppendRows([]table.Row{
+			{"TABLE", "SEQUENCE", s.SchemaNameS, s.SchemaNameT, "Ignore Sequence"},
+		})
+
+		sqlIncomp.WriteString(fmt.Sprintf("%v\n", w.Render()))
+
+		sqlIncomp.WriteString(stringutil.StringJoin(seqIncompCreates, "\n"))
+		_, err = s.writeStructIncompatibleFile(sqlIncomp.String())
 		if err != nil {
 			return err
 		}

@@ -87,7 +87,7 @@ type StructMigrateTask struct {
 	TargetSqlDigest string  `gorm:"type:longtext;comment:target sql digest" json:"targetSqlDigest"`
 	TableAttrOption string  `gorm:"type:varchar(300);comment:source column datatype" json:"tableAttrOption"`
 	ErrorDetail     string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
-	IsSchemaCreate  string  `gorm:"type:varchar(10);default:NO;comment:is schema create sql" json:"isSchemaCreate"`
+	Category        string  `gorm:"type:varchar(300);comment:create sql category" json:"category"`
 	Duration        float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }

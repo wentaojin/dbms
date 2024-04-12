@@ -298,3 +298,382 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		return compatibleSql, incompatibleSql, fmt.Errorf("oracle current task [%s] taskflow [%s] isn't support, please contact author or reselect", s.TaskName, s.TaskFlow)
 	}
 }
+
+type SequenceMigrateDatabase struct {
+	Ctx           context.Context    `json:"-"`
+	TaskName      string             `json:"taskName"`
+	TaskFlow      string             `json:"taskFlow"`
+	SchemaNameS   string             `json:"schemaNameS"`
+	SchemaNameT   string             `json:"schemaNameT"`
+	TaskStartTime time.Time          `json:"-"`
+	DatasourceT   database.IDatabase `json:"-"`
+	Sequences     []string           `json:"sequences"`
+}
+
+func NewSequenceMigrateDatabase(ctx context.Context,
+	taskName, taskFlow, schemaNameS, schemaNameT string, datasourceT database.IDatabase,
+	taskStartTime time.Time, seqs []string) *SequenceMigrateDatabase {
+	return &SequenceMigrateDatabase{
+		Ctx:           ctx,
+		TaskName:      taskName,
+		TaskFlow:      taskFlow,
+		SchemaNameS:   schemaNameS,
+		SchemaNameT:   schemaNameT,
+		TaskStartTime: taskStartTime,
+		DatasourceT:   datasourceT,
+		Sequences:     seqs,
+	}
+}
+
+func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
+	seqDigest, err := s.GenSequenceDigest()
+	if err != nil {
+		return err
+	}
+	if strings.EqualFold(seqDigest, "") {
+		return nil
+	}
+	switch {
+	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB):
+		version, err := s.DatasourceT.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		if stringutil.VersionOrdinal(version) < stringutil.VersionOrdinal(constant.TIDBDatabaseSequenceSupportVersion) {
+			err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+				duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+				_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+					TaskName:        s.TaskName,
+					SchemaNameS:     s.SchemaNameS,
+					TableTypeS:      constant.DatabaseStructMigrateSqlSequenceCategory,
+					SchemaNameT:     s.SchemaNameT,
+					TaskStatus:      constant.TaskDatabaseStatusSuccess,
+					IncompSqlDigest: seqDigest,
+					Category:        constant.DatabaseStructMigrateSqlSequenceCategory,
+					Duration:        time.Now().Sub(s.TaskStartTime).Seconds(),
+				})
+				if err != nil {
+					return err
+				}
+				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+					TaskName:    s.TaskName,
+					SchemaNameS: s.SchemaNameS,
+					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+						stringutil.CurrentTimeFormatString(),
+						stringutil.StringLower(constant.TaskModeStructMigrate),
+						s.TaskName,
+						s.SchemaNameS,
+						duration),
+				})
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+			duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+			_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+				TaskName:        s.TaskName,
+				SchemaNameS:     s.SchemaNameS,
+				TableTypeS:      constant.DatabaseStructMigrateSqlSequenceCategory,
+				SchemaNameT:     s.SchemaNameT,
+				TaskStatus:      constant.TaskDatabaseStatusSuccess,
+				TargetSqlDigest: seqDigest,
+				Category:        constant.DatabaseStructMigrateSqlSequenceCategory,
+				Duration:        time.Now().Sub(s.TaskStartTime).Seconds(),
+			})
+			if err != nil {
+				return err
+			}
+			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+				TaskName:    s.TaskName,
+				SchemaNameS: s.SchemaNameS,
+				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+					stringutil.CurrentTimeFormatString(),
+					stringutil.StringLower(constant.TaskModeStructMigrate),
+					s.TaskName,
+					s.SchemaNameS,
+					duration),
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToMySQL):
+		version, err := s.DatasourceT.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		if stringutil.VersionOrdinal(version) < stringutil.VersionOrdinal(constant.MYSQLDatabaseSequenceSupportVersion) {
+			err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+				duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+				_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+					TaskName:        s.TaskName,
+					SchemaNameS:     s.SchemaNameS,
+					TableTypeS:      constant.DatabaseStructMigrateSqlSequenceCategory,
+					SchemaNameT:     s.SchemaNameT,
+					TaskStatus:      constant.TaskDatabaseStatusSuccess,
+					IncompSqlDigest: seqDigest,
+					Category:        constant.DatabaseStructMigrateSqlSequenceCategory,
+					Duration:        time.Now().Sub(s.TaskStartTime).Seconds(),
+				})
+				if err != nil {
+					return err
+				}
+				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+					TaskName:    s.TaskName,
+					SchemaNameS: s.SchemaNameS,
+					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+						stringutil.CurrentTimeFormatString(),
+						stringutil.StringLower(constant.TaskModeStructMigrate),
+						s.TaskName,
+						s.SchemaNameS,
+						duration),
+				})
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+			duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+			_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+				TaskName:        s.TaskName,
+				SchemaNameS:     s.SchemaNameS,
+				TableTypeS:      constant.DatabaseStructMigrateSqlSequenceCategory,
+				SchemaNameT:     s.SchemaNameT,
+				TaskStatus:      constant.TaskDatabaseStatusSuccess,
+				TargetSqlDigest: seqDigest,
+				Category:        constant.DatabaseStructMigrateSqlSequenceCategory,
+				Duration:        time.Now().Sub(s.TaskStartTime).Seconds(),
+			})
+			if err != nil {
+				return err
+			}
+			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+				TaskName:    s.TaskName,
+				SchemaNameS: s.SchemaNameS,
+				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+					stringutil.CurrentTimeFormatString(),
+					stringutil.StringLower(constant.TaskModeStructMigrate),
+					s.TaskName,
+					s.SchemaNameS,
+					duration),
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		return fmt.Errorf("the task [%v] task_flow [%v] isn't support, please contact author or reselect", s.TaskName, s.TaskFlow)
+	}
+}
+
+func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
+	seqDigest, err := s.GenSequenceDigest()
+	if err != nil {
+		return err
+	}
+	if strings.EqualFold(seqDigest, "") {
+		return nil
+	}
+	switch {
+	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB):
+		version, err := s.DatasourceT.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		if stringutil.VersionOrdinal(version) < stringutil.VersionOrdinal(constant.TIDBDatabaseSequenceSupportVersion) {
+			err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+				duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+				_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+					TaskName:        s.TaskName,
+					SchemaNameS:     s.SchemaNameS,
+					TableTypeS:      constant.DatabaseStructMigrateSqlSequenceCategory,
+					SchemaNameT:     s.SchemaNameT,
+					TaskStatus:      constant.TaskDatabaseStatusSuccess,
+					IncompSqlDigest: seqDigest,
+					Category:        constant.DatabaseStructMigrateSqlSequenceCategory,
+					Duration:        time.Now().Sub(s.TaskStartTime).Seconds(),
+				})
+				if err != nil {
+					return err
+				}
+				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+					TaskName:    s.TaskName,
+					SchemaNameS: s.SchemaNameS,
+					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+						stringutil.CurrentTimeFormatString(),
+						stringutil.StringLower(constant.TaskModeStructMigrate),
+						s.TaskName,
+						s.SchemaNameS,
+						duration),
+				})
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		for _, seq := range strings.Split(seqDigest, "\n") {
+			_, err = s.DatasourceT.ExecContext(s.Ctx, seq)
+			if err != nil {
+				return fmt.Errorf("the datasource exec ddl sql [%v] failed: [%v]", seq, err)
+			}
+		}
+		err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+			duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+			_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+				TaskName:        s.TaskName,
+				SchemaNameS:     s.SchemaNameS,
+				TableTypeS:      constant.DatabaseStructMigrateSqlSequenceCategory,
+				SchemaNameT:     s.SchemaNameT,
+				TaskStatus:      constant.TaskDatabaseStatusSuccess,
+				TargetSqlDigest: seqDigest,
+				Category:        constant.DatabaseStructMigrateSqlSequenceCategory,
+				Duration:        time.Now().Sub(s.TaskStartTime).Seconds(),
+			})
+			if err != nil {
+				return err
+			}
+			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+				TaskName:    s.TaskName,
+				SchemaNameS: s.SchemaNameS,
+				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+					stringutil.CurrentTimeFormatString(),
+					stringutil.StringLower(constant.TaskModeStructMigrate),
+					s.TaskName,
+					s.SchemaNameS,
+					duration),
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToMySQL):
+		version, err := s.DatasourceT.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		if stringutil.VersionOrdinal(version) < stringutil.VersionOrdinal(constant.MYSQLDatabaseSequenceSupportVersion) {
+			err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+				duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+				_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+					TaskName:        s.TaskName,
+					SchemaNameS:     s.SchemaNameS,
+					TableTypeS:      constant.DatabaseStructMigrateSqlSequenceCategory,
+					SchemaNameT:     s.SchemaNameT,
+					TaskStatus:      constant.TaskDatabaseStatusSuccess,
+					IncompSqlDigest: seqDigest,
+					Category:        constant.DatabaseStructMigrateSqlSequenceCategory,
+					Duration:        time.Now().Sub(s.TaskStartTime).Seconds(),
+				})
+				if err != nil {
+					return err
+				}
+				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+					TaskName:    s.TaskName,
+					SchemaNameS: s.SchemaNameS,
+					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+						stringutil.CurrentTimeFormatString(),
+						stringutil.StringLower(constant.TaskModeStructMigrate),
+						s.TaskName,
+						s.SchemaNameS,
+						duration),
+				})
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		for _, seq := range strings.Split(seqDigest, "\n") {
+			_, err = s.DatasourceT.ExecContext(s.Ctx, seq)
+			if err != nil {
+				return fmt.Errorf("the datasource exec ddl sql [%v] failed: [%v]", seq, err)
+			}
+		}
+		err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
+			duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
+			_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(txnCtx, &task.StructMigrateTask{
+				TaskName:        s.TaskName,
+				SchemaNameS:     s.SchemaNameS,
+				TableTypeS:      constant.DatabaseStructMigrateSqlSequenceCategory,
+				SchemaNameT:     s.SchemaNameT,
+				TaskStatus:      constant.TaskDatabaseStatusSuccess,
+				TargetSqlDigest: seqDigest,
+				Category:        constant.DatabaseStructMigrateSqlSequenceCategory,
+				Duration:        time.Now().Sub(s.TaskStartTime).Seconds(),
+			})
+			if err != nil {
+				return err
+			}
+			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+				TaskName:    s.TaskName,
+				SchemaNameS: s.SchemaNameS,
+				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+					stringutil.CurrentTimeFormatString(),
+					stringutil.StringLower(constant.TaskModeStructMigrate),
+					s.TaskName,
+					s.SchemaNameS,
+					duration),
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		return fmt.Errorf("the task [%v] task_flow [%v] isn't support, please contact author or reselect", s.TaskName, s.TaskFlow)
+	}
+}
+
+func (s *SequenceMigrateDatabase) GenSequenceDigest() (string, error) {
+	if len(s.Sequences) == 0 {
+		return "", nil
+	}
+	seqDigest, err := stringutil.Encrypt(strings.Join(s.Sequences, "\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+	if err != nil {
+		return "", err
+	}
+	return seqDigest, nil
+}

@@ -610,7 +610,7 @@ func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir s
 		migrateTasks []*task.StructMigrateTask
 	)
 	// get migrate task tables
-	migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(ctx, &task.StructMigrateTask{TaskName: taskInfo.TaskName, TaskStatus: constant.TaskDatabaseStatusSuccess, IsSchemaCreate: constant.DatabaseIsSchemaCreateSqlNO})
+	migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(ctx, &task.StructMigrateTask{TaskName: taskInfo.TaskName, TaskStatus: constant.TaskDatabaseStatusSuccess, Category: constant.DatabaseStructMigrateSqlTableCategory})
 	if err != nil {
 		return err
 	}
@@ -629,6 +629,10 @@ func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir s
 			return err
 		}
 		err = w.SyncStructFile()
+		if err != nil {
+			return err
+		}
+		err = w.SyncSequenceFile()
 		if err != nil {
 			return err
 		}
@@ -1103,6 +1107,7 @@ func initStructMigrateTask(ctx context.Context, taskInfo *task.Task, databaseS d
 			SchemaNameT: schemaRoute.SchemaNameT,
 			TableNameT:  targetTable,
 			TaskStatus:  constant.TaskDatabaseStatusWaiting,
+			Category:    constant.DatabaseStructMigrateSqlTableCategory,
 		})
 		if err != nil {
 			return err

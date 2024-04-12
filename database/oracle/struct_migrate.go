@@ -228,6 +228,27 @@ WHERE
 	return res[0]["VALUE"], nil
 }
 
+func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, error) {
+	queryStr := fmt.Sprintf(`SELECT
+	SEQUENCE_OWNER,
+	SEQUENCE_NAME,
+	MIN_VALUE,
+	MAX_VALUE,
+	INCREMENT_BY,
+	CYCLE_FLAG,
+	ORDER_FLAG,
+	CACHE_SIZE,
+	LAST_NUMBER
+FROM DBA_SEQUENCES
+WHERE
+    SEQUENCE_OWNER = '%s'`, schemaName)
+	_, res, err := d.GeneralQuery(queryStr)
+	if err != nil {
+		return res, err
+	}
+	return res, nil
+}
+
 func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
 	var queryStr string
 	/*

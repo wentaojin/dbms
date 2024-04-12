@@ -37,6 +37,7 @@ type IDatabase interface {
 	IDatabaseObjectFilter
 	IDatabaseAssessMigrate
 	IDatabaseStructMigrate
+	IDatabaseSequenceMigrate
 	IDatabaseDataMigrate
 	IDatabaseDataCompare
 }

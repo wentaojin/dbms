@@ -34,8 +34,6 @@ const (
 	OracleDatabaseTableTypeClusteredTable            = "CLUSTERED"
 	OracleDatabaseTableTypeMaterializedView          = "MATERIALIZED VIEW"
 
-	OracleDatabaseTableTypeSchema = "SCHEMA"
-
 	// specify processing for oracle table attr null、nullstring and ""
 	OracleDatabaseTableColumnDefaultValueWithNULLSTRING = "NULLSTRING"
 	OracleDatabaseTableColumnDefaultValueWithStringNull = ""
@@ -49,9 +47,13 @@ const (
 	// MYSQL database expression index support version > 8.0.0
 	MYSQLDatabaseExpressionIndexSupportVersion = "8.0.0"
 
-	// struct migrate represents is schema create sql
-	DatabaseIsSchemaCreateSqlYES = "YES"
-	DatabaseIsSchemaCreateSqlNO  = "NO"
+	// struct migrate type
+	DatabaseStructMigrateSqlSchemaCategory   = "SCHEMA"
+	DatabaseStructMigrateSqlTableCategory    = "TABLE"
+	DatabaseStructMigrateSqlSequenceCategory = "SEQUENCE"
+
+	MYSQLDatabaseSequenceSupportVersion = "8.0"
+	TIDBDatabaseSequenceSupportVersion  = "4.0"
 )
 
 // TiDB database integer primary key menu

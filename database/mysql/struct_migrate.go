@@ -15,6 +15,11 @@ limitations under the License.
 */
 package mysql
 
+func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (d *Database) FilterDatabaseSchema() ([]string, error) {
 	//TODO implement me
 	panic("implement me")

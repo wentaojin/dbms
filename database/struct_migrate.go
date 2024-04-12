@@ -39,6 +39,10 @@ type IDatabaseStructMigrate interface {
 	GetDatabaseTableOriginStruct(schemaName, tableName, tableType string) (string, error)
 }
 
+type IDatabaseSequenceMigrate interface {
+	GetDatabaseSequence(schemaName string) ([]map[string]string, error)
+}
+
 // IStructMigrateAttributesReader used for database table attributes
 type IStructMigrateAttributesReader interface {
 	GetTablePrimaryKey() ([]map[string]string, error)
@@ -314,8 +318,14 @@ type IStructMigrateDatabaseWriter interface {
 	SyncStructDatabase() error
 }
 
+type ISequenceMigrateDatabaseWriter interface {
+	WriteSequenceDatabase() error
+	SyncSequenceDatabase() error
+}
+
 type IStructMigrateFileWriter interface {
 	InitOutputFile() error
 	SyncStructFile() error
+	SyncSequenceFile() error
 	Close() error
 }
