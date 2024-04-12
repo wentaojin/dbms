@@ -507,7 +507,16 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 			lastNumber = lastNumber + (cacheSize * 2)
 		}
 
-		seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seq["SEQUENCE_NAME"], lastNumber, seq["INCREMENT_BY"], seq["MIN_VALUE"], seq["MAX_VALUE"], seq["CACHE_SIZE"], seq["CYCLE_FLAG"]))
+		switch {
+		case strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToTiDB):
+			if st.TaskParams.CreateIfNotExist {
+				seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seq["SEQUENCE_NAME"], lastNumber, seq["INCREMENT_BY"], seq["MIN_VALUE"], seq["MAX_VALUE"], seq["CACHE_SIZE"], seq["CYCLE_FLAG"]))
+			} else {
+				seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seq["SEQUENCE_NAME"], lastNumber, seq["INCREMENT_BY"], seq["MIN_VALUE"], seq["MAX_VALUE"], seq["CACHE_SIZE"], seq["CYCLE_FLAG"]))
+			}
+		default:
+			return fmt.Errorf("the task [%v] task_flow [%v] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskFlow)
+		}
 	}
 
 	writerTime := time.Now()
@@ -526,7 +535,6 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 			zap.String("schema_name_s", st.SchemaNameS),
 			zap.String("task_stage", "struct sequence database"),
 			zap.String("cost", time.Now().Sub(writerTime).String()))
-
 		return nil
 	}
 
