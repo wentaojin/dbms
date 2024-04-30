@@ -300,6 +300,126 @@ func (s *Server) listStructMigrateTask(ctx context.Context, req openapi.APIListS
 	return "", errors.New(resp.Response.Message)
 }
 
+func (s *Server) upsertStructCompareTask(ctx context.Context, req openapi.APIPutStructCompareJSONRequestBody) (string, error) {
+	var (
+		taskLevelRules   []*pb.TaskStructRule
+		schemaLevelRules []*pb.SchemaStructRule
+		tableLevelRules  []*pb.TableStructRule
+		columnLevelRules []*pb.ColumnStructRule
+		migrateSchemaRs  *pb.SchemaRouteRule
+	)
+
+	var tableRoutes []*pb.TableRouteRule
+
+	for _, t := range *req.SchemaRouteRule.TableRouteRules {
+		tableRoutes = append(tableRoutes, &pb.TableRouteRule{
+			TableNameS:       *t.TableNameS,
+			TableNameT:       *t.TableNameT,
+			ColumnRouteRules: *t.ColumnRouteRules,
+		})
+	}
+	migrateSchemaRs = &pb.SchemaRouteRule{
+		SchemaNameS:     *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:     *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS:   *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS:   *req.SchemaRouteRule.ExcludeTableS,
+		TableRouteRules: tableRoutes,
+	}
+
+	for _, l := range *req.StructCompareRule.TaskStructRules {
+		taskLevelRules = append(taskLevelRules, &pb.TaskStructRule{
+			ColumnTypeS:   *l.ColumnTypeS,
+			ColumnTypeT:   *l.ColumnTypeT,
+			DefaultValueS: *l.DefaultValueS,
+			DefaultValueT: *l.DefaultValueT,
+		})
+	}
+	for _, l := range *req.StructCompareRule.SchemaStructRules {
+		schemaLevelRules = append(schemaLevelRules, &pb.SchemaStructRule{
+			SchemaNameS:   *l.SchemaNameS,
+			ColumnTypeS:   *l.ColumnTypeS,
+			ColumnTypeT:   *l.ColumnTypeT,
+			DefaultValueS: *l.DefaultValueS,
+			DefaultValueT: *l.DefaultValueT,
+		})
+	}
+	for _, l := range *req.StructCompareRule.TableStructRules {
+		tableLevelRules = append(tableLevelRules, &pb.TableStructRule{
+			SchemaNameS:   *l.SchemaNameS,
+			TableNameS:    *l.TableNameS,
+			ColumnTypeS:   *l.ColumnTypeS,
+			ColumnTypeT:   *l.ColumnTypeT,
+			DefaultValueS: *l.DefaultValueS,
+			DefaultValueT: *l.DefaultValueT,
+		})
+	}
+	for _, l := range *req.StructCompareRule.ColumnStructRules {
+		columnLevelRules = append(columnLevelRules, &pb.ColumnStructRule{
+			SchemaNameS:   *l.SchemaNameS,
+			TableNameS:    *l.TableNameS,
+			ColumnNameS:   *l.ColumnNameS,
+			ColumnTypeS:   *l.ColumnTypeS,
+			ColumnTypeT:   *l.ColumnTypeT,
+			DefaultValueS: *l.DefaultValueS,
+			DefaultValueT: *l.DefaultValueT,
+		})
+	}
+
+	resp, err := s.UpsertStructCompareTask(ctx, &pb.UpsertStructCompareTaskRequest{
+		TaskName:        *req.TaskName,
+		DatasourceNameS: *req.DatasourceNameS,
+		DatasourceNameT: *req.DatasourceNameT,
+		Comment:         *req.Comment,
+		CaseFieldRule: &pb.CaseFieldRule{
+			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
+			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
+		},
+		SchemaRouteRule: migrateSchemaRs,
+		StructCompareParam: &pb.StructCompareParam{
+			CompareThread: *req.StructCompareParam.CompareThread,
+		},
+		StructCompareRule: &pb.StructCompareRule{
+			TaskStructRules:   taskLevelRules,
+			SchemaStructRules: schemaLevelRules,
+			TableStructRules:  tableLevelRules,
+			ColumnStructRules: columnLevelRules,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) deleteStructCompareTask(ctx context.Context, req openapi.APIDeleteStructCompareJSONRequestBody) (string, error) {
+	resp, err := s.DeleteStructCompareTask(ctx, &pb.DeleteStructCompareTaskRequest{TaskName: *req.Param})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) listStructCompareTask(ctx context.Context, req openapi.APIListStructCompareJSONRequestBody) (string, error) {
+	resp, err := s.ShowStructCompareTask(ctx, &pb.ShowStructCompareTaskRequest{
+		TaskName: *req.Param,
+		Page:     *req.Page,
+		PageSize: *req.PageSize,
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
 func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutStmtMigrateJSONRequestBody) (string, error) {
 	var (
 		migrateSchemaRs  *pb.SchemaRouteRule

@@ -38,6 +38,7 @@ const (
 	APICsvMigratePath    = "csvMigrate"
 	APIDataComparePath   = "dataCompare"
 	APIAssessMigratePath = "assessMigrate"
+	APIStructComparePath = "structCompare"
 )
 
 const (

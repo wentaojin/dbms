@@ -66,7 +66,7 @@ func (st *StructMigrateTask) Start() error {
 
 	logger.Info("struct migrate task inspect migrate task",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
-	schemaCollationS, nlsComp, tableCollationS, dbCollationS, err := InspectStructMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.SchemaNameS, st.DatabaseS, st.DBCharsetS, st.DBCharsetT)
+	_, nlsComp, dbCollationS, err := inspectMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, st.DatabaseS, st.DBCharsetS, st.DBCharsetT)
 	if err != nil {
 		return err
 	}
@@ -83,6 +83,10 @@ func (st *StructMigrateTask) Start() error {
 	switch {
 	case strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
 		if dbCollationS {
+			schemaCollationS, err := st.DatabaseS.GetDatabaseSchemaCollation(st.SchemaNameS)
+			if err != nil {
+				return err
+			}
 			targetSchemaCollation, ok := constant.MigrateTableStructureDatabaseCollationMap[st.Task.TaskFlow][stringutil.StringUpper(schemaCollationS)][stringutil.StringUpper(st.DBCharsetT)]
 			if !ok {
 				return fmt.Errorf("oracle current task [%s] task_mode [%s] task_flow [%s] schema [%s] collation [%s] isn't support", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS, schemaCollationS)
@@ -206,10 +210,7 @@ func (st *StructMigrateTask) Start() error {
 					smt,
 					buildInDatatypeRules,
 					buildInDefaultValueRules,
-					dbCollationS,
-					schemaCollationS,
-					tableCollationS,
-					nlsComp)
+					dbCollationS)
 				if err != nil {
 					return err
 				}
@@ -296,13 +297,10 @@ func (st *StructMigrateTask) structMigrateStart(
 	smt *task.StructMigrateTask,
 	buildInDatatypeRules []*buildin.BuildinDatatypeRule,
 	buildInDefaultValueRules []*buildin.BuildinDefaultvalRule,
-	dbCollationS bool,
-	schemaCollationS string,
-	tableCollationS map[string]string,
-	nlsComp string) error {
+	dbCollationS bool) error {
 	// if the schema table success, skip
 	if strings.EqualFold(smt.TaskStatus, constant.TaskDatabaseStatusSuccess) {
-		logger.Info("struct migrate task process",
+		logger.Warn("struct migrate task process",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
@@ -313,16 +311,18 @@ func (st *StructMigrateTask) structMigrateStart(
 			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
 	}
-	if strings.EqualFold(smt.TaskStatus, constant.TaskDatabaseStatusRunning) {
-		logger.Info("struct migrate task process",
+	// if the table is MATERIALIZED VIEW, skip
+	// MATERIALIZED VIEW isn't support struct migrate
+	if strings.EqualFold(smt.TableTypeS, constant.OracleDatabaseTableTypeMaterializedView) {
+		logger.Warn("struct migrate task process",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
 			zap.String("schema_name_s", smt.SchemaNameS),
 			zap.String("table_name_s", smt.TableNameS),
-			zap.String("task_status", constant.TaskDatabaseStatusRunning),
-			zap.String("table task has running", "current status may panic, skip migrate, please double check"),
-			zap.String("cost", time.Now().Sub(startTime).String()))
+			zap.String("table_type_s", smt.TableTypeS),
+			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
+		zap.String("cost", time.Now().Sub(startTime).String())
 		return nil
 	}
 
@@ -359,16 +359,11 @@ func (st *StructMigrateTask) structMigrateStart(
 
 	sourceTime := time.Now()
 	dataSource := &Datasource{
-		DatabaseS:        databaseS,
-		SchemaNameS:      smt.SchemaNameS,
-		TableNameS:       smt.TableNameS,
-		TableTypeS:       smt.TableTypeS,
-		CollationS:       dbCollationS,
-		DBCharsetS:       st.DBCharsetS,
-		DBCharsetT:       st.DBCharsetT,
-		SchemaCollationS: schemaCollationS,
-		TableCollationS:  tableCollationS[smt.TableNameS],
-		DBNlsCompS:       nlsComp,
+		DatabaseS:   databaseS,
+		SchemaNameS: smt.SchemaNameS,
+		TableNameS:  smt.TableNameS,
+		TableTypeS:  smt.TableTypeS,
+		CollationS:  dbCollationS,
 	}
 
 	attrs, err := database.IStructMigrateAttributes(dataSource)
@@ -422,6 +417,7 @@ func (st *StructMigrateTask) structMigrateStart(
 		TaskName:            smt.TaskName,
 		TaskFlow:            st.Task.TaskFlow,
 		DatasourceS:         dataSource,
+		DBCharsetT:          st.DBCharsetT,
 		TableAttributes:     attrs,
 		TableAttributesRule: rules,
 	}
@@ -550,61 +546,4 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 		zap.String("task_stage", "struct sequence database"),
 		zap.String("cost", time.Now().Sub(writerTime).String()))
 	return nil
-}
-
-func InspectStructMigrateTask(taskName, taskFlow string, schemaNameS string, databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (string, string, map[string]string, bool, error) {
-	var (
-		schemaCollationS string
-	)
-	tableCollationS := make(map[string]string)
-
-	dbCharsetS := stringutil.StringUpper(connectDBCharsetS)
-
-	if !strings.EqualFold(connectDBCharsetT, constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]) {
-		return schemaCollationS, "", tableCollationS, false, fmt.Errorf("oracle current subtask [%s] taskflow [%s] schema [%s] mapping charset [%s] isn't equal with database connect charset [%s], please adjust database connect charset", taskName, taskFlow, schemaNameS, dbCharsetS, connectDBCharsetT)
-	}
-
-	dbCharset, err := databaseS.GetDatabaseCharset()
-	if err != nil {
-		return schemaCollationS, "", tableCollationS, false, err
-	}
-	nlsComp, nlsSort, err := databaseS.GetDatabaseCharsetCollation()
-	if err != nil {
-		return schemaCollationS, "", tableCollationS, false, err
-	}
-	if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharset]]; !ok {
-		return schemaCollationS, nlsComp, tableCollationS, false,
-			fmt.Errorf("oracle database nls comp [%s] , mysql compatible database isn't support", nlsComp)
-	}
-	if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsSort)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharset]]; !ok {
-		return schemaCollationS, nlsComp, tableCollationS, false, fmt.Errorf("oracle database nls sort [%s] , mysql compatible database isn't support", nlsSort)
-	}
-
-	if !strings.EqualFold(nlsSort, nlsComp) {
-		return schemaCollationS, nlsComp, tableCollationS, false, fmt.Errorf("oracle database nls_sort [%s] and nls_comp [%s] isn't different, need be equal; because mysql compatible database isn't support", nlsSort, nlsComp)
-	}
-
-	// whether the oracle version can specify table and field collation，if the oracle database version is 12.2 and the above version, it's specify table and field collation, otherwise can't specify
-	// oracle database nls_sort/nls_comp value need to be equal, USING_NLS_COMP value is nls_comp
-	oracleDBVersion, err := databaseS.GetDatabaseVersion()
-	if err != nil {
-		return schemaCollationS, nlsComp, tableCollationS, false, err
-	}
-
-	oracleCollation := false
-	if stringutil.VersionOrdinal(oracleDBVersion) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
-		oracleCollation = true
-	}
-
-	if oracleCollation {
-		schemaCollationS, err = databaseS.GetDatabaseSchemaCollation(schemaNameS)
-		if err != nil {
-			return schemaCollationS, nlsComp, tableCollationS, false, err
-		}
-		tableCollationS, err = databaseS.GetDatabaseSchemaTableCollation(schemaNameS, schemaCollationS)
-		if err != nil {
-			return schemaCollationS, nlsComp, tableCollationS, false, err
-		}
-	}
-	return schemaCollationS, nlsComp, tableCollationS, oracleCollation, nil
 }

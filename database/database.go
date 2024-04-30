@@ -40,12 +40,12 @@ type IDatabase interface {
 	IDatabaseSequenceMigrate
 	IDatabaseDataMigrate
 	IDatabaseDataCompare
+	IDatabaseStructCompare
 }
 
 type IDatabaseObjectFilter interface {
 	FilterDatabaseSchema() ([]string, error)
 	FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error)
-	FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) ([]string, []string, []string, []string, []string, error)
 }
 
 type IDatabaseSchemaTableRule interface {

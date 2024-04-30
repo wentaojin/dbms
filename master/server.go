@@ -719,6 +719,77 @@ func (s *Server) APIPutStructMigrate(c *gin.Context) {
 	})
 }
 
+func (s *Server) APIDeleteStructCompare(c *gin.Context) {
+	var req openapi.APIDeleteStructCompareJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	delMsg, err := s.deleteStructCompareTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusNoContent, openapi.Response{
+		Code: http.StatusNoContent,
+		Data: delMsg,
+	})
+}
+
+func (s *Server) APIListStructCompare(c *gin.Context) {
+	var req openapi.APIListStructCompareJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	listMsg, err := s.listStructCompareTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, openapi.Response{
+		Code: http.StatusCreated,
+		Data: listMsg,
+	})
+}
+
+func (s *Server) APIPutStructCompare(c *gin.Context) {
+	var req openapi.APIPutStructCompareJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	upsertMsg, err := s.upsertStructCompareTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: upsertMsg,
+	})
+}
+
 func (s *Server) APIDeleteStmtMigrate(c *gin.Context) {
 	var req openapi.APIDeleteStmtMigrateJSONRequestBody
 	err := c.Bind(&req)

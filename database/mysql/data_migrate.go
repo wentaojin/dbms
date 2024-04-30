@@ -33,7 +33,7 @@ func (d *Database) GetDatabaseVersion() (string, error) {
 	}
 
 	var version string
-	verinfos := strings.Split(res[0]["VERSION"], constant.MYSQLDatabaseVersionDelimiter)
+	verinfos := strings.Split(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter)
 
 	if strings.Contains(res[0]["VERSION"], constant.DatabaseTypeTiDB) {
 		for _, ver := range verinfos {
@@ -47,22 +47,7 @@ func (d *Database) GetDatabaseVersion() (string, error) {
 	return version, nil
 }
 
-func (d *Database) GetDatabaseCharset() (string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
 	//TODO implement me
 	panic("implement me")
 }

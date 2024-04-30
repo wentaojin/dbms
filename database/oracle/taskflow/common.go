@@ -23,7 +23,7 @@ import (
 
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/rule"
-	"github.com/wentaojin/dbms/utils/chunk"
+	"github.com/wentaojin/dbms/utils/structure"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/constant"
@@ -31,48 +31,68 @@ import (
 	"go.uber.org/zap"
 )
 
-func inspectMigrateTask(databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (string, bool, error) {
-	version, err := databaseS.GetDatabaseVersion()
-	if err != nil {
-		return version, false, err
+func inspectMigrateTask(taskName, taskFlow, taskMode string, databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (string, string, bool, error) {
+	if strings.EqualFold(taskMode, constant.TaskModeStructMigrate) {
+		dbCharsetMapping := constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][stringutil.StringUpper(connectDBCharsetS)]
+		if !strings.EqualFold(connectDBCharsetT, dbCharsetMapping) {
+			return "", "", false, fmt.Errorf("oracle current task [%s] taskflow [%s] charset [%s] mapping [%v] isn't equal with database connect charset [%s], please adjust database connect charset", taskName, taskFlow, connectDBCharsetS, dbCharsetMapping, connectDBCharsetT)
+		}
 	}
 
+	version, err := databaseS.GetDatabaseVersion()
+	if err != nil {
+		return version, "", false, err
+	}
+
+	var nlsComp string
 	oracleCollation := false
 	if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
 		oracleCollation = true
 	} else {
-		nlsComp, nlsSort, err := databaseS.GetDatabaseCharsetCollation()
+		nlsComp, err = databaseS.GetDatabaseCollation()
 		if err != nil {
-			return version, false, err
-		}
-		if !strings.EqualFold(nlsComp, nlsSort) {
-			return version, false, fmt.Errorf("the database server nls_comp [%s] and nls_sort [%s] aren't different, current not support, please contact author or reselect", nlsComp, nlsSort)
+			return version, "", false, err
 		}
 	}
 
+	// whether the oracle version can specify table and field collation，if the oracle database version is 12.2 and the above version, it's specify table and field collation, otherwise can't specify
+	// oracle database nls_sort/nls_comp value need to be equal, USING_NLS_COMP value is nls_comp
 	dbCharsetS, err := databaseS.GetDatabaseCharset()
 	if err != nil {
-		return version, false, err
+		return version, "", oracleCollation, err
 	}
 	if !strings.EqualFold(connectDBCharsetS, dbCharsetS) {
 		zap.L().Warn("oracle charset and oracle config charset",
 			zap.String("oracle database charset", dbCharsetS),
 			zap.String("oracle config charset", connectDBCharsetS))
-		return version, false, fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", dbCharsetS, connectDBCharsetS)
+		return version, "", oracleCollation, fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", dbCharsetS, connectDBCharsetS)
 	}
 	if _, ok := constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(connectDBCharsetS)]; !ok {
-		return version, false, fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
+		return version, "", oracleCollation, fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
 	}
 	if !stringutil.IsContainedString(constant.MigrateDataSupportCharset, stringutil.StringUpper(connectDBCharsetT)) {
-		return version, false, fmt.Errorf("mysql current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
+		return version, "", oracleCollation, fmt.Errorf("mysql current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
 	}
-	return version, oracleCollation, nil
+
+	if strings.EqualFold(taskMode, constant.TaskModeStructMigrate) {
+		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)]; !ok {
+			return version, "", oracleCollation, fmt.Errorf("oracle database collation nlssort [%v] isn't support", nlsComp)
+		}
+
+		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)]; !ok {
+			return version, "", oracleCollation, fmt.Errorf("oracle database collation nlscomp [%v] isn't support", nlsComp)
+		}
+
+		return version, nlsComp, oracleCollation, nil
+	}
+
+	return version, "", oracleCollation, nil
 }
 
 func getDatabaseTableColumnBucket(ctx context.Context,
-	databaseS, databaseT database.IDatabase, taskName, taskFlow, schemaNameS, schemaNameT, tableNameS, tableNameT string, collationS bool, columnNameSlis []string, connCharsetS, connCharsetT string) ([]*chunk.Range, error) {
+	databaseS, databaseT database.IDatabase, taskName, taskFlow, schemaNameS, schemaNameT, tableNameS, tableNameT string, collationS bool, columnNameSlis []string, connCharsetS, connCharsetT string) ([]*structure.Range, error) {
 	var (
-		bucketRanges   []*chunk.Range
+		bucketRanges   []*structure.Range
 		randomValueSli [][]string
 		newColumnNameS []string
 	)
@@ -154,7 +174,7 @@ func getDatabaseTableColumnBucket(ctx context.Context,
 	if len(randomValueSli) > 0 {
 		randomValues, randomValuesLen := stringutil.StringSliceAlignLen(randomValueSli)
 		for i := 0; i <= randomValuesLen; i++ {
-			newChunk := chunk.NewRange()
+			newChunk := structure.NewRange()
 
 			for j, columnS := range newColumnNameS {
 				if i == 0 {

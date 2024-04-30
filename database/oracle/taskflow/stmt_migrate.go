@@ -80,7 +80,7 @@ func (stm *StmtMigrateTask) Start() error {
 	logger.Info("stmt migrate task inspect migrate task",
 		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
 
-	dbVersion, dbCollationS, err := inspectMigrateTask(databaseS, stringutil.StringUpper(stm.DatasourceS.ConnectCharset), stringutil.StringUpper(stm.DatasourceT.ConnectCharset))
+	dbVersion, _, dbCollationS, err := inspectMigrateTask(stm.Task.TaskName, stm.Task.TaskFlow, stm.Task.TaskMode, databaseS, stringutil.StringUpper(stm.DatasourceS.ConnectCharset), stringutil.StringUpper(stm.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}

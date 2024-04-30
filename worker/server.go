@@ -267,6 +267,14 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 				Message: err.Error(),
 			}}, err
 		}
+	case constant.TaskModeStructCompare:
+		err = s.operateStructCompareTask(cancelCtx, t, req)
+		if err != nil {
+			return &pb.OperateWorkerResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: err.Error(),
+			}}, err
+		}
 	default:
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result: openapi.ResponseResultStatusFailed,
@@ -698,6 +706,78 @@ func (s *Server) operateDataCompareTask(ctx context.Context, t *task.Task, req *
 		s.cancelFunc()
 		_, err := service.DeleteDataCompareTask(context.TODO(),
 			&pb.DeleteDataCompareTaskRequest{TaskName: []string{t.TaskName}})
+		if err != nil {
+			return err
+		}
+		// persistence worker state
+		w := &etcdutil.Worker{
+			Addr:     s.WorkerOptions.WorkerAddr,
+			State:    constant.DefaultWorkerFreeState,
+			TaskName: "",
+		}
+		_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		s.cancelFunc()
+		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+	}
+}
+
+func (s *Server) operateStructCompareTask(ctx context.Context, t *task.Task, req *pb.OperateWorkerRequest) error {
+	switch strings.ToUpper(req.Operate) {
+	case constant.TaskOperationStart:
+		go func() {
+			defer s.handlePanicRecover(ctx, t)
+			err := service.StartStructCompareTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+			if err != nil {
+				w := &etcdutil.Worker{
+					Addr:     s.WorkerOptions.WorkerAddr,
+					State:    constant.DefaultWorkerFailedState,
+					TaskName: t.TaskName,
+				}
+				_, errPut := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+				if errPut != nil {
+					panic(fmt.Errorf("the worker task [%v] failed, there are two errors, one is the worker write [%v] value failed: [%v], two is the worker task running failed: [%v]", t.TaskName, w.String(), errPut, err))
+				} else {
+					panic(fmt.Errorf("the worker task [%v] failed: [%v]", t.TaskName, err))
+				}
+			}
+			w := &etcdutil.Worker{
+				Addr:     s.WorkerOptions.WorkerAddr,
+				State:    constant.DefaultWorkerFreeState,
+				TaskName: "",
+			}
+			_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+			if err != nil {
+				panic(fmt.Errorf("the worker task [%v] success, but the worker status wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
+			}
+			s.cancelFunc()
+		}()
+		return nil
+	case constant.TaskOperationStop:
+		s.cancelFunc()
+		err := service.StopStructCompareTask(context.TODO(), req.TaskName)
+		if err != nil {
+			return err
+		}
+		// persistence worker state
+		w := &etcdutil.Worker{
+			Addr:     s.WorkerOptions.WorkerAddr,
+			State:    constant.DefaultWorkerStoppedState,
+			TaskName: req.TaskName,
+		}
+		_, err = etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+		if err != nil {
+			return err
+		}
+		return nil
+	case constant.TaskOperationDelete:
+		s.cancelFunc()
+		_, err := service.DeleteStructCompareTask(context.TODO(),
+			&pb.DeleteStructCompareTaskRequest{TaskName: []string{t.TaskName}})
 		if err != nil {
 			return err
 		}

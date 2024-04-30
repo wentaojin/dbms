@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/wentaojin/dbms/database/mapping"
+
 	"github.com/wentaojin/dbms/model/buildin"
 
 	"github.com/wentaojin/dbms/logger"
@@ -218,7 +220,7 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 		// task flow
 		switch {
 		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-			originColumnType, buildInColumnType, err = DatabaseTableColumnMapMYSQLCompatibleDatatypeRule(&Column{
+			originColumnType, buildInColumnType, err = mapping.OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(&mapping.Column{
 				ColumnName:    c["COLUMN_NAME"],
 				Datatype:      c["DATA_TYPE"],
 				CharUsed:      c["CHAR_USED"],
@@ -234,14 +236,14 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 				return nil, nil, nil, err
 			}
 			// priority, return target database table column datatype
-			convertColumnDatatype, convertColumnDefaultValue, err := HandleColumnRuleWithPriority(
+			convertColumnDatatype, convertColumnDefaultValue, err := mapping.OracleHandleColumnRuleWithPriority(
 				r.TableNameS,
 				c["COLUMN_NAME"],
 				originColumnType,
 				buildInColumnType,
 				columnDefaultValues,
-				r.DBCharsetS,
-				r.DBCharsetT,
+				constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)],
+				constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetT)],
 				r.BuildinDefaultValueRules,
 				structTaskRules,
 				structSchemaRules,

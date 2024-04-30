@@ -127,6 +127,9 @@ func (s *StructMigrateFile) SyncStructFile() error {
 			tableRows, partitionTables, sessionTemporaryTables, transactionTemporaryTables, clusteredTables, materializedViews []table.Row
 		)
 		for _, t := range migrateTables {
+			if strings.EqualFold(t.TableTypeS, constant.OracleDatabaseTableTypeHeapTable) {
+				continue
+			}
 			if strings.EqualFold(t.TableTypeS, constant.OracleDatabaseTableTypePartitionTable) {
 				partitionTables = append(partitionTables, table.Row{"TABLE", t.TableTypeS, fmt.Sprintf("%s.%s", t.SchemaNameS, t.TableNameS), fmt.Sprintf("%s.%s", t.SchemaNameT, t.TableNameT), "If Need, Please Manual Process Table"})
 			}

@@ -30,7 +30,8 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string, caseFieldRule *pb.CaseFieldRule, schemaRouteRule *pb.SchemaRouteRule, dataMigrateRules []*pb.DataMigrateRule, dataCompareRules []*pb.DataCompareRule) error {
+func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string, caseFieldRule *pb.CaseFieldRule, schemaRouteRule *pb.SchemaRouteRule,
+	dataMigrateRules []*pb.DataMigrateRule, dataCompareRules []*pb.DataCompareRule) error {
 	datasourceS, err := model.GetIDatasourceRW().GetDatasource(ctx, datasourceNameS)
 	if err != nil {
 		return err

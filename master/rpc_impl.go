@@ -195,6 +195,48 @@ func (s *Server) ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMi
 	}}, nil
 }
 
+func (s *Server) UpsertStructCompareTask(ctx context.Context, req *pb.UpsertStructCompareTaskRequest) (*pb.UpsertStructCompareTaskResponse, error) {
+	showMsg, err := service.UpsertStructCompareTask(ctx, req)
+	if err != nil {
+		return &pb.UpsertStructCompareTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.UpsertStructCompareTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: showMsg,
+	}}, nil
+}
+
+func (s *Server) DeleteStructCompareTask(ctx context.Context, req *pb.DeleteStructCompareTaskRequest) (*pb.DeleteStructCompareTaskResponse, error) {
+	delMsg, err := service.DeleteStructCompareTask(ctx, req)
+	if err != nil {
+		return &pb.DeleteStructCompareTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.DeleteStructCompareTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) ShowStructCompareTask(ctx context.Context, req *pb.ShowStructCompareTaskRequest) (*pb.ShowStructCompareTaskResponse, error) {
+	delMsg, err := service.ShowStructCompareTask(ctx, req)
+	if err != nil {
+		return &pb.ShowStructCompareTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.ShowStructCompareTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
 func (s *Server) UpsertStmtMigrateTask(ctx context.Context, req *pb.UpsertStmtMigrateTaskRequest) (*pb.UpsertStmtMigrateTaskResponse, error) {
 	showMsg, err := service.UpsertStmtMigrateTask(ctx, req)
 	if err != nil {

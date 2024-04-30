@@ -76,6 +76,15 @@ type ServerInterface interface {
 	// (PUT /task/stmtMigrate)
 	APIPutStmtMigrate(c *gin.Context)
 
+	// (DELETE /task/structCompare)
+	APIDeleteStructCompare(c *gin.Context)
+
+	// (POST /task/structCompare)
+	APIListStructCompare(c *gin.Context)
+
+	// (PUT /task/structCompare)
+	APIPutStructCompare(c *gin.Context)
+
 	// (DELETE /task/structMigrate)
 	APIDeleteStructMigrate(c *gin.Context)
 
@@ -381,6 +390,45 @@ func (siw *ServerInterfaceWrapper) APIPutStmtMigrate(c *gin.Context) {
 	siw.Handler.APIPutStmtMigrate(c)
 }
 
+// APIDeleteStructCompare operation middleware
+func (siw *ServerInterfaceWrapper) APIDeleteStructCompare(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIDeleteStructCompare(c)
+}
+
+// APIListStructCompare operation middleware
+func (siw *ServerInterfaceWrapper) APIListStructCompare(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIListStructCompare(c)
+}
+
+// APIPutStructCompare operation middleware
+func (siw *ServerInterfaceWrapper) APIPutStructCompare(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIPutStructCompare(c)
+}
+
 // APIDeleteStructMigrate operation middleware
 func (siw *ServerInterfaceWrapper) APIDeleteStructMigrate(c *gin.Context) {
 
@@ -469,6 +517,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/task/stmtMigrate", wrapper.APIDeleteStmtMigrate)
 	router.POST(options.BaseURL+"/task/stmtMigrate", wrapper.APIListStmtMigrate)
 	router.PUT(options.BaseURL+"/task/stmtMigrate", wrapper.APIPutStmtMigrate)
+	router.DELETE(options.BaseURL+"/task/structCompare", wrapper.APIDeleteStructCompare)
+	router.POST(options.BaseURL+"/task/structCompare", wrapper.APIListStructCompare)
+	router.PUT(options.BaseURL+"/task/structCompare", wrapper.APIPutStructCompare)
 	router.DELETE(options.BaseURL+"/task/structMigrate", wrapper.APIDeleteStructMigrate)
 	router.POST(options.BaseURL+"/task/structMigrate", wrapper.APIListStructMigrate)
 	router.PUT(options.BaseURL+"/task/structMigrate", wrapper.APIPutStructMigrate)

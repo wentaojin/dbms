@@ -119,19 +119,19 @@ func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporter
 	if len(partitionTables) != 0 {
 		zap.L().Warn("partition tables",
 			zap.String("schema", sourceSchema),
-			zap.String("partition table list", fmt.Sprintf("%v", partitionTables)),
+			zap.Strings("partition table list", partitionTables),
 			zap.String("suggest", "if necessary, please manually convert and process the tables in the above list"))
 	}
 	if len(temporaryTables) != 0 {
 		zap.L().Warn("temporary tables",
 			zap.String("schema", sourceSchema),
-			zap.String("temporary table list", fmt.Sprintf("%v", temporaryTables)),
+			zap.Strings("temporary table list", temporaryTables),
 			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
 	}
 	if len(clusteredTables) != 0 {
 		zap.L().Warn("clustered tables",
 			zap.String("schema", sourceSchema),
-			zap.String("clustered table list", fmt.Sprintf("%v", clusteredTables)),
+			zap.Strings("clustered table list", clusteredTables),
 			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
 	}
 
@@ -139,7 +139,7 @@ func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporter
 	if len(materializedView) != 0 {
 		zap.L().Warn("materialized views",
 			zap.String("schema", sourceSchema),
-			zap.String("materialized view list", fmt.Sprintf("%v", materializedView)),
+			zap.Strings("materialized view list", materializedView),
 			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
 
 		// exclude materialized view

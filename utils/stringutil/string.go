@@ -133,6 +133,155 @@ func StringTrim(originStr string, trimStr string) string {
 	return strings.Trim(originStr, trimStr)
 }
 
+func CompareInter(structA, structB interface{}) ([]interface{}, []interface{}) {
+	var (
+		addDiffs    []interface{}
+		removeDiffs []interface{}
+	)
+	aVal := reflect.ValueOf(structA)
+	bVal := reflect.ValueOf(structB)
+
+	if !aVal.IsValid() && !bVal.IsValid() {
+		return addDiffs, removeDiffs
+	}
+
+	if aVal.Kind() == reflect.Struct && bVal.Kind() == reflect.Struct {
+		if reflect.DeepEqual(aVal, reflect.Zero(reflect.TypeOf(structA))) {
+			removeDiffs = append(removeDiffs, structB)
+		} else {
+			if !reflect.DeepEqual(structA, structB) {
+				addDiffs = append(addDiffs, structA)
+				removeDiffs = append(removeDiffs, structB)
+			}
+		}
+		return addDiffs, removeDiffs
+	}
+
+	if aVal.IsNil() && bVal.IsNil() {
+		return addDiffs, removeDiffs
+	}
+
+	if aVal.IsNil() && !bVal.IsNil() {
+		if bVal.Kind() == reflect.Slice || bVal.Kind() == reflect.Array {
+			for bi := 0; bi < aVal.Len(); bi++ {
+				removeDiffs = append(removeDiffs, bVal.Index(bi).Interface())
+			}
+		}
+		return addDiffs, removeDiffs
+	}
+
+	if !aVal.IsNil() && bVal.IsNil() {
+		if aVal.Kind() == reflect.Slice || aVal.Kind() == reflect.Array {
+			for ai := 0; ai < aVal.Len(); ai++ {
+				addDiffs = append(addDiffs, aVal.Index(ai).Interface())
+			}
+		}
+		return addDiffs, removeDiffs
+	}
+
+	if !aVal.IsNil() && !bVal.IsNil() {
+		if (aVal.Kind() == reflect.Slice && bVal.Kind() == reflect.Slice) || (aVal.Kind() == reflect.Array && bVal.Kind() == reflect.Array) {
+			dictB := make(map[interface{}]bool)
+			for bi := 0; bi < bVal.Len(); bi++ {
+				dictB[bVal.Index(bi).Interface()] = true
+			}
+
+			dictA := make(map[interface{}]bool)
+			for ai := 0; ai < aVal.Len(); ai++ {
+				dictA[aVal.Index(ai).Interface()] = true
+				if _, ok := dictB[aVal.Index(ai).Interface()]; !ok {
+					addDiffs = append(addDiffs, aVal.Index(ai).Interface())
+				}
+			}
+
+			for bi := 0; bi < bVal.Len(); bi++ {
+				if _, ok := dictA[bVal.Index(bi).Interface()]; !ok {
+					removeDiffs = append(removeDiffs, bVal.Index(bi).Interface())
+				}
+			}
+		}
+	}
+	if len(addDiffs) == 0 && len(removeDiffs) == 0 {
+		return addDiffs, removeDiffs
+	}
+	return addDiffs, removeDiffs
+}
+
+// Key-Value
+func CompareMapInter(mapSA interface{}, mapTB interface{}) (map[string]interface{}, map[string]interface{}, map[string]interface{}) {
+	mapA := make(map[string]interface{})
+	mapB := make(map[string]interface{})
+
+	addMap := make(map[string]interface{})
+	delMap := make(map[string]interface{})
+	modifyMap := make(map[string]interface{})
+
+	aVal := reflect.ValueOf(mapSA)
+	bVal := reflect.ValueOf(mapTB)
+
+	iterMA := aVal.MapRange()
+	for iterMA.Next() {
+		mapA[iterMA.Key().String()] = iterMA.Value().Interface()
+	}
+
+	iterMB := bVal.MapRange()
+	for iterMB.Next() {
+		mapB[iterMB.Key().String()] = iterMB.Value().Interface()
+	}
+
+	for kA, iterA := range mapA {
+		if iterB, ok := mapB[kA]; !ok {
+			var tmpIters []interface{}
+			for _, valB := range mapB {
+				// the different key but the value is the same, skip
+				addInterB, delInterB := CompareInter(iterA, valB)
+				if len(addInterB) == 0 && len(delInterB) == 0 {
+					tmpIters = append(tmpIters, valB)
+				}
+			}
+			// it isn't existed the same value
+			if len(tmpIters) == 0 {
+				addMap[kA] = iterA
+			}
+		} else {
+			addInterB, delInterB := CompareInter(iterA, iterB)
+			if len(addInterB) == 0 && len(delInterB) == 0 {
+				continue
+			}
+			addMap[kA] = addInterB[0]
+			delMap[kA] = delInterB[0]
+		}
+	}
+
+	for kB, iterB := range mapB {
+		if _, ok := mapA[kB]; !ok {
+			var tmpIters []interface{}
+			for _, valA := range mapA {
+				// the different key but the value is the same, skip
+				addInterA, delInterA := CompareInter(iterB, valA)
+				if len(addInterA) == 0 && len(delInterA) == 0 {
+					tmpIters = append(tmpIters, valA)
+				}
+			}
+			// it isn't existed the same value
+			if len(tmpIters) == 0 {
+				delMap[kB] = iterB
+			}
+		}
+	}
+
+	if len(addMap) != 0 && len(delMap) != 0 {
+		for k, _ := range delMap {
+			if val, ok := addMap[k]; ok {
+				delete(delMap, k)
+				modifyMap[k] = val
+				delete(addMap, k)
+			}
+		}
+	}
+	return addMap, delMap, modifyMap
+}
+
 func StringSliceAlignLen(slices [][]string) ([][]string, int) {
 	minL := 0
 	for i, slice := range slices {

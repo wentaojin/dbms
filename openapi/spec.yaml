@@ -302,6 +302,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Response'
+  /task/structCompare:
+    put:
+      tags:
+        - structCompare
+      description: Put struct compare task information
+      operationId: APIPutStructCompare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StructCompareTask'
+      responses:
+        '200':
+          description: struct compare task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - structCompare
+      description: List struct compare task information
+      operationId: APIListStructCompare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of struct compare task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - structCompare
+      description: Delete struct compare rule information
+      operationId: APIDeleteStructCompare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
   /task/stmtMigrate:
     put:
       tags:
@@ -711,6 +784,29 @@ components:
           $ref: '#/components/schemas/StructMigrateParam'
         structMigrateRule:
           $ref: '#/components/schemas/StructMigrateRule'
+    StructCompareTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        schemaRouteRule:
+          $ref: '#/components/schemas/SchemaRouteRule'
+        structCompareParam:
+          $ref: '#/components/schemas/StructCompareParam'
+        structCompareRule:
+          $ref: '#/components/schemas/StructCompareRule'
     AssessMigrateTask:
       type: object
       properties:
@@ -1058,6 +1154,14 @@ components:
           type: boolean
         enableDirectCreate:
           type: boolean
+    StructCompareParam:
+      type: object
+      properties:
+        compareThread:
+          type: integer
+          format: uint64
+        enableCheckpoint:
+          type: boolean
     CaseFieldRule:
       type: object
       properties:
@@ -1090,6 +1194,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TableAttrsRule'
+    StructCompareRule:
+     type: object
+     properties:
+      taskStructRules:
+        type: array
+        items:
+          $ref: '#/components/schemas/TaskStructRule'
+      schemaStructRules:
+        type: array
+        items:
+          $ref: '#/components/schemas/SchemaStructRule'
+      tableStructRules:
+        type: array
+        items:
+          $ref: '#/components/schemas/TableStructRule'
+      columnStructRules:
+        type: array
+        items:
+          $ref: '#/components/schemas/ColumnStructRule'
     TaskStructRule:
       type: object
       properties:

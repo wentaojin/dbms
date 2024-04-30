@@ -78,7 +78,7 @@ func (cmt *CsvMigrateTask) Start() error {
 
 	logger.Info("csv migrate task inspect migrate task",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
-	dbVersion, dbCollationS, err := inspectMigrateTask(databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
+	dbVersion, _, dbCollationS, err := inspectMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}

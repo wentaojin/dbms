@@ -17,8 +17,10 @@ package database
 
 // IDatabaseStructMigrate used for database table struct migrate
 type IDatabaseStructMigrate interface {
+	GetDatabaseSchema() ([]string, error)
+	GetDatabaseTable(schemaName string) ([]string, error)
 	GetDatabaseCharset() (string, error)
-	GetDatabaseCharsetCollation() (string, string, error)
+	GetDatabaseCollation() (string, error)
 	GetDatabaseVersion() (string, error)
 	GetDatabasePartitionTable(schemaName string) ([]string, error)
 	GetDatabaseTemporaryTable(schemaName string) ([]string, error)
@@ -34,8 +36,9 @@ type IDatabaseStructMigrate interface {
 	GetDatabaseTableUniqueIndex(schemaName string, tableName string) ([]map[string]string, error)
 	GetDatabaseTableComment(schemaName string, tableName string) ([]map[string]string, error)
 	GetDatabaseTableColumnComment(schemaName string, tableName string) ([]map[string]string, error)
+	GetDatabaseTableCharset(schemaName string, tableName string) (string, error)
+	GetDatabaseTableCollation(schemaName, tableName string) (string, error)
 	GetDatabaseSchemaCollation(schemaName string) (string, error)
-	GetDatabaseSchemaTableCollation(schemaName, schemaCollation string) (map[string]string, error)
 	GetDatabaseTableOriginStruct(schemaName, tableName, tableType string) (string, error)
 }
 
@@ -54,23 +57,30 @@ type IStructMigrateAttributesReader interface {
 	GetTableComment() ([]map[string]string, error)
 	GetTableColumns() ([]map[string]string, error)
 	GetTableColumnComment() ([]map[string]string, error)
+	GetTableCharsetCollation() (string, string, error)
 	GetTableOriginStruct() (string, error)
 }
 
 type StructMigrateAttributes struct {
-	PrimaryKey    []map[string]string `json:"primary_key"`
-	UniqueKey     []map[string]string `json:"unique_key"`
-	ForeignKey    []map[string]string `json:"foreign_key"`
-	CheckKey      []map[string]string `json:"check_key"`
-	UniqueIndex   []map[string]string `json:"unique_index"`
-	NormalIndex   []map[string]string `json:"normal_index"`
-	TableComment  []map[string]string `json:"table_comment"`
-	TableColumns  []map[string]string `json:"table_columns"`
-	ColumnComment []map[string]string `json:"column_comment"`
-	OriginStruct  string              `json:"origin_struct"`
+	TableCharset   string              `json:"tableCharset"`
+	TableCollation string              `json:"tableCollation"`
+	PrimaryKey     []map[string]string `json:"primaryKey"`
+	UniqueKey      []map[string]string `json:"uniqueKey"`
+	ForeignKey     []map[string]string `json:"foreignKey"`
+	CheckKey       []map[string]string `json:"checkKey"`
+	UniqueIndex    []map[string]string `json:"uniqueIndex"`
+	NormalIndex    []map[string]string `json:"normalIndex"`
+	TableComment   []map[string]string `json:"tableComment"`
+	TableColumns   []map[string]string `json:"tableColumns"`
+	ColumnComment  []map[string]string `json:"columnComment"`
+	OriginStruct   string              `json:"originStruct"`
 }
 
 func IStructMigrateAttributes(t IStructMigrateAttributesReader) (*StructMigrateAttributes, error) {
+	charset, collation, err := t.GetTableCharsetCollation()
+	if err != nil {
+		return nil, err
+	}
 	primaryKey, err := t.GetTablePrimaryKey()
 	if err != nil {
 		return &StructMigrateAttributes{}, err
@@ -109,15 +119,17 @@ func IStructMigrateAttributes(t IStructMigrateAttributesReader) (*StructMigrateA
 	}
 
 	return &StructMigrateAttributes{
-		PrimaryKey:    primaryKey,
-		UniqueKey:     uniqueKey,
-		ForeignKey:    foreignKey,
-		CheckKey:      checkKey,
-		UniqueIndex:   uniqueIndex,
-		NormalIndex:   normalIndex,
-		TableComment:  tableComment,
-		TableColumns:  tableColumns,
-		ColumnComment: columnComment,
+		TableCharset:   charset,
+		TableCollation: collation,
+		PrimaryKey:     primaryKey,
+		UniqueKey:      uniqueKey,
+		ForeignKey:     foreignKey,
+		CheckKey:       checkKey,
+		UniqueIndex:    uniqueIndex,
+		NormalIndex:    normalIndex,
+		TableComment:   tableComment,
+		TableColumns:   tableColumns,
+		ColumnComment:  columnComment,
 	}, nil
 }
 

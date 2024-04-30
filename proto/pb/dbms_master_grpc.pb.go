@@ -34,6 +34,9 @@ type MasterClient interface {
 	UpsertStructMigrateTask(ctx context.Context, in *UpsertStructMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertStructMigrateTaskResponse, error)
 	DeleteStructMigrateTask(ctx context.Context, in *DeleteStructMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteStructMigrateTaskResponse, error)
 	ShowStructMigrateTask(ctx context.Context, in *ShowStructMigrateTaskRequest, opts ...grpc.CallOption) (*ShowStructMigrateTaskResponse, error)
+	UpsertStructCompareTask(ctx context.Context, in *UpsertStructCompareTaskRequest, opts ...grpc.CallOption) (*UpsertStructCompareTaskResponse, error)
+	DeleteStructCompareTask(ctx context.Context, in *DeleteStructCompareTaskRequest, opts ...grpc.CallOption) (*DeleteStructCompareTaskResponse, error)
+	ShowStructCompareTask(ctx context.Context, in *ShowStructCompareTaskRequest, opts ...grpc.CallOption) (*ShowStructCompareTaskResponse, error)
 	UpsertStmtMigrateTask(ctx context.Context, in *UpsertStmtMigrateTaskRequest, opts ...grpc.CallOption) (*UpsertStmtMigrateTaskResponse, error)
 	DeleteStmtMigrateTask(ctx context.Context, in *DeleteStmtMigrateTaskRequest, opts ...grpc.CallOption) (*DeleteStmtMigrateTaskResponse, error)
 	ShowStmtMigrateTask(ctx context.Context, in *ShowStmtMigrateTaskRequest, opts ...grpc.CallOption) (*ShowStmtMigrateTaskResponse, error)
@@ -159,6 +162,33 @@ func (c *masterClient) DeleteStructMigrateTask(ctx context.Context, in *DeleteSt
 func (c *masterClient) ShowStructMigrateTask(ctx context.Context, in *ShowStructMigrateTaskRequest, opts ...grpc.CallOption) (*ShowStructMigrateTaskResponse, error) {
 	out := new(ShowStructMigrateTaskResponse)
 	err := c.cc.Invoke(ctx, "/proto.Master/ShowStructMigrateTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) UpsertStructCompareTask(ctx context.Context, in *UpsertStructCompareTaskRequest, opts ...grpc.CallOption) (*UpsertStructCompareTaskResponse, error) {
+	out := new(UpsertStructCompareTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/UpsertStructCompareTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) DeleteStructCompareTask(ctx context.Context, in *DeleteStructCompareTaskRequest, opts ...grpc.CallOption) (*DeleteStructCompareTaskResponse, error) {
+	out := new(DeleteStructCompareTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/DeleteStructCompareTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) ShowStructCompareTask(ctx context.Context, in *ShowStructCompareTaskRequest, opts ...grpc.CallOption) (*ShowStructCompareTaskResponse, error) {
+	out := new(ShowStructCompareTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Master/ShowStructCompareTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -298,6 +328,9 @@ type MasterServer interface {
 	UpsertStructMigrateTask(context.Context, *UpsertStructMigrateTaskRequest) (*UpsertStructMigrateTaskResponse, error)
 	DeleteStructMigrateTask(context.Context, *DeleteStructMigrateTaskRequest) (*DeleteStructMigrateTaskResponse, error)
 	ShowStructMigrateTask(context.Context, *ShowStructMigrateTaskRequest) (*ShowStructMigrateTaskResponse, error)
+	UpsertStructCompareTask(context.Context, *UpsertStructCompareTaskRequest) (*UpsertStructCompareTaskResponse, error)
+	DeleteStructCompareTask(context.Context, *DeleteStructCompareTaskRequest) (*DeleteStructCompareTaskResponse, error)
+	ShowStructCompareTask(context.Context, *ShowStructCompareTaskRequest) (*ShowStructCompareTaskResponse, error)
 	UpsertStmtMigrateTask(context.Context, *UpsertStmtMigrateTaskRequest) (*UpsertStmtMigrateTaskResponse, error)
 	DeleteStmtMigrateTask(context.Context, *DeleteStmtMigrateTaskRequest) (*DeleteStmtMigrateTaskResponse, error)
 	ShowStmtMigrateTask(context.Context, *ShowStmtMigrateTaskRequest) (*ShowStmtMigrateTaskResponse, error)
@@ -353,6 +386,15 @@ func (UnimplementedMasterServer) DeleteStructMigrateTask(context.Context, *Delet
 }
 func (UnimplementedMasterServer) ShowStructMigrateTask(context.Context, *ShowStructMigrateTaskRequest) (*ShowStructMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowStructMigrateTask not implemented")
+}
+func (UnimplementedMasterServer) UpsertStructCompareTask(context.Context, *UpsertStructCompareTaskRequest) (*UpsertStructCompareTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpsertStructCompareTask not implemented")
+}
+func (UnimplementedMasterServer) DeleteStructCompareTask(context.Context, *DeleteStructCompareTaskRequest) (*DeleteStructCompareTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteStructCompareTask not implemented")
+}
+func (UnimplementedMasterServer) ShowStructCompareTask(context.Context, *ShowStructCompareTaskRequest) (*ShowStructCompareTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShowStructCompareTask not implemented")
 }
 func (UnimplementedMasterServer) UpsertStmtMigrateTask(context.Context, *UpsertStmtMigrateTaskRequest) (*UpsertStmtMigrateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpsertStmtMigrateTask not implemented")
@@ -618,6 +660,60 @@ func _Master_ShowStructMigrateTask_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MasterServer).ShowStructMigrateTask(ctx, req.(*ShowStructMigrateTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_UpsertStructCompareTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertStructCompareTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).UpsertStructCompareTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/UpsertStructCompareTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).UpsertStructCompareTask(ctx, req.(*UpsertStructCompareTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_DeleteStructCompareTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteStructCompareTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).DeleteStructCompareTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/DeleteStructCompareTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).DeleteStructCompareTask(ctx, req.(*DeleteStructCompareTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_ShowStructCompareTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShowStructCompareTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).ShowStructCompareTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Master/ShowStructCompareTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).ShowStructCompareTask(ctx, req.(*ShowStructCompareTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -910,6 +1006,18 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShowStructMigrateTask",
 			Handler:    _Master_ShowStructMigrateTask_Handler,
+		},
+		{
+			MethodName: "UpsertStructCompareTask",
+			Handler:    _Master_UpsertStructCompareTask_Handler,
+		},
+		{
+			MethodName: "DeleteStructCompareTask",
+			Handler:    _Master_DeleteStructCompareTask_Handler,
+		},
+		{
+			MethodName: "ShowStructCompareTask",
+			Handler:    _Master_ShowStructCompareTask_Handler,
 		},
 		{
 			MethodName: "UpsertStmtMigrateTask",

@@ -16,21 +16,18 @@ limitations under the License.
 package taskflow
 
 import (
+	"strings"
+
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
 type Datasource struct {
-	DatabaseS        database.IDatabase `json:"-"`
-	SchemaNameS      string             `json:"schemaNameS"`
-	TableNameS       string             `json:"tableNameS"`
-	TableTypeS       string             `json:"tableTypeS"`
-	CollationS       bool               `json:"collationS"`
-	DBCharsetS       string             `json:"dbCharsetS"`
-	DBCharsetT       string             `json:"dbCharsetT"`
-	SchemaCollationS string             `json:"schemaCollationS"`
-	TableCollationS  string             `json:"tableCollationS"`
-	DBNlsCompS       string             `json:"dbNlsCompS"`
+	DatabaseS   database.IDatabase `json:"-"`
+	SchemaNameS string             `json:"schemaNameS"`
+	TableNameS  string             `json:"tableNameS"`
+	TableTypeS  string             `json:"tableTypeS"`
+	CollationS  bool               `json:"collationS"`
 }
 
 func (d *Datasource) GetTablePrimaryKey() ([]map[string]string, error) {
@@ -67,6 +64,33 @@ func (d *Datasource) GetTableColumns() ([]map[string]string, error) {
 
 func (d *Datasource) GetTableColumnComment() ([]map[string]string, error) {
 	return d.DatabaseS.GetDatabaseTableColumnComment(d.SchemaNameS, d.TableNameS)
+}
+
+func (d *Datasource) GetTableCharsetCollation() (string, string, error) {
+	charset, err := d.DatabaseS.GetDatabaseCharset()
+	if err != nil {
+		return "", "", err
+	}
+	if d.CollationS {
+		tableCollation, err := d.DatabaseS.GetDatabaseTableCollation(d.SchemaNameS, d.TableNameS)
+		if err != nil {
+			return "", "", err
+		}
+		if strings.EqualFold(tableCollation, "") {
+			schemaCollation, err := d.DatabaseS.GetDatabaseSchemaCollation(d.SchemaNameS)
+			if err != nil {
+				return "", "", err
+			}
+			return charset, schemaCollation, nil
+		}
+		return charset, tableCollation, nil
+	}
+
+	nlsComp, err := d.DatabaseS.GetDatabaseCollation()
+	if err != nil {
+		return "", "", err
+	}
+	return charset, nlsComp, nil
 }
 
 func (d *Datasource) GetTableOriginStruct() (string, error) {

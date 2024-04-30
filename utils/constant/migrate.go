@@ -23,9 +23,6 @@ const (
 	// Allow Oracle table, field Collation, requires oracle 12.2g and above
 	OracleDatabaseTableAndColumnSupportVersion = "12.2"
 
-	// Oracle user、table、column default sort collation
-	OracleDatabaseUserTableColumnDefaultCollation = "USING_NLS_COMP"
-
 	// Oracle database table type
 	OracleDatabaseTableTypeHeapTable                 = "HEAP"
 	OracleDatabaseTableTypePartitionTable            = "PARTITIONED"
@@ -37,13 +34,15 @@ const (
 	// specify processing for oracle table attr null、nullstring and ""
 	OracleDatabaseTableColumnDefaultValueWithNULLSTRING = "NULLSTRING"
 	OracleDatabaseTableColumnDefaultValueWithStringNull = ""
-	OracleDatabaseTableColumnDefaultValueWithNULL       = "NULL"
 
 	OracleDatabaseColumnDatatypeMatchRuleNotFound = "NOT FOUND"
 
 	// MYSQL database check constraint support version > 8.0.15
-	MYSQLDatabaseCheckConstraintSupportVersion = "8.0.15"
-	MYSQLDatabaseVersionDelimiter              = "-"
+	MYSQLDatabaseCheckConstraintSupportVersion         = "8.0.15"
+	MYSQLDatabaseTableColumnDefaultValueWithStringNull = ""
+
+	MYSQLCompatibleDatabaseVersionDelimiter = "-"
+
 	// MYSQL database expression index support version > 8.0.0
 	MYSQLDatabaseExpressionIndexSupportVersion = "8.0.0"
 
@@ -54,10 +53,50 @@ const (
 
 	MYSQLDatabaseSequenceSupportVersion = "8.0"
 	TIDBDatabaseSequenceSupportVersion  = "4.0"
+
+	// struct compare
+	StructCompareColumnsStructureJSONFormat   = "COLUMN"
+	StructCompareIndexStructureJSONFormat     = "INDEX"
+	StructComparePrimaryStructureJSONFormat   = "PK"
+	StructCompareUniqueStructureJSONFormat    = "UK"
+	StructCompareForeignStructureJSONFormat   = "FK"
+	StructCompareCheckStructureJSONFormat     = "CK"
+	StructComparePartitionStructureJSONFormat = "PARTITION"
 )
 
 // TiDB database integer primary key menu
-var TiDBDatabaseIntegerPrimaryKeyMenu = []string{"TINYINT", "SMALLINT", "INT", "BIGINT", "DECIMAL"}
+var TiDBDatabaseIntegerColumnDatatypePrimaryKey = []string{"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT", "DECIMAL"}
+
+// The default value of mysql is not differentiated between character data and numerical data.
+// It is used to match the default value of mysql string and determine whether single quotes are required.
+// 1, The default value uuid() matches the end of xxx() brackets, no single quotes are required
+// 2, The default value CURRENT_TIMESTAMP does not require parentheses and is converted to ORACLE SYSDATE built-in
+// 3, Default value skp or 1 requires single quotes
+var MYSQLCompatibleDatabaseTableColumnDatatypeStringDefaultValueApostrophe = []string{"TIME",
+	"DATE",
+	"DATETIME",
+	"TIMESTAMP",
+	"CHAR",
+	"VARCHAR",
+	"TINYTEXT",
+	"TEXT", "MEDIUMTEX", "LONGTEXT", "BIT", "BINARY", "VARBINARY", "TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB"}
+
+// MYSQL compatibe database table datatype reverse oracle CLOB or NCLOB configure collation error, need configure columnCollation = ""
+// ORA-43912: invalid collation specified for a CLOB or NCLOB value
+var MYSQLCompatibleDatabaseTableBigTextColumnCollation = []string{"TINYTEXT",
+	"TEXT",
+	"MEDIUMTEXT",
+	"LONGTEXT"}
+
+var MYSQLCompatibleDatabaseTableIntegerColumnDatatypeExcludeDecimal = map[string]string{
+	"TINYINT":   "4",
+	"SMALLINT":  "6",
+	"MEDIUMINT": "9",
+	"INT":       "11",
+	"BIGINT":    "20",
+}
+
+var OracleCompatibleDatabaseIsNotSupportMYSQLCompatibleDatabaseTableColumnDatatype = []string{"ENUM", "SET"}
 
 // Data migration, data verification, table structure default values, comments
 // Character type data mapping rules
@@ -378,6 +417,20 @@ const (
 	ParamValueStructMigrateCaseFieldRuleOrigin = "0"
 	ParamValueStructMigrateCaseFieldRuleLower  = "1"
 	ParamValueStructMigrateCaseFieldRuleUpper  = "2"
+)
+
+// struct compare parameters
+const (
+	ParamNameStructCompareCompareThread    = "compareThread"
+	ParamNameStructCompareEnableCheckpoint = "enableCheckpoint"
+
+	// ParamValueStructCompareCaseFieldRuleOrigin case-field-name params value
+	// - 0 represent keeping origin
+	// - 1 represent keeping lower
+	// - 2 represent keeping upper
+	ParamValueStructCompareCaseFieldRuleOrigin = "0"
+	ParamValueStructCompareCaseFieldRuleLower  = "1"
+	ParamValueStructCompareCaseFieldRuleUpper  = "2"
 )
 
 // statement migrate parameters

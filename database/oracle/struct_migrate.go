@@ -188,7 +188,7 @@ FROM
 	return stringutil.StringSplit(res[0]["LANG"], constant.StringSeparatorDot)[1], nil
 }
 
-func (d *Database) GetDatabaseCharsetCollation() (string, string, error) {
+func (d *Database) GetDatabaseCollation() (string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
 	PARAMETER,
 	VALUE
@@ -197,7 +197,7 @@ FROM
 WHERE
 	PARAMETER IN ('NLS_SORT', 'NLS_COMP')`))
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	var (
 		nlsComp string
@@ -209,10 +209,13 @@ WHERE
 		} else if strings.EqualFold(r["PARAMETER"], "NLS_SORT") {
 			nlsSort = r["VALUE"]
 		} else {
-			return "", "", fmt.Errorf("get database character set collation failed: [%v]", r)
+			return "", fmt.Errorf("get database character set collation failed: [%v]", r)
 		}
 	}
-	return nlsComp, nlsSort, nil
+	if !strings.EqualFold(nlsSort, nlsComp) {
+		return "", fmt.Errorf("oracle database nls_sort [%s] and nls_comp [%s] isn't different, need be equal", nlsSort, nlsComp)
+	}
+	return nlsComp, nil
 }
 
 func (d *Database) GetDatabaseVersion() (string, error) {
@@ -820,32 +823,25 @@ WHERE
 	return res[0]["DEFAULT_COLLATION"], nil
 }
 
-func (d *Database) GetDatabaseSchemaTableCollation(schemaName, schemaCollation string) (map[string]string, error) {
-	var err error
-
-	tablesMap := make(map[string]string)
-
+func (d *Database) GetDatabaseTableCollation(schemaName, tableName string) (string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
-	TABLE_NAME,
-	DEFAULT_COLLATION
+	DECODE(DEFAULT_COLLATION,'USING_NLS_COMP',( SELECT VALUE FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_COMP'), DEFAULT_COLLATION) DEFAULT_COLLATION
 FROM
 	DBA_TABLES
 WHERE
 	OWNER = '%s'
+  	AND TABLE_NAME = '%s'
 	AND (IOT_TYPE IS NULL
-		OR IOT_TYPE = 'IOT')`, schemaName))
+		OR IOT_TYPE = 'IOT')`, schemaName, tableName))
 	if err != nil {
-		return tablesMap, err
+		return "", err
 	}
-	for _, r := range res {
-		if strings.ToUpper(r["DEFAULT_COLLATION"]) == constant.OracleDatabaseUserTableColumnDefaultCollation {
-			tablesMap[strings.ToUpper(r["TABLE_NAME"])] = strings.ToUpper(schemaCollation)
-		} else {
-			tablesMap[strings.ToUpper(r["TABLE_NAME"])] = strings.ToUpper(r["DEFAULT_COLLATION"])
-		}
-	}
+	return res[0]["DEFAULT_COLLATION"], nil
+}
 
-	return tablesMap, nil
+func (d *Database) GetDatabaseTableCharset(schemaName string, tableName string) (string, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (d *Database) GetDatabaseTableOriginStruct(schemaName, tableName, tableType string) (string, error) {

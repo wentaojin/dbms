@@ -67,6 +67,29 @@ type IStructMigrateTask interface {
 	DeleteStructMigrateTaskName(ctx context.Context, taskName []string) error
 }
 
+type IStructCompareSummary interface {
+	CreateStructCompareSummary(ctx context.Context, task *StructCompareSummary) (*StructCompareSummary, error)
+	GetStructCompareSummary(ctx context.Context, task *StructCompareSummary) (*StructCompareSummary, error)
+	UpdateStructCompareSummary(ctx context.Context, task *StructCompareSummary, updates map[string]interface{}) (*StructCompareSummary, error)
+	FindStructCompareSummary(ctx context.Context, task *StructCompareSummary) ([]*StructCompareSummary, error)
+	DeleteStructCompareSummary(ctx context.Context, task *StructCompareSummary) error
+	DeleteStructCompareSummaryName(ctx context.Context, taskName []string) error
+}
+
+type IStructCompareTask interface {
+	CreateStructCompareTask(ctx context.Context, task *StructCompareTask) (*StructCompareTask, error)
+	GetStructCompareTask(ctx context.Context, task *StructCompareTask) ([]*StructCompareTask, error)
+	GetStructCompareTaskTable(ctx context.Context, task *StructCompareTask) ([]*StructCompareTask, error)
+	UpdateStructCompareTask(ctx context.Context, task *StructCompareTask, updates map[string]interface{}) (*StructCompareTask, error)
+	BatchUpdateStructCompareTask(ctx context.Context, task *StructCompareTask, updates map[string]interface{}) (*StructCompareTask, error)
+	FindStructCompareTask(ctx context.Context, task *StructCompareTask) ([]*StructCompareTask, error)
+	FindStructCompareTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructGroupStatusResult, error)
+	BatchFindStructCompareTask(ctx context.Context, task *StructCompareTask) ([]*StructCompareTask, error)
+	ListStructCompareTask(ctx context.Context, page uint64, pageSize uint64) ([]*StructCompareTask, error)
+	DeleteStructCompareTask(ctx context.Context, id uint64) error
+	DeleteStructCompareTaskName(ctx context.Context, taskName []string) error
+}
+
 type IDataMigrateSummary interface {
 	CreateDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) (*DataMigrateSummary, error)
 	GetDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) (*DataMigrateSummary, error)

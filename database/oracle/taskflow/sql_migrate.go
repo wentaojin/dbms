@@ -66,7 +66,7 @@ func (smt *SqlMigrateTask) Start() error {
 		zap.String("task_name", smt.Task.TaskName),
 		zap.String("task_mode", smt.Task.TaskMode),
 		zap.String("task_flow", smt.Task.TaskFlow))
-	_, err = inspectMigrateTask(databaseS, stringutil.StringUpper(smt.DatasourceS.ConnectCharset), stringutil.StringUpper(smt.DatasourceT.ConnectCharset))
+	_, _, _, err = inspectMigrateTask(smt.Task.TaskName, smt.Task.TaskFlow, smt.Task.TaskMode, databaseS, stringutil.StringUpper(smt.DatasourceS.ConnectCharset), stringutil.StringUpper(smt.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}

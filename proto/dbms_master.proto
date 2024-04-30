@@ -78,6 +78,24 @@ service Master {
       body: "*"
     };
   }
+  rpc UpsertStructCompareTask(UpsertStructCompareTaskRequest) returns (UpsertStructCompareTaskResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/structCompareTask"
+      body: "*"
+    };
+  }
+  rpc DeleteStructCompareTask(DeleteStructCompareTaskRequest) returns (DeleteStructCompareTaskResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/structCompareTask"
+      body: "*"
+    };
+  }
+  rpc ShowStructCompareTask(ShowStructCompareTaskRequest) returns (ShowStructCompareTaskResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/structCompareTask"
+      body: "*"
+    };
+  }
   rpc UpsertStmtMigrateTask(UpsertStmtMigrateTaskRequest) returns (UpsertStmtMigrateTaskResponse){
     option (google.api.http) = {
       put: "/apis/v1alpha1/dataMigrateTask"
@@ -257,6 +275,37 @@ message ShowStructMigrateTaskRequest{
   uint64 pageSize = 3;
 }
 message ShowStructMigrateTaskResponse{
+  Response response = 1;
+}
+
+message UpsertStructCompareTaskRequest{
+  string taskName = 1;
+  string datasourceNameS = 2;
+  string datasourceNameT = 3;
+  string comment = 4;
+
+  CaseFieldRule caseFieldRule = 5;
+  SchemaRouteRule schemaRouteRule = 6;
+  StructCompareParam structCompareParam = 7;
+  StructCompareRule structCompareRule = 8;
+}
+message UpsertStructCompareTaskResponse{
+  Response response = 1;
+}
+
+message DeleteStructCompareTaskRequest{
+  repeated string taskName = 1;
+}
+message DeleteStructCompareTaskResponse{
+  Response response = 1;
+}
+
+message ShowStructCompareTaskRequest{
+  string taskName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowStructCompareTaskResponse{
   Response response = 1;
 }
 
@@ -457,6 +506,18 @@ message StructMigrateRule {
   repeated TableStructRule tableStructRules = 3;
   repeated ColumnStructRule columnStructRules = 4;
   repeated TableAttrsRule tableAttrsRules = 5;
+}
+
+message StructCompareParam {
+  uint64 compareThread = 1;
+  bool enableCheckpoint = 2;
+}
+
+message StructCompareRule {
+  repeated TaskStructRule taskStructRules = 1;
+  repeated SchemaStructRule schemaStructRules = 2;
+  repeated TableStructRule tableStructRules = 3;
+  repeated ColumnStructRule columnStructRules = 4;
 }
 
 message TaskStructRule {

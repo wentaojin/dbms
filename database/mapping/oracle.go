@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package taskflow
+package mapping
 
 import (
 	"fmt"
@@ -27,20 +27,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-type Column struct {
-	ColumnName    string
-	Datatype      string
-	CharUsed      string
-	CharLength    string
-	DataPrecision string
-	DataLength    string
-	DataScale     string
-	DataDefault   string
-	Nullable      string
-	Comment       string
-}
-
-func DatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinDatatypes []*buildin.BuildinDatatypeRule) (string, string, error) {
+func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinDatatypes []*buildin.BuildinDatatypeRule) (string, string, error) {
 	var (
 		// origin column datatype
 		originColumnType string
@@ -163,28 +150,28 @@ func DatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinDatatyp
 					//case dataPrecision >= 1 && dataPrecision < 3:
 					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 					//	if _, ok = numberDatatypeMap["TINYINT"]; ok {
-					//		buildInColumnType = "TINYINT"
+					//		buildInColumnType = "TINYINT(4)"
 					//		return originColumnType, buildInColumnType, nil
 					//	}
 					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [TINYINT]", c.ColumnName, originColumnType)
 					//case dataPrecision >= 3 && dataPrecision < 5:
 					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 					//	if _, ok = numberDatatypeMap["SMALLINT"]; ok {
-					//		buildInColumnType = "SMALLINT"
+					//		buildInColumnType = "SMALLINT(6)"
 					//		return originColumnType, buildInColumnType, nil
 					//	}
 					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [SMALLINT]", c.ColumnName, originColumnType)
 					//case dataPrecision >= 5 && dataPrecision < 9:
 					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 					//	if _, ok = numberDatatypeMap["INT"]; ok {
-					//		buildInColumnType = "INT"
+					//		buildInColumnType = "INT(11)"
 					//		return originColumnType, buildInColumnType, nil
 					//	}
 					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [INT]", c.ColumnName, originColumnType)
 					//case dataPrecision >= 9 && dataPrecision < 19:
 					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 					//	if _, ok = numberDatatypeMap["BIGINT"]; ok {
-					//		buildInColumnType = "BIGINT"
+					//		buildInColumnType = "BIGINT(20)"
 					//		return originColumnType, buildInColumnType, nil
 					//	}
 					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [BIGINT]", c.ColumnName, originColumnType)
@@ -525,19 +512,19 @@ func DatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinDatatyp
 	}
 }
 
-// HandleColumnRuleWithPriority priority, return column datatype and default value
+// OracleHandleColumnRuleWithPriority priority, return column datatype and default value
 // column > table > schema > task
-func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, originDatatype, buildInDatatype, originDefaultValue, sourceCharset, targetCharset string, buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule, columnRules []*migrate.ColumnStructRule) (string, string, error) {
+func OracleHandleColumnRuleWithPriority(originSourceTable, originColumnName string, originDatatype, buildInDatatype, originDefaultValue, sourceCharset, targetCharset string, buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule, columnRules []*migrate.ColumnStructRule) (string, string, error) {
 	var (
 		datatype, defaultValue string
 		err                    error
 	)
-	columnDatatypes, columnDefaultValues := handleColumnRuleWithColumnHighPriority(originColumnName, columnRules)
+	columnDatatypes, columnDefaultValues := oracleHandleColumnRuleWithColumnHighPriority(originColumnName, columnRules)
 
-	globalDatatypes, globalDefaultValues := handelColumnRuleWithTableSchemaTaskPriority(originSourceTable, buildinDefaultValueRules, taskRules, schemaRules, tableRules)
+	globalDatatypes, globalDefaultValues := oracleHandelColumnRuleWithTableSchemaTaskPriority(originSourceTable, buildinDefaultValueRules, taskRules, schemaRules, tableRules)
 
 	// column default value
-	defaultValue, err = handleColumnRuleWitheDefaultValuePriority(originColumnName, originDefaultValue, sourceCharset, targetCharset, columnDefaultValues, globalDefaultValues)
+	defaultValue, err = OracleHandleColumnRuleWitheDefaultValuePriority(originColumnName, originDefaultValue, sourceCharset, targetCharset, columnDefaultValues, globalDefaultValues)
 	if err != nil {
 		return datatype, defaultValue, err
 	}
@@ -546,7 +533,7 @@ func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, or
 	if len(columnDatatypes) == 0 && len(columnDefaultValues) == 0 {
 		// global priority
 		for ruleColumnTypeS, ruleColumnTypeT := range globalDatatypes {
-			datatype = handleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
+			datatype = oracleHandleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
 			if !strings.EqualFold(datatype, constant.OracleDatabaseColumnDatatypeMatchRuleNotFound) {
 				return datatype, defaultValue, nil
 			}
@@ -560,7 +547,7 @@ func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, or
 		// global priority
 		if len(columnRuleMap) == 0 {
 			for ruleColumnTypeS, ruleColumnTypeT := range globalDatatypes {
-				datatype = handleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
+				datatype = oracleHandleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
 				if !strings.EqualFold(datatype, constant.OracleDatabaseColumnDatatypeMatchRuleNotFound) {
 					return datatype, defaultValue, nil
 				}
@@ -573,7 +560,7 @@ func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, or
 		// case field rule
 		if originColumnName == customColName {
 			for ruleColumnTypeS, ruleColumnTypeT := range columnRuleMap {
-				datatype = handleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
+				datatype = oracleHandleColumnRuleWithNumberDatatypeCompare(originDatatype, ruleColumnTypeS, ruleColumnTypeT)
 				if !strings.EqualFold(datatype, constant.OracleDatabaseColumnDatatypeMatchRuleNotFound) {
 					return datatype, defaultValue, nil
 				}
@@ -584,7 +571,7 @@ func HandleColumnRuleWithPriority(originSourceTable, originColumnName string, or
 	return datatype, defaultValue, nil
 }
 
-func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, sourceCharset, targetCharset string, columnCustomDefaultValue map[string]map[string]string, columnGlobalDefaultValue map[string]string) (string, error) {
+func OracleHandleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, sourceCharset, targetCharset string, columnCustomDefaultValue map[string]map[string]string, columnGlobalDefaultValue map[string]string) (string, error) {
 	// Additional processing of Oracle defaults ('6') or (5) or ('xsddd') that contain parentheses instead of defaults like '(xxxx)'
 	// Oracle will automatically handle the default value ('xxx') or (xxx) internally, so needs to be processed into 'xxx' or xxx
 	// default('0'  )
@@ -636,7 +623,7 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 	if len(columnCustomDefaultValue) == 0 && len(columnGlobalDefaultValue) == 0 {
 		// string data charset processing
 		// MigrateStringDataTypeDatabaseCharsetMap
-		dataDefault, err := handleColumnDefaultValueCharset(columnName, defaultVal, constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(sourceCharset)], constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(targetCharset)])
+		dataDefault, err := oracleHandleColumnDefaultValueCharset(columnName, defaultVal, sourceCharset, targetCharset)
 		if err != nil {
 			return defaultVal, err
 		}
@@ -645,6 +632,7 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 
 	// priority
 	// column > global
+	var columnLevelVal, globalLevelVal string
 	if len(columnCustomDefaultValue) != 0 {
 		if vals, exist := columnCustomDefaultValue[columnName]; exist {
 			// The currently created table structure field A varchar2(10) does not have any attributes. If you need to specify changes, you need to specify the defaultValueS value, which is NULLSTRING.
@@ -652,7 +640,7 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 			// The currently created table structure field A varchar2(10) default ''. If you need to specify changes, you need to specify the defaultValueS value, which is ''.
 			for k, v := range vals {
 				if strings.EqualFold(strings.TrimSpace(k), strings.TrimSpace(defaultVal)) {
-					defaultVal = v
+					columnLevelVal = v
 					// break skip
 					break
 				}
@@ -663,21 +651,29 @@ func handleColumnRuleWitheDefaultValuePriority(columnName, originDefaultValue, s
 	if len(columnGlobalDefaultValue) != 0 {
 		for k, v := range columnGlobalDefaultValue {
 			if strings.EqualFold(strings.TrimSpace(k), strings.TrimSpace(defaultVal)) {
-				defaultVal = v
+				globalLevelVal = v
 				// break skip
 				break
 			}
 		}
 	}
 
-	dataDefault, err := handleColumnDefaultValueCharset(columnName, strings.TrimSpace(defaultVal), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(targetCharset)])
+	if !strings.EqualFold(columnLevelVal, "") {
+		defaultVal = columnLevelVal
+	}
+
+	if strings.EqualFold(columnLevelVal, "") && !strings.EqualFold(globalLevelVal, "") {
+		defaultVal = globalLevelVal
+	}
+
+	dataDefault, err := oracleHandleColumnDefaultValueCharset(columnName, strings.TrimSpace(defaultVal), constant.CharsetUTF8MB4, targetCharset)
 	if err != nil {
 		return defaultVal, err
 	}
 	return dataDefault, nil
 }
 
-func handleColumnRuleWithNumberDatatypeCompare(originColumnType, ruleColumnTypeS, ruleColumnTypeT string) string {
+func oracleHandleColumnRuleWithNumberDatatypeCompare(originColumnType, ruleColumnTypeS, ruleColumnTypeT string) string {
 	/*
 		number datatype：GetDatabaseTableColumnInfo
 		- number(*,10) -> number(38,10)
@@ -718,16 +714,16 @@ func handleColumnRuleWithNumberDatatypeCompare(originColumnType, ruleColumnTypeS
 	return constant.OracleDatabaseColumnDatatypeMatchRuleNotFound
 }
 
-// handelColumnRuleWithTableSchemaTaskPriority priority
+// oracleHandelColumnRuleWithTableSchemaTaskPriority priority
 // table > schema > task -> server
-func handelColumnRuleWithTableSchemaTaskPriority(sourceTable string, buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
-	taskDatatype, taskDefaultVal := handleColumnRuleWithTaskLevel(taskRules)
+func oracleHandelColumnRuleWithTableSchemaTaskPriority(sourceTable string, buildinDefaultValueRules []*buildin.BuildinDefaultvalRule, taskRules []*migrate.TaskStructRule, schemaRules []*migrate.SchemaStructRule, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
+	taskDatatype, taskDefaultVal := oracleHandleColumnRuleWithTaskLevel(taskRules)
 
-	schemaDatatype, schemaDefaultVal := handleColumnRuleWithSchemaLevel(schemaRules)
+	schemaDatatype, schemaDefaultVal := oracleHandleColumnRuleWithSchemaLevel(schemaRules)
 
-	tableDatatype, tableDefaultVal := handleColumnRuleWithTableLevel(sourceTable, tableRules)
+	tableDatatype, tableDefaultVal := oracleHandleColumnRuleWithTableLevel(sourceTable, tableRules)
 
-	buildinDefaultValues := handleColumnDefaultValueRuleWithServerLevel(buildinDefaultValueRules)
+	buildinDefaultValues := oracleHandleColumnDefaultValueRuleWithServerLevel(buildinDefaultValueRules)
 
 	globalColumnDatatype := stringutil.ExchangeStringDict(tableDatatype, stringutil.ExchangeStringDict(schemaDatatype, taskDatatype))
 
@@ -736,9 +732,9 @@ func handelColumnRuleWithTableSchemaTaskPriority(sourceTable string, buildinDefa
 	return globalColumnDatatype, globalColumnDefaultVal
 }
 
-// handleColumnRuleWithColumnHighPriority priority
+// oracleHandleColumnRuleWithColumnHighPriority priority
 // column high priority
-func handleColumnRuleWithColumnHighPriority(columNameS string, columnRules []*migrate.ColumnStructRule) (map[string]map[string]string, map[string]map[string]string) {
+func oracleHandleColumnRuleWithColumnHighPriority(columNameS string, columnRules []*migrate.ColumnStructRule) (map[string]map[string]string, map[string]map[string]string) {
 	columnDatatypeMap := make(map[string]map[string]string)
 	columnDefaultValMap := make(map[string]map[string]string)
 
@@ -769,7 +765,7 @@ func handleColumnRuleWithColumnHighPriority(columNameS string, columnRules []*mi
 	return columnDatatypeMap, columnDefaultValMap
 }
 
-func handleColumnDefaultValueRuleWithServerLevel(buildinRules []*buildin.BuildinDefaultvalRule) map[string]string {
+func oracleHandleColumnDefaultValueRuleWithServerLevel(buildinRules []*buildin.BuildinDefaultvalRule) map[string]string {
 	columnDefaultValMap := make(map[string]string)
 
 	if len(buildinRules) == 0 {
@@ -784,7 +780,7 @@ func handleColumnDefaultValueRuleWithServerLevel(buildinRules []*buildin.Buildin
 	return columnDefaultValMap
 }
 
-func handleColumnRuleWithTaskLevel(taskRules []*migrate.TaskStructRule) (map[string]string, map[string]string) {
+func oracleHandleColumnRuleWithTaskLevel(taskRules []*migrate.TaskStructRule) (map[string]string, map[string]string) {
 	columnDatatypeMap := make(map[string]string)
 	columnDefaultValMap := make(map[string]string)
 
@@ -822,7 +818,7 @@ func handleColumnRuleWithTaskLevel(taskRules []*migrate.TaskStructRule) (map[str
 	return columnDatatypeMap, columnDefaultValMap
 }
 
-func handleColumnRuleWithSchemaLevel(schemaRules []*migrate.SchemaStructRule) (map[string]string, map[string]string) {
+func oracleHandleColumnRuleWithSchemaLevel(schemaRules []*migrate.SchemaStructRule) (map[string]string, map[string]string) {
 	columnDatatypeMap := make(map[string]string)
 	columnDefaultValMap := make(map[string]string)
 
@@ -860,7 +856,7 @@ func handleColumnRuleWithSchemaLevel(schemaRules []*migrate.SchemaStructRule) (m
 	return columnDatatypeMap, columnDefaultValMap
 }
 
-func handleColumnRuleWithTableLevel(sourceTable string, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
+func oracleHandleColumnRuleWithTableLevel(sourceTable string, tableRules []*migrate.TableStructRule) (map[string]string, map[string]string) {
 	columnDatatypeMap := make(map[string]string)
 	columnDefaultValMap := make(map[string]string)
 
@@ -900,7 +896,7 @@ func handleColumnRuleWithTableLevel(sourceTable string, tableRules []*migrate.Ta
 	return columnDatatypeMap, columnDefaultValMap
 }
 
-func handleColumnDefaultValueCharset(columnName, defaultVal, sourceCharset, targetCharset string) (string, error) {
+func oracleHandleColumnDefaultValueCharset(columnName, defaultVal, sourceCharset, targetCharset string) (string, error) {
 	var dataDefault string
 
 	// column default value is '', direct return

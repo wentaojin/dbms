@@ -3,8 +3,9 @@ datasource-name-s = "oracle33"
 datasource-name-t = "tidb145"
 comment = "测试数据源"
 
-[struct-migrate-param]
+[struct-compare-param]
 compare-thread = 10
+enable-checkpoint = true
 
 [case-field-rule]
 # 控制配置文件内所有 *-s 参数配置值（default-value-s 除外）以及 column-route-rules 中的 key 值
@@ -40,26 +41,26 @@ column-route-rules = {"NAME" = "t_name00"}
 # 数值类型以及函数表达式设置保持本身即可
 # '' 空字符串设置需要设置保持 '' 即可
 # NULL 字符设置需要 NULLSTRING 代替
-[struct-migrate-rule]
-[[struct-migrate-rule.task-struct-rules]]
+[struct-compare-rule]
+[[struct-compare-rule.task-struct-rules]]
 column-type-s = "NUMBER(38)"
 column-type-t = "BIGINT"
 default-value-s = "5"
 default-value-t = "10"
-[[struct-migrate-rule.schema-struct-rules]]
+[[struct-compare-rule.schema-struct-rules]]
 schema-name-s = "MARVIN"
 column-type-s = "NUMBER"
 column-type-t = "BIGINT"
 default-value-s = ""
 default-value-t = ""
-[[struct-migrate-rule.table-struct-rules]]
+[[struct-compare-rule.table-struct-rules]]
 schema-name-s = "MARVIN"
 table-name-s = "MARVIN00"
 column-type-s = "NUMBER"
 column-type-t = "BIGINT(20)"
 default-value-s = "'pw'"
 default-value-t = "'pc'"
-[[struct-migrate-rule.column-struct-rules]]
+[[struct-compare-rule.column-struct-rules]]
 schema-name-s = "MARVIN"
 table-name-s = "MARVIN00"
 column-name-s = "ID"
@@ -67,7 +68,7 @@ column-type-s = "NUMBER"
 column-type-t = "INT"
 default-value-s = ""
 default-value-t = ""
-[[struct-migrate-rule.column-struct-rules]]
+[[struct-compare-rule.column-struct-rules]]
 schema-name-s = "MARVIN"
 table-name-s = "MARVIN01"
 column-name-s = "XF"
@@ -75,7 +76,7 @@ column-type-s = ""
 column-type-t = ""
 default-value-s = "''"
 default-value-t = "'STRING'"
-[[struct-migrate-rule.column-struct-rules]]
+[[struct-compare-rule.column-struct-rules]]
 schema-name-s = "MARVIN"
 table-name-s = "MARVIN01"
 column-name-s = "XFO"
@@ -83,7 +84,7 @@ column-type-s = ""
 column-type-t = ""
 default-value-s = "NULLSTRING"
 default-value-t = "'pingcap'"
-[[struct-migrate-rule.column-struct-rules]]
+[[struct-compare-rule.column-struct-rules]]
 schema-name-s = "MARVIN"
 table-name-s = "MARVIN01"
 column-name-s = "XFT"
@@ -91,9 +92,5 @@ column-type-s = ""
 column-type-t = ""
 default-value-s = "NULLSTRING"
 default-value-t = "'marvin'"
-[[struct-migrate-rule.table-attrs-rules]]
-schema-name-s = "MARVIN"
-table-names-s = ["MARVIN05"]
-table-attrs-t = "shard_row_id_bits=6"
 
 
