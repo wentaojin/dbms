@@ -52,15 +52,12 @@ jobs:
       - name: Cross Platform Compile Linux amd64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=linux/amd64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=linux/amd64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=linux/amd64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=linux/amd64 -pkg component/cli ${{ github.workspace }}
-
-          sudo mv ${{ github.workspace }}/bin/dbms-master-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-master 
-          sudo mv ${{ github.workspace }}/bin/dbms-worker-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms 
-          sudo mv ${{ github.workspace }}/bin/dbmsctl-${{ github.ref_name }} ${{ github.workspace }}/bin/dbmsctl 
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master -targets=linux/amd64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker -targets=linux/amd64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms -targets=linux/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=linux/amd64 -pkg component/cli ${{ github.workspace }}
+          
+          ls -lnrt ${{ github.workspace }}/bin
           
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64
           sudo chmod -R 777 ${{ github.workspace }}/build
@@ -85,15 +82,12 @@ jobs:
       - name: Cross Platform Compile Linux arm64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=linux/arm64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=linux/arm64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=linux/arm64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master -targets=linux/arm64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker -targets=linux/arm64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms -targets=linux/arm64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
 
-          sudo mv ${{ github.workspace }}/bin/dbms-master-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-master 
-          sudo mv ${{ github.workspace }}/bin/dbms-worker-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms 
-          sudo mv ${{ github.workspace }}/bin/dbmsctl-${{ github.ref_name }} ${{ github.workspace }}/bin/dbmsctl 
+          ls -lnrt ${{ github.workspace }}/bin
 
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
           sudo chmod -R 777 ${{ github.workspace }}/build
@@ -118,15 +112,12 @@ jobs:
       - name: Cross Platform Compile Darwin amd64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=darwin/amd64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=darwin/amd64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=darwin/amd64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master -targets=darwin/amd64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker -targets=darwin/amd64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms -targets=darwin/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
 
-          sudo mv ${{ github.workspace }}/bin/dbms-master-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-master 
-          sudo mv ${{ github.workspace }}/bin/dbms-worker-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms 
-          sudo mv ${{ github.workspace }}/bin/dbmsctl-${{ github.ref_name }} ${{ github.workspace }}/bin/dbmsctl 
+          ls -lnrt ${{ github.workspace }}/bin
 
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
           sudo chmod -R 777 ${{ github.workspace }}/build
@@ -151,15 +142,12 @@ jobs:
       - name: Cross Platform Compile Darwin arm64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=darwin/arm64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=darwin/arm64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=darwin/arm64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master -targets=darwin/arm64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker -targets=darwin/arm64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms -targets=darwin/arm64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
 
-          sudo mv ${{ github.workspace }}/bin/dbms-master-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-master 
-          sudo mv ${{ github.workspace }}/bin/dbms-worker-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms 
-          sudo mv ${{ github.workspace }}/bin/dbmsctl-${{ github.ref_name }} ${{ github.workspace }}/bin/dbmsctl 
+          ls -lnrt ${{ github.workspace }}/bin
 
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
           sudo chmod -R 777 ${{ github.workspace }}/build
