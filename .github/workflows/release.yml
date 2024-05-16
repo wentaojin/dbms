@@ -66,28 +66,28 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           pwd
-          mkdir -p ${{ github.workspace }}/bin/linux/amd64/
-          mkdir -p ${{ github.workspace }}/bin/linux/amd64/
+          sudo mkdir -p ${{ github.workspace }}/bin/linux/amd64/
+          sudo mkdir -p ${{ github.workspace }}/bin/linux/amd64/
 
-          mkdir -p ${{ github.workspace }}/bin/linux/arm64/
-          mkdir -p ${{ github.workspace }}/bin/darwin/amd64/
-          mkdir -p ${{ github.workspace }}/bin/darwin/arm64/
+          sudo mkdir -p ${{ github.workspace }}/bin/linux/arm64/
+          sudo mkdir -p ${{ github.workspace }}/bin/darwin/amd64/
+          sudo mkdir -p ${{ github.workspace }}/bin/darwin/arm64/
           
           sudo chmod -R 777 ${{ github.workspace }}/bin
           
-          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64
-          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
-          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
-          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
         
           sudo chmod -R 777 ${{ github.workspace }}/build
       - name: Compression Linux Package
         run: |
           cd ${{ github.workspace }}/bin
-          mv dbms-master-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms-master
-          mv dbms-worker-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms-worker
-          mv dbmsctl-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbmsctl
-          mv dbms-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms
+          sudo mv dbms-master-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms-master
+          sudo mv dbms-worker-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms-worker
+          sudo mv dbmsctl-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbmsctl
+          sudo mv dbms-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms
           
           cd ${{ github.workspace }}/bin/linux/amd64/
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbms-master
@@ -95,17 +95,17 @@ jobs:
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/linux/amd64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbmsctl
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbms
           
-          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
+          sudo cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
           
           cd ${{ github.workspace }}/build/
           
           tar -zcvf dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz dbms-community-${{ github.ref_name }}-linux-amd64/
           
           cd ${{ github.workspace }}/bin
-          mv dbms-master-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms-master
-          mv dbms-worker-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms-worker
-          mv dbmsctl-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbmsctl
-          mv dbms-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms
+          sudo mv dbms-master-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms-master
+          sudo mv dbms-worker-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms-worker
+          sudo mv dbmsctl-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbmsctl
+          sudo mv dbms-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms
           
           cd ${{ github.workspace }}/bin/linux/arm64/          
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbms-master
@@ -113,7 +113,7 @@ jobs:
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbmsctl
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbms
           
-          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/
+          sudo cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/
           
           cd ${{ github.workspace }}/build/
           
@@ -121,10 +121,10 @@ jobs:
       - name: Compression Drawin Platform
         run: |
           cd ${{ github.workspace }}/bin
-          mv dbms-master-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms-master
-          mv dbms-worker-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms-worker
-          mv dbmsctl-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbmsctl
-          mv dbms-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms
+          sudo mv dbms-master-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms-master
+          sudo mv dbms-worker-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms-worker
+          sudo mv dbmsctl-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbmsctl
+          sudo mv dbms-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms
   
           cd ${{ github.workspace }}/bin/darwin/amd64/
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbms-master
@@ -132,17 +132,17 @@ jobs:
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/darwin/amd64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbmsctl
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbms
 
-          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/
+          sudo cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/
           
           cd ${{ github.workspace }}/build/
           
           tar -zcvf dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-community-${{ github.ref_name }}-darwin-amd64/
           
           cd ${{ github.workspace }}/bin
-          mv dbms-master-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms-master
-          mv dbms-worker-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms-worker
-          mv dbmsctl-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbmsctl
-          mv dbms-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms
+          sudo mv dbms-master-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms-master
+          sudo mv dbms-worker-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms-worker
+          sudo mv dbmsctl-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbmsctl
+          sudo mv dbms-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms
           
           cd ${{ github.workspace }}/bin/darwin/arm64/  
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbms-master
@@ -150,7 +150,7 @@ jobs:
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbmsctl
           tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbms
           
-          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/
+          sudo cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/
 
           cd ${{ github.workspace }}/build/
 
