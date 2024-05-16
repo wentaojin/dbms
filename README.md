@@ -10,7 +10,7 @@
   <a href="https://github.com/wentaojin/dbms/actions">
 		<img src="https://img.shields.io/github/actions/workflow/status/wentaojin/dbms/release.yml"/>
   </a>
-  <img src="https://img.shields.io/github/license/wentaojin/dbms.git"></img>
+  <img src="https://img.shields.io/github/license/wentaojin/dbms"></img>
   <img src="https://img.shields.io/github/downloads/wentaojin/dbms/total">
 </div>
 
