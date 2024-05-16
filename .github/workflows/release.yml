@@ -59,6 +59,11 @@ jobs:
           
           ls -lnrt ${{ github.workspace }}/bin
           
+          sudo mv ${{ github.workspace }}/bin/dbms-master-linux-amd64 ${{ github.workspace }}/bin/dbms-master 
+          sudo mv ${{ github.workspace }}/bin/dbms-worker-linux-amd64 ${{ github.workspace }}/bin/dbms-worker 
+          sudo mv ${{ github.workspace }}/bin/dbms-linux-amd64 ${{ github.workspace }}/bin/dbms 
+          sudo mv ${{ github.workspace }}/bin/dbmsctl-linux-amd64 ${{ github.workspace }}/bin/dbmsctl 
+          
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64
           sudo chmod -R 777 ${{ github.workspace }}/build
           
@@ -88,7 +93,11 @@ jobs:
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
-
+          sudo mv ${{ github.workspace }}/bin/dbms-master-linux-arm64 ${{ github.workspace }}/bin/dbms-master 
+          sudo mv ${{ github.workspace }}/bin/dbms-worker-linux-arm64 ${{ github.workspace }}/bin/dbms-worker 
+          sudo mv ${{ github.workspace }}/bin/dbms-linux-arm64 ${{ github.workspace }}/bin/dbms 
+          sudo mv ${{ github.workspace }}/bin/dbmsctl-linux-arm64 ${{ github.workspace }}/bin/dbmsctl 
+          
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
           sudo chmod -R 777 ${{ github.workspace }}/build
 
@@ -118,7 +127,11 @@ jobs:
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
-
+          sudo mv ${{ github.workspace }}/bin/dbms-master-darwin-amd64 ${{ github.workspace }}/bin/dbms-master 
+          sudo mv ${{ github.workspace }}/bin/dbms-worker-darwin-amd64 ${{ github.workspace }}/bin/dbms-worker 
+          sudo mv ${{ github.workspace }}/bin/dbms-darwin-amd64 ${{ github.workspace }}/bin/dbms 
+          sudo mv ${{ github.workspace }}/bin/dbmsctl-darwin-amd64 ${{ github.workspace }}/bin/dbmsctl 
+          
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
           sudo chmod -R 777 ${{ github.workspace }}/build
 
@@ -148,7 +161,11 @@ jobs:
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
-
+          sudo mv ${{ github.workspace }}/bin/dbms-master-darwin-arm64 ${{ github.workspace }}/bin/dbms-master 
+          sudo mv ${{ github.workspace }}/bin/dbms-worker-darwin-arm64 ${{ github.workspace }}/bin/dbms-worker 
+          sudo mv ${{ github.workspace }}/bin/dbms-darwin-arm64 ${{ github.workspace }}/bin/dbms 
+          sudo mv ${{ github.workspace }}/bin/dbmsctl-darwin-arm64 ${{ github.workspace }}/bin/dbmsctl 
+          
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
           sudo chmod -R 777 ${{ github.workspace }}/build
 
