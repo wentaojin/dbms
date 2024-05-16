@@ -20,24 +20,24 @@ import (
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
-	"github.com/wentaojin/dbms/component/ctl/migrate"
+	"github.com/wentaojin/dbms/component/cli/migrate"
 
 	"github.com/spf13/cobra"
 )
 
-type AppStatement struct {
+type AppSql struct {
 	*App
 }
 
-func (a *App) AppStatement() component.Cmder {
-	return &AppStatement{App: a}
+func (a *App) AppSql() component.Cmder {
+	return &AppSql{App: a}
 }
 
-func (a *AppStatement) Cmd() *cobra.Command {
+func (a *AppSql) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "stmt",
-		Short:            "Operator cluster statement migrate",
-		Long:             `Operator cluster statement migrate`,
+		Use:              "sql",
+		Short:            "Operator cluster sql migrate",
+		Long:             `Operator cluster sql migrate`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -45,27 +45,27 @@ func (a *AppStatement) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppStatement) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppSql) RunE(cmd *cobra.Command, args []string) error {
 	if err := cmd.Help(); err != nil {
 		return err
 	}
 	return nil
 }
 
-type AppStatementUpsert struct {
-	*AppStatement
+type AppSqlUpsert struct {
+	*AppSql
 	config string
 }
 
-func (a *AppStatement) AppStatementUpsert() component.Cmder {
-	return &AppStatementUpsert{AppStatement: a}
+func (a *AppSql) AppSqlUpsert() component.Cmder {
+	return &AppSqlUpsert{AppSql: a}
 }
 
-func (a *AppStatementUpsert) Cmd() *cobra.Command {
+func (a *AppSqlUpsert) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "upsert",
-		Short:            "upsert cluster statement migrate task",
-		Long:             `upsert cluster statement migrate task`,
+		Short:            "upsert cluster sql migrate task",
+		Long:             `upsert cluster sql migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -74,7 +74,7 @@ func (a *AppStatementUpsert) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppStatementUpsert) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppSqlUpsert) RunE(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(a.config, "") {
 		return fmt.Errorf("flag parameter [config] is requirement, can not null")
 	}
@@ -85,27 +85,27 @@ func (a *AppStatementUpsert) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.UpsertStmtMigrate(a.Server, a.config)
+	err := migrate.UpsertSqlMigrate(a.Server, a.config)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-type AppStatementDelete struct {
-	*AppStatement
+type AppSqlDelete struct {
+	*AppSql
 	task string
 }
 
-func (a *AppStatement) AppStatementDelete() component.Cmder {
-	return &AppStatementDelete{AppStatement: a}
+func (a *AppSql) AppSqlDelete() component.Cmder {
+	return &AppSqlDelete{AppSql: a}
 }
 
-func (a *AppStatementDelete) Cmd() *cobra.Command {
+func (a *AppSqlDelete) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "delete",
-		Short:            "delete cluster statement migrate task",
-		Long:             `delete cluster statement migrate task`,
+		Short:            "delete cluster sql migrate task",
+		Long:             `delete cluster sql migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -114,7 +114,7 @@ func (a *AppStatementDelete) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppStatementDelete) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppSqlDelete) RunE(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(a.task, "") {
 		return fmt.Errorf("flag parameter [task] is requirement, can not null")
 	}
@@ -125,28 +125,28 @@ func (a *AppStatementDelete) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.DeleteStmtMigrate(a.Server, a.task)
+	err := migrate.DeleteSqlMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete statement migrate Task [%v]！！！\n", a.task)
+	fmt.Printf("Success Delete Sql Migrate Task [%v]！！！\n", a.task)
 	return nil
 }
 
-type AppStatementGet struct {
-	*AppStatement
+type AppSqlGet struct {
+	*AppSql
 	task string
 }
 
-func (a *AppStatement) AppStatementGet() component.Cmder {
-	return &AppStatementGet{AppStatement: a}
+func (a *AppSql) AppSqlGet() component.Cmder {
+	return &AppSqlGet{AppSql: a}
 }
 
-func (a *AppStatementGet) Cmd() *cobra.Command {
+func (a *AppSqlGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster statement migrate task",
-		Long:             `get cluster statement migrate task`,
+		Short:            "get cluster sql migrate task",
+		Long:             `get cluster sql migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -154,14 +154,14 @@ func (a *AppStatementGet) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppStatementGet) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppSqlGet) RunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		if err := cmd.Help(); err != nil {
 			return err
 		}
 	}
 
-	err := migrate.GetStmtMigrate(a.Server, a.task)
+	err := migrate.GetSqlMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}

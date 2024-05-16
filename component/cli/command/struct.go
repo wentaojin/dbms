@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
-	"github.com/wentaojin/dbms/component/ctl/migrate"
+	"github.com/wentaojin/dbms/component/cli/migrate"
 
 	"github.com/wentaojin/dbms/service"
 

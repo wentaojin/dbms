@@ -21,26 +21,25 @@ import (
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
-	"github.com/wentaojin/dbms/component/ctl/migrate"
-
-	"github.com/wentaojin/dbms/service"
+	"github.com/wentaojin/dbms/component/cli/migrate"
 
 	"github.com/spf13/cobra"
+	"github.com/wentaojin/dbms/service"
 )
 
-type AppCompare struct {
+type AppAssess struct {
 	*App
 }
 
-func (a *App) AppCompare() component.Cmder {
-	return &AppCompare{App: a}
+func (a *App) AppAssess() component.Cmder {
+	return &AppAssess{App: a}
 }
 
-func (a *AppCompare) Cmd() *cobra.Command {
+func (a *AppAssess) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "compare",
-		Short:            "Operator cluster data compare",
-		Long:             `Operator cluster data compare`,
+		Use:              "assess",
+		Short:            "Operator cluster data assess",
+		Long:             `Operator cluster data assess`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -48,27 +47,27 @@ func (a *AppCompare) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppCompare) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppAssess) RunE(cmd *cobra.Command, args []string) error {
 	if err := cmd.Help(); err != nil {
 		return err
 	}
 	return nil
 }
 
-type AppCompareUpsert struct {
-	*AppCompare
+type AppAssessUpsert struct {
+	*AppAssess
 	config string
 }
 
-func (a *AppCompare) AppCompareUpsert() component.Cmder {
-	return &AppCompareUpsert{AppCompare: a}
+func (a *AppAssess) AppAssessUpsert() component.Cmder {
+	return &AppAssessUpsert{AppAssess: a}
 }
 
-func (a *AppCompareUpsert) Cmd() *cobra.Command {
+func (a *AppAssessUpsert) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "upsert",
-		Short:            "upsert cluster struct compare task",
-		Long:             `upsert cluster struct compare task`,
+		Short:            "upsert cluster assess migrate task",
+		Long:             `upsert cluster assess migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -77,7 +76,7 @@ func (a *AppCompareUpsert) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppCompareUpsert) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppAssessUpsert) RunE(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(a.config, "") {
 		return fmt.Errorf("flag parameter [config] is requirement, can not null")
 	}
@@ -88,36 +87,36 @@ func (a *AppCompareUpsert) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.UpsertStructCompare(a.Server, a.config)
+	err := migrate.UpsertAssessMigrate(a.Server, a.config)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-type AppCompareDelete struct {
-	*AppCompare
+type AppAssessDelete struct {
+	*AppAssess
 	task string
 }
 
-func (a *AppCompare) AppCompareDelete() component.Cmder {
-	return &AppCompareDelete{AppCompare: a}
+func (a *AppAssess) AppAssessDelete() component.Cmder {
+	return &AppAssessDelete{AppAssess: a}
 }
 
-func (a *AppCompareDelete) Cmd() *cobra.Command {
+func (a *AppAssessDelete) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "delete",
-		Short:            "delete cluster struct compare task",
-		Long:             `delete cluster struct compare task`,
+		Short:            "delete cluster assess migrate task",
+		Long:             `delete cluster assess migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "delete struct compare task")
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "delete assess migrate task")
 	return cmd
 }
 
-func (a *AppCompareDelete) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppAssessDelete) RunE(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(a.task, "") {
 		return fmt.Errorf("flag parameter [task] is requirement, can not null")
 	}
@@ -128,28 +127,28 @@ func (a *AppCompareDelete) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.DeleteStructCompare(a.Server, a.task)
+	err := migrate.DeleteAssessMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete struct compare Task [%v]！！！\n", a.task)
+	fmt.Printf("Success Delete assess migrate Task [%v]！！！\n", a.task)
 	return nil
 }
 
-type AppCompareGet struct {
-	*AppCompare
+type AppAssessGet struct {
+	*AppAssess
 	task string
 }
 
-func (a *AppCompare) AppCompareGet() component.Cmder {
-	return &AppCompareGet{AppCompare: a}
+func (a *AppAssess) AppAssessGet() component.Cmder {
+	return &AppAssessGet{AppAssess: a}
 }
 
-func (a *AppCompareGet) Cmd() *cobra.Command {
+func (a *AppAssessGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster struct compare task",
-		Long:             `get cluster struct compare task`,
+		Short:            "get cluster assess migrate task",
+		Long:             `get cluster assess migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -157,14 +156,14 @@ func (a *AppCompareGet) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppCompareGet) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppAssessGet) RunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		if err := cmd.Help(); err != nil {
 			return err
 		}
 	}
 
-	err := migrate.GetStructCompare(a.Server, a.task)
+	err := migrate.GetAssessMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}
@@ -172,31 +171,31 @@ func (a *AppCompareGet) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-type AppCompareGen struct {
-	*AppCompare
+type AppAssessGen struct {
+	*AppAssess
 	task      string
 	outputDir string
 }
 
-func (a *AppCompare) AppCompareGen() component.Cmder {
-	return &AppCompareGen{AppCompare: a}
+func (a *AppAssess) AppAssessGen() component.Cmder {
+	return &AppAssessGen{AppAssess: a}
 }
 
-func (a *AppCompareGen) Cmd() *cobra.Command {
+func (a *AppAssessGen) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "gen",
-		Short:            "gen cluster struct compare task detail",
-		Long:             `gen cluster struct compare task detail`,
+		Short:            "gen cluster assess migrate task detail",
+		Long:             `gen cluster assess migrate task detail`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the struct compare task")
-	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the struct compare task output file dir")
+	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the assess migrate task")
+	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the assess migrate task output file dir")
 	return cmd
 }
 
-func (a *AppCompareGen) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppAssessGen) RunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		if err := cmd.Help(); err != nil {
 			return err
@@ -206,7 +205,7 @@ func (a *AppCompareGen) RunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("flag parameter [task] and [outputDir] are requirement, can not null")
 	}
 
-	err := service.GenStructCompareTask(context.Background(), a.Server, a.task, a.outputDir)
+	err := service.GenAssessMigrateTask(context.Background(), a.Server, a.task, a.outputDir)
 	if err != nil {
 		return err
 	}

@@ -74,7 +74,6 @@ func appendEntries(name string, topo *cluster.Topology, inst cluster.Instance, d
 // CheckClusterDirOverlap checks cluster dir overlaps with data or log.
 // this should only be used across clusters.
 // we don't allow to deploy log under data, and vise versa.
-// ref https://github.com/pingcap/tiup/issues/1047#issuecomment-761711508
 func CheckClusterDirOverlap(entries []DirEntry) error {
 	ignore := func(d1, d2 DirEntry) bool {
 		return d1.dir == "" || d2.dir == "" ||

@@ -69,7 +69,6 @@ type ClusterMetaInfo struct {
 	SSHType        string `json:"ssh_type"`
 }
 
-// JSONOutput holds the structure for the JSON output of `tiup cluster display --json`
 type JSONOutput struct {
 	ClusterMetaInfo ClusterMetaInfo `json:"cluster_meta"`
 	InstanceInfos   []InstInfo      `json:"instances,omitempty"`

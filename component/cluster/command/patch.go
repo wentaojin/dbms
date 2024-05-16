@@ -25,7 +25,6 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 
 	"github.com/fatih/color"
-	"github.com/pingcap/tiup/pkg/cluster/spec"
 	"github.com/wentaojin/dbms/utils/cluster/task"
 	"github.com/wentaojin/dbms/utils/ctxt"
 
@@ -215,7 +214,7 @@ func overwritePatch(mg *manager.Controller, name, comp, packagePath string) erro
 		return err
 	}
 
-	if err := stringutil.Copy(packagePath, mg.Path(name, spec.PatchDirName, comp+".tar.gz")); err != nil {
+	if err := stringutil.Copy(packagePath, mg.Path(name, cluster.PatchDirName, comp+".tar.gz")); err != nil {
 		return err
 	}
 	return nil

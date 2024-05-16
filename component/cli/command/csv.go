@@ -20,24 +20,24 @@ import (
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
-	"github.com/wentaojin/dbms/component/ctl/migrate"
+	"github.com/wentaojin/dbms/component/cli/migrate"
 
 	"github.com/spf13/cobra"
 )
 
-type AppSql struct {
+type AppCsv struct {
 	*App
 }
 
-func (a *App) AppSql() component.Cmder {
-	return &AppSql{App: a}
+func (a *App) AppCsv() component.Cmder {
+	return &AppCsv{App: a}
 }
 
-func (a *AppSql) Cmd() *cobra.Command {
+func (a *AppCsv) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "sql",
-		Short:            "Operator cluster sql migrate",
-		Long:             `Operator cluster sql migrate`,
+		Use:              "csv",
+		Short:            "Operator cluster csv migrate",
+		Long:             `Operator cluster csv migrate`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -45,27 +45,27 @@ func (a *AppSql) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppSql) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppCsv) RunE(cmd *cobra.Command, args []string) error {
 	if err := cmd.Help(); err != nil {
 		return err
 	}
 	return nil
 }
 
-type AppSqlUpsert struct {
-	*AppSql
+type AppCsvUpsert struct {
+	*AppCsv
 	config string
 }
 
-func (a *AppSql) AppSqlUpsert() component.Cmder {
-	return &AppSqlUpsert{AppSql: a}
+func (a *AppCsv) AppCsvUpsert() component.Cmder {
+	return &AppCsvUpsert{AppCsv: a}
 }
 
-func (a *AppSqlUpsert) Cmd() *cobra.Command {
+func (a *AppCsvUpsert) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "upsert",
-		Short:            "upsert cluster sql migrate task",
-		Long:             `upsert cluster sql migrate task`,
+		Short:            "upsert cluster csv migrate task",
+		Long:             `upsert cluster csv migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -74,7 +74,7 @@ func (a *AppSqlUpsert) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppSqlUpsert) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppCsvUpsert) RunE(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(a.config, "") {
 		return fmt.Errorf("flag parameter [config] is requirement, can not null")
 	}
@@ -85,27 +85,27 @@ func (a *AppSqlUpsert) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.UpsertSqlMigrate(a.Server, a.config)
+	err := migrate.UpsertCsvMigrate(a.Server, a.config)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-type AppSqlDelete struct {
-	*AppSql
+type AppCsvDelete struct {
+	*AppCsv
 	task string
 }
 
-func (a *AppSql) AppSqlDelete() component.Cmder {
-	return &AppSqlDelete{AppSql: a}
+func (a *AppCsv) AppCsvDelete() component.Cmder {
+	return &AppCsvDelete{AppCsv: a}
 }
 
-func (a *AppSqlDelete) Cmd() *cobra.Command {
+func (a *AppCsvDelete) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "delete",
-		Short:            "delete cluster sql migrate task",
-		Long:             `delete cluster sql migrate task`,
+		Short:            "delete cluster csv migrate task",
+		Long:             `delete cluster csv migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -114,7 +114,7 @@ func (a *AppSqlDelete) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppSqlDelete) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppCsvDelete) RunE(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(a.task, "") {
 		return fmt.Errorf("flag parameter [task] is requirement, can not null")
 	}
@@ -125,28 +125,28 @@ func (a *AppSqlDelete) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := migrate.DeleteSqlMigrate(a.Server, a.task)
+	err := migrate.DeleteCsvMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete Sql Migrate Task [%v]！！！\n", a.task)
+	fmt.Printf("Success Delete Csv Migrate Task [%v]！！！\n", a.task)
 	return nil
 }
 
-type AppSqlGet struct {
-	*AppSql
+type AppCsvGet struct {
+	*AppCsv
 	task string
 }
 
-func (a *AppSql) AppSqlGet() component.Cmder {
-	return &AppSqlGet{AppSql: a}
+func (a *AppCsv) AppCsvGet() component.Cmder {
+	return &AppCsvGet{AppCsv: a}
 }
 
-func (a *AppSqlGet) Cmd() *cobra.Command {
+func (a *AppCsvGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster sql migrate task",
-		Long:             `get cluster sql migrate task`,
+		Short:            "get cluster csv migrate task",
+		Long:             `get cluster csv migrate task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -154,14 +154,14 @@ func (a *AppSqlGet) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppSqlGet) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppCsvGet) RunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		if err := cmd.Help(); err != nil {
 			return err
 		}
 	}
 
-	err := migrate.GetSqlMigrate(a.Server, a.task)
+	err := migrate.GetCsvMigrate(a.Server, a.task)
 	if err != nil {
 		return err
 	}

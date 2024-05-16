@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
-	"github.com/wentaojin/dbms/component/ctl/database"
+	"github.com/wentaojin/dbms/component/cli/database"
 
 	"github.com/spf13/cobra"
 )

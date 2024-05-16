@@ -113,7 +113,7 @@ func (a *AppUpgrade) Upgrade(clusterName string, clusterUpgradeVersion string, g
 
 	mg.Logger.Warnf(`DBMS
 This operation will upgrade %s %s cluster %s to %s:%s`,
-		color.YellowString("Before the upgrade, it is recommended to read the upgrade guide at https://docs.pingcap.com/tidb/stable/upgrade-tidb-using-tiup and finish the preparation steps."),
+		color.YellowString("Before the upgrade, it is recommended to read the upgrade guide and finish the preparation steps."),
 		color.HiYellowString(metadata.GetVersion()),
 		color.HiYellowString(clusterName),
 		color.HiYellowString(clusterUpgradeVersion),

@@ -20,7 +20,7 @@ import (
 	"os"
 
 	"github.com/wentaojin/dbms/component"
-	"github.com/wentaojin/dbms/component/ctl/command"
+	"github.com/wentaojin/dbms/component/cli/command"
 )
 
 func main() {

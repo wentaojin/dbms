@@ -48,7 +48,8 @@ jobs:
       - name: Cross Platform Compile Server
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg cmd ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg component/worker ${{ github.workspace }}
       - name: Cross Platform Compile Cluster
         run: |
           cd ${{ github.workspace }}
@@ -171,7 +172,7 @@ jobs:
           cd ${{ github.workspace }}/build/
 
           tar -zcvf dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz dbms-community-${{ github.ref_name }}-windows-amd64/
-      - name: Build Changelog
+      - name: Build Release Changelog
         id: github_release
         uses: mikepenz/release-changelog-builder-action@v4
         if: startsWith(github.ref, 'refs/tags/')
@@ -179,7 +180,7 @@ jobs:
           configuration: "configuration.json"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Platform Release
+      - name: Upload Platform Asserts
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
