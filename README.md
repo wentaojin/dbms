@@ -16,10 +16,10 @@
 -------
 <p align="center">
     <a href="#whats-included-">What's included 🚀</a> &bull;
-    <a href="#setup">Quick Start 🛠️</a> &bull;
-    <a href="#contribute-">Development 🧬</a> &bull;
-    <a href="#customization-%EF%B8%8F">Customization 🖍️</a> &bull;
-    <a href="#license">License 📓</a>
+    <a href="#quick-start-">Quick Start 🛠️</a> &bull;
+    <a href="#development-">Development 🧬</a> &bull;
+    <a href="#customization-">Customization 🖍️</a> &bull;
+    <a href="#license-">License 📓</a>
 </p>
 
 -------

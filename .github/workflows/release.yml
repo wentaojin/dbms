@@ -61,7 +61,7 @@ jobs:
       - name: Cross Platform Compile CLI
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/ctl ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/cli ${{ github.workspace }}
       - name: Compression Environment Prepare
         run: |
           cd ${{ github.workspace }}
