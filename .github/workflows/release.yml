@@ -1,4 +1,4 @@
-name: Release
+name: release
 on:
   push:
     tags:
@@ -6,6 +6,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -48,16 +52,16 @@ jobs:
       - name: Cross Platform Compile Server
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/worker ${{ github.workspace }}
       - name: Cross Platform Compile Cluster
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/cluster ${{ github.workspace }}
       - name: Cross Platform Compile CLI
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg component/ctl ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/ctl ${{ github.workspace }}
       - name: Compression Environment Prepare
         run: |
           cd ${{ github.workspace }}
@@ -68,7 +72,6 @@ jobs:
           mkdir -p ${{ github.workspace }}/bin/linux/arm64/
           mkdir -p ${{ github.workspace }}/bin/darwin/amd64/
           mkdir -p ${{ github.workspace }}/bin/darwin/arm64/
-          mkdir -p ${{ github.workspace }}/bin/windows/amd64/ 
           
           sudo chmod -R 777 ${{ github.workspace }}/bin
           
@@ -76,7 +79,6 @@ jobs:
           mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
           mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
           mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
-          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64
         
           sudo chmod -R 777 ${{ github.workspace }}/build
       - name: Compression Linux Package
@@ -153,25 +155,6 @@ jobs:
           cd ${{ github.workspace }}/build/
 
           tar -zcvf dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-community-${{ github.ref_name }}-darwin-arm64/
-      - name: Compression Windows Platform
-        run: |
-          cd ${{ github.workspace }}/bin
-          mv dbms-master-${{ github.ref_name }}-windows-amd64 ${{ github.workspace }}/bin/windows/amd64/dbms-master
-          mv dbms-worker-${{ github.ref_name }}-windows-amd64 ${{ github.workspace }}/bin/windows/amd64/dbms-worker
-          mv dbmsctl-${{ github.ref_name }}-windows-amd64 ${{ github.workspace }}/bin/windows/amd64/dbmsctl
-          mv dbms-${{ github.ref_name }}-windows-amd64 ${{ github.workspace }}/bin/windows/amd64/dbms
-          
-          cd ${{ github.workspace }}/bin/windows/arm64/          
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-master-${{ github.ref_name }}-windows-amd64.tar.gz ${{ github.workspace }}/bin/windows/amd64/dbms-master
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-worker-${{ github.ref_name }}-windows-amd64.tar.gz ${{ github.workspace }}/bin/windows/amd64/dbms-worker
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbmsctl-${{ github.ref_name }}-windows-amd64.tar.gz ${{ github.workspace }}/bin/windows/amd64/dbmsctl
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-${{ github.ref_name }}-windows-amd64.tar.gz ${{ github.workspace }}/bin/windows/amd64/dbms
-          
-          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/
-
-          cd ${{ github.workspace }}/build/
-
-          tar -zcvf dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz dbms-community-${{ github.ref_name }}-windows-amd64/
       - name: Build Release Changelog
         id: github_release
         uses: mikepenz/release-changelog-builder-action@v4
@@ -193,4 +176,3 @@ jobs:
             dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz
             dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz
             dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz
-            dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz
