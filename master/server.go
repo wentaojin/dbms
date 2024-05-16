@@ -68,7 +68,7 @@ type Server struct {
 	dbConnReady *atomic.Bool
 
 	// discoveries used for service discovery, watch worker
-	discoveries *etcdutil.Discovery
+	discWorkers *etcdutil.Discovery
 
 	mutex sync.Mutex
 
@@ -157,6 +157,11 @@ func (s *Server) Start(ctx context.Context) error {
 		return err
 	}
 
+	err = s.registerService(ctx)
+	if err != nil {
+		return err
+	}
+
 	// service election
 	s.election, err = etcdutil.NewElection(&etcdutil.Election{
 		EtcdClient: s.etcdClient,
@@ -172,6 +177,12 @@ func (s *Server) Start(ctx context.Context) error {
 				s.cron.Start()
 
 				s.crontab(ctx)
+
+				// leader register
+				_, err = etcdutil.PutKey(s.etcdClient, constant.DefaultMasterLeaderPrefixKey, s.ClientAddr)
+				if err != nil {
+					return err
+				}
 
 				// pending, start receive request
 				for {
@@ -220,12 +231,37 @@ func (s *Server) Start(ctx context.Context) error {
 
 // serviceDiscovery used for master and worker service discovery
 func (s *Server) serviceDiscovery() error {
-	s.discoveries = etcdutil.NewServiceDiscovery(s.etcdClient)
+	s.discWorkers = etcdutil.NewServiceDiscovery(s.etcdClient)
 
-	err := s.discoveries.Discovery(constant.DefaultWorkerRegisterPrefixKey)
+	err := s.discWorkers.Discovery(constant.DefaultMasterRegisterPrefixKey)
 	if err != nil {
 		return err
 	}
+
+	err = etcdutil.NewServiceDiscovery(s.etcdClient).Discovery(constant.DefaultWorkerRegisterPrefixKey)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) registerService(ctx context.Context) error {
+	// init register service and binding lease
+	n := &etcdutil.Node{
+		Addr: s.MasterOptions.ClientAddr,
+		Role: constant.DefaultInstanceRoleMaster,
+	}
+
+	r := etcdutil.NewServiceRegister(
+		s.etcdClient, s.MasterOptions.ClientAddr,
+		stringutil.StringBuilder(constant.DefaultMasterRegisterPrefixKey, s.MasterOptions.ClientAddr),
+		n.String(), s.MasterOptions.KeepaliveTTL)
+
+	err := r.Register(ctx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -247,7 +283,7 @@ func (s *Server) watchConn() {
 }
 
 func (s *Server) crontab(ctx context.Context) {
-	conn := service.NewServiceCrontab(ctx, s.etcdClient, s.discoveries, s.cron)
+	conn := service.NewServiceCrontab(ctx, s.etcdClient, s.discWorkers, s.cron)
 
 	go func() {
 		defer func() {
@@ -282,12 +318,12 @@ func (s *Server) Close() {
 func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
 	switch strings.ToUpper(req.Operate) {
 	case constant.TaskOperationStart:
-		return service.StartTask(ctx, s.etcdClient, s.discoveries, req)
+		return service.StartTask(ctx, s.etcdClient, s.discWorkers, req)
 	case constant.TaskOperationStop:
 		return service.StopTask(ctx, s.etcdClient, req)
 	case constant.TaskOperationCrontab:
 		return service.AddCronTask(ctx, s.cron, s.etcdClient, req,
-			service.NewCronjob(ctx, s.etcdClient, s.discoveries, req.TaskName))
+			service.NewCronjob(ctx, s.etcdClient, s.discWorkers, req.TaskName))
 		// cleanup tasks are used for scheduled job tasks that are running.
 	case constant.TaskOperationClear:
 		return service.ClearCronTask(ctx, s.etcdClient, req)

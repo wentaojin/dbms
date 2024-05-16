@@ -1,0 +1,203 @@
+name: release
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.21
+      - uses: golangci/golangci-lint-action@v3
+  build:
+    name: Create Code Release
+    needs: lint
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      GOPATH: ${{ github.workspace }}/go
+      GOBIN: ${{ github.workspace }}/go/bin
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - name: Checkout Project Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+          path: ${{ github.workspace }}
+      - name: Build Golang Environment
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.21'
+          cache: true
+      - name: View Golang Environment
+        run: |
+          go version
+          go env
+      - name: Generate Golang Ldflags
+        id: genLdflags
+        run: |
+          CODEREPO="github.com/${{ github.repository }}"
+          COMMIT="-X \"${CODEREPO}/version.Version=`git describe --always --no-match --tags --dirty="-dev"`\""
+          BUILDTS="-X \"${CODEREPO}/version.BuildTS=`TZ=CST-8 date '+%Y-%m-%d %H:%M:%S'`\""
+          GITHASH="-X \"${CODEREPO}/version.GitHash=`git rev-parse HEAD`\""
+          GITREF="-X \"${CODEREPO}/version.GitBranch=`git rev-parse --abbrev-ref HEAD`\""
+          LDFLAGS="-w -s ${COMMIT} ${BUILDTS} ${GITHASH} ${GITREF}"
+          echo "ldflags=${LDFLAGS}" >> $GITHUB_ENV
+      - name: Install Cross Platform Environment
+        run: |
+          go install src.techknowlogick.com/xgo@latest
+      - name: Cross Platform Compile Server
+        run: |
+          cd ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg cmd ${{ github.workspace }}
+      - name: Cross Platform Compile Cluster
+        run: |
+          cd ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg component/cluster ${{ github.workspace }}
+      - name: Cross Platform Compile CLI
+        run: |
+          cd ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64,windows/amd64 -pkg component/ctl ${{ github.workspace }}
+      - name: Compression Environment Prepare
+        run: |
+          cd ${{ github.workspace }}
+          pwd
+          mkdir -p ${{ github.workspace }}/bin/linux/amd64/
+          mkdir -p ${{ github.workspace }}/bin/linux/amd64/
+
+          mkdir -p ${{ github.workspace }}/bin/linux/arm64/
+          mkdir -p ${{ github.workspace }}/bin/darwin/amd64/
+          mkdir -p ${{ github.workspace }}/bin/darwin/arm64/
+          mkdir -p ${{ github.workspace }}/bin/windows/amd64/ 
+          
+          sudo chmod -R 777 ${{ github.workspace }}/bin
+          
+          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64
+          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
+          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
+          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
+          mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64
+        
+          sudo chmod -R 777 ${{ github.workspace }}/build
+      - name: Compression Linux Package
+        run: |
+          cd ${{ github.workspace }}/bin
+          mv dbms-master-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms-master
+          mv dbms-worker-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms-worker
+          mv dbmsctl-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbmsctl
+          mv dbms-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms
+          
+          cd ${{ github.workspace }}/bin/linux/amd64/
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbms-master
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-worker-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbms-worker
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/linux/amd64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbmsctl
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbms
+          
+          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
+          
+          cd ${{ github.workspace }}/build/
+          
+          tar -zcvf dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz dbms-community-${{ github.ref_name }}-linux-amd64/
+          
+          cd ${{ github.workspace }}/bin
+          mv dbms-master-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms-master
+          mv dbms-worker-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms-worker
+          mv dbmsctl-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbmsctl
+          mv dbms-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms
+          
+          cd ${{ github.workspace }}/bin/linux/arm64/          
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbms-master
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-worker-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbms-worker
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbmsctl
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbms
+          
+          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/
+          
+          cd ${{ github.workspace }}/build/
+          
+          tar -zcvf dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz dbms-community-${{ github.ref_name }}-linux-arm64/
+      - name: Compression Drawin Platform
+        run: |
+          cd ${{ github.workspace }}/bin
+          mv dbms-master-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms-master
+          mv dbms-worker-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms-worker
+          mv dbmsctl-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbmsctl
+          mv dbms-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms
+  
+          cd ${{ github.workspace }}/bin/darwin/amd64/
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbms-master
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-worker-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbms-worker
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/darwin/amd64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbmsctl
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbms
+
+          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/
+          
+          cd ${{ github.workspace }}/build/
+          
+          tar -zcvf dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-community-${{ github.ref_name }}-darwin-amd64/
+          
+          cd ${{ github.workspace }}/bin
+          mv dbms-master-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms-master
+          mv dbms-worker-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms-worker
+          mv dbmsctl-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbmsctl
+          mv dbms-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms
+          
+          cd ${{ github.workspace }}/bin/darwin/arm64/  
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbms-master
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-worker-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbms-worker
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbmsctl
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbms
+          
+          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/
+
+          cd ${{ github.workspace }}/build/
+
+          tar -zcvf dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-community-${{ github.ref_name }}-darwin-arm64/
+      - name: Compression Windows Platform
+        run: |
+          cd ${{ github.workspace }}/bin
+          mv dbms-master-${{ github.ref_name }}-windows-amd64 ${{ github.workspace }}/bin/windows/amd64/dbms-master
+          mv dbms-worker-${{ github.ref_name }}-windows-amd64 ${{ github.workspace }}/bin/windows/amd64/dbms-worker
+          mv dbmsctl-${{ github.ref_name }}-windows-amd64 ${{ github.workspace }}/bin/windows/amd64/dbmsctl
+          mv dbms-${{ github.ref_name }}-windows-amd64 ${{ github.workspace }}/bin/windows/amd64/dbms
+          
+          cd ${{ github.workspace }}/bin/windows/arm64/          
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-master-${{ github.ref_name }}-windows-amd64.tar.gz ${{ github.workspace }}/bin/windows/amd64/dbms-master
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-worker-${{ github.ref_name }}-windows-amd64.tar.gz ${{ github.workspace }}/bin/windows/amd64/dbms-worker
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbmsctl-${{ github.ref_name }}-windows-amd64.tar.gz ${{ github.workspace }}/bin/windows/amd64/dbmsctl
+          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-${{ github.ref_name }}-windows-amd64.tar.gz ${{ github.workspace }}/bin/windows/amd64/dbms
+          
+          cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/
+
+          cd ${{ github.workspace }}/build/
+
+          tar -zcvf dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz dbms-community-${{ github.ref_name }}-windows-amd64/
+      - name: Build Changelog
+        id: github_release
+        uses: mikepenz/release-changelog-builder-action@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          configuration: "configuration.json"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Platform Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: ${{steps.github_release.outputs.changelog}}
+          files: |
+            dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz
+            dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz
+            dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz
+            dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz
+            dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz

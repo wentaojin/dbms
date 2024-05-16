@@ -2,9 +2,10 @@
 
 MASTERCMD="./cmd/master.go"
 WORKERCMD="./cmd/worker.go"
-CTLCMD="./ctl/dbmsctl.go"
+CTLCMD="./component/ctl/dbmsctl.go"
+CLUSTERCMD="./component/cluster/dbms.go"
 BINARYPATH="bin/"
-CONFIGPATH="./example"
+CONFIGPATH="./sample"
 
 MASTERCONFIG00TEMP = $(CONFIGPATH)/master_config00_temp.toml
 MASTERCONFIG01TEMP = $(CONFIGPATH)/master_config01_temp.toml
@@ -92,6 +93,7 @@ build: clean gotool
 	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms-master $(MASTERCMD)
 	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms-worker $(WORKERCMD)
 	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbmsctl $(CTLCMD)
+	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms $(CLUSTERCMD)
 
 gotool:
 	$(GO) mod tidy
@@ -100,11 +102,11 @@ clean:
 	@if [ -f ${BINARYPATH} ] ; then rm ${BINARYPATH} ; fi
 
 help:
-	@echo "make - 格式化 Go 代码, 并编译生成二进制文件"
-	@echo "make build - 编译 Go 代码, 生成二进制文件"
-	@echo "make runMaster - 直接运行 Go Master 代码"
-	@echo "make stopMaster - 直接停止 Go Master 代码"
-	@echo "make runWorker - 直接运行 Go Worker 代码"
-	@echo "make stopWorker - 直接停止 Go Worker 代码"
-	@echo "make clean - 移除二进制文件和 vim swap files"
-	@echo "make gotool - 运行 Go 工具 'mod tidy'"
+	@echo "make - Format Go code and compile it into a binary file"
+	@echo "make build - compile Go code and generate binaries"
+	@echo "make runMaster - run Go Master code directly"
+	@echo "make stopMaster - Stop the Go Master code directly"
+	@echo "make runWorker - run Go Worker code directly"
+	@echo "make stopWorker - Stop Go Worker code directly"
+	@echo "make clean - remove binaries and vim swap files"
+	@echo "make gotool - Run the Go tool 'mod tidy'"

@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+# WARNING: This file was auto-generated. Do not edit!
+#          All your edit might be overwritten!
+DEPLOY_DIR={{.DeployDir}}
+
+cd "${DEPLOY_DIR}" || exit 1
+
+{{- if .InstanceNumaNode}}
+exec numactl --cpunodebind={{.InstanceNumaNode}} --membind={{.InstanceNumaNode}} bin/dbms-worker \
+{{- else}}
+exec bin/dbms-worker \
+{{- end}}
+    --worker-addr="{{.WorkerAddr}}" \
+    --join="{{.Join}}" \
+    --log-file="{{.LogDir}}/dbms-worker.log" \
+    --config=conf/dbms-worker.toml >> "{{.LogDir}}/dbms-worker_stdout.log" 2>> "{{.LogDir}}/dbms-worker_stderr.log"

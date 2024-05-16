@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
 
@@ -39,6 +40,13 @@ type Config struct {
 	MasterOptions *configutil.MasterOptions `toml:"master" json:"master"`
 	LogConfig     *logger.Config            `toml:"log" json:"log"`
 
+	DataDir        string `toml:"data-dir" json:"data-dir"`
+	ClientAddr     string `toml:"client-addr" json:"client-addr"`
+	PeerAddr       string `toml:"peer-addr" json:"peer-addr"`
+	InitialCluster string `toml:"initial-cluster" json:"initial-cluster"`
+	Join           string `toml:"join" json:"join"`
+	LogFile        string `toml:"log-file" json:"log-file"`
+
 	PrintVersion bool `json:"-"`
 }
 
@@ -53,6 +61,12 @@ func NewConfig() *Config {
 	fs.BoolVar(&cfg.PrintVersion, "V", false, "prints version and exit")
 	fs.BoolVar(&cfg.OpenAPI, "openapi", true, "enable openapi")
 	fs.StringVar(&cfg.ConfigFile, "config", "", "path to config file")
+	fs.StringVar(&cfg.DataDir, "data-dir", "", "master data dir")
+	fs.StringVar(&cfg.ClientAddr, "client-addr", "", "master client addr")
+	fs.StringVar(&cfg.PeerAddr, "peer-addr", "", "master peer addr")
+	fs.StringVar(&cfg.InitialCluster, "initial-cluster", "", "master initial cluster")
+	fs.StringVar(&cfg.Join, "join", "", "master join instance")
+	fs.StringVar(&cfg.LogFile, "log-file", "", "master instance log file")
 	return cfg
 }
 
@@ -94,6 +108,25 @@ func (c *Config) Parse(args []string) error {
 func (c *Config) adjust() error {
 	if c.OpenAPI {
 		logger.Warn("openapi is a GA feature and removed from experimental features, so this configuration may have no affect in feature release, please set openapi=true in dm-master config file")
+	}
+	if !strings.EqualFold(c.DataDir, "") {
+		c.MasterOptions.DataDir = c.DataDir
+	}
+	if !strings.EqualFold(c.ClientAddr, "") {
+		c.MasterOptions.ClientAddr = c.ClientAddr
+	}
+	if !strings.EqualFold(c.PeerAddr, "") {
+		c.MasterOptions.PeerAddr = c.PeerAddr
+	}
+	if !strings.EqualFold(c.InitialCluster, "") {
+		c.MasterOptions.InitialCluster = c.InitialCluster
+	}
+	if !strings.EqualFold(c.Join, "") {
+		c.MasterOptions.Join = c.Join
+
+	}
+	if !strings.EqualFold(c.LogFile, "") {
+		c.LogConfig.LogFile = c.LogFile
 	}
 	return nil
 }

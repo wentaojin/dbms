@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e
+
+# WARNING: This file was auto-generated. Do not edit!
+#          All your edit might be overwritten!
+DEPLOY_DIR={{.DeployDir}}
+cd "${DEPLOY_DIR}" || exit 1
+
+{{- if .InstanceNumaNode}}
+exec numactl --cpunodebind={{.InstanceNumaNode}} --membind={{.InstanceNumaNode}} bin/dbms-master \
+{{- else}}
+exec bin/dbms-master \
+{{- end}}
+    --initial-cluster="{{.InitialCluster}}" \
+    --client-addr="{{.ClientAddr}}" \
+    --peer-addr="{{.PeerAddr}}" \
+    --data-dir="{{.DataDir}}" \
+    --log-file="{{.LogDir}}/dm-master.log" \
+    --config=conf/dbms-master.toml >> "{{.LogDir}}/dbms-master_stdout.log" 2>> "{{.LogDir}}/dbms-master_stderr.log"

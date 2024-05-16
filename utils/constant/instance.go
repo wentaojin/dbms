@@ -23,6 +23,8 @@ const (
 	DefaultMasterDatabaseDBMSKey         = "/dbms-master/database"
 	DefaultMasterCrontabExpressPrefixKey = "/dbms-master/crontab/express"
 	DefaultMasterCrontabEntryPrefixKey   = "/dbms-master/crontab/entry"
+	DefaultMasterRegisterPrefixKey       = "/dbms-master/register/"
+	DefaultMasterLeaderPrefixKey         = "/dbms-master/leader"
 )
 
 // Worker
