@@ -49,112 +49,137 @@ jobs:
       - name: Install Cross Platform Environment
         run: |
           go install src.techknowlogick.com/xgo@latest
-      - name: Cross Platform Compile Server
+      - name: Cross Platform Compile Linux amd64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/worker ${{ github.workspace }}
-      - name: Cross Platform Compile Cluster
-        run: |
-          cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/cluster ${{ github.workspace }}
-      - name: Cross Platform Compile CLI
-        run: |
-          cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=linux/amd64,linux/arm64,darwin/arm64,darwin/amd64 -pkg component/cli ${{ github.workspace }}
-      - name: Compression Environment Prepare
-        run: |
-          cd ${{ github.workspace }}
-          pwd
-          sudo mkdir -p ${{ github.workspace }}/bin/linux/amd64/
-          sudo mkdir -p ${{ github.workspace }}/bin/linux/amd64/
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=linux/amd64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=linux/amd64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=linux/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=linux/amd64 -pkg component/cli ${{ github.workspace }}
 
-          sudo mkdir -p ${{ github.workspace }}/bin/linux/arm64/
-          sudo mkdir -p ${{ github.workspace }}/bin/darwin/amd64/
-          sudo mkdir -p ${{ github.workspace }}/bin/darwin/arm64/
-          
-          sudo chmod -R 777 ${{ github.workspace }}/bin
+          sudo mv ${{ github.workspace }}/bin/dbms-master-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-master 
+          sudo mv ${{ github.workspace }}/bin/dbms-worker-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-worker 
+          sudo mv ${{ github.workspace }}/bin/dbms-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms 
+          sudo mv ${{ github.workspace }}/bin/dbmsctl-${{ github.ref_name }} ${{ github.workspace }}/bin/dbmsctl 
           
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
-        
           sudo chmod -R 777 ${{ github.workspace }}/build
-      - name: Compression Linux Package
+          
+          cd ${{ github.workspace }}/bin
+          pwd
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz dbms-master
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-worker-${{ github.ref_name }}-linux-amd64.tar.gz dbms-worker
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-${{ github.ref_name }}-linux-amd64.tar.gz dbms
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz dbmsctl
+          
+          cd ${{ github.workspace }}/build
+          pwd
+          sudo tar -zcvf dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz dbms-community-${{ github.ref_name }}-linux-amd64/
+
+          ls -lnrt ${{ github.workspace }}/build
+          ls -lnrt ${{ github.workspace }}/bin
+          sudo rm -rf ${{ github.workspace }}/bin
+          
+          ls -lnrt ${{ github.workspace }}/bin
+
+      - name: Cross Platform Compile Linux arm64
         run: |
+          cd ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=linux/arm64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=linux/arm64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=linux/arm64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
+
+          sudo mv ${{ github.workspace }}/bin/dbms-master-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-master 
+          sudo mv ${{ github.workspace }}/bin/dbms-worker-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-worker 
+          sudo mv ${{ github.workspace }}/bin/dbms-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms 
+          sudo mv ${{ github.workspace }}/bin/dbmsctl-${{ github.ref_name }} ${{ github.workspace }}/bin/dbmsctl 
+
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
+          sudo chmod -R 777 ${{ github.workspace }}/build
+
           cd ${{ github.workspace }}/bin
-          sudo mv dbms-master-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms-master
-          sudo mv dbms-worker-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms-worker
-          sudo mv dbmsctl-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbmsctl
-          sudo mv dbms-${{ github.ref_name }}-linux-amd64 ${{ github.workspace }}/bin/linux/amd64/dbms
-          
-          cd ${{ github.workspace }}/bin/linux/amd64/
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbms-master
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-worker-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbms-worker
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/linux/amd64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbmsctl
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/amd64/dbms
-          
-          sudo cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
-          
-          cd ${{ github.workspace }}/build/
-          
-          tar -zcvf dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz dbms-community-${{ github.ref_name }}-linux-amd64/
-          
-          cd ${{ github.workspace }}/bin
-          sudo mv dbms-master-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms-master
-          sudo mv dbms-worker-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms-worker
-          sudo mv dbmsctl-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbmsctl
-          sudo mv dbms-${{ github.ref_name }}-linux-arm64 ${{ github.workspace }}/bin/linux/arm64/dbms
-          
-          cd ${{ github.workspace }}/bin/linux/arm64/          
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbms-master
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-worker-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbms-worker
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbmsctl
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-${{ github.ref_name }}-linux-amd64.tar.gz ${{ github.workspace }}/bin/linux/arm64/dbms
-          
-          sudo cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/
-          
-          cd ${{ github.workspace }}/build/
-          
-          tar -zcvf dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz dbms-community-${{ github.ref_name }}-linux-arm64/
-      - name: Compression Drawin Platform
+          pwd
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-master-${{ github.ref_name }}-linux-arm64.tar.gz dbms-master
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-worker-${{ github.ref_name }}-linux-arm64.tar.gz dbms-worker
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-${{ github.ref_name }}-linux-arm64.tar.gz dbms
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbmsctl-${{ github.ref_name }}-linux-arm64.tar.gz dbmsctl
+
+          cd ${{ github.workspace }}/build
+          pwd
+          sudo tar -zcvf dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz dbms-community-${{ github.ref_name }}-linux-arm64/
+
+          ls -lnrt ${{ github.workspace }}/build
+          ls -lnrt ${{ github.workspace }}/bin
+          sudo rm -rf ${{ github.workspace }}/bin
+
+          ls -lnrt ${{ github.workspace }}/bin
+
+      - name: Cross Platform Compile Darwin amd64
         run: |
+          cd ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=darwin/amd64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=darwin/amd64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=darwin/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
+
+          sudo mv ${{ github.workspace }}/bin/dbms-master-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-master 
+          sudo mv ${{ github.workspace }}/bin/dbms-worker-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-worker 
+          sudo mv ${{ github.workspace }}/bin/dbms-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms 
+          sudo mv ${{ github.workspace }}/bin/dbmsctl-${{ github.ref_name }} ${{ github.workspace }}/bin/dbmsctl 
+
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
+          sudo chmod -R 777 ${{ github.workspace }}/build
+
           cd ${{ github.workspace }}/bin
-          sudo mv dbms-master-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms-master
-          sudo mv dbms-worker-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms-worker
-          sudo mv dbmsctl-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbmsctl
-          sudo mv dbms-${{ github.ref_name }}-darwin-amd64 ${{ github.workspace }}/bin/darwin/amd64/dbms
-  
-          cd ${{ github.workspace }}/bin/darwin/amd64/
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbms-master
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-worker-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbms-worker
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/darwin/amd64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbmsctl
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/amd64/dbms
+          pwd
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-master
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-worker-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-worker
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-${{ github.ref_name }}-darwin-amd64.tar.gz dbms
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz dbmsctl
 
-          sudo cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/
-          
-          cd ${{ github.workspace }}/build/
-          
-          tar -zcvf dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-community-${{ github.ref_name }}-darwin-amd64/
-          
+          cd ${{ github.workspace }}/build
+          pwd
+          sudo tar -zcvf dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-community-${{ github.ref_name }}-darwin-amd64/
+
+          ls -lnrt ${{ github.workspace }}/build
+          ls -lnrt ${{ github.workspace }}/bin
+          sudo rm -rf ${{ github.workspace }}/bin
+
+          ls -lnrt ${{ github.workspace }}/bin
+
+      - name: Cross Platform Compile Darwin arm64
+        run: |
+          cd ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master-${{ github.ref_name }} -targets=darwin/arm64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker-${{ github.ref_name }} -targets=darwin/arm64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-${{ github.ref_name }} -targets=darwin/arm64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl-${{ github.ref_name }} -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
+
+          sudo mv ${{ github.workspace }}/bin/dbms-master-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-master 
+          sudo mv ${{ github.workspace }}/bin/dbms-worker-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms-worker 
+          sudo mv ${{ github.workspace }}/bin/dbms-${{ github.ref_name }} ${{ github.workspace }}/bin/dbms 
+          sudo mv ${{ github.workspace }}/bin/dbmsctl-${{ github.ref_name }} ${{ github.workspace }}/bin/dbmsctl 
+
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
+          sudo chmod -R 777 ${{ github.workspace }}/build
+
           cd ${{ github.workspace }}/bin
-          sudo mv dbms-master-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms-master
-          sudo mv dbms-worker-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms-worker
-          sudo mv dbmsctl-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbmsctl
-          sudo mv dbms-${{ github.ref_name }}-darwin-arm64 ${{ github.workspace }}/bin/darwin/arm64/dbms
-          
-          cd ${{ github.workspace }}/bin/darwin/arm64/  
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbms-master
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-worker-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbms-worker
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbmsctl
-          tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-${{ github.ref_name }}-darwin-amd64.tar.gz ${{ github.workspace }}/bin/darwin/arm64/dbms
-          
-          sudo cp ${{ github.workspace }}/example/*.toml ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/
+          pwd
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-master-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-master
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-worker-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-worker
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-${{ github.ref_name }}-darwin-arm64.tar.gz dbms
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbmsctl-${{ github.ref_name }}-darwin-arm64.tar.gz dbmsctl
 
-          cd ${{ github.workspace }}/build/
+          cd ${{ github.workspace }}/build
+          pwd
+          sudo tar -zcvf dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-community-${{ github.ref_name }}-darwin-arm64/
 
-          tar -zcvf dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-community-${{ github.ref_name }}-darwin-arm64/
+          ls -lnrt ${{ github.workspace }}/build
+          ls -lnrt ${{ github.workspace }}/bin
+          sudo rm -rf ${{ github.workspace }}/bin
+
+          ls -lnrt ${{ github.workspace }}/bin
       - name: Build Release Changelog
         id: github_release
         uses: mikepenz/release-changelog-builder-action@v4

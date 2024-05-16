@@ -12,6 +12,7 @@
   </a>
   <img src="https://img.shields.io/github/license/wentaojin/dbms"/>
   <img src="https://img.shields.io/github/downloads/wentaojin/dbms/total">
+  <img src="https://img.shields.io/github/issues/wentaojin/dbms">
 </div>
 
 -------
