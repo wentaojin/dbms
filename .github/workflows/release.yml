@@ -190,7 +190,32 @@ jobs:
         uses: mikepenz/release-changelog-builder-action@v4
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          configuration: "configuration.json"
+          configurationJson: |
+            {
+              "template": "#{{CHANGELOG}}\n\n<details>\n<summary>Uncategorized</summary>\n\n#{{UNCATEGORIZED}}\n</details>",
+              "categories": [
+                {
+                    "title": "## 🚀 Features",
+                    "labels": ["feature"]
+                },
+                {
+                    "title": "## 🐛 Fixes",
+                    "labels": ["fix","fixed"]
+                },
+                {
+                    "title": "## 🧪 Tests",
+                    "labels": ["test"]
+                },
+                {
+                    "title": "## 📦 Docs",
+                    "labels": ["docs","doc"]
+                },
+                {
+                    "title": "## 💬 Other",
+                    "labels": ["other"]
+                }
+              ]
+            }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Platform Asserts
@@ -201,8 +226,9 @@ jobs:
           tag_name: ${{ github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           body: ${{steps.github_release.outputs.changelog}}
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-b') || contains(github.ref, '-a') }}
           files: |
-            dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz
-            dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz
-            dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz
-            dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz
+            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz
+            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz
+            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz
+            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz
