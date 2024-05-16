@@ -80,7 +80,7 @@ jobs:
 
           ls -lnrt ${{ github.workspace }}/build
           ls -lnrt ${{ github.workspace }}/bin
-          sudo rm -rf ${{ github.workspace }}/bin
+          sudo rm -rf ${{ github.workspace }}/bin/*
           
           ls -lnrt ${{ github.workspace }}/bin
 
@@ -114,7 +114,7 @@ jobs:
 
           ls -lnrt ${{ github.workspace }}/build
           ls -lnrt ${{ github.workspace }}/bin
-          sudo rm -rf ${{ github.workspace }}/bin
+          sudo rm -rf ${{ github.workspace }}/bin/*
 
           ls -lnrt ${{ github.workspace }}/bin
 
@@ -148,7 +148,7 @@ jobs:
 
           ls -lnrt ${{ github.workspace }}/build
           ls -lnrt ${{ github.workspace }}/bin
-          sudo rm -rf ${{ github.workspace }}/bin
+          sudo rm -rf ${{ github.workspace }}/bin/*
 
           ls -lnrt ${{ github.workspace }}/bin
 
@@ -182,7 +182,7 @@ jobs:
 
           ls -lnrt ${{ github.workspace }}/build
           ls -lnrt ${{ github.workspace }}/bin
-          sudo rm -rf ${{ github.workspace }}/bin
+          sudo rm -rf ${{ github.workspace }}/bin/*
 
           ls -lnrt ${{ github.workspace }}/bin
       - name: Build Release Changelog
