@@ -107,11 +107,11 @@ func (a *AppDisplay) Display(dOpt *manager.DisplayOption, gOpt *operator.Options
 	if mg.Logger.GetDisplayMode() == printer.DisplayModeJSON {
 		j = &manager.JSONOutput{
 			ClusterMetaInfo: manager.ClusterMetaInfo{
-				"DBMS",
-				clusterName,
-				metadata.GetVersion(),
-				metadata.GetUser(),
-				topo.GlobalOptions.SSHType,
+				ClusterType:    "DBMS",
+				ClusterName:    clusterName,
+				ClusterVersion: metadata.GetVersion(),
+				DeployUser:     metadata.GetUser(),
+				SSHType:        topo.GlobalOptions.SSHType,
 			},
 			InstanceInfos: clusterInstInfos,
 		}

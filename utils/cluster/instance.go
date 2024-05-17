@@ -310,10 +310,12 @@ type BaseInstance struct {
 	Component Component
 }
 
+// InstanceName implement Instance interface
 func (b *BaseInstance) InstanceName() string {
 	return stringutil.JoinHostPort(b.Host, b.Port)
 }
 
+// InstanceManageHost implement Instance interface
 func (b *BaseInstance) InstanceManageHost() string {
 	if b.ManageHost != "" {
 		return b.ManageHost
@@ -321,34 +323,42 @@ func (b *BaseInstance) InstanceManageHost() string {
 	return b.Host
 }
 
+// InstanceHost implement Instance interface
 func (b *BaseInstance) InstanceHost() string {
 	return b.Host
 }
 
+// InstancePort implement Instance interface
 func (b *BaseInstance) InstancePort() int {
 	return b.Port
 }
 
+// InstancePeerPort implement Instance interface
 func (b *BaseInstance) InstancePeerPort() int {
 	return b.PeerPort
 }
 
+// InstanceSshPort implement Instance interface
 func (b *BaseInstance) InstanceSshPort() int {
 	return b.SSHPort
 }
 
+// InstanceDeployDir implement Instance interface
 func (b *BaseInstance) InstanceDeployDir() string {
 	return b.DeployDir
 }
 
+// InstanceDataDir implement Instance interface
 func (b *BaseInstance) InstanceDataDir() string {
 	return b.DataDir
 }
 
+// InstanceLogDir implement Instance interface
 func (b *BaseInstance) InstanceLogDir() string {
 	return b.LogDir
 }
 
+// InstanceListenHost implement Instance interface
 func (b *BaseInstance) InstanceListenHost() string {
 	if b.ListenHost == "" {
 		// ipv6 address
@@ -359,54 +369,68 @@ func (b *BaseInstance) InstanceListenHost() string {
 	}
 	return b.ListenHost
 }
+
+// InstanceNumaNode implement Instance interface
 func (b *BaseInstance) InstanceNumaNode() string {
 	return b.NumaNode
 }
 
+// OS implement Instance interface
 func (b *BaseInstance) OS() string {
 	return b.OSVersion
 }
 
+// Arch implement Instance interface
 func (b *BaseInstance) Arch() string {
 	return b.OSArch
 }
 
+// UsedPort implement Instance interface
 func (b *BaseInstance) UsedPort() []int {
 	return append(append([]int{}, b.Port), b.PeerPort)
 }
 
+// UsedDir implement Instance interface
 func (b *BaseInstance) UsedDir() []string {
 	return append(append(append([]string{}, b.DeployDir), b.DataDir), b.LogDir)
 }
 
+// ComponentName implement Instance interface
 func (b *BaseInstance) ComponentName() string {
 	return b.Component.ComponentName()
 }
 
+// ComponentRole implement Instance interface
 func (b *BaseInstance) ComponentRole() string {
 	return b.Component.ComponentRole()
 }
 
+// GetInstanceConfig implement Instance interface
 func (b *BaseInstance) GetInstanceConfig() map[string]any {
 	return b.Config
 }
 
+// ServiceName implement Instance interface
 func (b *BaseInstance) ServiceName() string {
 	return fmt.Sprintf("%s-%d.service", b.Component.ComponentName(), b.Port)
 }
 
+// ServiceReady implement Instance interface
 func (b *BaseInstance) ServiceReady(ctx context.Context, e executor.Executor, timeout uint64) error {
 	return PortStarted(ctx, e, b.Port, timeout)
 }
 
+// Status implement Instance interface
 func (b *BaseInstance) Status(ctx context.Context, tlsCfg *tls.Config, addrs ...string) (string, error) {
 	return b.StatusFn(ctx, tlsCfg, addrs...)
 }
 
+// IsPatched implement Instance interface
 func (b *BaseInstance) IsPatched() bool {
 	return b.Patched
 }
 
+// SetPatched implement Instance interface
 func (b *BaseInstance) SetPatched(patch bool) {
 	b.Patched = patch
 }

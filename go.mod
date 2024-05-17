@@ -1,8 +1,8 @@
 module github.com/wentaojin/dbms
 
-go 1.21
+go 1.22
 
-toolchain go1.21.5
+toolchain go1.22.3
 
 require (
 	github.com/BurntSushi/toml v1.3.2

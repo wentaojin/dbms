@@ -54,8 +54,8 @@ type InstInfo struct {
 	DeployDir     string `json:"deploy_dir"`
 	NumaNode      string `json:"numa_node"`
 	NumaCores     string `json:"numa_cores"`
-	ComponentName string
-	Port          int
+	ComponentName string `json:"component_name"`
+	Port          int    `json:"port"`
 	Version       string `json:"version"`
 	Since         string `json:"since"`
 }

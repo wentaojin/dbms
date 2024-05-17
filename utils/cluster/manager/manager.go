@@ -19,12 +19,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/utils/cluster/task"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/wentaojin/dbms/utils/cluster/task"
 
 	"github.com/wentaojin/dbms/utils/cluster"
 	"gopkg.in/yaml.v2"
@@ -435,11 +436,7 @@ func GetClusterNameList(basePath string) ([]string, error) {
 
 	for _, info := range fileInfos {
 		if info.IsDir() {
-			if stringutil.IsPathNotExist(filepath.Join(append([]string{
-				basePath,
-				info.Name(),
-				cluster.MetaFileName,
-			})...)) {
+			if stringutil.IsPathNotExist(filepath.Join(basePath, info.Name(), cluster.MetaFileName)) {
 				continue
 			}
 			clusterNames = append(clusterNames, info.Name())
