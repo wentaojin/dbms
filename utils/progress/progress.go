@@ -39,7 +39,7 @@ const (
 )
 
 func init() {
-	v := os.Getenv("TIUP_CLUSTER_PROGRESS_REFRESH_RATE")
+	v := os.Getenv("DBMS_CLUSTER_PROGRESS_REFRESH_RATE")
 	if v != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil {

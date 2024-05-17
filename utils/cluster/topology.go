@@ -223,8 +223,8 @@ func (t *Topology) IterComponent(fn func(c Component)) {
 // ComponentsByStartOrder return component in the order need to start.
 func (t *Topology) ComponentsByStartOrder() (comps []Component) {
 	// "dbms-master", "dbms-worker"
-	comps = append(comps, &DBMSMasterComponent{t})
-	comps = append(comps, &DBMSWorkerComponent{t})
+	comps = append(comps, &DBMSMasterComponent{Topology: t})
+	comps = append(comps, &DBMSWorkerComponent{Topology: t})
 	return
 }
 
@@ -384,6 +384,11 @@ func setHostArchOrOS(field reflect.Value, hostArchOrOS map[string]string, fullTy
 	}
 
 	return nil
+}
+
+func (t *Topology) String() string {
+	jsonStr, _ := stringutil.MarshalJSON(t)
+	return jsonStr
 }
 
 // Skip global/monitored/job options

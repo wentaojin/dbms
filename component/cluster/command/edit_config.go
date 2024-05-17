@@ -17,7 +17,6 @@ package command
 
 import (
 	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/wentaojin/dbms/component"
 	"github.com/wentaojin/dbms/utils/cluster"

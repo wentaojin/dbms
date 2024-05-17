@@ -22,7 +22,7 @@ import (
 	"github.com/wentaojin/dbms/utils/executor"
 )
 
-// ShellModuleConfig is the configurations used to initialize a TiUPModuleSystemd
+// ShellModuleConfig is the configurations used to initialize
 type ShellModuleConfig struct {
 	Command  string // the command to run
 	Sudo     bool   // whether use root privilege to run the command

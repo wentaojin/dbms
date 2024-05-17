@@ -71,8 +71,8 @@ func (m *DBMSMasterComponent) Instances() []Instance {
 				OSVersion:  s.OS,
 				OSArch:     s.Arch,
 				StatusFn:   s.Status,
-				Config:     nil,
-				Component:  nil,
+				Config:     s.Config,
+				Component:  m,
 			},
 			topo: m.Topology,
 		})
@@ -109,8 +109,8 @@ func (m *DBMSWorkerComponent) Instances() []Instance {
 				OSVersion:  s.OS,
 				OSArch:     s.Arch,
 				StatusFn:   s.Status,
-				Config:     nil,
-				Component:  nil,
+				Config:     s.Config,
+				Component:  m,
 			},
 			topo: m.Topology,
 		})

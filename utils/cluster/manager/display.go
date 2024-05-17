@@ -74,21 +74,21 @@ type JSONOutput struct {
 	InstanceInfos   []InstInfo      `json:"instances,omitempty"`
 }
 
-func (m *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Options) ([]InstInfo, error) {
+func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Options) ([]InstInfo, error) {
 	ctx := ctxt.New(
 		context.Background(),
 		opt.Concurrency,
-		m.Logger,
+		c.Logger,
 	)
 
-	topo := m.Meta.GetTopology()
+	topo := c.Meta.GetTopology()
 
-	err := SetSSHKeySet(ctx, m.Path(dopt.ClusterName, "ssh", "id_rsa"), m.Path(dopt.ClusterName, "ssh", "id_rsa.pub"))
+	err := SetSSHKeySet(ctx, c.Path(dopt.ClusterName, "ssh", "id_rsa"), c.Path(dopt.ClusterName, "ssh", "id_rsa.pub"))
 	if err != nil {
 		return nil, err
 	}
 
-	err = SetClusterSSH(ctx, topo, m.Meta.GetUser(), opt.SSHTimeout, opt.SSHType, executor.SSHType(topo.GlobalOptions.SSHType))
+	err = SetClusterSSH(ctx, topo, c.Meta.GetUser(), opt.SSHTimeout, opt.SSHType, executor.SSHType(topo.GlobalOptions.SSHType))
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (m *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 
 		status, err := ins.Status(ctx, nil, masterList...)
 		if err != nil {
-			m.Logger.Errorf("get instance %s status failed: %v", ins.InstanceName(), err)
+			c.Logger.Errorf("get instance %s status failed: %v", ins.InstanceName(), err)
 			return
 		}
 		mu.Lock()
@@ -154,7 +154,7 @@ func (m *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 		default:
 			status, err = ins.Status(ctx, nil, masterActive...)
 			if err != nil {
-				m.Logger.Errorf("get instance %s status failed: %v", ins.InstanceName(), err)
+				c.Logger.Errorf("get instance %s status failed: %v", ins.InstanceName(), err)
 				return
 			}
 		}
@@ -200,7 +200,7 @@ func (m *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 			Port:          ins.InstancePort(),
 			Since:         since,
 			NumaNode:      stringutil.Ternary(ins.InstanceNumaNode() == "", "-", ins.InstanceNumaNode()).(string),
-			Version:       m.Meta.GetVersion(),
+			Version:       c.Meta.GetVersion(),
 		})
 		mu.Unlock()
 	}, opt.Concurrency)

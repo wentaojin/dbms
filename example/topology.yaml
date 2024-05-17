@@ -1,21 +1,17 @@
 global:
-  # # The user who runs the tidb cluster.
-  user: "tidb"
+  # # The user who runs the dbms cluster.
+  user: "dbms"
   # # group is used to specify the group name the user belong to,if it's not the same as user.
-  # group: "tidb"
+  # group: "dbms"
   # # SSH port of servers in the managed cluster.
   # # systemd_mode is used to select whether to use sudo permissions. When its value is set to user, there is no need to add global.user to sudoers. The default value is system.
   # systemd_mode: "system"
   ssh_port: 22
   # # Storage directory for cluster deployment files, startup scripts, and configuration files.
-  deploy_dir: "/tidb-deploy"
+  deploy_dir: "/dbms-deploy"
   # # TiDB Cluster data storage directory
-  data_dir: "/tidb-data"
+  data_dir: "/dbms-data"
   log_dir:  ""
-  # # default listen_host for all components
-  listen_host: 0.0.0.0
-  # # Supported values: "amd64", "arm64" (default: "amd64")
-  arch: "amd64"
 
 server_configs:
   master:
@@ -24,23 +20,23 @@ server_configs:
 
 
 master_servers:
-  - host: 192.168.0.104
+  - host: 192.168.209.193
     ssh_port: 22
     port: 8261
     peer_port: 8361
-    deploy_dir: ""
-    data_dir:   ""
-    log_dir:    ""
-    numa_node:  ""
+    deploy_dir: "/Users/marvin/gostore/dbms/deploy/master00"
+    data_dir: "/Users/marvin/gostore/dbms/deploy/master00/data"
+    log_dir:    "/Users/marvin/gostore/dbms/deploy/master00/log"
+    #numa_node:  ""
     ## The following configs are used to overwrite the `server_configs.master` values.
     #config:
 
 worker_servers:
-  - host: 192.168.0.104
+  - host: 192.168.209.193
     ssh_port: 22
     port: 8261
-    deploy_dir: ""
-    log_dir:    ""
-    numa_node:  ""
+    #deploy_dir: "/Users/marvin/gostore/dbms/deploy/worker00"
+    #log_dir:    "/Users/marvin/gostore/dbms/deploy/worker00/log"
+    #numa_node:  ""
     ## The following configs are used to overwrite the `server_configs.master` values.
     #config:

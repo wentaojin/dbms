@@ -73,7 +73,7 @@ func (m *Metadata) GetVersion() string {
 }
 
 func (m *Metadata) GetTopology() *Topology {
-	return m.Topology
+	return &Topology{}
 }
 
 func (m *Metadata) SetTopology(topo *Topology) {

@@ -25,8 +25,8 @@ type Cluster struct {
 }
 
 // GetClusterList get the clusters list.
-func (m *Controller) GetClusterList() ([]Cluster, error) {
-	names, err := m.ListClusterNameAll()
+func (c *Controller) GetClusterList() ([]Cluster, error) {
+	names, err := c.ListClusterNameAll()
 	if err != nil {
 		return nil, err
 	}
@@ -34,14 +34,14 @@ func (m *Controller) GetClusterList() ([]Cluster, error) {
 	var clusters []Cluster
 
 	for _, name := range names {
-		metadata := m.NewMetadata()
+		metadata := c.NewMetadata()
 
 		clusters = append(clusters, Cluster{
 			Name:       name,
 			User:       metadata.GetUser(),
 			Version:    metadata.GetVersion(),
-			Path:       m.Path(name),
-			PrivateKey: m.Path(name, "ssh", "id_rsa"),
+			Path:       c.Path(name),
+			PrivateKey: c.Path(name, "ssh", "id_rsa"),
 		})
 	}
 

@@ -73,6 +73,9 @@ func (a *AppScaleOut) Cmd() *cobra.Command {
 }
 
 func (a *AppScaleOut) RunE(cmd *cobra.Command, args []string) error {
+	if strings.EqualFold(gOpt.MirrorDir, "") {
+		return fmt.Errorf("the flag parameters cannot be null, please configure --mirror-dir")
+	}
 	if len(args) != 2 {
 		return cmd.Help()
 	}

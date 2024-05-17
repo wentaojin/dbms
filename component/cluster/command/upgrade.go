@@ -70,8 +70,8 @@ func (a *AppUpgrade) RunE(cmd *cobra.Command, args []string) error {
 	}
 	clusterName := args[0]
 	clusterUpgradeVersion := args[1]
-	if strings.EqualFold(a.MirrorDir, "") {
-		return fmt.Errorf("the upgrade mirror dir cannot be null, please specify the flag params --mirror-dir")
+	if strings.EqualFold(gOpt.MirrorDir, "") {
+		return fmt.Errorf("the flag parameters cannot be null, please configure --mirror-dir")
 	}
 	return a.Upgrade(clusterName, clusterUpgradeVersion, gOpt)
 }

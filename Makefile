@@ -1,9 +1,9 @@
 .PHONY: build runMaster stopMaster runWorker stopWorker clean gotool
 
-MASTERCMD="./cmd/master.go"
-WORKERCMD="./cmd/worker.go"
-CTLCMD="./component/ctl/dbmsctl.go"
-CLUSTERCMD="./component/cluster/dbms.go"
+MASTERCMD="./component/master/main.go"
+WORKERCMD="./component/worker/main.go"
+CTLCMD="./component/cli/main.go"
+CLUSTERCMD="./component/cluster/main.go"
 BINARYPATH="bin/"
 CONFIGPATH="./sample"
 

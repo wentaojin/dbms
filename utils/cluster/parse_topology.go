@@ -112,7 +112,7 @@ func expandRelativePath(user string, topo any) {
 }
 
 func deployUser(topo *Topology) string {
-	if topo.GlobalOptions == nil || topo.GlobalOptions.User == "" {
+	if reflect.DeepEqual(topo.GlobalOptions, GlobalOptions{}) || topo.GlobalOptions.User == "" {
 		return DefaultDeployUser
 	}
 	return topo.GlobalOptions.User

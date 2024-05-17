@@ -96,6 +96,9 @@ func (a *AppDeploy) RunE(cmd *cobra.Command, args []string) error {
 }
 
 func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *operator.Options) error {
+	if strings.EqualFold(gOpt.MirrorDir, "") {
+		return fmt.Errorf("the flag parameters cannot be null, please configure --mirror-dir")
+	}
 	err := cluster.ValidateClusterNameOrError(clusterName)
 	if err != nil {
 		return err

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/cluster/task"
 	"io"
 	"os"
 	"path/filepath"
@@ -36,8 +37,6 @@ import (
 	"github.com/wentaojin/dbms/logger/printer"
 
 	"github.com/wentaojin/dbms/utils/ctxt"
-
-	"github.com/wentaojin/dbms/utils/cluster/task"
 
 	"go.uber.org/zap"
 
@@ -58,18 +57,18 @@ func New(basePath string, logger *printer.Logger) *Controller {
 	}
 }
 
-func (m *Controller) NewMetadata() cluster.IMetadata {
-	return m.Meta
+func (c *Controller) NewMetadata() cluster.IMetadata {
+	return c.Meta
 }
 
 // GetMetaFilePath get meta file path
-func (m *Controller) GetMetaFilePath(clusterName string) string {
-	return filepath.Join(m.BasePath, clusterName, cluster.MetaFileName)
+func (c *Controller) GetMetaFilePath(clusterName string) string {
+	return filepath.Join(c.BasePath, clusterName, cluster.MetaFileName)
 }
 
 // CheckClusterNameConflict check if the cluster exist by checking the meta file.
-func (m *Controller) CheckClusterNameConflict(clusterName string) (exist bool, err error) {
-	fname := m.Path(clusterName, cluster.MetaFileName)
+func (c *Controller) CheckClusterNameConflict(clusterName string) (exist bool, err error) {
+	fname := c.Path(clusterName, cluster.MetaFileName)
 
 	_, err = os.Stat(fname)
 	if err != nil {
@@ -83,7 +82,7 @@ func (m *Controller) CheckClusterNameConflict(clusterName string) (exist bool, e
 }
 
 // CheckClusterPortConflict check if the cluster exist by checking the meta file.
-func (m *Controller) CheckClusterPortConflict(clusters map[string]cluster.Metadata, clusterName string, topo *cluster.Topology) error {
+func (c *Controller) CheckClusterPortConflict(clusters map[string]cluster.Metadata, clusterName string, topo *cluster.Topology) error {
 	type Entry struct {
 		clusterName   string
 		componentName string
@@ -157,12 +156,12 @@ Please change to use another port or another host.`,
 }
 
 // SaveMetadata save the meta with specified cluster name.
-func (m *Controller) SaveMetadata(clusterName string, meta *cluster.Metadata) error {
+func (c *Controller) SaveMetadata(clusterName string, meta *cluster.Metadata) error {
 	data, err := yaml.Marshal(meta)
 	if err != nil {
 		return err
 	}
-	err = stringutil.SaveFileWithBackup(m.Path(clusterName, cluster.MetaFileName), data, m.Path(clusterName, cluster.BackupDirName))
+	err = stringutil.SaveFileWithBackup(c.Path(clusterName, cluster.MetaFileName), data, c.Path(clusterName, cluster.BackupDirName))
 	if err != nil {
 		return err
 	}
@@ -170,7 +169,7 @@ func (m *Controller) SaveMetadata(clusterName string, meta *cluster.Metadata) er
 }
 
 // CheckClusterDirConflict checks cluster dir conflict or overlap
-func (m *Controller) CheckClusterDirConflict(clusters map[string]cluster.Metadata, clusterName string, topo *cluster.Topology) error {
+func (c *Controller) CheckClusterDirConflict(clusters map[string]cluster.Metadata, clusterName string, topo *cluster.Topology) error {
 	instanceDirAccessor := dirAccessors()
 	var currentEntries []DirEntry
 	var existingEntries []DirEntry
@@ -240,15 +239,15 @@ Please change to use another directory or another host.
 }
 
 // GetAllClusters get a metadata list of all clusters deployed by current user
-func (m *Controller) GetAllClusters() (map[string]cluster.Metadata, error) {
+func (c *Controller) GetAllClusters() (map[string]cluster.Metadata, error) {
 	clusters := make(map[string]cluster.Metadata)
-	names, err := m.ListClusterNameAll()
+	names, err := c.ListClusterNameAll()
 	if err != nil {
 		return nil, err
 	}
 	for _, name := range names {
 		var metadata cluster.Metadata
-		err = m.Metadata(name, metadata)
+		err = c.Metadata(name, metadata)
 		if err != nil {
 			return nil, err
 		}
@@ -258,8 +257,8 @@ func (m *Controller) GetAllClusters() (map[string]cluster.Metadata, error) {
 }
 
 // Metadata tries to read the metadata of a cluster from file
-func (m *Controller) Metadata(clusterName string, meta any) error {
-	fname := m.Path(clusterName, cluster.MetaFileName)
+func (c *Controller) Metadata(clusterName string, meta any) error {
+	fname := c.Path(clusterName, cluster.MetaFileName)
 
 	yamlFile, err := os.ReadFile(fname)
 	if err != nil {
@@ -273,21 +272,21 @@ func (m *Controller) Metadata(clusterName string, meta any) error {
 }
 
 // ListClusterNameAll list the all of cluster
-func (m *Controller) ListClusterNameAll() ([]string, error) {
-	return GetClusterNameList(m.BasePath)
+func (c *Controller) ListClusterNameAll() ([]string, error) {
+	return GetClusterNameList(c.BasePath)
 }
 
 // ScaleOutLockedErr Determine whether there is a lock, and report an error if it exists
-func (m *Controller) ScaleOutLockedErr(clusterName string) error {
-	if locked, err := m.IsScaleOutLocked(clusterName); locked {
+func (c *Controller) ScaleOutLockedErr(clusterName string) error {
+	if locked, err := c.IsScaleOutLocked(clusterName); locked {
 		return fmt.Errorf("scale-out file lock already exists, please waitting and retry, error detail: %v", err)
 	}
 	return nil
 }
 
 // IsScaleOutLocked judge the cluster scale-out file lock status
-func (m *Controller) IsScaleOutLocked(clusterName string) (locked bool, err error) {
-	fname := m.Path(clusterName, cluster.ScaleOutLockName)
+func (c *Controller) IsScaleOutLocked(clusterName string) (locked bool, err error) {
+	fname := c.Path(clusterName, cluster.ScaleOutLockName)
 
 	_, err = os.Stat(fname)
 	if err != nil {
@@ -301,16 +300,16 @@ func (m *Controller) IsScaleOutLocked(clusterName string) (locked bool, err erro
 }
 
 // NewScaleOutLock save the meta with specified cluster name.
-func (m *Controller) NewScaleOutLock(clusterName string, topo *cluster.Topology) error {
-	locked, err := m.IsScaleOutLocked(clusterName)
+func (c *Controller) NewScaleOutLock(clusterName string, topo *cluster.Topology) error {
+	locked, err := c.IsScaleOutLocked(clusterName)
 	if err != nil {
 		return err
 	}
 	if locked {
-		return m.ScaleOutLockedErr(clusterName)
+		return c.ScaleOutLockedErr(clusterName)
 	}
 
-	lockFile := m.Path(clusterName, cluster.ScaleOutLockName)
+	lockFile := c.Path(clusterName, cluster.ScaleOutLockName)
 
 	data, err := yaml.Marshal(topo)
 	if err != nil {
@@ -326,13 +325,13 @@ func (m *Controller) NewScaleOutLock(clusterName string, topo *cluster.Topology)
 }
 
 // ReleaseScaleOutLock remove the scale-out file lock with specified cluster
-func (m *Controller) ReleaseScaleOutLock(clusterName string) error {
-	return os.Remove(m.Path(clusterName, cluster.ScaleOutLockName))
+func (c *Controller) ReleaseScaleOutLock(clusterName string) error {
+	return os.Remove(c.Path(clusterName, cluster.ScaleOutLockName))
 }
 
 // Remove remove the data with specified cluster name.
-func (m *Controller) Remove(clusterName string) error {
-	return os.RemoveAll(m.Path(clusterName))
+func (c *Controller) Remove(clusterName string) error {
+	return os.RemoveAll(c.Path(clusterName))
 }
 
 // If the flag --topology-file is specified, the first 2 steps will be skipped.
@@ -340,7 +339,7 @@ func (m *Controller) Remove(clusterName string) error {
 // 2. Open file in editor.
 // 3. Check and update Topology.
 // 4. Save meta file.
-func (m *Controller) EditTopology(origTopo *cluster.Topology, data []byte, newTopoFile string, skipConfirm bool) (*cluster.Topology, error) {
+func (c *Controller) EditTopology(origTopo *cluster.Topology, data []byte, newTopoFile string, skipConfirm bool) (*cluster.Topology, error) {
 	var name string
 	if newTopoFile == "" {
 		file, err := os.CreateTemp(os.TempDir(), "*")
@@ -374,30 +373,30 @@ func (m *Controller) EditTopology(origTopo *cluster.Topology, data []byte, newTo
 		return nil, err
 	}
 
-	newTopo := m.NewMetadata().GetTopology()
+	newTopo := c.NewMetadata().GetTopology()
 	err = yaml.UnmarshalStrict(newData, newTopo)
 	if err != nil {
 		fmt.Print(color.RedString("New topology could not be saved: "))
-		m.Logger.Infof("Failed to parse topology file: %v", err)
+		c.Logger.Infof("Failed to parse topology file: %v", err)
 		if newTopoFile == "" {
 			if pass, _ := stringutil.PromptForConfirmNo("Do you want to continue editing? [Y/n]: "); !pass {
-				return m.EditTopology(origTopo, newData, newTopoFile, skipConfirm)
+				return c.EditTopology(origTopo, newData, newTopoFile, skipConfirm)
 			}
 		}
-		m.Logger.Infof("Nothing changed.")
+		c.Logger.Infof("Nothing changed.")
 		return nil, nil
 	}
 
 	// report error if immutable field has been changed
 	if err := stringutil.ValidateSpecDiff(origTopo, newTopo); err != nil {
 		fmt.Print(color.RedString("New topology could not be saved: "))
-		m.Logger.Errorf("%s", err)
+		c.Logger.Errorf("%s", err)
 		if newTopoFile == "" {
 			if pass, _ := stringutil.PromptForConfirmNo("Do you want to continue editing? [Y/n]: "); !pass {
-				return m.EditTopology(origTopo, newData, newTopoFile, skipConfirm)
+				return c.EditTopology(origTopo, newData, newTopoFile, skipConfirm)
 			}
 		}
-		m.Logger.Infof("Nothing changed.")
+		c.Logger.Infof("Nothing changed.")
 		return nil, nil
 	}
 
@@ -407,14 +406,14 @@ func (m *Controller) EditTopology(origTopo *cluster.Topology, data []byte, newTo
 	}
 
 	if bytes.Equal(origData, newData) {
-		m.Logger.Infof("The file has nothing changed")
+		c.Logger.Infof("The file has nothing changed")
 		return nil, nil
 	}
 
 	stringutil.ShowDiff(string(origData), string(newData), os.Stdout)
 
 	if !skipConfirm {
-		if err := stringutil.PromptForConfirmOrAbortError(
+		if err = stringutil.PromptForConfirmOrAbortError(
 			color.HiYellowString("Please check change highlight above, do you want to apply the change? [y/N]:"),
 		); err != nil {
 			return nil, err
@@ -450,28 +449,28 @@ func GetClusterNameList(basePath string) ([]string, error) {
 }
 
 // InitClusterMetadataDir init cluster metadata dir
-func (m *Controller) InitClusterMetadataDir(clusterName string) error {
-	err := stringutil.PathNotExistOrCreate(m.Path(clusterName, cluster.CacheDirName))
+func (c *Controller) InitClusterMetadataDir(clusterName string) error {
+	err := stringutil.PathNotExistOrCreate(c.Path(clusterName, cluster.CacheDirName))
 	if err != nil {
 		return err
 	}
-	err = stringutil.PathNotExistOrCreate(m.Path(clusterName, cluster.PatchDirName))
+	err = stringutil.PathNotExistOrCreate(c.Path(clusterName, cluster.PatchDirName))
 	if err != nil {
 		return err
 	}
-	err = stringutil.PathNotExistOrCreate(m.Path(clusterName, cluster.SshDirName))
+	err = stringutil.PathNotExistOrCreate(c.Path(clusterName, cluster.SshDirName))
 	if err != nil {
 		return err
 	}
-	err = stringutil.PathNotExistOrCreate(m.Path(clusterName, cluster.AuditDirName))
+	err = stringutil.PathNotExistOrCreate(c.Path(clusterName, cluster.AuditDirName))
 	if err != nil {
 		return err
 	}
-	err = stringutil.PathNotExistOrCreate(m.Path(clusterName, cluster.BackupDirName))
+	err = stringutil.PathNotExistOrCreate(c.Path(clusterName, cluster.BackupDirName))
 	if err != nil {
 		return err
 	}
-	err = stringutil.PathNotExistOrCreate(m.Path(clusterName, cluster.LockDirName))
+	err = stringutil.PathNotExistOrCreate(c.Path(clusterName, cluster.LockDirName))
 	if err != nil {
 		return err
 	}
@@ -479,8 +478,8 @@ func (m *Controller) InitClusterMetadataDir(clusterName string) error {
 }
 
 // ConfirmTopology confirm topology
-func (m *Controller) ConfirmTopology(clusterName, clusterVersion string, topo *cluster.Topology, patchedRoles stringutil.StringSet) error {
-	m.Logger.Infof("Please confirm your topology:")
+func (c *Controller) ConfirmTopology(clusterName, clusterVersion string, topo *cluster.Topology, patchedRoles stringutil.StringSet) error {
+	c.Logger.Infof("Please confirm your topology:")
 
 	cyan := color.New(color.FgCyan, color.Bold)
 	fmt.Printf("Cluster type:    %s\n", "DBMS")
@@ -510,42 +509,42 @@ func (m *Controller) ConfirmTopology(clusterName, clusterVersion string, topo *c
 
 	stringutil.PrintTable(clusterTable, true)
 
-	m.Logger.Warnf("Attention:")
-	m.Logger.Warnf("    1. If the topology is not what you expected, check your yaml file.")
-	m.Logger.Warnf("    2. Please confirm there is no port/directory conflicts in same host.")
+	c.Logger.Warnf("Attention:")
+	c.Logger.Warnf("    1. If the topology is not what you expected, check your yaml file.")
+	c.Logger.Warnf("    2. Please confirm there is no port/directory conflicts in same host.")
 	if len(patchedRoles) != 0 {
-		m.Logger.Errorf("    3. The component marked as `patched` has been replaced by previous patch commanm.")
+		c.Logger.Errorf("    3. The component marked as `patched` has been replaced by previous patch commanc.")
 	}
 
 	return stringutil.PromptForConfirmOrAbortError("Do you want to continue? [y/N]: ")
 }
 
-// Path returns the full path to a subpath (file or directory) of a
+// CPath returns the full path to a subpath (file or directory) of a
 // cluster, it is a subdir in the profile dir of the user, with the cluster name
 // as its name.
-func (m *Controller) Path(cluster string, subpath ...string) string {
+func (c *Controller) Path(cluster string, subpath ...string) string {
 	if cluster == "" {
-		// keep the same behavior with legacy version of TiUP, we could change
+		// keep the same behavior with legacy version of DBMS, we could change
 		// it in the future if needed.
 		cluster = "default-cluster"
 	}
 
 	return filepath.Join(append([]string{
-		m.BasePath,
+		c.BasePath,
 		cluster,
 	}, subpath...)...)
 }
 
 // FillHost fill full host cpu-arch and kernel-name
-func (m *Controller) FillHost(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, sudo bool) error {
-	if err := m.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullArchType, sudo); err != nil {
+func (c *Controller) FillHost(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, sudo bool) error {
+	if err := c.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullArchType, sudo); err != nil {
 		return err
 	}
-	return m.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullOSType, sudo)
+	return c.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullOSType, sudo)
 }
 
 // fillHostArchOrOS full host cpu-arch or kernel-name
-func (m *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, fullType cluster.FullHostType, sudo bool) error {
+func (c *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, fullType cluster.FullHostType, sudo bool) error {
 	globalSSHType := topo.GlobalOptions.SSHType
 	hostArchOrOS := map[string]string{}
 	var detectTasks []*task.StepDisplay
@@ -564,27 +563,26 @@ func (m *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *c
 		}
 		hostArchOrOS[inst.InstanceHost()] = ""
 
-		tf := task.NewBuilder(m.Logger).
-			RootSSH(
-				inst.InstanceHost(),
-				inst.InstanceSshPort(),
-				user,
-				s.Password,
-				s.IdentityFile,
-				s.IdentityFilePassphrase,
-				gOpt.SSHTimeout,
-				gOpt.OptTimeout,
-				gOpt.SSHProxyHost,
-				gOpt.SSHProxyPort,
-				gOpt.SSHProxyUser,
-				p.Password,
-				p.IdentityFile,
-				p.IdentityFilePassphrase,
-				gOpt.SSHProxyTimeout,
-				executor.SSHType(globalSSHType),
-				gOpt.SSHType,
-				sudo,
-			)
+		tf := task.NewBuilder(c.Logger).RootSSH(
+			inst.InstanceHost(),
+			inst.InstanceSshPort(),
+			user,
+			s.Password,
+			s.IdentityFile,
+			s.IdentityFilePassphrase,
+			gOpt.SSHTimeout,
+			gOpt.OptTimeout,
+			gOpt.SSHProxyHost,
+			gOpt.SSHProxyPort,
+			gOpt.SSHProxyUser,
+			p.Password,
+			p.IdentityFile,
+			p.IdentityFilePassphrase,
+			gOpt.SSHProxyTimeout,
+			executor.SSHType(globalSSHType),
+			gOpt.SSHType,
+			sudo,
+		)
 
 		switch fullType {
 		case cluster.FullOSType:
@@ -601,9 +599,9 @@ func (m *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *c
 	ctx := ctxt.New(
 		context.Background(),
 		gOpt.Concurrency,
-		m.Logger,
+		c.Logger,
 	)
-	t := task.NewBuilder(m.Logger).
+	t := task.NewBuilder(c.Logger).
 		ParallelStep(fmt.Sprintf("+ Detect CPU %s Name", string(fullType)), false, detectTasks...).
 		Build()
 
