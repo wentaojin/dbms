@@ -532,12 +532,45 @@ func (c *Controller) Path(cluster string, subpath ...string) string {
 	}, subpath...)...)
 }
 
-// FillHost fill full host cpu-arch and kernel-name
-func (c *Controller) FillHost(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, sudo bool) error {
+// FillHostArchOrOS fill full host cpu-arch and kernel-name
+func (c *Controller) FillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, sudo bool) error {
 	if err := c.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullArchType, sudo); err != nil {
 		return err
 	}
 	return c.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullOSType, sudo)
+}
+
+// FillTopologyDir fill topology dir
+func (c *Controller) FillTopologyDir(topo *cluster.Topology) {
+	globalOptions := topo.GlobalOptions
+
+	for _, m := range topo.MasterServers {
+		newDeploy := cluster.FillTopologyDeployDir(globalOptions.DeployDir, m.DeployDir, cluster.ComponentDBMSMaster, m.Port)
+		if !strings.EqualFold(newDeploy, m.DeployDir) {
+			m.DeployDir = newDeploy
+		}
+
+		newData := cluster.FillTopologyDataDir(m.DeployDir, globalOptions.DataDir, m.DataDir, cluster.ComponentDBMSMaster, m.Port)
+		if !strings.EqualFold(newData, m.DataDir) {
+			m.DataDir = newData
+		}
+
+		newLog := cluster.FillTopologyLogDir(m.DeployDir, globalOptions.LogDir, m.LogDir, cluster.ComponentDBMSMaster, m.Port)
+		if !strings.EqualFold(newLog, m.LogDir) {
+			m.LogDir = newLog
+		}
+	}
+	for _, m := range topo.WorkerServers {
+		newDeploy := cluster.FillTopologyDeployDir(globalOptions.DeployDir, m.DeployDir, cluster.ComponentDBMSWorker, m.Port)
+		if !strings.EqualFold(newDeploy, m.DeployDir) {
+			m.DeployDir = newDeploy
+		}
+
+		newLog := cluster.FillTopologyLogDir(m.DeployDir, globalOptions.LogDir, m.LogDir, cluster.ComponentDBMSWorker, m.Port)
+		if !strings.EqualFold(newLog, m.LogDir) {
+			m.LogDir = newLog
+		}
+	}
 }
 
 // fillHostArchOrOS full host cpu-arch or kernel-name

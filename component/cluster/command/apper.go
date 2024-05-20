@@ -17,6 +17,8 @@ package command
 
 import (
 	"fmt"
+	"github.com/wentaojin/dbms/utils/cluster"
+	"path/filepath"
 	"strings"
 
 	"github.com/wentaojin/dbms/version"
@@ -64,7 +66,7 @@ func (a *App) Cmd() *cobra.Command {
 	c.PersistentFlags().StringVar(&a.Format, "format", "default", "(EXPERIMENTAL) The format of output, available values are [default, json]")
 	c.PersistentFlags().Uint64Var(&a.SshTimeout, "ssh-timeout", 5, "Timeout in seconds to connect host via SSH, ignored for operations that don't need an SSH connection")
 	c.PersistentFlags().Uint64Var(&a.WaitTimeout, "wait-timeout", 120, "Timeout in seconds to wait for an operation to complete, ignored for operations that don't fit")
-	c.PersistentFlags().StringVar(&a.MetaDir, "meta-dir", "$HOME/.dbms", "The meta dir is used to storage dbms meta information")
+	c.PersistentFlags().StringVar(&a.MetaDir, "meta-dir", filepath.Join(cluster.UserHome(), ".dbms"), "The meta dir is used to storage dbms meta information")
 	c.PersistentFlags().StringVar(&a.MirrorDir, "mirror-dir", "", "The mirror dir is used to storage dbms component tar package")
 	c.PersistentFlags().BoolVar(&a.SkipConfirm, "skip-confirm", false, "the operation skip confirm, always yes")
 	c.Flags().BoolVarP(&a.Version, "version", "v", false, "version for app client")

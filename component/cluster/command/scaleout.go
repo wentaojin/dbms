@@ -104,8 +104,7 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 	}
 
 	// read
-	var scaleOutTopo *cluster.Topology
-	err = cluster.ParseTopologyYaml(fileName, scaleOutTopo)
+	scaleOutTopo, err := cluster.ParseTopologyYaml(fileName)
 	if err != nil {
 		return err
 	}
@@ -149,7 +148,7 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 		sudo = a.User != "root"
 	}
 
-	if err := mg.FillHost(sshConnProps, sshProxyProps, scaleOutTopo, gOpt, a.User, sudo); err != nil {
+	if err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, scaleOutTopo, gOpt, a.User, sudo); err != nil {
 		return err
 	}
 
@@ -167,6 +166,8 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 
 	newTopo := metadata.GetTopology()
 	cluster.ExpandRelativeDir(newTopo)
+
+	mg.FillTopologyDir(newTopo)
 
 	clusters, err := mg.GetAllClusters()
 	if err != nil {

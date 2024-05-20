@@ -88,7 +88,9 @@ func (e *EasySSHExecutor) Execute(ctx context.Context, cmd string, sudo bool, ex
 
 	//Run the command on the remote host
 	//The default timeout in easyssh-proxy is 60 seconds
-	if len(execTimeout) == 0 {
+	if len(execTimeout) == 0 && e.Config.Timeout != 0 {
+		execTimeout = append(execTimeout, e.Config.Timeout)
+	} else if len(execTimeout) == 0 && e.Config.Timeout == 0 {
 		execTimeout = append(execTimeout, time.Duration(DefaultExecuteTimeout)*time.Second)
 	}
 

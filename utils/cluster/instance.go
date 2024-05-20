@@ -19,8 +19,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/cluster/embed/launchd"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -387,11 +389,17 @@ func (b *BaseInstance) Arch() string {
 
 // UsedPort implement Instance interface
 func (b *BaseInstance) UsedPort() []int {
+	if b.ComponentRole() == ComponentDBMSWorker {
+		return append([]int{}, b.Port)
+	}
 	return append(append([]int{}, b.Port), b.PeerPort)
 }
 
 // UsedDir implement Instance interface
 func (b *BaseInstance) UsedDir() []string {
+	if b.ComponentRole() == ComponentDBMSWorker {
+		return append(append([]string{}, b.DeployDir), b.LogDir)
+	}
 	return append(append(append([]string{}, b.DeployDir), b.DataDir), b.LogDir)
 }
 
@@ -412,6 +420,9 @@ func (b *BaseInstance) GetInstanceConfig() map[string]any {
 
 // ServiceName implement Instance interface
 func (b *BaseInstance) ServiceName() string {
+	if strings.EqualFold(b.OSVersion, "darwin") {
+		return fmt.Sprintf("%s-%d.plist", b.Component.ComponentName(), b.Port)
+	}
 	return fmt.Sprintf("%s-%d.service", b.Component.ComponentName(), b.Port)
 }
 
@@ -440,6 +451,35 @@ func (b *BaseInstance) InitSystemdConfig(ctx context.Context, e executor.Executo
 	compName := b.Component.ComponentName()
 	instHost := b.InstanceHost()
 	instPort := b.InstancePort()
+
+	if strings.EqualFold(b.OS(), "darwin") {
+		serviceCfgName := filepath.Join(cacheDir, fmt.Sprintf("%s-%s-%d.plist", compName, instHost, instPort))
+
+		systemMode := opt.SystemdMode
+		if len(systemMode) == 0 {
+			systemMode = SystemMode
+		}
+
+		if err := launchd.NewLaunchdConfig(stringutil.StringBuilder(compName, "-", strconv.Itoa(instPort)), compName, user, b.InstanceDeployDir()).ConfigToFile(serviceCfgName); err != nil {
+			return err
+		}
+
+		tgt := filepath.Join("/tmp", compName+"_"+uuid.New().String()+".plist")
+		if err := e.Transfer(ctx, serviceCfgName, tgt, false, 0); err != nil {
+			return errors.Annotatef(err, "transfer from %s to %s failed", serviceCfgName, tgt)
+		}
+		systemdDir := "/Library/LaunchDaemons/"
+		sudo := true
+		if opt.SystemdMode == UserMode {
+			sudo = false
+		}
+		cmd := fmt.Sprintf("mv %s %s%s-%d.plist", tgt, systemdDir, compName, instPort)
+		if _, _, err := e.Execute(ctx, cmd, sudo); err != nil {
+			return errors.Annotatef(err, "execute: %s", cmd)
+		}
+
+		return nil
+	}
 
 	serviceCfgName := filepath.Join(cacheDir, fmt.Sprintf("%s-%s-%d.service", compName, instHost, instPort))
 

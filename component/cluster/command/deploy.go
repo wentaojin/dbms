@@ -120,9 +120,8 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 	}
 
 	metadata := mg.NewMetadata()
-	topo := metadata.GetTopology()
 
-	err = cluster.ParseTopologyYaml(topoFile, topo)
+	topo, err := cluster.ParseTopologyYaml(topoFile)
 	if err != nil {
 		return err
 	}
@@ -188,10 +187,12 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 		sudo = true
 	}
 
-	err = mg.FillHost(sshConnProps, sshProxyProps, topo, gOpt, clusterName, sudo)
+	err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, topo, gOpt, clusterName, sudo)
 	if err != nil {
 		return err
 	}
+
+	mg.FillTopologyDir(topo)
 
 	if stringutil.StringUpper(gOpt.DisplayMode) != "JSON" {
 		err = mg.ConfirmTopology(clusterName, clusterVersion, topo, stringutil.NewStringSet())

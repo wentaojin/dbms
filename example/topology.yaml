@@ -1,6 +1,6 @@
 global:
   # # The user who runs the dbms cluster.
-  user: "dbms"
+  user: "marvin"
   # # group is used to specify the group name the user belong to,if it's not the same as user.
   # group: "dbms"
   # # SSH port of servers in the managed cluster.
@@ -8,10 +8,10 @@ global:
   # systemd_mode: "system"
   ssh_port: 22
   # # Storage directory for cluster deployment files, startup scripts, and configuration files.
-  deploy_dir: "/dbms-deploy"
+  deploy_dir: "/Users/marvin/gostore/dbms/deploy"
   # # TiDB Cluster data storage directory
-  data_dir: "/dbms-data"
-  log_dir:  ""
+  #data_dir: "/dbms-data"
+  #log_dir:  ""
 
 server_configs:
   master:

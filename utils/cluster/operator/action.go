@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"strings"
 	"time"
 
 	"golang.org/x/text/cases"
@@ -282,8 +283,14 @@ func stopInstance(ctx context.Context, ins cluster.Instance, timeout uint64, sys
 	logger := ctx.Value(printer.ContextKeyLogger).(*printer.Logger)
 	logger.Infof("\tStopping instance %s", ins.InstanceManageHost())
 
-	if err := systemctl(ctx, e, ins.ServiceName(), "stop", timeout, systemdMode); err != nil {
-		return toFailedActionError(err, "stop", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+	if strings.EqualFold(ins.OS(), "darwin") {
+		if err := launchctl(ctx, e, ins.ServiceName(), "stop", timeout, systemdMode); err != nil {
+			return toFailedActionError(err, "stop", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
+	} else {
+		if err := systemctl(ctx, e, ins.ServiceName(), "stop", timeout, systemdMode); err != nil {
+			return toFailedActionError(err, "stop", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
 	}
 
 	logger.Infof("\tStop %s %s success", ins.ComponentName(), ins.InstanceName())
@@ -305,8 +312,14 @@ func startInstance(ctx context.Context, ins cluster.Instance, timeout uint64, tl
 	logger := ctx.Value(printer.ContextKeyLogger).(*printer.Logger)
 	logger.Infof("\tStarting instance %s", ins.InstanceName())
 
-	if err := systemctl(ctx, e, ins.ServiceName(), "start", timeout, systemdMode); err != nil {
-		return toFailedActionError(err, "start", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+	if strings.EqualFold(ins.OS(), "darwin") {
+		if err := launchctl(ctx, e, ins.ServiceName(), "start", timeout, systemdMode); err != nil {
+			return toFailedActionError(err, "start", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
+	} else {
+		if err := systemctl(ctx, e, ins.ServiceName(), "start", timeout, systemdMode); err != nil {
+			return toFailedActionError(err, "start", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
 	}
 
 	// Check ready.
@@ -349,13 +362,42 @@ func enableInstance(ctx context.Context, ins cluster.Instance, timeout uint64, i
 	logger.Infof("\t%s instance %s", actionPrevMsgs[action], ins.InstanceName())
 
 	// Enable/Disable by systemd.
-	if err := systemctl(ctx, e, ins.ServiceName(), action, timeout, systemdMode); err != nil {
-		return toFailedActionError(err, action, ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+	if strings.EqualFold(ins.OS(), "darwin") {
+		if err := launchctl(ctx, e, ins.ServiceName(), action, timeout, systemdMode); err != nil {
+			return toFailedActionError(err, action, ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
+	} else {
+		if err := systemctl(ctx, e, ins.ServiceName(), action, timeout, systemdMode); err != nil {
+			return toFailedActionError(err, action, ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
 	}
 
 	logger.Infof("\t%s instance %s success", actionPostMsgs[action], ins.InstanceName())
 
 	return nil
+}
+
+func launchctl(ctx context.Context, executor executor.Executor, service string, action string, timeout uint64, scope string) error {
+	logger := ctx.Value(printer.ContextKeyLogger).(*printer.Logger)
+	c := module.LaunchdModuleConfig{
+		Unit:        service,
+		Action:      action,
+		Timeout:     time.Second * time.Duration(timeout),
+		SystemdMode: scope,
+	}
+	systemd := module.NewLaunchdModule(c)
+	stdout, stderr, err := systemd.Execute(ctx, executor)
+
+	if len(stdout) > 0 {
+		fmt.Println(string(stdout))
+	}
+	if len(stderr) > 0 {
+		logger.Errorf(string(stderr))
+	}
+	if len(stderr) > 0 && action == "stop" {
+		logger.Errorf(string(stderr))
+	}
+	return err
 }
 
 func systemctl(ctx context.Context, executor executor.Executor, service string, action string, timeout uint64, scope string) error {

@@ -43,7 +43,7 @@ type Local struct {
 var _ Executor = &Local{}
 
 // Execute implements Executor interface.
-func (l *Local) Execute(ctx context.Context, cmd string, sudo bool, timeout ...time.Duration) ([]byte, []byte, error) {
+func (l *Local) Execute(ctx context.Context, cmd string, sudo bool, execTimeout ...time.Duration) ([]byte, []byte, error) {
 	// change wd to default home
 	cmd = fmt.Sprintf("cd; %s", cmd)
 	// get current user name
@@ -68,13 +68,15 @@ func (l *Local) Execute(ctx context.Context, cmd string, sudo bool, timeout ...t
 
 	// run command on remote host
 	// default timeout is 60s in easyssh-proxy
-	if len(timeout) == 0 {
-		timeout = append(timeout, DefaultExecuteTimeout)
+	if len(execTimeout) == 0 && l.Config.ExecuteTimeout != 0 {
+		execTimeout = append(execTimeout, l.Config.ExecuteTimeout)
+	} else if len(execTimeout) == 0 && l.Config.ExecuteTimeout == 0 {
+		execTimeout = append(execTimeout, time.Duration(DefaultExecuteTimeout)*time.Second)
 	}
 
-	if len(timeout) > 0 {
+	if len(execTimeout) > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout[0])
+		ctx, cancel = context.WithTimeout(ctx, execTimeout[0])
 		defer cancel()
 	}
 

@@ -48,6 +48,10 @@ const (
 	ScriptDirName = "script"
 	// ConfDirName is the directory to save script files
 	ConfDirName = "conf"
+	// DataDirName is the directory to save script files
+	DataDirName = "data"
+	// LogDirName is the directory to save script files
+	LogDirName = "log"
 )
 
 type Metadata struct {

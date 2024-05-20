@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -38,16 +40,76 @@ func ReadYamlFile(file string) ([]byte, error) {
 
 // ParseTopologyYaml read yaml content from `file` and unmarshal it to `out`
 // ignoreGlobal ignore global variables in file, only ignoreGlobal with a index of 0 is effective
-func ParseTopologyYaml(file string, out *Topology) error {
+func ParseTopologyYaml(file string) (*Topology, error) {
 	yamlFile, err := ReadYamlFile(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err = yaml.UnmarshalStrict(yamlFile, out); err != nil {
-		return fmt.Errorf("please check the syntax of your topology file and try again, parse topology yaml file [%s] failed: %v, ", file, err)
+	topo := &Topology{}
+	if err = yaml.UnmarshalStrict(yamlFile, topo); err != nil {
+		return nil, fmt.Errorf("please check the syntax of your topology file and try again, parse topology yaml file [%s] failed: %v, ", file, err)
 	}
-	return nil
+	return topo, nil
+}
+
+// ParseMetadataYaml read yaml content from `file` and unmarshal it to `out`
+func ParseMetadataYaml(file string) (*Metadata, error) {
+	yamlFile, err := ReadYamlFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata := &Metadata{}
+	if err = yaml.UnmarshalStrict(yamlFile, metadata); err != nil {
+		return nil, fmt.Errorf("please check the syntax of your topology file and try again, parse topology yaml file [%s] failed: %v, ", file, err)
+	}
+	return metadata, nil
+}
+
+// FillTopologyDeployDir fill topology deploy dir
+func FillTopologyDeployDir(globalDeployDir, instDeployDir, compRole string, compPort int) string {
+	if !strings.HasPrefix(instDeployDir, "/") && !strings.EqualFold(instDeployDir, "") {
+		return filepath.Join(globalDeployDir, instDeployDir)
+	}
+	if !strings.HasPrefix(instDeployDir, "/") && strings.EqualFold(instDeployDir, "") {
+		return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)))
+	}
+	return instDeployDir
+}
+
+// FillTopologyDataDir fill topology data dir
+func FillTopologyDataDir(globalDeployDir, globalDataDir, instDataDir, compRole string, compPort int) string {
+	if !strings.HasPrefix(instDataDir, "/") && !strings.EqualFold(instDataDir, "") {
+		return filepath.Join(globalDeployDir, instDataDir)
+	}
+	if !strings.HasPrefix(instDataDir, "/") && strings.EqualFold(instDataDir, "") {
+		if !strings.HasPrefix(globalDataDir, "/") && !strings.EqualFold(globalDataDir, "") {
+			return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), globalDataDir)
+		}
+		if !strings.HasPrefix(globalDataDir, "/") && strings.EqualFold(globalDataDir, "") {
+			return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), DataDirName)
+		}
+		return filepath.Join(globalDataDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), DataDirName)
+	}
+	return instDataDir
+}
+
+// FillTopologyLogDir fill topology log dir
+func FillTopologyLogDir(globalDeployDir, globalLogDir, instLogDir, compRole string, compPort int) string {
+	if !strings.HasPrefix(instLogDir, "/") && !strings.EqualFold(instLogDir, "") {
+		return filepath.Join(globalDeployDir, instLogDir)
+	}
+	if !strings.HasPrefix(instLogDir, "/") && strings.EqualFold(instLogDir, "") {
+		if !strings.HasPrefix(globalLogDir, "/") && !strings.EqualFold(globalLogDir, "") {
+			return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), globalLogDir)
+		}
+		if !strings.HasPrefix(globalLogDir, "/") && strings.EqualFold(globalLogDir, "") {
+			return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), LogDirName)
+		}
+		return filepath.Join(globalLogDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), LogDirName)
+	}
+	return instLogDir
 }
 
 // ExpandRelativeDir fill DeployDir, DataDir and LogDir to absolute path

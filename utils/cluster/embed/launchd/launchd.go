@@ -13,55 +13,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package systemd
+package launchd
 
 import (
 	"bytes"
+	"github.com/wentaojin/dbms/utils/cluster/embed"
+	"github.com/wentaojin/dbms/utils/stringutil"
 	"html/template"
 	"path"
-
-	"github.com/wentaojin/dbms/utils/cluster/embed"
-
-	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
 // Config represent the data to generate systemd config
 type Config struct {
-	ServiceName        string
-	User               string
-	DeployDir          string
-	SystemMode         string
-	DisableSendSigkill bool
-	// Takes one of no, on-success, on-failure, on-abnormal, on-watchdog, on-abort, or always.
-	// The Template set as always if this is not setted.
-	Restart string
+	Label       string
+	ServiceName string
+	User        string
+	DeployDir   string
 }
 
-// NewSystemdConfig returns a Config with given arguments
-func NewSystemdConfig(service, user, deployDir string) *Config {
+// NewLaunchdConfig returns a Config with given arguments
+func NewLaunchdConfig(label, service, user, deployDir string) *Config {
 	return &Config{
+		Label:       label,
 		ServiceName: service,
 		User:        user,
 		DeployDir:   deployDir,
 	}
-}
-
-func (c *Config) WithDisableSendSigkill(action bool) *Config {
-	c.DisableSendSigkill = action
-	return c
-}
-
-// WithRestart Takes one of no, on-success, on-failure, on-abnormal, on-watchdog, on-abort, or always.
-//
-//	// The Template set as always if this is not setted.
-func (c *Config) WithRestart(action string) *Config {
-	c.Restart = action
-	return c
-}
-
-func (c *Config) WithSystemMode(mode string) *Config {
-	c.SystemMode = mode
-	return c
 }
 
 // ConfigToFile write config content to specific path
@@ -75,7 +52,7 @@ func (c *Config) ConfigToFile(file string) error {
 
 // Config generate the config file data.
 func (c *Config) Config() ([]byte, error) {
-	fp := path.Join("template", "systemd", "systemd.service.tmpl")
+	fp := path.Join("template", "launchd", "launchd.plist.tmpl")
 	tpl, err := embed.ReadTemplate(fp)
 	if err != nil {
 		return nil, err
@@ -85,7 +62,7 @@ func (c *Config) Config() ([]byte, error) {
 
 // ConfigWithTemplate generate the system config content by tpl
 func (c *Config) ConfigWithTemplate(tpl string) ([]byte, error) {
-	tmpl, err := template.New("systemd").Parse(tpl)
+	tmpl, err := template.New("launchd").Parse(tpl)
 	if err != nil {
 		return nil, err
 	}
