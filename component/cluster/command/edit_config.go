@@ -72,8 +72,7 @@ func (a *AppEditConfig) EditConfig(clusterName string, gOpt *operator.Options) e
 	}
 
 	mg := manager.New(a.MetaDir, logger)
-	meta := mg.NewMetadata()
-	metadata, err := meta.ParseMetadata(mg.GetMetaFilePath(clusterName))
+	metadata, err := cluster.ParseMetadataYaml(mg.GetMetaFilePath(clusterName))
 	if err != nil {
 		return err
 	}

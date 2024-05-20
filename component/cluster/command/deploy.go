@@ -215,6 +215,7 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 	// Initialize environment
 	metadata.SetVersion(clusterVersion)
 	metadata.SetUser(topo.GlobalOptions.User)
+	metadata.SetTopology(topo)
 
 	globalOptions := topo.GlobalOptions
 

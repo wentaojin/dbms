@@ -15,12 +15,6 @@ limitations under the License.
 */
 package cluster
 
-import (
-	"fmt"
-
-	"gopkg.in/yaml.v2"
-)
-
 const (
 	// DefaultDeployUser is the cluster deploy default user
 	DefaultDeployUser = "dbms"
@@ -77,7 +71,7 @@ func (m *Metadata) GetVersion() string {
 }
 
 func (m *Metadata) GetTopology() *Topology {
-	return &Topology{}
+	return m.Topology
 }
 
 func (m *Metadata) SetTopology(topo *Topology) {
@@ -86,18 +80,6 @@ func (m *Metadata) SetTopology(topo *Topology) {
 
 func (m *Metadata) GenMetadata() *Metadata {
 	return m
-}
-
-func (m *Metadata) ParseMetadata(file string) (*Metadata, error) {
-	yamlFile, err := ReadYamlFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = yaml.UnmarshalStrict(yamlFile, m); err != nil {
-		return nil, fmt.Errorf("please check the syntax of your topology file and try again, parse topology yaml file [%s] failed: %v, ", file, err)
-	}
-	return m, nil
 }
 
 func (m *Metadata) ScaleOutTopology(topo *Topology) {

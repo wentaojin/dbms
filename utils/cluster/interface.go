@@ -30,7 +30,6 @@ type IMetadata interface {
 	GetUser() string
 	GetVersion() string
 	GenMetadata() *Metadata
-	ParseMetadata(file string) (*Metadata, error)
 	ScaleOutTopology(topo *Topology)
 }
 

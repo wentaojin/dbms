@@ -98,8 +98,7 @@ func (a *AppScaleIn) ScaleIn(clusterName string, gOpt *operator.Options) error {
 	}
 
 	// read
-	meta := mg.NewMetadata()
-	metadata, err := meta.ParseMetadata(mg.GetMetaFilePath(clusterName))
+	metadata, err := cluster.ParseMetadataYaml(mg.GetMetaFilePath(clusterName))
 	if err != nil {
 		return err
 	}
@@ -154,8 +153,7 @@ func (a *AppScaleIn) ScaleIn(clusterName string, gOpt *operator.Options) error {
 	}
 
 	// get latest metadata
-	meta = mg.NewMetadata()
-	metadata, err = meta.ParseMetadata(mg.GetMetaFilePath(clusterName))
+	metadata, err = cluster.ParseMetadataYaml(mg.GetMetaFilePath(clusterName))
 	if err != nil {
 		return err
 	}

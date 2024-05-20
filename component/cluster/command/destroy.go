@@ -77,8 +77,7 @@ func (a *AppDestroy) RunE(cmd *cobra.Command, args []string) error {
 
 func (a *AppDestroy) Destroy(clusterName string, gOpt *operator.Options) error {
 	mg := manager.New(gOpt.MetaDir, logger)
-	meta := mg.NewMetadata()
-	metadata, err := meta.ParseMetadata(mg.GetMetaFilePath(clusterName))
+	metadata, err := cluster.ParseMetadataYaml(mg.GetMetaFilePath(clusterName))
 	if err != nil {
 		return err
 	}

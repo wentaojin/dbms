@@ -109,8 +109,7 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 		return err
 	}
 
-	meta := mg.NewMetadata()
-	metadata, err := meta.ParseMetadata(mg.GetMetaFilePath(clusterName))
+	metadata, err := cluster.ParseMetadataYaml(mg.GetMetaFilePath(clusterName))
 	if err != nil {
 		return err
 	}

@@ -74,8 +74,7 @@ func (a *AppStop) Stop(clusterName string, gOpt *operator.Options) error {
 	logger.Infof("Stopping cluster %s....", clusterName)
 
 	mg := manager.New(gOpt.MetaDir, logger)
-	meta := mg.NewMetadata()
-	metadata, err := meta.ParseMetadata(mg.GetMetaFilePath(clusterName))
+	metadata, err := cluster.ParseMetadataYaml(mg.GetMetaFilePath(clusterName))
 	if err != nil {
 		return err
 	}
