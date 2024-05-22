@@ -2,14 +2,26 @@
 <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
+    <key>KeepAlive</key>
+    <dict>
+  	    <key>NetworkState</key>
+  	    <true/>
+    </dict>
     <key>Label</key>
     <string>{{.Label}}</string>
-    <key>ProcessType</key>
-    <string>Background</string>
     <key>ProgramArguments</key>
     <array>
-      <string>{{.DeployDir}}/scripts/run_{{.ServiceName}}.sh</string>
+      <string>{{.DeployDir}}/script/run_{{.ServiceName}}.sh</string>
     </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>{{.DeployDir}}/script/plist.output.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/{{.User}}</string>
+    </dict>
     <key>UserName</key>
     <string>{{.User}}</string>
   </dict>

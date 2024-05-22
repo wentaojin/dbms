@@ -1,6 +1,6 @@
 global:
   # # The user who runs the dbms cluster.
-  user: "marvin"
+  user: "dbms"
   # # group is used to specify the group name the user belong to,if it's not the same as user.
   # group: "dbms"
   # # SSH port of servers in the managed cluster.
@@ -22,12 +22,11 @@ server_configs:
 master_servers:
   - host: 192.168.209.193
     ssh_port: 22
-    port: 8261
-    peer_port: 8361
+    port: 2379
+    peer_port: 2380
     deploy_dir: "/Users/marvin/gostore/dbms/deploy/master00"
     data_dir: "/Users/marvin/gostore/dbms/deploy/master00/data"
     log_dir:    "/Users/marvin/gostore/dbms/deploy/master00/log"
-    #numa_node:  ""
     ## The following configs are used to overwrite the `server_configs.master` values.
     #config:
 
@@ -37,6 +36,5 @@ worker_servers:
     port: 8261
     #deploy_dir: "/Users/marvin/gostore/dbms/deploy/worker00"
     #log_dir:    "/Users/marvin/gostore/dbms/deploy/worker00/log"
-    #numa_node:  ""
     ## The following configs are used to overwrite the `server_configs.master` values.
     #config:

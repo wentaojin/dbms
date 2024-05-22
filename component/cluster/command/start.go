@@ -77,7 +77,6 @@ func (a *AppStart) Start(clusterName string, gOpt *operator.Options) error {
 		return err
 	}
 	topo := metadata.GetTopology()
-
 	// valid roles
 	var compRoles []string
 	topo.IterComponent(func(c cluster.Component) {

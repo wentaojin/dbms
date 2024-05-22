@@ -24,8 +24,9 @@ import (
 )
 
 // PortStarted wait until a port is being listened
-func PortStarted(ctx context.Context, e executor.Executor, port int, timeout uint64) error {
+func PortStarted(ctx context.Context, e executor.Executor, os string, port int, timeout uint64) error {
 	c := module.WaitForConfig{
+		OS:      os,
 		Port:    port,
 		State:   "started",
 		Timeout: time.Duration(timeout) * time.Second,
@@ -35,8 +36,9 @@ func PortStarted(ctx context.Context, e executor.Executor, port int, timeout uin
 }
 
 // PortStopped wait until a port is being released
-func PortStopped(ctx context.Context, e executor.Executor, port int, timeout uint64) error {
+func PortStopped(ctx context.Context, e executor.Executor, os string, port int, timeout uint64) error {
 	c := module.WaitForConfig{
+		OS:      os,
 		Port:    port,
 		State:   "stopped",
 		Timeout: time.Duration(timeout) * time.Second,

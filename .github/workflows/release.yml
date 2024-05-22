@@ -76,6 +76,7 @@ jobs:
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz dbmsctl
           
           sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/example/
+          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
 
           cd ${{ github.workspace }}/build
           pwd
@@ -112,8 +113,8 @@ jobs:
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-${{ github.ref_name }}-linux-arm64.tar.gz dbms
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbmsctl-${{ github.ref_name }}-linux-arm64.tar.gz dbmsctl
 
-
           sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/example/
+          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
 
           cd ${{ github.workspace }}/build
           pwd
@@ -151,6 +152,7 @@ jobs:
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz dbmsctl
 
           sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/example/
+          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
 
           cd ${{ github.workspace }}/build
           pwd
@@ -188,6 +190,7 @@ jobs:
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbmsctl-${{ github.ref_name }}-darwin-arm64.tar.gz dbmsctl
 
           sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/example/
+          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
 
           cd ${{ github.workspace }}/build
           pwd

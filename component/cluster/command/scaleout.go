@@ -147,6 +147,8 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 		sudo = a.User != "root"
 	}
 
+	// fill
+	scaleOutTopo.GlobalOptions = metadata.GetTopology().GlobalOptions
 	if err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, scaleOutTopo, gOpt, a.User, sudo); err != nil {
 		return err
 	}
@@ -199,27 +201,11 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 	// Initialize the environments
 	globalOptions := metadata.GetTopology().GlobalOptions
 
-	initializedHosts := stringutil.NewStringSet()
-	metadata.GetTopology().IterInstance(func(inst cluster.Instance) {
-		initializedHosts.Insert(inst.InstanceManageHost())
-	})
-
-	// uninitializedHosts are hosts which haven't been initialized yet
-	uninitializedHosts := make(map[string]int) // host -> ssh-port
 	scaleOutNodes := make(map[string]struct{})
 
 	scaleOutTopo.IterInstance(func(inst cluster.Instance) {
 		scaleOutNodes[inst.InstanceName()] = struct{}{}
-
 		host := inst.InstanceManageHost()
-		if initializedHosts.Exist(host) {
-			return
-		}
-		if _, found := uninitializedHosts[host]; found {
-			return
-		}
-
-		uninitializedHosts[host] = inst.InstanceSshPort()
 
 		var dirs []string
 		for _, dir := range []string{globalOptions.DeployDir, globalOptions.DataDir, globalOptions.LogDir} {
@@ -353,7 +339,7 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 		ParallelStep("+ Deploy TiDB instance", gOpt.Force, deployCompTasks...).
 		ParallelStep("+ Generate scale-out config", gOpt.Force, scaleConfigTasks...).
 		ParallelStep("+ Refresh components config", gOpt.Force, refreshConfigTasks...).Func("Start new instances", func(ctx context.Context) error {
-		return operator.Start(ctx, newTopo, gOpt, nil)
+		return operator.Start(ctx, scaleOutTopo, gOpt, nil)
 	}).Build()
 
 	if err = bf.Execute(ctxt.New(context.Background(), gOpt.Concurrency, mg.Logger)); err != nil {

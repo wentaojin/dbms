@@ -71,7 +71,7 @@ func (a *AppScaleIn) Cmd() *cobra.Command {
 }
 
 func (a *AppScaleIn) RunE(cmd *cobra.Command, args []string) error {
-	if len(args) != 2 {
+	if len(args) != 1 {
 		return cmd.Help()
 	}
 	clusterName := args[0]
@@ -103,9 +103,17 @@ func (a *AppScaleIn) ScaleIn(clusterName string, gOpt *operator.Options) error {
 		return err
 	}
 
+	mg.SetMetadata(metadata)
 	topo := metadata.GetTopology()
 
 	if !gOpt.SkipConfirm {
+		cyan := color.New(color.FgCyan, color.Bold)
+
+		fmt.Printf("Cluster type:       %s\n", cyan.Sprint("DBMS"))
+		fmt.Printf("Cluster name:       %s\n", cyan.Sprint(clusterName))
+		fmt.Printf("Cluster version:    %s\n", cyan.Sprint(metadata.GetVersion()))
+		fmt.Printf("Deploy user:        %s\n", cyan.Sprint(metadata.GetUser()))
+		fmt.Printf("SSH type:           %s\n", cyan.Sprint(topo.GlobalOptions.SSHType))
 		if err = stringutil.PromptForConfirmOrAbortError(
 			"This operation will delete the %s nodes in `%s` and all their data.\nDo you want to continue? [y/N]:",
 			strings.Join(gOpt.Nodes, ","),

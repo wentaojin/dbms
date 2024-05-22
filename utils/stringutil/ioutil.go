@@ -20,6 +20,8 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"io"
 	"net"
 	"os"
@@ -33,8 +35,6 @@ import (
 
 	"github.com/otiai10/copy"
 	"github.com/pingcap/errors"
-
-	"github.com/cheynewallace/tabby"
 
 	"github.com/BurntSushi/toml"
 )
@@ -312,29 +312,63 @@ func OsArch(os, arch string) string {
 // PrintTable accepts a matrix of strings and print them as ASCII table to terminal
 func PrintTable(rows [][]string, header bool) {
 	// Print the table
-	t := tabby.New()
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
 	if header {
-		addRow(t, rows[0], header)
+		addRow(t, rows[0], true)
+		border := make([]string, len(rows[0]))
+		for i := range border {
+			border[i] = strings.Repeat("-", len(rows[0][i]))
+		}
+		addRow(t, border, false)
 		rows = rows[1:]
 	}
 	for _, row := range rows {
 		addRow(t, row, false)
 	}
-	t.Print()
+
+	t.SetStyle(table.Style{
+		Name: "tiup",
+		Box: table.BoxStyle{
+			BottomLeft:       "",
+			BottomRight:      "",
+			BottomSeparator:  "",
+			Left:             "|",
+			LeftSeparator:    "|",
+			MiddleHorizontal: "-",
+			MiddleSeparator:  "  ",
+			MiddleVertical:   "  ",
+			PaddingLeft:      "",
+			PaddingRight:     "",
+			Right:            "",
+			RightSeparator:   "",
+			TopLeft:          "",
+			TopRight:         "",
+			TopSeparator:     "",
+			UnfinishedRow:    "",
+		},
+		Format: table.FormatOptions{
+			Header: text.FormatDefault,
+		},
+		Options: table.Options{
+			SeparateColumns: true,
+		},
+	})
+	t.Render()
 }
 
-func addRow(t *tabby.Tabby, rawLine []string, header bool) {
+func addRow(t table.Writer, rawLine []string, header bool) {
 	// Convert []string to []any
-	row := make([]any, len(rawLine))
+	row := make(table.Row, len(rawLine))
 	for i, v := range rawLine {
 		row[i] = v
 	}
 
 	// Add line to the table
 	if header {
-		t.AddHeader(row...)
+		t.AppendHeader(row)
 	} else {
-		t.AddLine(row...)
+		t.AppendRow(row)
 	}
 }
 

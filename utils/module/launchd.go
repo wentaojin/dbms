@@ -42,13 +42,40 @@ type LaunchdModule struct {
 // given config.
 func NewLaunchdModule(config LaunchdModuleConfig) *LaunchdModule {
 	systemctl := "launchctl"
+
+	var action string
 	sudo := true
+
+	switch strings.ToLower(config.Action) {
+	case "start":
+		action = fmt.Sprintf("bootstrap system /Library/LaunchAgents/%s", config.Unit)
+	case "stop":
+		action = fmt.Sprintf("bootout system /Library/LaunchAgents/%s", config.Unit)
+	case "disable":
+		action = fmt.Sprintf("disable system/%s", config.Unit)
+	case "enable":
+		action = fmt.Sprintf("enable system/%s", config.Unit)
+	default:
+		action = fmt.Sprintf("%s %s", strings.ToLower(config.Action), config.Unit)
+	}
+
 	if config.SystemdMode == "user" {
+		switch strings.ToLower(config.Action) {
+		case "start":
+			action = fmt.Sprintf("bootstrap gui/$(id -u) ~/Library/LaunchAgents/%s", config.Unit)
+		case "stop":
+			action = fmt.Sprintf("bootout gui/$(id -u) ~/Library/LaunchAgents/%s", config.Unit)
+		case "disable":
+			action = fmt.Sprintf("disable gui/$(id -u)/%s", config.Unit)
+		case "enable":
+			action = fmt.Sprintf("enable gui/$(id -u)/%s", config.Unit)
+		default:
+			action = fmt.Sprintf("%s %s", strings.ToLower(config.Action), config.Unit)
+		}
 		sudo = false
 	}
 
-	cmd := fmt.Sprintf("%s %s %s",
-		systemctl, strings.ToLower(config.Action), config.Unit)
+	cmd := fmt.Sprintf("%s %s", systemctl, action)
 
 	mod := &LaunchdModule{
 		cmd:     cmd,

@@ -1,0 +1,8 @@
+worker_servers:
+  - host: 192.168.209.193
+    ssh_port: 22
+    port: 8261
+    #deploy_dir: "/Users/marvin/gostore/dbms/deploy/worker00"
+    #log_dir:    "/Users/marvin/gostore/dbms/deploy/worker00/log"
+    ## The following configs are used to overwrite the `server_configs.master` values.
+    #config:

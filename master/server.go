@@ -179,7 +179,7 @@ func (s *Server) Start(ctx context.Context) error {
 				s.crontab(ctx)
 
 				// leader register
-				_, err = etcdutil.PutKey(s.etcdClient, constant.DefaultMasterLeaderPrefixKey, s.ClientAddr)
+				_, err = etcdutil.PutKey(s.etcdClient, constant.DefaultMasterLeaderPrefixKey, s.MasterOptions.ClientAddr)
 				if err != nil {
 					return err
 				}

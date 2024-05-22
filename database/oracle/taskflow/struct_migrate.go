@@ -263,6 +263,11 @@ func (st *StructMigrateTask) Start() error {
 		}
 	}
 
+	err = st.sequenceMigrateStart(st.DatabaseS, st.DatabaseT)
+	if err != nil {
+		return err
+	}
+
 	err = st.DatabaseS.Close()
 	if err != nil {
 		return err

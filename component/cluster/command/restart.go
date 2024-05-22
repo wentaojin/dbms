@@ -93,6 +93,13 @@ func (a *AppRestart) Restart(clusterName string, gOpt *operator.Options) error {
 	}
 
 	if !gOpt.SkipConfirm {
+		cyan := color.New(color.FgCyan, color.Bold)
+
+		fmt.Printf("Cluster type:       %s\n", cyan.Sprint("DBMS"))
+		fmt.Printf("Cluster name:       %s\n", cyan.Sprint(clusterName))
+		fmt.Printf("Cluster version:    %s\n", cyan.Sprint(metadata.GetVersion()))
+		fmt.Printf("Deploy user:        %s\n", cyan.Sprint(metadata.GetUser()))
+		fmt.Printf("SSH type:           %s\n", cyan.Sprint(topo.GlobalOptions.SSHType))
 		if err := stringutil.PromptForConfirmOrAbortError(
 			fmt.Sprintf("Will restart the cluster %s with nodes: %s roles: %s.\nCluster will be unavailable\nDo you want to continue? [y/N]:",
 				color.HiYellowString(clusterName),

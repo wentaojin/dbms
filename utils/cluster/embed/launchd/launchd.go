@@ -19,10 +19,11 @@ import (
 	"bytes"
 	"github.com/wentaojin/dbms/utils/cluster/embed"
 	"github.com/wentaojin/dbms/utils/stringutil"
-	"html/template"
 	"path"
+	"text/template"
 )
 
+// https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html#//apple_ref/doc/uid/TP40001762-104142
 // Config represent the data to generate systemd config
 type Config struct {
 	Label       string

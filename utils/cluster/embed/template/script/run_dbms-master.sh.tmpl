@@ -11,9 +11,10 @@ exec numactl --cpunodebind={{.InstanceNumaNode}} --membind={{.InstanceNumaNode}}
 {{- else}}
 exec bin/dbms-master \
 {{- end}}
+    --name="{{.Name}}" \
     --initial-cluster="{{.InitialCluster}}" \
     --client-addr="{{.ClientAddr}}" \
     --peer-addr="{{.PeerAddr}}" \
     --data-dir="{{.DataDir}}" \
-    --log-file="{{.LogDir}}/dm-master.log" \
+    --log-file="{{.LogDir}}/dbms-master.log" \
     --config=conf/dbms-master.toml >> "{{.LogDir}}/dbms-master_stdout.log" 2>> "{{.LogDir}}/dbms-master_stderr.log"

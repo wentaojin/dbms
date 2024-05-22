@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Refer: https://github.com/yaegashi/cobra-cmder
 type Cmder interface {
 	Cmd() *cobra.Command
 }

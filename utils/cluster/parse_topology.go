@@ -79,35 +79,35 @@ func FillTopologyDeployDir(globalDeployDir, instDeployDir, compRole string, comp
 }
 
 // FillTopologyDataDir fill topology data dir
-func FillTopologyDataDir(globalDeployDir, globalDataDir, instDataDir, compRole string, compPort int) string {
+func FillTopologyDataDir(globalDeployDir, globalDataDir, instDataDir string) string {
 	if !strings.HasPrefix(instDataDir, "/") && !strings.EqualFold(instDataDir, "") {
 		return filepath.Join(globalDeployDir, instDataDir)
 	}
 	if !strings.HasPrefix(instDataDir, "/") && strings.EqualFold(instDataDir, "") {
 		if !strings.HasPrefix(globalDataDir, "/") && !strings.EqualFold(globalDataDir, "") {
-			return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), globalDataDir)
+			return filepath.Join(globalDeployDir, globalDataDir)
 		}
 		if !strings.HasPrefix(globalDataDir, "/") && strings.EqualFold(globalDataDir, "") {
-			return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), DataDirName)
+			return filepath.Join(globalDeployDir, DataDirName)
 		}
-		return filepath.Join(globalDataDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), DataDirName)
+		return filepath.Join(globalDataDir, DataDirName)
 	}
 	return instDataDir
 }
 
 // FillTopologyLogDir fill topology log dir
-func FillTopologyLogDir(globalDeployDir, globalLogDir, instLogDir, compRole string, compPort int) string {
+func FillTopologyLogDir(globalDeployDir, globalLogDir, instLogDir string) string {
 	if !strings.HasPrefix(instLogDir, "/") && !strings.EqualFold(instLogDir, "") {
 		return filepath.Join(globalDeployDir, instLogDir)
 	}
 	if !strings.HasPrefix(instLogDir, "/") && strings.EqualFold(instLogDir, "") {
 		if !strings.HasPrefix(globalLogDir, "/") && !strings.EqualFold(globalLogDir, "") {
-			return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), globalLogDir)
+			return filepath.Join(globalDeployDir, globalLogDir)
 		}
 		if !strings.HasPrefix(globalLogDir, "/") && strings.EqualFold(globalLogDir, "") {
-			return filepath.Join(globalDeployDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), LogDirName)
+			return filepath.Join(globalDeployDir, LogDirName)
 		}
-		return filepath.Join(globalLogDir, stringutil.StringBuilder(compRole, "-", strconv.Itoa(compPort)), LogDirName)
+		return filepath.Join(globalLogDir, LogDirName)
 	}
 	return instLogDir
 }

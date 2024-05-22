@@ -19,10 +19,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
-	"strings"
-
 	"github.com/wentaojin/dbms/utils/stringutil"
+	"os"
 
 	"github.com/wentaojin/dbms/utils/configutil"
 
@@ -39,15 +37,19 @@ type Config struct {
 	WorkerOptions *configutil.WorkerOptions `toml:"worker" json:"worker"`
 	LogConfig     *logger.Config            `toml:"log" json:"log"`
 
-	WorkerAddr string `toml:"worker-addr" json:"worker-addr"`
-	Join       string `toml:"join" json:"join"`
-	LogFile    string `toml:"log-file" json:"log-file"`
-
 	PrintVersion bool `json:"-"`
 }
 
 func NewConfig() *Config {
-	cfg := &Config{}
+	cfg := &Config{
+		WorkerOptions: &configutil.WorkerOptions{},
+		LogConfig: &logger.Config{
+			LogLevel:   "info",
+			MaxSize:    128,
+			MaxDays:    7,
+			MaxBackups: 30,
+		},
+	}
 	cfg.FlagSet = flag.NewFlagSet("dbms worker", flag.ContinueOnError)
 	fs := cfg.FlagSet
 	fs.Usage = func() {
@@ -56,9 +58,10 @@ func NewConfig() *Config {
 	}
 	fs.BoolVar(&cfg.PrintVersion, "V", false, "prints version and exit")
 	fs.StringVar(&cfg.ConfigFile, "config", "", "path to config file")
-	fs.StringVar(&cfg.WorkerAddr, "worker-addr", "", "worker client addr")
-	fs.StringVar(&cfg.Join, "join", "", "master join instance")
-	fs.StringVar(&cfg.LogFile, "log-file", "", "worker instance log file")
+	fs.StringVar(&cfg.WorkerOptions.Name, "name", "", "worker addr name")
+	fs.StringVar(&cfg.WorkerOptions.WorkerAddr, "worker-addr", "", "worker client addr")
+	fs.StringVar(&cfg.WorkerOptions.Endpoint, "join", "", "master join instance")
+	fs.StringVar(&cfg.LogConfig.LogFile, "log-file", "", "worker instance log file")
 	return cfg
 }
 
@@ -101,21 +104,6 @@ func (c *Config) configFromFile(path string) error {
 	_, err := toml.DecodeFile(path, c)
 	if err != nil {
 		return fmt.Errorf("config decode from file failed: %v", err)
-	}
-	return nil
-}
-
-// adjust configs
-func (c *Config) adjust() error {
-	if !strings.EqualFold(c.WorkerAddr, "") {
-		c.WorkerOptions.WorkerAddr = c.WorkerAddr
-	}
-	if !strings.EqualFold(c.Join, "") {
-		c.WorkerOptions.Endpoint = c.Join
-
-	}
-	if !strings.EqualFold(c.LogFile, "") {
-		c.LogConfig.LogFile = c.LogFile
 	}
 	return nil
 }

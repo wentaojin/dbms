@@ -11,6 +11,7 @@ exec numactl --cpunodebind={{.InstanceNumaNode}} --membind={{.InstanceNumaNode}}
 {{- else}}
 exec bin/dbms-master \
 {{- end}}
+    --name="{{.Name}}" \
     --client-addr="{{.ClientAddr}}" \
     --peer-addr="{{.PeerAddr}}" \
     --join="{{.Join}}" \

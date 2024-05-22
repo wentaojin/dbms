@@ -87,7 +87,10 @@ func (a *AppUpgrade) Upgrade(clusterName string, clusterUpgradeVersion string, g
 		return err
 	}
 
-	metadata := mg.NewMetadata()
+	metadata, err := cluster.ParseMetadataYaml(mg.GetMetaFilePath(clusterName))
+	if err != nil {
+		return err
+	}
 	topo := metadata.GetTopology()
 
 	var (
@@ -105,13 +108,13 @@ func (a *AppUpgrade) Upgrade(clusterName string, clusterUpgradeVersion string, g
 	for _, comp := range components {
 		restartComponents = append(restartComponents, comp.ComponentName(), comp.ComponentRole())
 		if len(comp.Instances()) > 0 {
-			compVersionMsg += fmt.Sprintf("\nwill upgrade and restart component \"%19s\" to \"%s\",", comp.ComponentName(), clusterUpgradeVersion)
+			compVersionMsg += fmt.Sprintf("\nwill upgrade and restart component \"%s\" to \"%s\",", comp.ComponentName(), clusterUpgradeVersion)
 		}
 	}
 
 	components = operator.FilterComponent(components, stringutil.NewStringSet(restartComponents...))
 
-	mg.Logger.Warnf(`DBMS
+	mg.Logger.Warnf(`
 This operation will upgrade %s %s cluster %s to %s:%s`,
 		color.YellowString("Before the upgrade, it is recommended to read the upgrade guide and finish the preparation steps."),
 		color.HiYellowString(metadata.GetVersion()),
@@ -135,7 +138,7 @@ This operation will upgrade %s %s cluster %s to %s:%s`,
 
 			// Deploy component
 			tb := task.NewBuilder(mg.Logger).
-				BackupComponent(compName, currentVersion, inst.InstanceManageHost(), deployDir).
+				BackupComponent(compName, "upgrade", currentVersion, inst.InstanceManageHost(), deployDir).
 				CopyComponent(
 					compName,
 					inst.OS(),

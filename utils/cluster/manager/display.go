@@ -143,8 +143,10 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 		dataDir := "-"
 		insDirs := ins.UsedDir()
 		deployDir := insDirs[0]
-		if len(insDirs) > 1 {
-			dataDir = insDirs[1]
+		if ins.ComponentRole() == cluster.ComponentDBMSMaster {
+			if len(insDirs) > 1 {
+				dataDir = insDirs[1]
+			}
 		}
 
 		var status string

@@ -124,7 +124,7 @@ func (a *AppEnable) Enable(clusterName string, gOpt *operator.Options) error {
 			gOpt.SSHType,
 			executor.SSHType(topo.GlobalOptions.SSHType),
 		).Func("EnableCluster", func(ctx context.Context) error {
-		return operator.Enable(ctx, topo, gOpt, false)
+		return operator.Enable(ctx, topo, gOpt, true)
 	}).Build()
 
 	ctx := ctxt.New(

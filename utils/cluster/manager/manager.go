@@ -62,6 +62,10 @@ func (c *Controller) NewMetadata() cluster.IMetadata {
 	return c.Meta
 }
 
+func (c *Controller) SetMetadata(metadata *cluster.Metadata) {
+	c.Meta = metadata
+}
+
 // GetMetaFilePath get meta file path
 func (c *Controller) GetMetaFilePath(clusterName string) string {
 	return filepath.Join(c.BasePath, clusterName, cluster.MetaFileName)
@@ -83,7 +87,7 @@ func (c *Controller) CheckClusterNameConflict(clusterName string) (exist bool, e
 }
 
 // CheckClusterPortConflict check if the cluster exist by checking the meta file.
-func (c *Controller) CheckClusterPortConflict(clusters map[string]cluster.Metadata, clusterName string, topo *cluster.Topology) error {
+func (c *Controller) CheckClusterPortConflict(clusters map[string]*cluster.Metadata, clusterName string, topo *cluster.Topology) error {
 	type Entry struct {
 		clusterName   string
 		componentName string
@@ -170,7 +174,7 @@ func (c *Controller) SaveMetadata(clusterName string, meta *cluster.Metadata) er
 }
 
 // CheckClusterDirConflict checks cluster dir conflict or overlap
-func (c *Controller) CheckClusterDirConflict(clusters map[string]cluster.Metadata, clusterName string, topo *cluster.Topology) error {
+func (c *Controller) CheckClusterDirConflict(clusters map[string]*cluster.Metadata, clusterName string, topo *cluster.Topology) error {
 	instanceDirAccessor := dirAccessors()
 	var currentEntries []DirEntry
 	var existingEntries []DirEntry
@@ -240,14 +244,14 @@ Please change to use another directory or another host.
 }
 
 // GetAllClusters get a metadata list of all clusters deployed by current user
-func (c *Controller) GetAllClusters() (map[string]cluster.Metadata, error) {
-	clusters := make(map[string]cluster.Metadata)
+func (c *Controller) GetAllClusters() (map[string]*cluster.Metadata, error) {
+	clusters := make(map[string]*cluster.Metadata)
 	names, err := c.ListClusterNameAll()
 	if err != nil {
 		return nil, err
 	}
 	for _, name := range names {
-		var metadata cluster.Metadata
+		metadata := &cluster.Metadata{}
 		err = c.Metadata(name, metadata)
 		if err != nil {
 			return nil, err
@@ -374,7 +378,7 @@ func (c *Controller) EditTopology(origTopo *cluster.Topology, data []byte, newTo
 		return nil, err
 	}
 
-	newTopo := c.NewMetadata().GetTopology()
+	newTopo := &cluster.Topology{}
 	err = yaml.UnmarshalStrict(newData, newTopo)
 	if err != nil {
 		fmt.Print(color.RedString("New topology could not be saved: "))
@@ -550,12 +554,12 @@ func (c *Controller) FillTopologyDir(topo *cluster.Topology) {
 			m.DeployDir = newDeploy
 		}
 
-		newData := cluster.FillTopologyDataDir(m.DeployDir, globalOptions.DataDir, m.DataDir, cluster.ComponentDBMSMaster, m.Port)
+		newData := cluster.FillTopologyDataDir(m.DeployDir, globalOptions.DataDir, m.DataDir)
 		if !strings.EqualFold(newData, m.DataDir) {
 			m.DataDir = newData
 		}
 
-		newLog := cluster.FillTopologyLogDir(m.DeployDir, globalOptions.LogDir, m.LogDir, cluster.ComponentDBMSMaster, m.Port)
+		newLog := cluster.FillTopologyLogDir(m.DeployDir, globalOptions.LogDir, m.LogDir)
 		if !strings.EqualFold(newLog, m.LogDir) {
 			m.LogDir = newLog
 		}
@@ -566,7 +570,7 @@ func (c *Controller) FillTopologyDir(topo *cluster.Topology) {
 			m.DeployDir = newDeploy
 		}
 
-		newLog := cluster.FillTopologyLogDir(m.DeployDir, globalOptions.LogDir, m.LogDir, cluster.ComponentDBMSWorker, m.Port)
+		newLog := cluster.FillTopologyLogDir(m.DeployDir, globalOptions.LogDir, m.LogDir)
 		if !strings.EqualFold(newLog, m.LogDir) {
 			m.LogDir = newLog
 		}

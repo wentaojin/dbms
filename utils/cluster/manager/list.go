@@ -15,6 +15,8 @@ limitations under the License.
 */
 package manager
 
+import "github.com/wentaojin/dbms/utils/cluster"
+
 // Cluster represents a clsuter
 type Cluster struct {
 	Name       string `json:"name"`
@@ -34,7 +36,10 @@ func (c *Controller) GetClusterList() ([]Cluster, error) {
 	var clusters []Cluster
 
 	for _, name := range names {
-		metadata := c.NewMetadata()
+		metadata, err := cluster.ParseMetadataYaml(c.GetMetaFilePath(name))
+		if err != nil {
+			return nil, err
+		}
 
 		clusters = append(clusters, Cluster{
 			Name:       name,

@@ -95,6 +95,14 @@ type MasterOptions struct {
 	OS               string         `yaml:"os,omitempty"`
 }
 
+func (s *MasterOptions) InstanceRole() string {
+	return ComponentDBMSMaster
+}
+
+func (s *MasterOptions) InstanceName() string {
+	return stringutil.JoinHostPort(s.Host, s.Port)
+}
+
 // Status queries current status of the instance
 func (s *MasterOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ...string) (string, error) {
 	if len(addrs) < 1 {
@@ -145,6 +153,14 @@ type WorkerOptions struct {
 	Config           map[string]any `yaml:"config,omitempty" validate:"config:ignore"`
 	Arch             string         `yaml:"arch,omitempty"`
 	OS               string         `yaml:"os,omitempty"`
+}
+
+func (w *WorkerOptions) InstanceRole() string {
+	return ComponentDBMSWorker
+}
+
+func (w *WorkerOptions) InstanceName() string {
+	return stringutil.JoinHostPort(w.Host, w.Port)
 }
 
 // Status queries current status of the instance
@@ -387,7 +403,7 @@ func setHostArchOrOS(field reflect.Value, hostArchOrOS map[string]string, fullTy
 }
 
 func (t *Topology) String() string {
-	jsonStr, _ := stringutil.MarshalJSON(t)
+	jsonStr, _ := stringutil.MarshalIndentJSON(t)
 	return jsonStr
 }
 
@@ -400,7 +416,7 @@ func isSkipField(field reflect.Value) bool {
 		field = field.Elem()
 	}
 	tp := field.Type().Name()
-	return tp == "GlobalOptions"
+	return tp == "GlobalOptions" || tp == "ServerConfig"
 }
 
 func findField(v reflect.Value, fieldName string) (int, bool) {

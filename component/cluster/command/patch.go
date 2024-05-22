@@ -137,7 +137,7 @@ func (a *AppPatch) Patch(clusterName, packagePath string, gOpt *operator.Options
 	for _, inst := range insts {
 		deployDir := stringutil.Abs(deployUser, inst.InstanceDeployDir())
 		tb := task.NewBuilder(mg.Logger)
-		tb.BackupComponent(inst.ComponentName(), currentVersion, inst.InstanceManageHost(), deployDir).
+		tb.BackupComponent(inst.ComponentName(), "patch", currentVersion, inst.InstanceManageHost(), deployDir).
 			InstallPackage(packagePath, inst.InstanceManageHost(), filepath.Join(deployDir, cluster.BinDirName))
 		replacePackageTasks = append(replacePackageTasks, tb.Build())
 	}
@@ -198,7 +198,6 @@ func (a *AppPatch) Patch(clusterName, packagePath string, gOpt *operator.Options
 			}
 		}
 	})
-
 	err = mg.SaveMetadata(clusterName, metadata.GenMetadata())
 	if err != nil {
 		return err

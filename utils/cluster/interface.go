@@ -68,3 +68,9 @@ type Instance interface {
 	IsPatched() bool
 	SetPatched(patch bool)
 }
+
+// InstanceTopology represents a instance topology, used to reflect get component instance topology and update instance topology
+type InstanceTopology interface {
+	InstanceRole() string
+	InstanceName() string
+}

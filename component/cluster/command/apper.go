@@ -41,6 +41,7 @@ func init() {
 
 }
 
+// Refer: https://github.com/pingcap/tiup  cluster or dm component functions
 type App struct {
 	Concurrency int
 	Format      string
@@ -62,7 +63,7 @@ func (a *App) Cmd() *cobra.Command {
 		SilenceUsage:      true,
 	}
 	c.PersistentFlags().IntVarP(&a.Concurrency, "concurrency", "c", 5, "max number of parallel tasks allowed")
-	c.PersistentFlags().StringVar(&a.Ssh, "ssh", "", "(EXPERIMENTAL) The executor type: 'builtin', 'none'")
+	c.PersistentFlags().StringVar(&a.Ssh, "ssh", "builtin", "(EXPERIMENTAL) The executor type: 'builtin', 'none'")
 	c.PersistentFlags().StringVar(&a.Format, "format", "default", "(EXPERIMENTAL) The format of output, available values are [default, json]")
 	c.PersistentFlags().Uint64Var(&a.SshTimeout, "ssh-timeout", 5, "Timeout in seconds to connect host via SSH, ignored for operations that don't need an SSH connection")
 	c.PersistentFlags().Uint64Var(&a.WaitTimeout, "wait-timeout", 120, "Timeout in seconds to wait for an operation to complete, ignored for operations that don't fit")

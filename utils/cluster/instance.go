@@ -22,6 +22,7 @@ import (
 	"github.com/wentaojin/dbms/utils/cluster/embed/launchd"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -59,9 +60,11 @@ func (m *DBMSMasterComponent) Instances() []Instance {
 	for _, s := range m.Topology.MasterServers {
 		ins = append(ins, &MasterInstance{
 			BaseInstance: BaseInstance{
-				Host:       s.Host,
-				ManageHost: s.ManageHost,
-				ListenHost: m.Topology.GlobalOptions.ListenHost,
+				InstanceTopology: s,
+				Host:             s.Host,
+				ManageHost:       s.ManageHost,
+				// ListenHost: m.Topology.GlobalOptions.ListenHost, // TODO: current isnot support
+				ListenHost: s.Host,
 				Port:       s.Port,
 				SSHPort:    s.SSHPort,
 				PeerPort:   s.PeerPort,
@@ -99,9 +102,11 @@ func (m *DBMSWorkerComponent) Instances() []Instance {
 	for _, s := range m.Topology.WorkerServers {
 		ins = append(ins, &WorkerInstance{
 			BaseInstance: BaseInstance{
-				Host:       s.Host,
-				ManageHost: s.ManageHost,
-				ListenHost: m.Topology.GlobalOptions.ListenHost,
+				InstanceTopology: s,
+				Host:             s.Host,
+				ManageHost:       s.ManageHost,
+				// ListenHost: m.Topology.GlobalOptions.ListenHost, // TODO: current isnot support
+				ListenHost: s.Host,
 				Port:       s.Port,
 				SSHPort:    s.SSHPort,
 				NumaNode:   s.InstanceNumaNode,
@@ -134,11 +139,12 @@ func (m *MasterInstance) InstanceInitConfig(ctx context.Context, e executor.Exec
 	}
 
 	var initialCluster []string
-	for _, masterspec := range m.topo.MasterServers {
-		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", m.InstanceName(), stringutil.JoinHostPort(masterspec.Host, masterspec.Port)))
+	for _, ms := range m.topo.MasterServers {
+		initialCluster = append(initialCluster, stringutil.JoinHostPort(ms.Host, ms.PeerPort))
 	}
 
 	cfg := &script.DBMSMasterScript{
+		Name:             stringutil.StringBuilder(ComponentDBMSMaster, "-", strconv.Itoa(m.InstancePort())),
 		ClientAddr:       stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePort()),
 		PeerAddr:         stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePeerPort()),
 		InitialCluster:   stringutil.StringJoin(initialCluster, ","),
@@ -179,6 +185,7 @@ func (m *MasterInstance) InstanceScaleConfig(ctx context.Context, e executor.Exe
 		masters = append(masters, stringutil.JoinHostPort(masterspec.Host, masterspec.Port))
 	}
 	cfg := &script.DBMSMasterScaleScript{
+		Name:             stringutil.StringBuilder(ComponentDBMSMaster, "-", strconv.Itoa(m.InstancePort())),
 		ClientAddr:       stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePort()),
 		PeerAddr:         stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePeerPort()),
 		DeployDir:        m.DeployDir,
@@ -222,6 +229,7 @@ func (w *WorkerInstance) InstanceInitConfig(ctx context.Context, e executor.Exec
 	}
 
 	cfg := &script.DBMSWorkerScript{
+		Name:             stringutil.StringBuilder(ComponentDBMSWorker, "-", strconv.Itoa(w.InstancePort())),
 		WorkerAddr:       stringutil.JoinHostPort(w.InstanceListenHost(), w.InstancePort()),
 		Join:             stringutil.StringJoin(masters, ","),
 		DeployDir:        w.DeployDir,
@@ -230,7 +238,7 @@ func (w *WorkerInstance) InstanceInitConfig(ctx context.Context, e executor.Exec
 	}
 
 	fp := filepath.Join(cacheDir, fmt.Sprintf("run_dbms-worker_%s_%d.sh", w.InstanceHost(), w.InstancePort()))
-	if err := cfg.ConfigToFile(fp); err != nil {
+	if err = cfg.ConfigToFile(fp); err != nil {
 		return err
 	}
 	dst := filepath.Join(w.DeployDir, ScriptDirName, "run_dbms-worker.sh")
@@ -291,6 +299,7 @@ func (w *WorkerInstance) InstanceScaleConfig(ctx context.Context, e executor.Exe
 
 // BaseInstance implements some method of Instance interface
 type BaseInstance struct {
+	InstanceTopology
 	Host       string
 	ManageHost string
 	ListenHost string
@@ -428,7 +437,7 @@ func (b *BaseInstance) ServiceName() string {
 
 // ServiceReady implement Instance interface
 func (b *BaseInstance) ServiceReady(ctx context.Context, e executor.Executor, timeout uint64) error {
-	return PortStarted(ctx, e, b.Port, timeout)
+	return PortStarted(ctx, e, b.OSVersion, b.Port, timeout)
 }
 
 // Status implement Instance interface
@@ -444,6 +453,11 @@ func (b *BaseInstance) IsPatched() bool {
 // SetPatched implement Instance interface
 func (b *BaseInstance) SetPatched(patch bool) {
 	b.Patched = patch
+	v := reflect.Indirect(reflect.ValueOf(b.InstanceTopology)).FieldByName("Patched")
+	if !v.CanSet() {
+		return
+	}
+	v.SetBool(patch)
 }
 
 // InitSystemdConfig init the service configuration.
@@ -468,12 +482,19 @@ func (b *BaseInstance) InitSystemdConfig(ctx context.Context, e executor.Executo
 		if err := e.Transfer(ctx, serviceCfgName, tgt, false, 0); err != nil {
 			return errors.Annotatef(err, "transfer from %s to %s failed", serviceCfgName, tgt)
 		}
-		systemdDir := "/Library/LaunchDaemons/"
+		systemdDir := "/Library/LaunchAgents/"
 		sudo := true
 		if opt.SystemdMode == UserMode {
+			systemdDir = "~/Library/LaunchAgents"
 			sudo = false
 		}
-		cmd := fmt.Sprintf("mv %s %s%s-%d.plist", tgt, systemdDir, compName, instPort)
+		var cmd string
+		if sudo {
+			plistFile := fmt.Sprintf("%s%s-%d.plist", systemdDir, compName, instPort)
+			cmd = fmt.Sprintf("mv %s %s && chown root %s", tgt, plistFile, plistFile)
+		} else {
+			cmd = fmt.Sprintf("mv %s %s%s-%d.plist", tgt, systemdDir, compName, instPort)
+		}
 		if _, _, err := e.Execute(ctx, cmd, sudo); err != nil {
 			return errors.Annotatef(err, "execute: %s", cmd)
 		}

@@ -17,8 +17,8 @@ package systemd
 
 import (
 	"bytes"
-	"html/template"
 	"path"
+	"text/template"
 
 	"github.com/wentaojin/dbms/utils/cluster/embed"
 

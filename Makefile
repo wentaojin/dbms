@@ -43,10 +43,10 @@ GITREF  := $(shell git rev-parse --abbrev-ref HEAD)
 CURRENTIPADDR := $(shell ipconfig getifaddr en0)
 
 LDFLAGS := -w -s
-LDFLAGS += -X "$(REPO)/config.Version=$(COMMIT)"
-LDFLAGS += -X "$(REPO)/config.BuildTS=$(BUILDTS)"
-LDFLAGS += -X "$(REPO)/config.GitHash=$(GITHASH)"
-LDFLAGS += -X "$(REPO)/config.GitBranch=$(GITREF)"
+LDFLAGS += -X "$(REPO)/version.Version=$(COMMIT)"
+LDFLAGS += -X "$(REPO)/version.BuildTS=$(BUILDTS)"
+LDFLAGS += -X "$(REPO)/version.GitHash=$(GITHASH)"
+LDFLAGS += -X "$(REPO)/version.GitBranch=$(GITREF)"
 
 
 runMaster: clean gotool seedMaster masterProgram00 masterProgram01 masterProgram02

@@ -258,9 +258,10 @@ func (b *Builder) UpdateMetadata(clusterName, basePath string, metadata cluster.
 }
 
 // BackupComponent appends a BackupComponent task to the current task collection
-func (b *Builder) BackupComponent(component, fromVer string, host, deployDir string) *Builder {
+func (b *Builder) BackupComponent(component, action, fromVer string, host, deployDir string) *Builder {
 	b.tasks = append(b.tasks, &BackupComponent{
 		component: component,
+		action:    action,
 		fromVer:   fromVer,
 		host:      host,
 		deployDir: deployDir,

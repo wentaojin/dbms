@@ -337,8 +337,17 @@ func restartInstance(ctx context.Context, ins cluster.Instance, timeout uint64, 
 	logger := ctx.Value(printer.ContextKeyLogger).(*printer.Logger)
 	logger.Infof("\tRestarting instance %s", ins.InstanceName())
 
-	if err := systemctl(ctx, e, ins.ServiceName(), "restart", timeout, systemdMode); err != nil {
-		return toFailedActionError(err, "restart", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+	if strings.EqualFold(ins.OS(), "darwin") {
+		if err := launchctl(ctx, e, ins.ServiceName(), "stop", timeout, systemdMode); err != nil {
+			return toFailedActionError(err, "stop", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
+		if err := launchctl(ctx, e, ins.ServiceName(), "start", timeout, systemdMode); err != nil {
+			return toFailedActionError(err, "start", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
+	} else {
+		if err := systemctl(ctx, e, ins.ServiceName(), "restart", timeout, systemdMode); err != nil {
+			return toFailedActionError(err, "restart", ins.InstanceManageHost(), ins.ServiceName(), ins.InstanceLogDir())
+		}
 	}
 
 	// Check ready.
@@ -395,6 +404,11 @@ func launchctl(ctx context.Context, executor executor.Executor, service string, 
 		logger.Errorf(string(stderr))
 	}
 	if len(stderr) > 0 && action == "stop" {
+		// ignore "Input/output error" error, as this means the unit is not
+		if bytes.Contains(stderr, []byte("Input/output error")) {
+			logger.Warnf(string(stderr))
+			return nil // reset the error to avoid exiting
+		}
 		logger.Errorf(string(stderr))
 	}
 	return err

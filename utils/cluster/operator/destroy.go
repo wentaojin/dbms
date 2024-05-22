@@ -106,14 +106,14 @@ func DestroyComponent(ctx context.Context, instances []cluster.Instance, cls *cl
 
 		var systemdDir string
 		if strings.EqualFold(ins.OS(), "darwin") {
-			systemdDir = "/Library/LaunchDaemons/"
+			systemdDir = "/Library/LaunchAgents/"
 		} else {
 			systemdDir = "/etc/systemd/system/"
 		}
 		sudo := true
 		if cls.GlobalOptions.SystemdMode == cluster.UserMode {
 			if strings.EqualFold(ins.OS(), "darwin") {
-				systemdDir = "/Library/LaunchDaemons/"
+				systemdDir = "~/Library/LaunchAgents"
 			} else {
 				systemdDir = "~/.config/systemd/user/"
 			}

@@ -87,13 +87,8 @@ func (e *Etcd) Init(opts ...configutil.MasterOption) (err error) {
 
 	if strings.EqualFold(e.MasterOptions.Name, "") || strings.EqualFold(e.MasterOptions.Name, configutil.DefaultMasterNamePrefix) {
 		e.MasterOptions.Name = stringutil.WrapPrefixIPName(host, configutil.DefaultMasterNamePrefix, e.MasterOptions.PeerAddr)
-		if strings.EqualFold(e.MasterOptions.Name, "") {
-			return fmt.Errorf("master client-addr host ip [%s] is not in the peer-addr host list [%s]", e.MasterOptions.ClientAddr, e.MasterOptions.PeerAddr)
-		}
-		cfg.Name = e.MasterOptions.Name
-	} else {
-		return fmt.Errorf("master etcd name params is not configured, please remove name config")
 	}
+	cfg.Name = e.MasterOptions.Name
 
 	if strings.EqualFold(e.MasterOptions.DataDir, "") || strings.EqualFold(e.MasterOptions.DataDir, configutil.DefaultMasterDataDirPrefix) {
 		e.MasterOptions.DataDir = fmt.Sprintf("%s.%s", configutil.DefaultMasterDataDirPrefix, cfg.Name)
@@ -104,9 +99,9 @@ func (e *Etcd) Init(opts ...configutil.MasterOption) (err error) {
 	}
 
 	if strings.EqualFold(e.MasterOptions.InitialCluster, "") {
-		cfg.InitialCluster = stringutil.WrapSchemesForInitialCluster(e.MasterOptions.PeerAddr, configutil.DefaultMasterNamePrefix, false)
+		cfg.InitialCluster = stringutil.WrapSchemesForInitialCluster(e.MasterOptions.PeerAddr, cfg.Name, false)
 	} else {
-		cfg.InitialCluster = stringutil.WrapSchemesForInitialCluster(e.MasterOptions.InitialCluster, configutil.DefaultMasterNamePrefix, false)
+		cfg.InitialCluster = stringutil.WrapSchemesForInitialCluster(e.MasterOptions.InitialCluster, cfg.Name, false)
 	}
 
 	if e.MasterOptions.KeepaliveTTL <= 0 {
@@ -159,7 +154,7 @@ func (e *Etcd) Init(opts ...configutil.MasterOption) (err error) {
 		cfg.MaxRequestBytes = e.MasterOptions.MaxRequestBytes
 	}
 
-	// metrics 监控
+	// metrics monitoring
 	if e.MasterOptions.MetricsURL != "" {
 		cfg.Metrics = e.MasterOptions.Metrics //  "extensive" or "base"
 		if cfg.ListenMetricsUrls, err = types.NewURLs(stringutil.WrapSchemes(e.MasterOptions.MetricsURL, false)); err != nil {

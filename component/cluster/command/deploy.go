@@ -187,7 +187,7 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 		sudo = true
 	}
 
-	err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, topo, gOpt, clusterName, sudo)
+	err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, topo, gOpt, a.User, sudo)
 	if err != nil {
 		return err
 	}

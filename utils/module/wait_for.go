@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/wentaojin/dbms/logger"
@@ -38,6 +39,7 @@ const (
 
 // WaitForConfig is the configurations of WaitFor module.
 type WaitForConfig struct {
+	OS    string        // OS version
 	Port  int           // Port number to poll.
 	Sleep time.Duration // Duration to sleep between checks, default 1 second.
 	// Choices:
@@ -80,26 +82,38 @@ func (w *WaitFor) Execute(ctx context.Context, e executor.Executor) (err error) 
 		Delay:   w.c.Sleep,
 		Timeout: w.c.Timeout,
 	}
-	if err := Retry(func() error {
-		// only listing TCP ports
-		stdout, _, err := e.Execute(ctx, "ss -ltn", false)
-		if err == nil {
-			switch w.c.State {
-			case "started":
-				if bytes.Contains(stdout, pattern) {
-					return nil
-				}
-			case "stopped":
-				if !bytes.Contains(stdout, pattern) {
-					return nil
-				}
+	if err = Retry(func() error {
+		if strings.EqualFold(w.c.OS, "darwin") {
+			// only listing TCP ports
+			cmd := fmt.Sprintf("lsof -i :%d", w.c.Port)
+			stdout, stderr, err := e.Execute(ctx, cmd, false)
+			if len(stderr) != 0 || err != nil {
+				return fmt.Errorf("command [%s] executed failed, stderr: %v, err: %v", cmd, string(stderr), err)
+			}
+			if bytes.Contains(stdout, []byte("LISTEN")) {
+				return nil
 			}
 			return errors.New("still waiting for port state to be satisfied")
 		}
-		return err
+		// only listing TCP ports
+		stdout, stderr, err := e.Execute(ctx, "ss -ltn", false)
+		if len(stderr) != 0 || err != nil {
+			return fmt.Errorf("command [ss -ltn] executed failed, stderr: %v, err: %v", string(stderr), err)
+		}
+		switch w.c.State {
+		case "started":
+			if bytes.Contains(stdout, pattern) {
+				return nil
+			}
+		case "stopped":
+			if !bytes.Contains(stdout, pattern) {
+				return nil
+			}
+		}
+		return errors.New("still waiting for port state to be satisfied")
 	}, retryOpt); err != nil {
 		logger.Debug("retry error: %s", zap.Error(err))
-		return fmt.Errorf("timed out waiting for port %d to be %s after %s", w.c.Port, w.c.State, w.c.Timeout)
+		return fmt.Errorf("timed out waiting for port %d to be %s after %s, err: %v", w.c.Port, w.c.State, w.c.Timeout, err)
 	}
 	return nil
 }

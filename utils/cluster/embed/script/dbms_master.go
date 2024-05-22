@@ -26,6 +26,7 @@ import (
 )
 
 type DBMSMasterScript struct {
+	Name           string
 	ClientAddr     string
 	PeerAddr       string
 	InitialCluster string
@@ -58,6 +59,7 @@ func (c *DBMSMasterScript) ConfigToFile(file string) error {
 
 // DBMSMasterScaleScript represent the data to generate dm-master config on scaling
 type DBMSMasterScaleScript struct {
+	Name       string
 	ClientAddr string
 	PeerAddr   string
 	Join       string

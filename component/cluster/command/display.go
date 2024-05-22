@@ -82,13 +82,28 @@ func (a *AppDisplay) Display(dOpt *manager.DisplayOption, gOpt *operator.Options
 	}
 	mg := manager.New(a.MetaDir, logger)
 
-	clusterInstInfos, err := mg.GetClusterTopology(dOpt, gOpt)
+	list, err := manager.GetClusterNameList(gOpt.MetaDir)
 	if err != nil {
 		return err
 	}
 
-	metadata := mg.NewMetadata()
+	if !stringutil.IsContainedString(list, clusterName) {
+		return fmt.Errorf("cluster name [%s] isnot exist. please specify another cluster name", clusterName)
+	}
+
+	metadata, err := cluster.ParseMetadataYaml(mg.GetMetaFilePath(clusterName))
+	if err != nil {
+		return err
+	}
+
 	topo := metadata.GetTopology()
+
+	mg.SetMetadata(metadata)
+
+	clusterInstInfos, err := mg.GetClusterTopology(dOpt, gOpt)
+	if err != nil {
+		return err
+	}
 
 	cyan := color.New(color.FgCyan, color.Bold)
 

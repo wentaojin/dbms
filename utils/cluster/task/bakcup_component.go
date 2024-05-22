@@ -30,6 +30,7 @@ import (
 type BackupComponent struct {
 	component string
 	fromVer   string
+	action    string
 	host      string
 	deployDir string
 }
@@ -46,7 +47,7 @@ func (c *BackupComponent) Execute(ctx context.Context) error {
 
 	// Make upgrade idempotent
 	// The old version has been backup if upgrade abort
-	cmd := fmt.Sprintf(`test -d %[2]s || cp -r %[1]s %[2]s`, binDir, binDir+".old."+c.fromVer)
+	cmd := fmt.Sprintf(`test -d %[2]s || cp -r %[1]s %[2]s`, binDir, binDir+".old."+c.fromVer+"."+c.action)
 	_, stderr, err := exec.Execute(ctx, cmd, false)
 	if err != nil {
 		// ignore error if the source path does not exist, this is possible when

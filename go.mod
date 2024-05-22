@@ -10,7 +10,6 @@ require (
 	github.com/ScaleFT/sshkeys v1.2.0
 	github.com/appleboy/easyssh-proxy v1.5.0
 	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef
-	github.com/cheynewallace/tabby v1.1.1
 	github.com/deepmap/oapi-codegen v1.16.2
 	github.com/fatih/color v1.17.0
 	github.com/getkin/kin-openapi v0.124.0
