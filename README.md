@@ -57,6 +57,9 @@ DBMS 分布式迁移服务平台由 Master、Worker、DBMSCTL、DBMS 四个组�
 
 -------
 ### Quick Start 🛠️
+
+[DBMS 使用手册指引](doc/quick_start.md)
+
 [DBMS 集群运维管理](doc/dbms_operation.md)
 
 [DBMS 数据源权限要求](doc/dbms_permissions.md)
