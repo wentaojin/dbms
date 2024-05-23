@@ -2,27 +2,28 @@
   DBMS OPERATION
 </h1>
 <p align="center">
-    This document is used to describe the operation required by the DBMS sufficient platform
+本文档用于描述 DBMS 数据库分布式迁移服务平台运维管理手册指引
 </p>
 
 -------
-The DBMS Command CLI is a DBMS cluster management component, through which you can perform daily operation and maintenance work, including deployment, startup, shutdown, destruction, elastic expansion and contraction, upgrade of TiDB cluster, and management of DBMS cluster parameters.
+DBMS Command CLI 是 DBMS 集群管理组件，通过它可以进行日常运维工作，包括部署、启动、关闭、销毁、弹性扩缩容、TiDB 集群升级、DBMS 集群参数管理等。
 
 **Component Download**
 
-download the offline package from the github release page and unzip the package files and shell install
+从 github 发布页面下载离线包并解压包文件并 shell 安装
+
 ```shell
 sh local_install.sh
 ```
 
 **Cluster Operation**
 
-cluster deploy topology [example](../example/topology.yaml)  
+集群部署参数配置[示例](../example/topology.yaml)  
 ```shell
 dbms deploy ${cluster_name} ${cluster_version} ${topology.yaml} --mirror-dir ${offline_package_path} -u ${deploy_user} 
 ```
 
-cluster operation help
+更多集群运维管理命令
 
 ```shell
 the application for the dbms cluster

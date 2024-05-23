@@ -8,7 +8,7 @@
 -------
 
 ### ORACLE NONCDB
-The Oracle database serves for non-incremental data synchronization, user permissions required for the DBMS heterogeneous platforms
+对于非增量 ORACLE 数据同步，DBMS 数据库分布式迁移服务平台所需的用户权限
 ```sql
 CREATE USER DBMSADMIN IDENTIFIED BY DBMSADMIN123 DEFAULT TABLESPACE USERS TEMPORARY TABLESPACE TEMP;
 ALTER USER DBMSADMIN QUOTA UNLIMITED ON USERS;
@@ -26,7 +26,8 @@ GRANT EXECUTE_CATALOG_ROLE TO DBMS_PRIVS_ROLE;
 
 GRANT DBMS_PRIVS_ROLE TO DBMSADMIN;
 ```
-The Oracle database serves for base logminer incremental data synchronization, user permissions required for the DBMS heterogeneous platforms
+
+对于 LOGMINER 增量 ORACLE 数据同步，DBMS 数据库分布式迁移服务平台所需的用户权限
 ```sql
 CREATE USER DBMSADMIN IDENTIFIED BY DBMSADMIN123 DEFAULT TABLESPACE USERS TEMPORARY TABLESPACE TEMP;
 ALTER USER DBMSADMIN QUOTA UNLIMITED ON USERS;
@@ -57,7 +58,7 @@ GRANT DBMS_PRIVS_ROLE TO DBMSADMIN;
 -------
 
 ### ORACLE CDB
-The Oracle database serves for non-incremental data synchronization, user permissions required for the DBMS heterogeneous platforms
+对于非增量 ORACLE 数据同步，DBMS 数据库分布式迁移服务平台所需的用户权限
 ```sql
 ALTER SESSION SET CONTAINER =CDB$ROOT;
 
@@ -83,7 +84,7 @@ GRANT SELECT ANY TABLE TO C##DBMSADMIN CONTAINER =ALL;
 GRANT DBMS_PRIVS_ROLE TO C##DBMSADMIN CONTAINER =ALL;
 ```
 
-The Oracle database serves for base logminer incremental data synchronization, user permissions required for the DBMS heterogeneous platforms
+对于 LOGMINER 增量 ORACLE 数据同步，DBMS 数据库分布式迁移服务平台所需的用户权限
 ```sql
 ALTER SESSION SET CONTAINER =CDB$ROOT;
 
@@ -114,9 +115,9 @@ GRANT SELECT ON V_$LOGFILE TO C##DBMS_PRIVS_ROLE CONTAINER=ALL;
 GRANT DBMS_PRIVS_ROLE TO C##DBMSADMIN CONTAINER =ALL;
 ```
 
-**Necessary conditions for incremental data synchronization based on the oracle logminer mechanism**
-1. Enable arch log mode
-2. Enable the database or table supplemental log, depending on the data synchronization scope, it is recommended to set the database level
+**基于 ORACLE LOGMINER 机制增量数据同步的必要条件**
+1. 启用 ARCH 日志模式
+2. 启用数据库或表补充日志，建议设置数据库级别
 
 Example:
 ```sql
@@ -175,7 +176,7 @@ SELECT * FROM DBA_LOG_GROUPS WHERE UPPER(OWNER) = UPPER('MARVIN');
 -------
 
 ### MYSQL Compatible Database
-The MySQL compatible database serves for data synchronization, user permissions required for the DBMS heterogeneous platforms
+MySQL 兼容性数据库用于数据同步，DBMS 数据库分布式迁移服务平台所需的用户权限
 
 ```sql
 CREATE USER DBMSADMIN@%;
