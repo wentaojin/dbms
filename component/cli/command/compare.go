@@ -39,8 +39,8 @@ func (a *App) AppCompare() component.Cmder {
 func (a *AppCompare) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "compare",
-		Short:            "Operator cluster data compare",
-		Long:             `Operator cluster data compare`,
+		Short:            "Operator cluster struct compare",
+		Long:             `Operator cluster struct compare`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,

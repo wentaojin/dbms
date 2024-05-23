@@ -353,8 +353,8 @@ func (a *AppTask) AppTaskGet() component.Cmder {
 func (a *AppTaskGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster task",
-		Long:             `get cluster task information`,
+		Short:            "get cluster task status log information",
+		Long:             `get cluster task status log information`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,

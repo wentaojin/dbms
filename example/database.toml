@@ -1,5 +1,5 @@
 [database]
-host = "120.92.77.145"
+host = "192.168.209.193"
 port = 4000
 username = "root"
 password = ""

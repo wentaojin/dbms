@@ -145,8 +145,8 @@ func (a *AppSql) AppSqlGet() component.Cmder {
 func (a *AppSqlGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster sql migrate task",
-		Long:             `get cluster sql migrate task`,
+		Short:            "get cluster sql migrate task config",
+		Long:             `get cluster sql migrate task config`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,

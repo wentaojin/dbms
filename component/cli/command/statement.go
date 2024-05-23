@@ -145,8 +145,8 @@ func (a *AppStatement) AppStatementGet() component.Cmder {
 func (a *AppStatementGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster statement migrate task",
-		Long:             `get cluster statement migrate task`,
+		Short:            "get cluster statement migrate task config",
+		Long:             `get cluster statement migrate task config`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,

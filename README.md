@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-    The DBMS is positioned as an integrated distributed migration service platform between heterogeneous databases
+异构数据库分布式迁移服务平台
 </p>
 
 <div align="center">
@@ -29,54 +29,52 @@
 -------
 ### What's included 🚀
 
-- The Oracle to MYSQL compatible-database migration service
-    - Schema Table structure conversion, supporting schema, table, column level and default value customization
-    - Schema Table structure comparison
-    - Schema table object assess
-    - Schema table data migrate, supporting sql, csv consistent or non-consistent migration and custom sql migration
-    - Schema table data verify
-- As so on...
+- ORACLE -> MYSQL 兼容性数据库迁移服务
+  - Schema 表结构转换，支持 schema、表、列级别和默认值自定义
+  - Schema 表结构比较，支持 schema、表、列级别和默认值自定义
+  - Schema 表数据迁移，支持 sql、csv 一致性或非一致性迁移以及自定义 sql 语句迁移
+  - Schema 表数据校验，支持 schema、表、列级别路由规则以及自定义筛选过滤字段
+  - Schema 表对象信息评估，支持输出类 AWR 报告
+- ...
 
-**TODO Feature**
-- The oracle number datatype column sampling or full scan, used to identify whether the number data type field value exists in both integer and decimal types
-- The mysql compatible database table structure migrate to oracle database
-- The mysql compatible database table structure compare with oracle database
-- The postgresql database table structure migrate to mysql compatible database
-- The oracle data is synchronized to mysql compatible database in real time(base the logminer)
+**未来计划**
+- ORACLE NUMBER 数据类型列采样或全扫描，用于识别 NUMBER 数据类型字段值是否同时存在整数和小数类型
+- MYSQL 兼容性数据库表结构迁移至 ORACLE 数据库
+- MYSQL 兼容性数据库表结构与 ORACLE 数据库表结构对比
+- POSTGRESQL 数据库表结构迁移到 MYSQL 兼容性数据库
+- ORACLE 数据实时同步到 MYSQL 兼容性数据库（基于 logminer）
 
 ------
 ### Architecture 🌈
 
 ![DBMS ARCH](/image/dbms-arch.png "DBMS ARCH")
 
-The DBMS cluster is composed of master, worker, dbmsctl and dbms components, respectively used for：
-- master functions：instance register、service discovery、api access（only leader）
-- worker functions: the task runner
-- dbmsctl functions: deliver with the master node and submit the task
-- dbms functions: provide cluster management operations such as cluster deployment and installation, expansion and contraction, start, stop and restart.
+DBMS 分布式迁移服务平台由 Master、Worker、DBMSCTL、DBMS 四个组件组成，主要功能：
+- Master：实例注册、服务发现、健康检查、api访问（仅leader）
+- Worker：任务运行者
+- DBMSCTL：与 Master Leader 节点交互进行提交任务
+- DBMS：提供集群部署安装、扩容收缩、启动、停止、重启等集群管理操作
 
 -------
 ### Quick Start 🛠️
-[Operation Management](doc/dbms_operation.md)
+[DBMS 集群运维管理](doc/dbms_operation.md)
 
-[Permission Description](doc/dbms_permissions.md)
+[DBMS 数据源权限要求](doc/dbms_permissions.md)
 
-[Oracle Migrate MYSQL Manual](doc/oracle_migrate_manual.md)
+[ORACLE 迁移服务手册](doc/oracle_migrate_manual.md)
 
 -------
 ### Development 🧬
-When the function development or the bug fixed is completed, the cluster can be quickly started locally to verify and test.
+当功能开发或 BUG 修复完成后，可按照如下方式本地快速启动集群进行验证和测试。
 
-<span style="background-color:rgb(100,200,200,0.5)">NOTE: Unless there is something special, function development needs to be developed from a task perspective, that is, one function per task.</span>
-
-
-**Quickly Started Cluster**
+**启动集群**
 ```shell
 $ make runMaster
 $ make runWorker
 ```
-**Quickly Tested**
-cluster cli help
+**验证测试**
+
+dbmsctl 命令 help，通过子命令进行任务提交验证测试
 ```shell
 $ go run component/cli/main.go --help
 CLI dbmsctl app for dbms cluster

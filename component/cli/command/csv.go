@@ -145,8 +145,8 @@ func (a *AppCsv) AppCsvGet() component.Cmder {
 func (a *AppCsvGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster csv migrate task",
-		Long:             `get cluster csv migrate task`,
+		Short:            "get cluster csv migrate task config",
+		Long:             `get cluster csv migrate task config`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,

@@ -30,9 +30,9 @@ type Table struct {
 	OldColumns         map[string]map[string]OldColumn // originColumnName -> columnNameNew -> OldColumn
 	Indexes            map[string]Index                // indexName -> Index
 	PrimaryConstraints map[string]ConstraintPrimary    // constraintName -> ConstraintPrimary
-	UniqueConstraints  map[string]ConstraintUnique     // constraintName -> ConstraintPrimary
-	ForeignConstraints map[string]ConstraintForeign    // constraintName -> ConstraintPrimary
-	CheckConstraints   map[string]ConstraintCheck      // constraintName -> ConstraintPrimary
+	UniqueConstraints  map[string]ConstraintUnique     // constraintName -> ConstraintUnique
+	ForeignConstraints map[string]ConstraintForeign    // constraintName -> ConstraintForeign
+	CheckConstraints   map[string]ConstraintCheck      // constraintName -> ConstraintCheck
 	Partitions         []Partition
 }
 
