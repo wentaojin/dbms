@@ -159,3 +159,27 @@ type ISqlMigrateTask interface {
 	DeleteSqlMigrateTask(ctx context.Context, task *SqlMigrateTask) error
 	DeleteSqlMigrateTaskName(ctx context.Context, taskName []string) error
 }
+
+type IDataScanSummary interface {
+	CreateDataScanSummary(ctx context.Context, task *DataScanSummary) (*DataScanSummary, error)
+	GetDataScanSummary(ctx context.Context, task *DataScanSummary) (*DataScanSummary, error)
+	UpdateDataScanSummary(ctx context.Context, task *DataScanSummary, updates map[string]interface{}) (*DataScanSummary, error)
+	DeleteDataScanSummary(ctx context.Context, task *DataScanSummary) error
+	DeleteDataScanSummaryName(ctx context.Context, taskName []string) error
+	FindDataScanSummary(ctx context.Context, task *DataScanSummary) ([]*DataScanSummary, error)
+}
+
+type IDataScanTask interface {
+	CreateDataScanTask(ctx context.Context, task *DataScanTask) (*DataScanTask, error)
+	CreateInBatchDataScanTask(ctx context.Context, task []*DataScanTask, batchSize int) error
+	UpdateDataScanTask(ctx context.Context, task *DataScanTask, updates map[string]interface{}) (*DataScanTask, error)
+	BatchUpdateDataScanTask(ctx context.Context, task *DataScanTask, updates map[string]interface{}) (*DataScanTask, error)
+	ListDataScanTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataScanTask, error)
+	DeleteDataScanTask(ctx context.Context, task *DataScanTask) error
+	DeleteDataScanTaskName(ctx context.Context, taskName []string) error
+	FindDataScanTask(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error)
+	FindDataScanTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataGroupStatusResult, error)
+	FindDataScanTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error)
+	FindDataScanTaskBySchemaTableChunkStatus(ctx context.Context, task *DataScanTask) ([]*DataGroupTaskStatusResult, error)
+	QueryDataScanTaskByTaskStatus(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error)
+}

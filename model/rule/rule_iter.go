@@ -73,6 +73,15 @@ type IDataCompareRule interface {
 	IsContainedDataCompareRuleRecord(ctx context.Context, rule *DataCompareRule) (bool, error)
 }
 
+type IDataScanRule interface {
+	CreateDataScanRule(ctx context.Context, rule *DataScanRule) (*DataScanRule, error)
+	CreateInBatchDataScanRule(ctx context.Context, rule []*DataScanRule, batchSize int) ([]*DataScanRule, error)
+	GetDataScanRule(ctx context.Context, rule *DataScanRule) (*DataScanRule, error)
+	DeleteDataScanRule(ctx context.Context, taskNames []string) error
+	FindDataScanRule(ctx context.Context, rule *DataScanRule) ([]*DataScanRule, error)
+	IsContainedDataScanRuleRecord(ctx context.Context, rule *DataScanRule) (bool, error)
+}
+
 type ISqlMigrateRule interface {
 	CreateSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) (*SqlMigrateRule, error)
 	CreateInBatchSqlMigrateRule(ctx context.Context, rule []*SqlMigrateRule, batchSize int) ([]*SqlMigrateRule, error)

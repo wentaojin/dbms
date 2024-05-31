@@ -138,9 +138,7 @@ const (
 
 // ORACLE TO MYSQL column datatype mapping rule
 var BuildInOracleO2MDatatypeNameMap = map[string]string{
-	// the tidb database table join decimal vs integer lower performance, so convert uniformly to decimal
-	//BuildInOracleDatatypeNumber:                      "TINYINT/SMALLINT/INT/BIGINT/DECIMAL",
-	BuildInOracleDatatypeNumber:                      "DECIMAL",
+	BuildInOracleDatatypeNumber:                      "TINYINT/SMALLINT/INT/BIGINT/DECIMAL",
 	BuildInOracleDatatypeBfile:                       "VARCHAR",
 	BuildInOracleDatatypeChar:                        "VARCHAR",
 	BuildInOracleDatatypeCharacter:                   "VARCHAR",
@@ -212,6 +210,11 @@ var BuildInOracleO2MDatatypeNameMap = map[string]string{
 	BuildInOracleDatatypeTimestampWithLocalTimeZone8: "DATETIME",
 	BuildInOracleDatatypeTimestampWithLocalTimeZone9: "DATETIME",
 	BuildInOracleDatatypeIntervalDay:                 "VARCHAR",
+}
+
+var BuildInOracleO2TNumberDatatypeNameMap = map[string]string{
+	// the tidb database table join decimal vs integer lower performance, so convert uniformly to decimal
+	BuildInOracleDatatypeNumber: "DECIMAL",
 }
 
 /*

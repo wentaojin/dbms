@@ -34,6 +34,9 @@ ORACLE MIGRATE MYSQL 兼容性数据库，提供以下功能实现：
 - 分区表、临时表和聚簇表统一转换为普通表。如有必要，请获取完整的不兼容对象信息清单，然后进行手动转换
 - 忽略物化视图转换且输出到不兼容对象信息清单
 - MYSQL 兼容性数据库唯一约束基于唯一索引字段，MYSQL 兼容性数据库下游只会创建唯一索引
+- ORACLE NUMBER 数据类型
+  - 如果下游数据库是 TiDB，如无自定义规则统一以 Decimal 数据类型转换（规避 Decimal Join Bigint 数据类型字段性能低）
+  - 如果下游数据库是 MYSQL，如无自定义规则按 TINYINT/SMALLINT/INT/BIGINT/DECIMAL 数据类型转换
 - ORACLE FUNCTION-BASED NORMAL、BITMAP 不兼容索引输出到不兼容对象信息清单
 - 表字符集和排序规则
   - 如果下游数据库是 TiDB，则忽略 ORACLE 数据库字符集，统一 UTF8MB4 和 UTF8MB4_BIN 转换

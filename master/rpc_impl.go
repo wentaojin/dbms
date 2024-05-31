@@ -404,3 +404,45 @@ func (s *Server) ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompar
 		Message: delMsg,
 	}}, nil
 }
+
+func (s *Server) UpsertDataScanTask(ctx context.Context, req *pb.UpsertDataScanTaskRequest) (*pb.UpsertDataScanTaskResponse, error) {
+	showMsg, err := service.UpsertDataScanTask(ctx, req)
+	if err != nil {
+		return &pb.UpsertDataScanTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.UpsertDataScanTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: showMsg,
+	}}, nil
+}
+
+func (s *Server) DeleteDataScanTask(ctx context.Context, req *pb.DeleteDataScanTaskRequest) (*pb.DeleteDataScanTaskResponse, error) {
+	delMsg, err := service.DeleteDataScanTask(ctx, req)
+	if err != nil {
+		return &pb.DeleteDataScanTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.DeleteDataScanTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) ShowDataScanTask(ctx context.Context, req *pb.ShowDataScanTaskRequest) (*pb.ShowDataScanTaskResponse, error) {
+	delMsg, err := service.ShowDataScanTask(ctx, req)
+	if err != nil {
+		return &pb.ShowDataScanTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.ShowDataScanTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}

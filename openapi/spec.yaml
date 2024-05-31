@@ -667,6 +667,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Response'
+  /task/dataScan:
+    put:
+      tags:
+        - dataScan
+      description: Put data scan task information
+      operationId: APIPutDataScan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataScanTask'
+      responses:
+        '200':
+          description: data scan task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - dataScan
+      description: List data scan task information
+      operationId: APIListDataScan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of data scan task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - dataScan
+      description: Delete data scan rule information
+      operationId: APIDeleteDataScan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
   /task:
     post:
       tags:
@@ -922,6 +995,31 @@ components:
             $ref: '#/components/schemas/SqlMigrateRule'
         sqlMigrateParam:
           $ref: '#/components/schemas/SqlMigrateParam'
+    DataScanTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        schemaRouteRule:
+          $ref: '#/components/schemas/SchemaRouteRule'
+        dataScanRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataScanRule'
+        dataScanParam:
+          $ref: '#/components/schemas/DataScanParam'
     AssessMigrateParam:
       type: object
       properties:
@@ -1305,6 +1403,43 @@ components:
         tableAttrsT:
           type: string
           format: string
+    DataScanRule:
+      type: object
+      properties:
+        tableNameS:
+          type: string
+        sqlHintS:
+          type: string
+        tableSamplerateS:
+          type: integer
+          format: uint64
+    DataScanParam:
+      type: object
+      properties:
+        tableThread:
+          type: integer
+          format: uint64
+        batchSize:
+          type: integer
+          format: uint64
+        chunkSize:
+          type: integer
+          format: uint64
+        sqlThreadS:
+          type: integer
+          format: uint64
+        sqlHintS:
+          type: string
+        callTimeout:
+          type: integer
+          format: uint64
+        enableCheckpoint:
+          type: boolean
+        enableConsistentRead:
+          type: boolean
+        tableSamplerateS:
+          type: integer
+          format: uint64
     Task:
       type: object
       properties:

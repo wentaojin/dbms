@@ -247,6 +247,44 @@ type DataCompareTask struct {
 	*common.Entity
 }
 
+type DataScanSummary struct {
+	ID           uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName     string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	SchemaNameS  string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
+	TableNameS   string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
+	GlobalScnS   uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
+	TableRowsS   uint64  `gorm:"comment:source table rows" json:"tableRowsS"`
+	TableSizeS   float64 `gorm:"comment:source table size (MB)" json:"tableSizeS"`
+	ChunkTotals  uint64  `gorm:"type:int;comment:source table chunk totals" json:"chunkTotals"`
+	ChunkSuccess uint64  `gorm:"type:int;comment:source table chunk success" json:"chunkSuccess"`
+	ChunkFails   uint64  `gorm:"type:int;comment:source table chunk fails" json:"chunkFails"`
+	ChunkWaits   uint64  `gorm:"type:int;comment:source table chunk waits" json:"chunkWaits"`
+	ChunkRuns    uint64  `gorm:"type:int;comment:source table chunk runs" json:"chunkRuns"`
+	ChunkStops   uint64  `gorm:"type:int;comment:source table chunk stops" json:"chunkStops"`
+	Duration     float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	*common.Entity
+}
+
+type DataScanTask struct {
+	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName        string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
+	TableNameS      string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
+	TableTypeS      string  `gorm:"type:varchar(60);comment:source table type" json:"tableTypeS"`
+	GlobalScnS      uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
+	ColumnDetailS   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailS"`
+	GroupColumnS    string  `gorm:"type:longtext;comment:source column used to group column information" json:"groupColumnS"`
+	SqlHintS        string  `gorm:"type:varchar(300);comment:source sql hint" json:"sqlHintS"`
+	Samplerate      string  `gorm:"type:varchar(100);not null;comment:source table samplerate" json:"samplerate"`
+	ChunkDetailS    string  `gorm:"type:varchar(500);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
+	ConsistentReadS string  `gorm:"type:varchar(10);comment:source sql consistent read" json:"consistentReadS"`
+	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
+	ScanResult      string  `gorm:"type:longtext;not null;comment:task scan result" json:"scanResult"`
+	ErrorDetail     string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
+	Duration        float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	*common.Entity
+}
+
 type StructGroupStatusResult struct {
 	TaskName     string `json:"taskName"`
 	TaskStatus   string `json:"taskStatus"`

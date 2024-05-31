@@ -603,3 +603,95 @@ func (rw *RWSqlMigrateRule) FindSqlMigrateRuleGroupBySchemaTable(ctx context.Con
 	}
 	return dataS, nil
 }
+
+type RWDataScanRule struct {
+	common.GormDB
+}
+
+func NewDataScanRuleRW(db *gorm.DB) *RWDataScanRule {
+	m := &RWDataScanRule{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWDataScanRule) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(DataScanRule{}).Name())
+}
+
+func (rw *RWDataScanRule) CreateDataScanRule(ctx context.Context, rule *DataScanRule) (*DataScanRule, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		UpdateAll: true,
+	}).Create(rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWDataScanRule) CreateInBatchDataScanRule(ctx context.Context, rule []*DataScanRule, batchSize int) ([]*DataScanRule, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		UpdateAll: true,
+	}).CreateInBatches(rule, batchSize).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWDataScanRule) UpdateDataScanRule(ctx context.Context, rule *DataScanRule) (*DataScanRule, error) {
+	err := rw.DB(ctx).Model(&DataScanRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).Save(&rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWDataScanRule) GetDataScanRule(ctx context.Context, rule *DataScanRule) (*DataScanRule, error) {
+	var dataS *DataScanRule
+	err := rw.DB(ctx).Model(&DataScanRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanRule) DeleteDataScanRule(ctx context.Context, taskNames []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskNames).Delete(&DataScanRule{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWDataScanRule) FindDataScanRule(ctx context.Context, rule *DataScanRule) ([]*DataScanRule, error) {
+	var dataS []*DataScanRule
+	err := rw.DB(ctx).Model(&DataScanRule{}).Where("task_name = ? AND schema_name_s = ?", rule.TaskName, rule.SchemaNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanRule) IsContainedDataScanRuleRecord(ctx context.Context, rule *DataScanRule) (bool, error) {
+	var dataS []*DataScanRule
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?",
+		rule.TaskName,
+		rule.SchemaNameS,
+		rule.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return false, fmt.Errorf("get table [%s] record is contained failed: %v", rw.TableName(ctx), err)
+	}
+	if len(dataS) == 0 {
+		return false, nil
+	}
+	return true, nil
+}

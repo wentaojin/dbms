@@ -763,6 +763,72 @@ func (s *Server) listSqlMigrateTask(ctx context.Context, req openapi.APIListSqlM
 	return "", errors.New(resp.Response.Message)
 }
 
+func (s *Server) upsertDataScanTask(ctx context.Context, req openapi.APIPutDataScanJSONRequestBody) (string, error) {
+	var (
+		dataScanRules []*pb.DataScanRule
+	)
+
+	for _, r := range *req.DataScanRules {
+		dataScanRules = append(dataScanRules, &pb.DataScanRule{
+			TableNameS:       *r.TableNameS,
+			SqlHintS:         *r.SqlHintS,
+			TableSamplerateS: *r.TableSamplerateS,
+		})
+	}
+
+	resp, err := s.UpsertDataScanTask(ctx, &pb.UpsertDataScanTaskRequest{
+		TaskName:        *req.TaskName,
+		DatasourceNameS: *req.DatasourceNameS,
+		Comment:         *req.Comment,
+		CaseFieldRule:   &pb.CaseFieldRule{CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS},
+		DataScanRules:   dataScanRules,
+		DataScanParam: &pb.DataScanParam{
+			TableThread:          *req.DataScanParam.TableThread,
+			BatchSize:            *req.DataScanParam.BatchSize,
+			ChunkSize:            *req.DataScanParam.ChunkSize,
+			SqlThreadS:           *req.DataScanParam.SqlThreadS,
+			SqlHintS:             *req.DataScanParam.SqlHintS,
+			CallTimeout:          *req.DataScanParam.CallTimeout,
+			TableSamplerateS:     *req.DataScanParam.TableSamplerateS,
+			EnableCheckpoint:     *req.DataScanParam.EnableCheckpoint,
+			EnableConsistentRead: *req.DataScanParam.EnableConsistentRead,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) deleteDataScanTask(ctx context.Context, req openapi.APIDeleteDataScanJSONRequestBody) (string, error) {
+	resp, err := s.DeleteDataScanTask(ctx, &pb.DeleteDataScanTaskRequest{TaskName: *req.Param})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) listDataScanTask(ctx context.Context, req openapi.APIListDataScanJSONRequestBody) (string, error) {
+	resp, err := s.ShowDataScanTask(ctx, &pb.ShowDataScanTaskRequest{
+		TaskName: *req.Param,
+		Page:     *req.Page,
+		PageSize: *req.PageSize,
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
 func (s *Server) operateTask(ctx context.Context, req openapi.APIPostTaskJSONRequestBody) (string, error) {
 	resp, err := s.OperateTask(ctx, &pb.OperateTaskRequest{
 		Operate:  *req.Operate,

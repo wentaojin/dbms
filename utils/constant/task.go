@@ -26,6 +26,7 @@ const (
 
 	TaskModeDataCompare   = "DATA_COMPARE"
 	TaskModeStructCompare = "STRUCT_COMPARE"
+	TaskModeDataScan      = "DATA_SCAN"
 )
 
 // Task represents a certain type of task run method

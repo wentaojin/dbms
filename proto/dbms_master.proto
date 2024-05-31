@@ -168,6 +168,24 @@ service Master {
       body: "*"
     };
   }
+  rpc UpsertDataScanTask(UpsertDataScanTaskRequest) returns (UpsertDataScanTaskResponse){
+    option (google.api.http) = {
+      put: "/apis/v1alpha1/dataScanTask"
+      body: "*"
+    };
+  }
+  rpc DeleteDataScanTask(DeleteDataScanTaskRequest) returns (DeleteDataScanTaskResponse){
+    option (google.api.http) = {
+      delete: "/apis/v1alpha1/dataScanTask"
+      body: "*"
+    };
+  }
+  rpc ShowDataScanTask(ShowDataScanTaskRequest) returns (ShowDataScanTaskResponse){
+    option (google.api.http) = {
+      post: "/apis/v1alpha1/dataScanTask"
+      body: "*"
+    };
+  }
   rpc OperateTask (OperateTaskRequest) returns (OperateTaskResponse) {
     option (google.api.http) = {
       put: "/apis/v1alpha1/task"
@@ -432,6 +450,37 @@ message ShowDataCompareTaskResponse{
   Response response = 1;
 }
 
+message UpsertDataScanTaskRequest{
+  string taskName = 1;
+  string datasourceNameS = 2;
+  string datasourceNameT = 3;
+  string comment = 4;
+
+  CaseFieldRule caseFieldRule = 5;
+  SchemaRouteRule schemaRouteRule = 6;
+  repeated DataScanRule DataScanRules = 7;
+  DataScanParam DataScanParam = 8;
+}
+message UpsertDataScanTaskResponse{
+  Response response = 1;
+}
+
+message DeleteDataScanTaskRequest{
+  repeated string taskName = 1;
+}
+message DeleteDataScanTaskResponse{
+  Response response = 1;
+}
+
+message ShowDataScanTaskRequest{
+  string taskName = 1;
+  uint64 page = 2;
+  uint64 pageSize = 3;
+}
+message ShowDataScanTaskResponse{
+  Response response = 1;
+}
+
 message OperateTaskRequest {
   string operate = 1;
   string taskName = 2;
@@ -629,10 +678,28 @@ message SqlMigrateRule {
 }
 
 message SqlMigrateParam {
-  uint64 BatchSize = 1;
+  uint64 batchSize = 1;
   uint64 sqlThreadS = 2;
   uint64 sqlThreadT = 3;
   string sqlHintT = 4;
   uint64 callTimeout = 5;
   bool enableConsistentRead = 6;
+}
+
+message DataScanRule {
+  string tableNameS = 1;
+  string sqlHintS = 2;
+  uint64 tableSamplerateS = 3;
+}
+
+message DataScanParam {
+  uint64 tableThread = 1;
+  uint64 batchSize = 2;
+  uint64 chunkSize = 3;
+  uint64 sqlThreadS = 4;
+  string sqlHintS = 5;
+  uint64 callTimeout = 6;
+  bool enableCheckpoint = 7;
+  bool enableConsistentRead = 8;
+  uint64 tableSamplerateS = 9;
 }

@@ -80,6 +80,16 @@ type DataCompareRule struct {
 	*common.Entity
 }
 
+type DataScanRule struct {
+	ID               uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName         string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
+	SchemaNameS      string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
+	TableNameS       string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
+	SqlHintS         string `gorm:"type:varchar(120);comment:source sql query hint" json:"sqlHintS"`
+	TableSamplerateS string `gorm:"type:varchar(120);comment:source table samplerate" json:"tableSamplerateS"`
+	*common.Entity
+}
+
 type SqlMigrateRule struct {
 	ID              uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
 	TaskName        string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`

@@ -86,6 +86,9 @@ type database struct {
 	assessMigrateTaskRW           task.IAssessMigrateTask
 	structCompareSummaryRW        task.IStructCompareSummary
 	structCompareTaskRW           task.IStructCompareTask
+	dataScanSummaryRW             task.IDataScanSummary
+	dataScanTaskRW                task.IDataScanTask
+	dataScanRuleRW                rule.IDataScanRule
 }
 
 // Database is database configuration.
@@ -236,6 +239,9 @@ func (d *database) initReaderWriters() {
 	DefaultDB.assessMigrateTaskRW = task.NewAssessMigrateTaskRW(d.base)
 	DefaultDB.structCompareTaskRW = task.NewStructCompareTaskRW(d.base)
 	DefaultDB.structCompareSummaryRW = task.NewStructCompareSummaryRW(d.base)
+	DefaultDB.dataScanTaskRW = task.NewDataScanTaskRW(d.base)
+	DefaultDB.dataScanSummaryRW = task.NewDataScanSummaryRW(d.base)
+	DefaultDB.dataScanRuleRW = rule.NewDataScanRuleRW(d.base)
 }
 
 func (d *database) migrateStream(models ...interface{}) (err error) {
@@ -281,6 +287,9 @@ func (d *database) migrateTables() (err error) {
 		new(task.AssessMigrateTask),
 		new(task.StructCompareTask),
 		new(task.StructCompareSummary),
+		new(task.DataScanSummary),
+		new(task.DataScanTask),
+		new(rule.DataScanRule),
 	)
 }
 
@@ -528,4 +537,16 @@ func GetIDataCompareSummaryRW() task.IDataCompareSummary {
 
 func GetIAssessMigrateTaskRW() task.IAssessMigrateTask {
 	return DefaultDB.assessMigrateTaskRW
+}
+
+func GetIDataScanSummaryRW() task.IDataScanSummary {
+	return DefaultDB.dataScanSummaryRW
+}
+
+func GetIDataScanTaskRW() task.IDataScanTask {
+	return DefaultDB.dataScanTaskRW
+}
+
+func GetIDataScanRuleRW() rule.IDataScanRule {
+	return DefaultDB.dataScanRuleRW
 }

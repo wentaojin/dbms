@@ -33,6 +33,7 @@ const (
 	StringSeparatorAite      = "@"
 	StringSplicingSymbol     = "||"
 	StringSeparatorSemicolon = ";"
+	StringSeparatorUnderline = "_"
 )
 
 const (
@@ -48,3 +49,12 @@ const DefaultMigrateTaskBufferIOSize = 4096
 
 // DefaultDataEncryptDecryptKey used for data encrypt and decrypt key
 const DefaultDataEncryptDecryptKey = "marvin@jwt!#$123qwer9797"
+
+// MYSQL Compatible Database Bigint/Bigint unsigned Bound
+const (
+	DefaultMYSQLCompatibleBigintLowBound           = "-9223372036854775808"
+	DefaultMYSQLCompatibleBigintUpperBound         = "9223372036854775807"
+	DefaultMYSQLCompatibleBigintUnsignedLowBound   = "9223372036854775808"
+	DefaultMYSQLCompatibleBigintUnsignedUpperBound = "18446744073709551615"
+	DefaultMYSQLCompatibleDecimalLowerBound        = "18446744073709551615"
+)

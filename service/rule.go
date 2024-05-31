@@ -64,7 +64,7 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 	}
 	for _, s := range sourceSchemas {
 		if !stringutil.IsContainedString(allOraSchemas, s) {
-			return fmt.Errorf("oracle schema isn't contained in the database with the case field rule, failed schemas: [%v]", s)
+			return fmt.Errorf("the schema isn't contained in the database with the case field rule, failed schemas: [%v]", s)
 		}
 	}
 

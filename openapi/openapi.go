@@ -39,6 +39,7 @@ const (
 	APIDataComparePath   = "dataCompare"
 	APIAssessMigratePath = "assessMigrate"
 	APIStructComparePath = "structCompare"
+	APIDataScanPath      = "dataScan"
 )
 
 const (

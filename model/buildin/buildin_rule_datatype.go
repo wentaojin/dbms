@@ -476,7 +476,7 @@ func InitO2TBuildinDatatypeRule() []*BuildinDatatypeRule {
 		DBTypeS:       constant.DatabaseTypeOracle,
 		DBTypeT:       constant.DatabaseTypeTiDB,
 		DatatypeNameS: constant.BuildInOracleDatatypeNumber,
-		DatatypeNameT: constant.BuildInOracleO2MDatatypeNameMap[constant.BuildInOracleDatatypeNumber],
+		DatatypeNameT: constant.BuildInOracleO2TNumberDatatypeNameMap[constant.BuildInOracleDatatypeNumber],
 	})
 	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
 		DBTypeS:       constant.DatabaseTypeOracle,

@@ -528,3 +528,24 @@ const (
 	ParamValueAssessMigrateCaseFieldRuleLower  = "1"
 	ParamValueAssessMigrateCaseFieldRuleUpper  = "2"
 )
+
+// data scan parameters
+const (
+	ParamNameDataScanTableThread          = "tableThread"
+	ParamNameDataScanBatchSize            = "batchSize"
+	ParamNameDataScanChunkSize            = "chunkSize"
+	ParamNameDataScanSqlThreadS           = "sqlThreadS"
+	ParamNameDataScanSqlHintS             = "sqlHintS"
+	ParamNameDataScanCallTimeout          = "callTimeout"
+	ParamNameDataScanTableSamplerateS     = "tableSamplerateS"
+	ParamNameDataScanEnableCheckpoint     = "enableCheckpoint"
+	ParamNameDataScanEnableConsistentRead = "enableConsistentRead"
+
+	// ParamValueDataScanCaseFieldRuleOrigin case-field-name params value
+	// - 0 represent keeping origin
+	// - 1 represent keeping lower
+	// - 2 represent keeping upper
+	ParamValueDataScanCaseFieldRuleOrigin = "0"
+	ParamValueDataScanCaseFieldRuleLower  = "1"
+	ParamValueDataScanCaseFieldRuleUpper  = "2"
+)

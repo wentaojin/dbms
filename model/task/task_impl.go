@@ -1145,3 +1145,194 @@ func (rw *RWDataCompareTask) DeleteDataCompareTaskName(ctx context.Context, task
 	}
 	return nil
 }
+
+type RWDataScanSummary struct {
+	common.GormDB
+}
+
+func NewDataScanSummaryRW(db *gorm.DB) *RWDataScanSummary {
+	m := &RWDataScanSummary{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWDataScanSummary) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(DataScanSummary{}).Name())
+}
+
+func (rw *RWDataScanSummary) CreateDataScanSummary(ctx context.Context, task *DataScanSummary) (*DataScanSummary, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+		UpdateAll: true,
+	}).Create(task).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWDataScanSummary) GetDataScanSummary(ctx context.Context, task *DataScanSummary) (*DataScanSummary, error) {
+	var dataS *DataScanSummary
+	err := rw.DB(ctx).Model(&DataScanSummary{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).First(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWDataScanSummary) FindDataScanSummary(ctx context.Context, task *DataScanSummary) ([]*DataScanSummary, error) {
+	var dataS []*DataScanSummary
+	err := rw.DB(ctx).Model(&DataScanSummary{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanSummary) UpdateDataScanSummary(ctx context.Context, task *DataScanSummary, updates map[string]interface{}) (*DataScanSummary, error) {
+	err := rw.DB(ctx).Model(&DataScanSummary{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWDataScanSummary) DeleteDataScanSummary(ctx context.Context, task *DataScanSummary) error {
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Delete(&DataScanSummary{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWDataScanSummary) DeleteDataScanSummaryName(ctx context.Context, taskName []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&DataScanSummary{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] task [%v] record failed: %v", rw.TableName(ctx), taskName, err)
+	}
+	return nil
+}
+
+type RWDataScanTask struct {
+	common.GormDB
+}
+
+func NewDataScanTaskRW(db *gorm.DB) *RWDataScanTask {
+	m := &RWDataScanTask{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWDataScanTask) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(DataScanTask{}).Name())
+}
+
+func (rw *RWDataScanTask) CreateDataScanTask(ctx context.Context, task *DataScanTask) (*DataScanTask, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
+		UpdateAll: true,
+	}).Create(task).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWDataScanTask) CreateInBatchDataScanTask(ctx context.Context, task []*DataScanTask, batchSize int) error {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
+		UpdateAll: true,
+	}).CreateInBatches(task, batchSize).Error
+	if err != nil {
+		return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWDataScanTask) UpdateDataScanTask(ctx context.Context, task *DataScanTask, updates map[string]interface{}) (*DataScanTask, error) {
+	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_detail_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkDetailS).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWDataScanTask) BatchUpdateDataScanTask(ctx context.Context, task *DataScanTask, updates map[string]interface{}) (*DataScanTask, error) {
+	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWDataScanTask) ListDataScanTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataScanTask, error) {
+	var dataS []*DataScanTask
+	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&DataScanTask{}).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("list table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanTask) DeleteDataScanTask(ctx context.Context, task *DataScanTask) error {
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Delete(&DataScanTask{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWDataScanTask) DeleteDataScanTaskName(ctx context.Context, taskName []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&DataScanTask{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] task [%v] record failed: %v", rw.TableName(ctx), taskName, err)
+	}
+	return nil
+}
+
+func (rw *RWDataScanTask) FindDataScanTask(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error) {
+	var dataS []*DataScanTask
+	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanTask) FindDataScanTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataGroupStatusResult, error) {
+	var dataS []*DataGroupStatusResult
+	err := rw.DB(ctx).Model(&DataScanTask{}).Select("task_name,task_status,count(1) as status_counts").Where("task_name = ?", taskName).Group("task_name,task_status").Order("status_counts desc").Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] group by the task_name and task_status record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanTask) FindDataScanTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error) {
+	var dataS []*DataGroupChunkResult
+	err := rw.DB(ctx).Model(&DataScanTask{}).Select("task_name,schema_name_s,table_name_s,count(1) as chunk_totals").Where("task_name = ?", taskName).Group("task_name,schema_name_s,table_name_s").Order("chunk_totals desc").Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] group by the the task_name and schema_name_s and table_name_s record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanTask) FindDataScanTaskBySchemaTableChunkStatus(ctx context.Context, task *DataScanTask) ([]*DataGroupTaskStatusResult, error) {
+	var dataS []*DataGroupTaskStatusResult
+	err := rw.DB(ctx).Model(&DataScanTask{}).Select("task_name,schema_name_s,table_name_s,task_status,count(1) as status_totals").Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Group("task_name,schema_name_s,table_name_s,task_status").Order("status_totals desc").Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] group by the the task_name and schema_name_s and table_name_s ans task_status record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanTask) QueryDataScanTaskByTaskStatus(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error) {
+	var dataS []*DataScanTask
+	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}

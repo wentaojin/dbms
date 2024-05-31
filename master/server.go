@@ -1110,6 +1110,77 @@ func (s *Server) APIPutSqlMigrate(c *gin.Context) {
 	})
 }
 
+func (s *Server) APIDeleteDataScan(c *gin.Context) {
+	var req openapi.APIDeleteDataScanJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	delMsg, err := s.deleteDataScanTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusNoContent, openapi.Response{
+		Code: http.StatusNoContent,
+		Data: delMsg,
+	})
+}
+
+func (s *Server) APIListDataScan(c *gin.Context) {
+	var req openapi.APIListDataScanJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	listMsg, err := s.listDataScanTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, openapi.Response{
+		Code: http.StatusCreated,
+		Data: listMsg,
+	})
+}
+
+func (s *Server) APIPutDataScan(c *gin.Context) {
+	var req openapi.APIPutDataScanJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	upsertMsg, err := s.upsertDataScanTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: upsertMsg,
+	})
+}
+
 func (s *Server) APIPostTask(c *gin.Context) {
 	var req openapi.APIPostTaskJSONRequestBody
 	if err := c.Bind(&req); err != nil {
