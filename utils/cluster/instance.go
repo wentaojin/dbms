@@ -144,7 +144,6 @@ func (m *MasterInstance) InstanceInitConfig(ctx context.Context, e executor.Exec
 	}
 
 	cfg := &script.DBMSMasterScript{
-		Name:             stringutil.StringBuilder(ComponentDBMSMaster, "-", strconv.Itoa(m.InstancePort())),
 		ClientAddr:       stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePort()),
 		PeerAddr:         stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePeerPort()),
 		InitialCluster:   stringutil.StringJoin(initialCluster, ","),
@@ -185,7 +184,6 @@ func (m *MasterInstance) InstanceScaleConfig(ctx context.Context, e executor.Exe
 		masters = append(masters, stringutil.JoinHostPort(masterspec.Host, masterspec.Port))
 	}
 	cfg := &script.DBMSMasterScaleScript{
-		Name:             stringutil.StringBuilder(ComponentDBMSMaster, "-", strconv.Itoa(m.InstancePort())),
 		ClientAddr:       stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePort()),
 		PeerAddr:         stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePeerPort()),
 		DeployDir:        m.DeployDir,
@@ -229,7 +227,6 @@ func (w *WorkerInstance) InstanceInitConfig(ctx context.Context, e executor.Exec
 	}
 
 	cfg := &script.DBMSWorkerScript{
-		Name:             stringutil.StringBuilder(ComponentDBMSWorker, "-", strconv.Itoa(w.InstancePort())),
 		WorkerAddr:       stringutil.JoinHostPort(w.InstanceListenHost(), w.InstancePort()),
 		Join:             stringutil.StringJoin(masters, ","),
 		DeployDir:        w.DeployDir,

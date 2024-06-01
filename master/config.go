@@ -58,7 +58,6 @@ func NewConfig() *Config {
 	}
 	fs.BoolVar(&cfg.PrintVersion, "V", false, "prints version and exit")
 	fs.StringVar(&cfg.ConfigFile, "config", "", "path to config file")
-	fs.StringVar(&cfg.MasterOptions.Name, "name", "", "master addr name")
 	fs.StringVar(&cfg.MasterOptions.DataDir, "data-dir", "", "master data dir")
 	fs.StringVar(&cfg.MasterOptions.ClientAddr, "client-addr", "", "master client addr")
 	fs.StringVar(&cfg.MasterOptions.PeerAddr, "peer-addr", "", "master peer addr")

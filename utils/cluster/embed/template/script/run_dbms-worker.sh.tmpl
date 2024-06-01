@@ -12,7 +12,6 @@ exec numactl --cpunodebind={{.InstanceNumaNode}} --membind={{.InstanceNumaNode}}
 {{- else}}
 exec bin/dbms-worker \
 {{- end}}
-    --name="{{.Name}}" \
     --worker-addr="{{.WorkerAddr}}" \
     --join="{{.Join}}" \
     --log-file="{{.LogDir}}/dbms-worker.log" \

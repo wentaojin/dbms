@@ -99,9 +99,9 @@ func (e *Etcd) Init(opts ...configutil.MasterOption) (err error) {
 	}
 
 	if strings.EqualFold(e.MasterOptions.InitialCluster, "") {
-		cfg.InitialCluster = stringutil.WrapSchemesForInitialCluster(e.MasterOptions.PeerAddr, cfg.Name, false)
+		cfg.InitialCluster = stringutil.WrapSchemesForInitialCluster(e.MasterOptions.PeerAddr, configutil.DefaultMasterNamePrefix, false)
 	} else {
-		cfg.InitialCluster = stringutil.WrapSchemesForInitialCluster(e.MasterOptions.InitialCluster, cfg.Name, false)
+		cfg.InitialCluster = stringutil.WrapSchemesForInitialCluster(e.MasterOptions.InitialCluster, configutil.DefaultMasterNamePrefix, false)
 	}
 
 	if e.MasterOptions.KeepaliveTTL <= 0 {

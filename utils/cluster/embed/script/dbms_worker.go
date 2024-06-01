@@ -27,7 +27,6 @@ import (
 
 // DBMSWorkerScript represent the data to generate TiDB config
 type DBMSWorkerScript struct {
-	Name       string
 	WorkerAddr string
 	Join       string
 

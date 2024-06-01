@@ -14,3 +14,6 @@ Thumbs.db
 .fseventsd
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
+
+./example/database_prod.toml
+./example/datasource_prod.toml

@@ -58,7 +58,6 @@ func NewConfig() *Config {
 	}
 	fs.BoolVar(&cfg.PrintVersion, "V", false, "prints version and exit")
 	fs.StringVar(&cfg.ConfigFile, "config", "", "path to config file")
-	fs.StringVar(&cfg.WorkerOptions.Name, "name", "", "worker addr name")
 	fs.StringVar(&cfg.WorkerOptions.WorkerAddr, "worker-addr", "", "worker client addr")
 	fs.StringVar(&cfg.WorkerOptions.Endpoint, "join", "", "master join instance")
 	fs.StringVar(&cfg.LogConfig.LogFile, "log-file", "", "worker instance log file")

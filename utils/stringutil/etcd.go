@@ -38,7 +38,8 @@ func WrapSchemesForInitialCluster(s string, prefix string, https bool) string {
 	items := strings.Split(s, ",")
 	output := make([]string, 0, len(items))
 	for _, item := range items {
-		output = append(output, fmt.Sprintf("%s=%s", prefix, WrapScheme(item, https)))
+		kv := strings.Split(item, ":")
+		output = append(output, fmt.Sprintf("%s-%s=%s", prefix, kv[1], WrapScheme(item, https)))
 	}
 	return strings.Join(output, ",")
 }
