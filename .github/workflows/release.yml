@@ -99,7 +99,7 @@ jobs:
           ls -lnrt ${{ github.workspace }}/bin
           sudo mv ${{ github.workspace }}/bin/dbms-master-linux-arm64 ${{ github.workspace }}/bin/dbms-master 
           sudo mv ${{ github.workspace }}/bin/dbms-worker-linux-arm64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-linux-arm64 ${{ github.workspace }}/bin/dbms-cluster
+          sudo mv ${{ github.workspace }}/bin/dbms-cluster-linux-arm64 ${{ github.workspace }}/bin/dbms-cluster
           sudo mv ${{ github.workspace }}/bin/dbms-ctl-linux-arm64 ${{ github.workspace }}/bin/dbms-ctl 
           
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
