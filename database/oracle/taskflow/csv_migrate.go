@@ -741,6 +741,8 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 								ChunkDetailS:    encryptChunkS,
 								ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 								TaskStatus:      constant.TaskDatabaseStatusWaiting,
+								CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
+									stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`)),
 							})
 							if err != nil {
 								return err
@@ -811,6 +813,8 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 								ChunkDetailS:    encryptChunkS,
 								ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 								TaskStatus:      constant.TaskDatabaseStatusWaiting,
+								CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
+									stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`)),
 							})
 							if err != nil {
 								return err
@@ -838,7 +842,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 					}
 
 					var metas []*task.DataMigrateTask
-					for _, r := range bucketRanges {
+					for idx, r := range bucketRanges {
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
 							whereRange = stringutil.StringBuilder(r.ToStringS(), ` AND `, attsRule.WhereRange)
@@ -867,6 +871,8 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 							ChunkDetailS:    encryptChunkS,
 							ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
+							CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
+								stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.`, strconv.Itoa(idx), `.csv`)),
 						})
 					}
 

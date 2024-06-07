@@ -210,5 +210,7 @@ func (a *AppCompareGen) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("the struct compare task ddl sql file had be output to [%v], please forward to view\n", a.outputDir)
 	return nil
 }

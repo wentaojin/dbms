@@ -228,13 +228,13 @@ func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRe
 
 func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
 	resp := struct {
-		TaskName        string `json:"taskName"`
-		TaskMode        string `json:"taskMode"`
-		DatasourceNameS string `json:"datasourceNameS"`
-		DatasourceNameT string `json:"datasourceNameT"`
-		TaskStatus      string `json:"taskStatus"`
-		WorkerAddr      string `json:"workerAddr"`
-		LogDetail       string `json:"logDetail"`
+		TaskName        string   `json:"taskName"`
+		TaskMode        string   `json:"taskMode"`
+		DatasourceNameS string   `json:"datasourceNameS"`
+		DatasourceNameT string   `json:"datasourceNameT"`
+		TaskStatus      string   `json:"taskStatus"`
+		WorkerAddr      string   `json:"workerAddr"`
+		LogDetail       []string `json:"logDetail"`
 	}{}
 
 	err := model.Transaction(ctx, func(txnCtx context.Context) error {
@@ -255,8 +255,13 @@ func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskRe
 		if err != nil {
 			return err
 		}
-		if !strings.EqualFold(l[0].LogDetail, "") {
-			resp.LogDetail = l[0].LogDetail
+		if len(l) != 0 {
+			// DESC 5
+			resp.LogDetail = append(resp.LogDetail, l[4].LogDetail)
+			resp.LogDetail = append(resp.LogDetail, l[3].LogDetail)
+			resp.LogDetail = append(resp.LogDetail, l[2].LogDetail)
+			resp.LogDetail = append(resp.LogDetail, l[1].LogDetail)
+			resp.LogDetail = append(resp.LogDetail, l[0].LogDetail)
 		}
 		return nil
 	})

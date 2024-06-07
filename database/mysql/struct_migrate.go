@@ -269,7 +269,22 @@ WHERE
 }
 
 func (d *Database) GetDatabaseTableCheckKey(schemaName string, tableName string) ([]map[string]string, error) {
-	sqlStr := fmt.Sprintf(`SELECT
+	_, res, err := d.GeneralQuery(`SELECT VERSION() AS VERSION`)
+	if err != nil {
+		return nil, err
+	}
+
+	var sqlStr string
+	if strings.Contains(res[0]["VERSION"], constant.DatabaseTypeTiDB) {
+		var dbVersion string
+
+		if strings.Contains(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter) {
+			dbVersion = strings.Split(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter)[2]
+		} else {
+			dbVersion = res[0]["VERSION"]
+		}
+		if stringutil.VersionOrdinal(strings.Trim(dbVersion, "v")) >= stringutil.VersionOrdinal(constant.TIDBDatabaseCheckConstraintSupportVersion) {
+			sqlStr = fmt.Sprintf(`SELECT
 	TC.CONSTRAINT_NAME,
 	RC.CHECK_CLAUSE SEARCH_CONDITION
 FROM
@@ -282,7 +297,37 @@ WHERE
 	AND TC.CONSTRAINT_TYPE = 'CHECK'
 	AND TC.TABLE_SCHEMA = '%s'
 	AND TC.TABLE_NAME = '%s'`, schemaName, tableName)
-	_, res, err := d.GeneralQuery(sqlStr)
+		} else {
+			return nil, nil
+		}
+	} else {
+		var dbVersion string
+
+		if strings.Contains(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter) {
+			dbVersion = strings.Split(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter)[0]
+		} else {
+			dbVersion = res[0]["VERSION"]
+		}
+		if stringutil.VersionOrdinal(dbVersion) >= stringutil.VersionOrdinal(constant.MYSQLDatabaseCheckConstraintSupportVersion) {
+			sqlStr = fmt.Sprintf(`SELECT
+	TC.CONSTRAINT_NAME,
+	RC.CHECK_CLAUSE SEARCH_CONDITION
+FROM
+	INFORMATION_SCHEMA.TABLE_CONSTRAINTS TC,
+	INFORMATION_SCHEMA.CHECK_CONSTRAINTS RC
+WHERE
+	TC.CONSTRAINT_CATALOG = RC.CONSTRAINT_CATALOG
+	AND TC.TABLE_SCHEMA = RC.CONSTRAINT_SCHEMA
+	AND TC.CONSTRAINT_NAME = RC.CONSTRAINT_NAME
+	AND TC.CONSTRAINT_TYPE = 'CHECK'
+	AND TC.TABLE_SCHEMA = '%s'
+	AND TC.TABLE_NAME = '%s'`, schemaName, tableName)
+		} else {
+			return nil, nil
+		}
+	}
+
+	_, res, err = d.GeneralQuery(sqlStr)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +347,7 @@ func (d *Database) GetDatabaseTableNormalIndex(schemaName string, tableName stri
 		INDEX_TYPE,
 		IFNULL(EXPRESSION, '') COLUMN_EXPRESSION,
 		IF(NON_UNIQUE = 1,"NONUNIQUE","UNIQUE") AS UNIQUENESS,
-		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') AS COLUMN_LIST
+		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR '|+|') AS COLUMN_LIST
 FROM
 	INFORMATION_SCHEMA.STATISTICS
 WHERE
@@ -329,7 +374,7 @@ GROUP BY
 		INDEX_TYPE,
 		IFNULL(EXPRESSION, '') COLUMN_EXPRESSION,
 		IF(NON_UNIQUE = 1,"NONUNIQUE","UNIQUE") AS UNIQUENESS,
-		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') AS COLUMN_LIST
+		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR '|+|') AS COLUMN_LIST
 FROM
 	INFORMATION_SCHEMA.STATISTICS
 WHERE
@@ -347,7 +392,7 @@ GROUP BY
 		INDEX_NAME,
 		INDEX_TYPE,
 		IF(NON_UNIQUE = 1,"NONUNIQUE","UNIQUE") AS UNIQUENESS,
-		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') AS COLUMN_LIST
+		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR '|+|') AS COLUMN_LIST
 FROM
 	INFORMATION_SCHEMA.STATISTICS
 WHERE
@@ -382,7 +427,7 @@ func (d *Database) GetDatabaseTableUniqueIndex(schemaName string, tableName stri
 		INDEX_TYPE,
 		IFNULL(EXPRESSION, '') COLUMN_EXPRESSION,
 		IF(NON_UNIQUE = 1,"NONUNIQUE","UNIQUE") AS UNIQUENESS,
-		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') AS COLUMN_LIST
+		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR '|+|') AS COLUMN_LIST
 FROM
 	INFORMATION_SCHEMA.STATISTICS
 WHERE
@@ -409,7 +454,7 @@ GROUP BY
 		INDEX_TYPE,
 		IFNULL(EXPRESSION, '') COLUMN_EXPRESSION,
 		IF(NON_UNIQUE = 1,"NONUNIQUE","UNIQUE") AS UNIQUENESS,
-		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') AS COLUMN_LIST
+		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR '|+|') AS COLUMN_LIST
 FROM
 	INFORMATION_SCHEMA.STATISTICS
 WHERE
@@ -427,7 +472,7 @@ GROUP BY
 		INDEX_NAME,
 		INDEX_TYPE,
 		IF(NON_UNIQUE = 1,"NONUNIQUE","UNIQUE") AS UNIQUENESS,
-		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') AS COLUMN_LIST
+		GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR '|+|') AS COLUMN_LIST
 FROM
 	INFORMATION_SCHEMA.STATISTICS
 WHERE

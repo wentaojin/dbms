@@ -1,6 +1,6 @@
 task-name = "son_33to45"
-datasource-name-s = "oracle33"
-datasource-name-t = "tidb145"
+datasource-name-s = "oracle10g"
+datasource-name-t = "tidb233"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -9,7 +9,7 @@ case-field-rule-s = "0"
 [schema-route-rule]
 schema-name-s = "MARVIN"
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["MARVIN_COLUMN_T"]
+include-table-s = ["MARVIN00","MARVIN01"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
 #exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]

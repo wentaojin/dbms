@@ -1,6 +1,6 @@
 task-name = "gct_33to45"
-datasource-name-s = "oracle33"
-datasource-name-t = "tidb145"
+datasource-name-s = "oracle10g"
+datasource-name-t = "tidb233"
 comment = "测试数据源"
 
 [assess-migrate-param]

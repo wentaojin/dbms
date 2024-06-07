@@ -31,15 +31,22 @@ const (
 	OracleDatabaseTableTypeClusteredTable            = "CLUSTERED"
 	OracleDatabaseTableTypeMaterializedView          = "MATERIALIZED VIEW"
 
-	// specify processing for oracle table attr null、nullstring and ""
-	OracleDatabaseTableColumnDefaultValueWithNULLSTRING = "NULLSTRING"
-	OracleDatabaseTableColumnDefaultValueWithStringNull = ""
+	// specify processing for oracle table attr null、nullstring() and ""
+	// nullstring -> n01 varchar2(10)
+	// null -> n02 varcahr2 default null
+	OracleDatabaseTableColumnDefaultValueWithNULL        = "NULL"
+	OracleDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
+	OracleDatabaseTableColumnDefaultValueWithEmptyString = ""
 
 	OracleDatabaseColumnDatatypeMatchRuleNotFound = "NOT FOUND"
 
 	// MYSQL database check constraint support version > 8.0.15
-	MYSQLDatabaseCheckConstraintSupportVersion         = "8.0.15"
+	MYSQLDatabaseCheckConstraintSupportVersion = "8.0.15"
+	TIDBDatabaseCheckConstraintSupportVersion  = "7.2.0"
+
 	MYSQLDatabaseTableColumnDefaultValueWithStringNull = ""
+	MYSQLDatabaseTableColumnDefaultValueWithNULLSTRING = "NULLSTRING"
+	MYSQLDatabaseTableColumnDefaultValueWithNULL       = "NULL"
 
 	MYSQLCompatibleDatabaseVersionDelimiter = "-"
 

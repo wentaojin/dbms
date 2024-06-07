@@ -376,7 +376,8 @@ func (s *Server) upsertStructCompareTask(ctx context.Context, req openapi.APIPut
 		},
 		SchemaRouteRule: migrateSchemaRs,
 		StructCompareParam: &pb.StructCompareParam{
-			CompareThread: *req.StructCompareParam.CompareThread,
+			CompareThread:    *req.StructCompareParam.CompareThread,
+			EnableCheckpoint: *req.StructCompareParam.EnableCheckpoint,
 		},
 		StructCompareRule: &pb.StructCompareRule{
 			TaskStructRules:   taskLevelRules,
@@ -776,11 +777,20 @@ func (s *Server) upsertDataScanTask(ctx context.Context, req openapi.APIPutDataS
 		})
 	}
 
+	migrateSchemaRs := &pb.SchemaRouteRule{
+		SchemaNameS:   *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:   *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS: *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS: *req.SchemaRouteRule.ExcludeTableS,
+	}
+
 	resp, err := s.UpsertDataScanTask(ctx, &pb.UpsertDataScanTaskRequest{
 		TaskName:        *req.TaskName,
 		DatasourceNameS: *req.DatasourceNameS,
+		DatasourceNameT: *req.DatasourceNameT,
 		Comment:         *req.Comment,
 		CaseFieldRule:   &pb.CaseFieldRule{CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS},
+		SchemaRouteRule: migrateSchemaRs,
 		DataScanRules:   dataScanRules,
 		DataScanParam: &pb.DataScanParam{
 			TableThread:          *req.DataScanParam.TableThread,

@@ -18,6 +18,7 @@ package processor
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/model/rule"
 	"strings"
 
 	"github.com/wentaojin/dbms/database/mapping"
@@ -118,6 +119,17 @@ func (p *MySQLProcessor) GenDatabaseTableColumnDetail() (map[string]structure.Ne
 		if err != nil {
 			return nil, nil, err
 		}
+		columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(p.Ctx, &rule.ColumnRouteRule{
+			TaskName:    p.TaskName,
+			SchemaNameS: p.SchemaName,
+			TableNameS:  p.TableName,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, c := range columnRoutes {
+			p.ColumnRouteRules[c.ColumnNameS] = c.ColumnNameT
+		}
 	}
 
 	newColumns := make(map[string]structure.NewColumn, len(infos))
@@ -164,17 +176,23 @@ func (p *MySQLProcessor) GenDatabaseTableColumnDetail() (map[string]structure.Ne
 			if err != nil {
 				return nil, nil, err
 			}
-			colDefaultVal, err := mapping.MYSQLHandleColumnRuleWitheDefaultValuePriority(columnName, c["DATA_TYPE"], columnDefaultValue, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(c["CHARACTER_SET_NAME"])], constant.CharsetUTF8MB4,
+			var columnCharset string
+			if strings.EqualFold(c["CHARACTER_SET_NAME"], "UNKNOWN") {
+				columnCharset = p.DBCharset
+			} else {
+				columnCharset = c["CHARACTER_SET_NAME"]
+			}
+			colDefaultVal, err := mapping.MYSQLHandleColumnRuleWitheDefaultValuePriority(columnName, c["DATA_TYPE"], columnDefaultValue, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(columnCharset)], constant.CharsetUTF8MB4,
 				nil, nil)
 			if err != nil {
 				return nil, nil, err
 			}
 			newColumns[columnNameNew] = structure.NewColumn{
-				Datatype:    originColumnType,
+				Datatype:    stringutil.StringUpper(originColumnType),
 				NULLABLE:    c["NULLABLE"],
 				DataDefault: colDefaultVal,
-				Charset:     c["CHARACTER_SET_NAME"],
-				Collation:   c["COLLATION_NAME"],
+				Charset:     stringutil.StringUpper(c["CHARACTER_SET_NAME"]),
+				Collation:   stringutil.StringUpper(c["COLLATION_NAME"]),
 				Comment:     columnComment,
 			}
 
@@ -228,12 +246,16 @@ func (p *MySQLProcessor) GenDatabaseTableColumnDetail() (map[string]structure.Ne
 					return nil, nil, err
 				}
 
+				convColumnCharset, convColumnCollation, err := p.genMYSQLCompatibleDatabaseMappingOracleTableColumnCharsetCollationByNewColumn(columnName, stringutil.StringUpper(c["CHARACTER_SET_NAME"]), stringutil.StringUpper(c["COLLATION_NAME"]))
+				if err != nil {
+					return nil, nil, err
+				}
 				newColumns[columnNameNew] = structure.NewColumn{
-					Datatype:    convertColumnDatatype,
+					Datatype:    stringutil.StringUpper(convertColumnDatatype),
 					NULLABLE:    c["NULLABLE"],
 					DataDefault: convertColumnDefaultValue,
-					Charset:     constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][c["CHARACTER_SET_NAME"]],
-					Collation:   constant.MigrateTableStructureDatabaseCollationMap[p.TaskFlow][c["COLLATION_NAME"]][constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][c["CHARACTER_SET_NAME"]]],
+					Charset:     stringutil.StringUpper(convColumnCharset),
+					Collation:   stringutil.StringUpper(convColumnCollation),
 					Comment:     columnComment,
 				}
 
@@ -282,12 +304,24 @@ func (p *MySQLProcessor) GenDatabaseTableIndexDetail() (map[string]structure.Ind
 		}
 		indexName := stringutil.BytesToString(utf8Raw)
 
-		var indexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
-			if val, ok := p.ColumnRouteRules[col]; ok {
-				indexColumns = append(indexColumns, val)
+		indexColumns := strings.Split(columnList, "|+|")
+		// Function Index: SUBSTR(NAME8,1,8)|+|NAME9
+		for i, s := range indexColumns {
+			// SUBSTR(NAME8,1,8) OR NAME9
+			brackets := stringutil.StringExtractorWithinBrackets(s)
+			if len(brackets) == 0 {
+				// NAME9 PART
+				if val, ok := p.ColumnRouteRules[s]; ok {
+					indexColumns[i] = val
+				} else {
+					indexColumns[i] = s
+				}
 			} else {
-				indexColumns = append(indexColumns, col)
+				for k, v := range p.ColumnRouteRules {
+					if stringutil.StringMatcher(s, k) {
+						indexColumns[i] = stringutil.StringReplacer(s, k, v)
+					}
+				}
 			}
 		}
 		indexes[indexName] = structure.Index{
@@ -319,14 +353,27 @@ func (p *MySQLProcessor) GenDatabaseTableIndexDetail() (map[string]structure.Ind
 		}
 		indexName := stringutil.BytesToString(utf8Raw)
 
-		var indexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
-			if val, ok := p.ColumnRouteRules[col]; ok {
-				indexColumns = append(indexColumns, val)
+		indexColumns := strings.Split(columnList, "|+|")
+		// Function Index: SUBSTR(NAME8,1,8)|+|NAME9
+		for i, s := range indexColumns {
+			// SUBSTR(NAME8,1,8) OR NAME9
+			brackets := stringutil.StringExtractorWithinBrackets(s)
+			if len(brackets) == 0 {
+				// NAME9 PART
+				if val, ok := p.ColumnRouteRules[s]; ok {
+					indexColumns[i] = val
+				} else {
+					indexColumns[i] = s
+				}
 			} else {
-				indexColumns = append(indexColumns, col)
+				for k, v := range p.ColumnRouteRules {
+					if stringutil.StringMatcher(s, k) {
+						indexColumns[i] = stringutil.StringReplacer(s, k, v)
+					}
+				}
 			}
 		}
+
 		indexes[indexName] = structure.Index{
 			IndexType:   c["INDEX_TYPE"],
 			Uniqueness:  c["UNIQUENESS"],
@@ -506,4 +553,39 @@ func (p *MySQLProcessor) GenDatabaseTablePartitionDetail() ([]structure.Partitio
 	}
 
 	return partitions, nil
+}
+
+func (p *MySQLProcessor) genMYSQLCompatibleDatabaseMappingOracleTableColumnCharsetCollationByNewColumn(columnName string, columnCharset, columnCollation string) (string, string, error) {
+	var (
+		charset   string
+		collation string
+	)
+
+	if !strings.EqualFold(columnCharset, "UNKNOWN") {
+		if val, ok := constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][stringutil.StringUpper(p.DBCharset)]; ok {
+			charset = val
+		} else {
+			return charset, collation, fmt.Errorf("the mysql compatible database schema [%s] table [%s] column [%s] charset [%v] table collation [%s] mapping failed", p.SchemaName, p.TableName, columnName, p.DBCharset, columnCollation)
+		}
+	} else {
+		charset = "UNKNOWN"
+	}
+
+	if !strings.EqualFold(columnCollation, "UNKNOWN") {
+		var tempCharset string
+		if strings.EqualFold(columnCharset, "UNKNOWN") {
+			tempCharset = p.DBCharset
+		} else {
+			tempCharset = columnCharset
+		}
+		if val, ok := constant.MigrateTableStructureDatabaseCollationMap[p.TaskFlow][strings.ToUpper(columnCollation)][constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][stringutil.StringUpper(tempCharset)]]; ok {
+			collation = val
+		} else {
+			return charset, collation, fmt.Errorf("the mysql compatible database schema [%s] table [%s] column [%s] charset [%v] table collation [%s] mapping failed", p.SchemaName, p.TableName, columnName, p.DBCharset, columnCollation)
+		}
+	} else {
+		columnCollation = "UNKNOWN"
+	}
+
+	return charset, collation, nil
 }

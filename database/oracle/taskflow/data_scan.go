@@ -42,6 +42,7 @@ type DataScanTask struct {
 	Ctx         context.Context
 	Task        *task.Task
 	DatasourceS *datasource.Datasource
+	DatasourceT *datasource.Datasource
 	TaskParams  *pb.DataScanParam
 }
 
@@ -58,11 +59,11 @@ func (dst *DataScanTask) Start() error {
 	logger.Info("data scan task init database connection",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
 
-	sourceDatasource, err := model.GetIDatasourceRW().GetDatasource(dst.Ctx, dst.Task.DatasourceNameS)
+	datasourceS, err := model.GetIDatasourceRW().GetDatasource(dst.Ctx, dst.Task.DatasourceNameS)
 	if err != nil {
 		return err
 	}
-	databaseS, err := database.NewDatabase(dst.Ctx, sourceDatasource, schemaNameS)
+	databaseS, err := database.NewDatabase(dst.Ctx, datasourceS, schemaNameS)
 	if err != nil {
 		return err
 	}
@@ -71,7 +72,7 @@ func (dst *DataScanTask) Start() error {
 	logger.Info("data scan task inspect migrate task",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
 
-	dbVersion, _, dbCollationS, err := inspectMigrateTask(dst.Task.TaskName, dst.Task.TaskFlow, dst.Task.TaskMode, databaseS, stringutil.StringUpper(dst.DatasourceS.ConnectCharset), "")
+	dbVersion, _, dbCollationS, err := inspectMigrateTask(dst.Task.TaskName, dst.Task.TaskFlow, dst.Task.TaskMode, databaseS, stringutil.StringUpper(dst.DatasourceS.ConnectCharset), stringutil.StringUpper(dst.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
@@ -496,7 +497,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 
 	// database tables
 	// init database table
-	logger.Info("data scan task init",
+	logger.Info("data scan task start init",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
 
 	g, gCtx := errgroup.WithContext(dst.Ctx)
@@ -891,7 +892,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 					return err
 				}
 
-				logger.Info("data scan task init",
+				logger.Info("data scan task init success",
 					zap.String("task_name", dst.Task.TaskName),
 					zap.String("task_mode", dst.Task.TaskMode),
 					zap.String("task_flow", dst.Task.TaskFlow),
@@ -905,8 +906,10 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 
 	// ignore context canceled error
 	if err = g.Wait(); !errors.Is(err, context.Canceled) {
-		logger.Warn("data scan task init",
-			zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow),
+		logger.Warn("data scan task init failed",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
 			zap.String("schema_name_s", schemaNameS),
 			zap.Error(err))
 		return err

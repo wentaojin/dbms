@@ -180,11 +180,11 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		compatibleSql   []string
 	)
 
-	bf.WriteString(fmt.Sprintf("%s %s.%s (\n", s.TableStruct.TableCreatePrefixT, s.TableStruct.SchemaNameT, s.TableStruct.TableNameT))
-	bf.WriteString(strings.Join(s.TableStruct.TableColumns, ",\n"))
-
 	switch {
 	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToMySQL):
+		bf.WriteString(fmt.Sprintf("%s `%s`.`%s` (\n", s.TableStruct.TableCreatePrefixT, s.TableStruct.SchemaNameT, s.TableStruct.TableNameT))
+		bf.WriteString(strings.Join(s.TableStruct.TableColumns, ",\n"))
+
 		var tableKeys []string
 		if !strings.EqualFold(s.TableStruct.TablePrimaryKey, "") {
 			tableKeys = append(tableKeys, s.TableStruct.TablePrimaryKey)

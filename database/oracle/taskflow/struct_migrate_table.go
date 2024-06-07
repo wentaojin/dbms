@@ -59,20 +59,9 @@ func (t *StructMigrateTable) GenSchemaNameT() (string, error) {
 	var schemaName string
 	if val, ok := t.TableAttributesRule.SchemaNameRule[t.DatasourceS.SchemaNameS]; ok {
 		schemaName = val
+		return schemaName, nil
 	} else {
 		return "", fmt.Errorf("[GenSchemaNameT] oracle schema [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS)
-	}
-
-	switch {
-	case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-		convertTargetRaw, err := stringutil.CharsetConvert([]byte(schemaName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
-		if err != nil {
-			return "", fmt.Errorf("[GenSchemaNameT] oracle schema [%s] charset convert failed, error: %v", schemaName, err)
-		}
-		schemaName = fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw))
-		return schemaName, nil
-	default:
-		return schemaName, fmt.Errorf("[GenSchemaNameT] oracle current taskflow [%s] isn't support, please contact author or reselect", t.TaskFlow)
 	}
 }
 
@@ -80,20 +69,9 @@ func (t *StructMigrateTable) GenTableNameT() (string, error) {
 	var tableName string
 	if val, ok := t.TableAttributesRule.TableNameRule[t.DatasourceS.TableNameS]; ok {
 		tableName = val
+		return tableName, nil
 	} else {
 		return "", fmt.Errorf("[GenTableNameT] oracle schema [%v] table [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS)
-	}
-
-	switch {
-	case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
-		convertTargetRaw, err := stringutil.CharsetConvert([]byte(tableName), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
-		if err != nil {
-			return "", fmt.Errorf("[GenTableNameT] oracle table [%s] charset convert failed, error: %v", tableName, err)
-		}
-		tableName = fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw))
-		return tableName, nil
-	default:
-		return tableName, fmt.Errorf("[GenTableNameT] oracle current taskflow [%s] isn't support, please contact author or reselect", t.TaskFlow)
 	}
 }
 
@@ -370,7 +348,7 @@ func (t *StructMigrateTable) GenTableForeignKey() ([]string, error) {
 			if err != nil {
 				return nil, fmt.Errorf("[GenTableForeignKey] oracle schema [%s] table [%s] foreign constraint_name charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.DBCharsetT, err)
 			}
-			consName = fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw))
+			consName = fmt.Sprintf("%s", stringutil.BytesToString(convertTargetRaw))
 
 			if rowFKCol["DELETE_RULE"] == "" || rowFKCol["DELETE_RULE"] == "NO ACTION" {
 				fk = fmt.Sprintf("CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s`.`%s` (%s)",
@@ -575,6 +553,7 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 		var (
 			columnList string
 			indexName  string
+			indexOwner string
 		)
 		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(idxMeta["COLUMN_LIST"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.TableAttributes.TableCharset)], constant.CharsetUTF8MB4)
 		if err != nil {
@@ -582,11 +561,25 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 		}
 		columnList = stringutil.BytesToString(convertUtf8Raw)
 
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["INDEX_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.TableAttributes.TableCharset)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], idxMeta["INDEX_NAME"], t.DBCharsetT, err)
+		}
+		indexOwner = stringutil.BytesToString(convertUtf8Raw)
+
 		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["INDEX_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.TableAttributes.TableCharset)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], idxMeta["INDEX_NAME"], t.DBCharsetT, err)
 		}
 		indexName = stringutil.BytesToString(convertUtf8Raw)
+
+		// Note:
+		// additional processing of the same index name in different schemas
+		// automatically change index names for index names that are not under the current schema，for example:
+		// the migrate schema is marvin00, index_names list: marvin00.uniq_marvin, marvin01.uniq_marvin, then marvin01.uniq_marvin -> marvin00.uniq_marvin_marvin01
+		if !strings.EqualFold(indexOwner, t.DatasourceS.SchemaNameS) {
+			indexName = stringutil.StringBuilder(indexName, "_ow_", indexOwner)
+		}
 
 		if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
 			indexName = strings.ToLower(indexName)
@@ -603,17 +596,32 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 			}
 			indexName = stringutil.BytesToString(convertTargetRaw)
 
-			var ukColumns []string
-
-			for _, s := range strings.Split(columnList, ",") {
-				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
-					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
-					if err != nil {
-						return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], val, t.DBCharsetT, err)
+			// Function Index: SUBSTR("NAME8",1,8)|+|NAME9
+			ukColumns := strings.Split(columnList, "|+|")
+			for i, s := range ukColumns {
+				// SUBSTR("NAME8",1,8) OR NAME9
+				brackets := stringutil.StringExtractorWithinBrackets(s)
+				if len(brackets) == 0 {
+					// NAME9 PART
+					if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
+						convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
+						if err != nil {
+							return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], t.DBCharsetT, err)
+						}
+						ukColumns[i] = fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw))
+					} else {
+						return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 					}
-					ukColumns = append(ukColumns, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
+					for k, v := range t.TableAttributesRule.ColumnNameRule {
+						if stringutil.StringMatcher(s, "\""+k+"\"") {
+							convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.StringReplacer(s, "\""+k+"\"", fmt.Sprintf("`%s`", v))), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
+							if err != nil {
+								return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], s, t.DBCharsetT, err)
+							}
+							ukColumns[i] = stringutil.BytesToString(convertTargetRaw)
+						}
+					}
 				}
 			}
 			columnList = strings.Join(ukColumns, ",")
@@ -696,6 +704,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 		var (
 			columnList string
 			indexName  string
+			indexOwner string
 			itypOwner  string
 			itypName   string
 		)
@@ -705,11 +714,25 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 		}
 		columnList = stringutil.BytesToString(convertUtf8Raw)
 
+		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["INDEX_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.TableAttributes.TableCharset)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return nil, nil, fmt.Errorf("[GenTableUniqueIndex] oracle schema [%s] table [%s] column [%s] index_name [%s] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], idxMeta["INDEX_NAME"], t.DBCharsetT, err)
+		}
+		indexOwner = stringutil.BytesToString(convertUtf8Raw)
+
 		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["INDEX_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.TableAttributes.TableCharset)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] index [%v] charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["INDEX_NAME"], t.DBCharsetT, err)
 		}
 		indexName = stringutil.BytesToString(convertUtf8Raw)
+
+		// Note:
+		// additional processing of the same index name in different schemas
+		// automatically change index names for index names that are not under the current schema，for example:
+		// the migrate schema is marvin00, index_names list: marvin00.idx_marvin, marvin01.idx_marvin, then marvin01.idx_marvin -> marvin00.idx_marvin_marvin01
+		if !strings.EqualFold(indexOwner, t.DatasourceS.SchemaNameS) {
+			indexName = stringutil.StringBuilder(indexName, "_ow_", indexOwner)
+		}
 
 		convertUtf8Raw, err = stringutil.CharsetConvert([]byte(idxMeta["ITYP_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(t.TableAttributes.TableCharset)], constant.CharsetUTF8MB4)
 		if err != nil {
@@ -763,16 +786,32 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 			}
 			itypName = stringutil.BytesToString(convertTargetRaw)
 
-			var normalIndex []string
-			for _, col := range strings.Split(columnList, ",") {
-				if val, ok := t.TableAttributesRule.ColumnNameRule[col]; ok {
-					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
-					if err != nil {
-						return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], t.DBCharsetT, err)
+			// Function Index: SUBSTR("NAME8",1,8)|+|NAME9
+			normalIndex := strings.Split(columnList, "|+|")
+			for i, col := range normalIndex {
+				// SUBSTR("NAME8",1,8) OR NAME9
+				brackets := stringutil.StringExtractorWithinBrackets(col)
+				if len(brackets) == 0 {
+					// NAME9 PART
+					if val, ok := t.TableAttributesRule.ColumnNameRule[col]; ok {
+						convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
+						if err != nil {
+							return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], t.DBCharsetT, err)
+						}
+						normalIndex[i] = fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw))
+					} else {
+						return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, col)
 					}
-					normalIndex = append(normalIndex, fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw)))
 				} else {
-					return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, col)
+					for k, v := range t.TableAttributesRule.ColumnNameRule {
+						if stringutil.StringMatcher(col, "\""+k+"\"") {
+							convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.StringReplacer(col, "\""+k+"\"", fmt.Sprintf("`%s`", v))), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
+							if err != nil {
+								return nil, nil, fmt.Errorf("[GenTableNormalIndex] oracle schema [%s] table [%s] column_list [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], col, t.DBCharsetT, err)
+							}
+							normalIndex[i] = stringutil.BytesToString(convertTargetRaw)
+						}
+					}
 				}
 			}
 			columnList = strings.Join(normalIndex, ",")
@@ -1037,25 +1076,25 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 			if strings.EqualFold(nullable, "NULL") {
 				switch {
 				case columnCollation != "" && comment != "":
-					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COLLATE %s COMMENT '%s'", columnName, columnType, columnCollation, comment))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COLLATE %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCollation, dataDefault, comment))
 					}
 				case columnCollation != "" && comment == "":
-					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COLLATE %s", columnName, columnType, columnCollation))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COLLATE %s DEFAULT %s", columnName, columnType, columnCollation, dataDefault))
 					}
 				case columnCollation == "" && comment != "":
-					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COMMENT '%s'", columnName, columnType, comment))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s DEFAULT %s COMMENT '%s'", columnName, columnType, dataDefault, comment))
 					}
 				case columnCollation == "" && comment == "":
-					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s", columnName, columnType))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s DEFAULT %s", columnName, columnType, dataDefault))
@@ -1068,25 +1107,25 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 			if strings.EqualFold(nullable, "NOT NULL") {
 				switch {
 				case columnCollation != "" && comment != "":
-					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COLLATE %s %s COMMENT '%s'", columnName, columnType, columnCollation, nullable, comment))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COLLATE %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCollation, nullable, dataDefault, comment))
 					}
 				case columnCollation != "" && comment == "":
-					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COLLATE %s %s", columnName, columnType, columnCollation, nullable))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COLLATE %s %s DEFAULT %s", columnName, columnType, columnCollation, nullable, dataDefault))
 					}
 				case columnCollation == "" && comment != "":
-					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s COMMENT '%s'", columnName, columnType, nullable, comment))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, nullable, dataDefault, comment))
 					}
 				case columnCollation == "" && comment == "":
-					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s", columnName, columnType, nullable))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s", columnName, columnType, nullable, dataDefault))

@@ -23,6 +23,7 @@ import (
 	"math/big"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -205,6 +206,64 @@ func CompareInter(structA, structB interface{}) ([]interface{}, []interface{}) {
 		return addDiffs, removeDiffs
 	}
 	return addDiffs, removeDiffs
+}
+
+func StringReplacer(str, toReplace, replaceWith string) string {
+	return regexp.MustCompile(toReplace).ReplaceAllString(str, replaceWith)
+}
+
+func StringMatcher(str, toMatch string) bool {
+	return regexp.MustCompile(toMatch).MatchString(str)
+}
+
+func StringExtractorWithinQuotationMarks(text string, patterns ...string) []string {
+	var matches []string
+	for _, pattern := range patterns {
+		re := regexp.MustCompile("\"" + pattern + "\"")
+		founds := re.FindAllString(text, -1)
+		for _, f := range founds {
+			matches = append(matches, RemovePrefixSuffixOnce(f, "\"", "\""))
+		}
+	}
+	return matches
+}
+
+func StringExtractorWithoutQuotationMarks(text string, patterns ...string) []string {
+	var matches []string
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		founds := re.FindAllString(text, -1)
+		matches = append(matches, founds...)
+	}
+	return matches
+}
+
+func StringExtractorWithinBrackets(text string) []string {
+	re := regexp.MustCompile(`\((.*?)\)`)
+	matches := re.FindAllStringSubmatch(text, -1)
+	var results []string
+	for _, match := range matches {
+		results = append(results, match[1])
+	}
+	return results
+}
+
+func RemovePrefixSuffixOnce(str string, prefix, suffix string) string {
+	return RemovePrefixOnce(RemoveSuffixOnce(str, suffix), prefix)
+}
+
+func RemoveSuffixOnce(s, suffix string) string {
+	if strings.HasSuffix(s, suffix) {
+		return s[:len(s)-len(suffix)]
+	}
+	return s
+}
+
+func RemovePrefixOnce(s, prefix string) string {
+	if strings.HasPrefix(s, prefix) {
+		return s[len(prefix):]
+	}
+	return s
 }
 
 // Key-Value

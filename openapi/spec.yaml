@@ -1169,6 +1169,7 @@ components:
             format: string
         tableRouteRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/TableRouteRule'
     TableRouteRule:

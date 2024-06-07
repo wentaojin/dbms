@@ -467,16 +467,24 @@ func StartDataScanTask(ctx context.Context, taskName, workerAddr string) error {
 	logger.Info("data scan task start", zap.String("task_name", taskName))
 	logger.Info("data scan task get task information", zap.String("task_name", taskName))
 	var (
-		taskInfo         *task.Task
-		sourceDatasource *datasource.Datasource
-		err              error
+		taskInfo                 *task.Task
+		datasourceS, datasourceT *datasource.Datasource
+		err                      error
 	)
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeDataScan})
 		if err != nil {
 			return err
 		}
-		sourceDatasource, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameS)
+		datasourceS, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameS)
+		if err != nil {
+			return err
+		}
+		datasourceT, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameT)
+		if err != nil {
+			return err
+		}
+		err = model.GetITaskLogRW().DeleteLog(txnCtx, []string{taskName})
 		if err != nil {
 			return err
 		}
@@ -525,13 +533,14 @@ func StartDataScanTask(ctx context.Context, taskName, workerAddr string) error {
 		}
 	}
 
-	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
+	if strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeOracle) {
 		logger.Info("data scan task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 		taskTime := time.Now()
 		dataScan := &taskflow.DataScanTask{
 			Ctx:         ctx,
 			Task:        taskInfo,
-			DatasourceS: sourceDatasource,
+			DatasourceS: datasourceS,
+			DatasourceT: datasourceT,
 			TaskParams:  taskParams,
 		}
 		err = dataScan.Start()
@@ -542,7 +551,7 @@ func StartDataScanTask(ctx context.Context, taskName, workerAddr string) error {
 			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
 			zap.String("cost", time.Now().Sub(taskTime).String()))
 	} else {
-		return fmt.Errorf("current data scan task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
+		return fmt.Errorf("current data scan task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, datasourceS.DatasourceName, datasourceS.DbType)
 	}
 
 	// status

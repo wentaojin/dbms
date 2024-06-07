@@ -117,6 +117,8 @@ func (t *Table) String(jsonType string) string {
 		jsonStr, _ = stringutil.MarshalJSON(t.Indexes)
 	case constant.StructComparePartitionStructureJSONFormat:
 		jsonStr, _ = stringutil.MarshalJSON(t.Partitions)
+	default:
+		jsonStr, _ = stringutil.MarshalIndentJSON(t)
 	}
 	return jsonStr
 }
@@ -126,5 +128,10 @@ func (t *Table) StringColumn() string {
 		NewColumns: t.NewColumns,
 		OldColumns: t.OldColumns,
 	})
+	return jsonStr
+}
+
+func (n NewColumn) String() string {
+	jsonStr, _ := stringutil.MarshalJSON(n)
 	return jsonStr
 }

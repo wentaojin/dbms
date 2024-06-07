@@ -1,0 +1,8 @@
+[database]
+host = "120.92.19.233"
+port = 4000
+username = "root"
+password = ""
+schema = "dbms"
+# slow threshold
+slow-threshold = 300

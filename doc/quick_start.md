@@ -22,16 +22,16 @@ $ export LD_LIBRARY_PATH=${oracle client 解压目录所在路径}
 
 3，查看已安装 DBMS 分布式迁移服务平台集群
 ```shell
-$ dbms list
+$ dbms-cluster list
 
 Name      User  Version  Path                          PrivateKey
 ----      ----  -------  ----                          ----------
-dbms-jwt  dbms  v0.0.0   /Users/marvin/.dbms/dbms-jwt  /Users/marvin/.dbms/dbms-jwt/ssh/id_rsa
+dbms-jwt  dbms-cluster  v0.0.0   /Users/marvin/.dbms/dbms-jwt  /Users/marvin/.dbms/dbms-jwt/ssh/id_rsa
 ```
 
 4，选定某个 DBMS 集群查看集群信息
 ```shell
-$ dbms display dbms-jwt
+$ dbms-cluster display dbms-jwt
 
 Cluster type:       DBMS
 Cluster name:       dbms-jwt
@@ -45,108 +45,108 @@ ID                    Role                   Host             Ports      OS/Arch
 Total nodes: 2
 ```
 
-5，DBMS 集群元数据库创建（dbmsctl）
+5，DBMS 集群元数据库创建（dbms-ctl）
 
 元数据库配置文件[示例](../example/database.toml)
 ```shell
-$ dbmsctl database upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${database.toml}
+$ dbms-ctl database upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${database.toml}
 ```
 
 元数据任务提交完成，自动创建元数据库以及对应元数据表且所有 dbms-master 以及 dbms-worker 自动连接元数据库，预计等待时间 30-60s
 
-6，DBMS 集群数据源创建（dbmsctl）
+6，DBMS 集群数据源创建（dbms-ctl）
 
 数据源配置文件[示例](../example/datasource.toml)
 ```shell
-$ dbmsctl datasource upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${datasource.toml}
+$ dbms-ctl datasource upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${datasource.toml}
 ```
 
 任务数据源可一次性创建多个数据源，该任务数据源用于后续具体任务执行引用
 
-7，DBMS 集群任务创建（dbmsctl）
+7，DBMS 集群任务创建（dbms-ctl）
 
 对象评估任务配置[示例](../example/assess_migrate_task.toml)
 ```shell
-$ dbmsctl assess upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${assess_migrate_task.toml}
+$ dbms-ctl assess upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${assess_migrate_task.toml}
 ```
 结构迁移任务配置[示例](../example/struct_migrate_task.toml)
 ```shell
-$ dbmsctl struct upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${struct_migrate_task.toml}
+$ dbms-ctl struct upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${struct_migrate_task.toml}
 ```
 结构对比任务配置[示例](../example/struct_compare_task.toml)
 ```shell
-$ dbmsctl compare upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${struct_compare_task.toml}
+$ dbms-ctl compare upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${struct_compare_task.toml}
 ```
 SQL 数据迁移任务配置[示例](../example/stmt_migrate_task.toml)
 ```shell
-$ dbmsctl stmt upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${stmt_migrate_task.toml}
+$ dbms-ctl stmt upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${stmt_migrate_task.toml}
 ```
 CSV 数据迁移任务配置[示例](../example/csv_migrate_task.toml)
 ```shell
-$ dbmsctl csv upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${csv_migrate_task.toml}
+$ dbms-ctl csv upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${csv_migrate_task.toml}
 ```
 自定义 SQL 数据迁移任务配置[示例](../example/sql_migrate_task.toml)
 ```shell
-$ dbmsctl sql upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${sql_migrate_task.toml}
+$ dbms-ctl sql upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${sql_migrate_task.toml}
 ```
 数据校验任务配置[示例](../example/data_compare_task00.toml)
 ```shell
-$ dbmsctl verify upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${data_compare_task00.toml}
+$ dbms-ctl verify upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${data_compare_task00.toml}
 ```
 
-8，DBMS 任务管理操作（dbmsctl）
+8，DBMS 任务管理操作（dbms-ctl）
 
 以某个任务配置为例：task-name = "gct_33to45"
 
 任务启动
 ```shell
-$ dbmsctl task start -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+$ dbms-ctl task start -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
 ```
 
 任务停止
 ```shell
-$ dbmsctl task stop -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+$ dbms-ctl task stop -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
 ```
 
 任务删除（未启动运行任务状态）
 ```shell
-$ dbmsctl task delete -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+$ dbms-ctl task delete -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
 ```
 
 设置定时任务
 ```shell
-$ dbmsctl task crontab -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} --express ${参考 linux crontab 写法}
+$ dbms-ctl task crontab -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} --express ${参考 linux crontab 写法}
 ```
 
 清理定时任务（未启动运行任务状态）
 ```shell
-$ dbmsctl task clear -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+$ dbms-ctl task clear -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
 ```
 
 8，获取结构迁移兼容以及不兼容性对象信息报告
 ```shell
-$ dbms struct gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} -o ${output-dir}
+$ dbms-ctl struct gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} -o ${output-dir}
 ```
 
 9，获取结构对比详细信息报告
 ```shell
-$ dbms compare gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} -o ${output-dir}
+$ dbms-ctl compare gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} -o ${output-dir}
 ```
 
 10，获取对象评估详细信息报告
 ```shell
-$ dbms assess gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} -o ${output-dir}
+$ dbms-ctl assess gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} -o ${output-dir}
 ```
 
 11，获取数据校验详细信息报告
 ```shell
-$ dbms verify gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} -o ${output-dir}
+$ dbms-ctl verify gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} -o ${output-dir}
 ```
 
 12，获取任务运行状态日志信息
 
 ```shell
-$ dbms task get -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+$ dbms-ctl task get -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
 ```
 任务日志信息当前只返回当前查询最后一条日志（日志量过大），输出格式如下
 ```json
@@ -164,13 +164,13 @@ $ dbms task get -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
 13，更多 DBMS 任务管理操作
 
 ```shell
-$ dbmsctl --help
+$ dbms-ctl --help
 
-CLI dbmsctl app for dbms cluster
+CLI dbms-ctl app for dbms-cluster cluster
 
 Usage:
-  dbmsctl [flags]
-  dbmsctl [command]
+  dbms-ctl [flags]
+  dbms-ctl [command]
 
 Available Commands:
   assess      Operator cluster data assess
@@ -188,9 +188,9 @@ Available Commands:
   verify      Operator cluster data compare
 
 Flags:
-  -h, --help            help for dbmsctl
+  -h, --help            help for dbms-ctl
   -s, --server string   server addr for app server
   -v, --version         version for app client
 
-Use "dbmsctl [command] --help" for more information about a command.
+Use "dbms-ctl [command] --help" for more information about a command.
 ```

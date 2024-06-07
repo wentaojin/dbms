@@ -289,6 +289,10 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		if err != nil {
 			return err
 		}
+		err = model.GetITaskLogRW().DeleteLog(txnCtx, []string{taskName})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {

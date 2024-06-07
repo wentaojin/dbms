@@ -52,13 +52,13 @@ LDFLAGS += -X "$(REPO)/version.GitBranch=$(GITREF)"
 runMaster: clean gotool seedMaster masterProgram00 masterProgram01 masterProgram02
 
 stopMaster:
-	ps -ef| grep 'example/master' | grep -v 'grep' | awk '{print $$2}' | xargs kill -9
+	ps -ef| grep 'sample/master' | grep -v 'grep' | awk '{print $$2}' | xargs kill -9
 	rm -f $(MASTERCONFIG00) $(MASTERCONFIG01) $(MASTERCONFIG02)
 
 runWorker: clean gotool seedWorker workerProgram00 workerProgram01 workerProgram02
 
 stopWorker:
-	ps -ef| grep 'example/worker' | grep -v 'grep' | awk '{print $$2}' | xargs kill -9
+	ps -ef| grep 'sample/worker' | grep -v 'grep' | awk '{print $$2}' | xargs kill -9
 	rm -f $(WORKERCONFIG00) $(WORKERCONFIG01) $(WORKERCONFIG02)
 
 masterProgram00:

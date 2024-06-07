@@ -295,6 +295,10 @@ func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error
 		if err != nil {
 			return err
 		}
+		err = model.GetITaskLogRW().DeleteLog(txnCtx, []string{taskName})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {

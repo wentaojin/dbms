@@ -56,7 +56,7 @@ type App struct {
 
 func (a *App) Cmd() *cobra.Command {
 	c := &cobra.Command{
-		Use:               "dbms",
+		Use:               "dbms-cluster",
 		Short:             "the application for the dbms cluster",
 		PersistentPreRunE: a.PersistentPreRunE,
 		RunE:              a.RunE,

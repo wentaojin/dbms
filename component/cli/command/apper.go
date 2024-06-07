@@ -32,7 +32,7 @@ type App struct {
 
 func (a *App) Cmd() *cobra.Command {
 	c := &cobra.Command{
-		Use:               "dbmsctl",
+		Use:               "dbms-ctl",
 		Short:             "CLI dbmsctl app for dbms cluster",
 		PersistentPreRunE: a.PersistentPreRunE,
 		RunE:              a.RunE,

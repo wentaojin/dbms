@@ -56,11 +56,19 @@ func (dmt *StructCompareTask) Start() error {
 	}
 
 	dbTypeSli := stringutil.StringSplit(dmt.Task.TaskFlow, constant.StringSeparatorAite)
-	buildInDatatypeRules, err := model.GetIBuildInDatatypeRuleRW().QueryBuildInDatatypeRule(dmt.Ctx, dbTypeSli[0], dbTypeSli[1])
+	buildInDatatypeRulesS, err := model.GetIBuildInDatatypeRuleRW().QueryBuildInDatatypeRule(dmt.Ctx, dbTypeSli[0], dbTypeSli[1])
 	if err != nil {
 		return err
 	}
-	buildInDefaultValueRules, err := model.GetBuildInDefaultValueRuleRW().QueryBuildInDefaultValueRule(dmt.Ctx, dbTypeSli[0], dbTypeSli[1])
+	buildInDefaultValueRulesS, err := model.GetBuildInDefaultValueRuleRW().QueryBuildInDefaultValueRule(dmt.Ctx, dbTypeSli[0], dbTypeSli[1])
+	if err != nil {
+		return err
+	}
+	buildInDatatypeRulesT, err := model.GetIBuildInDatatypeRuleRW().QueryBuildInDatatypeRule(dmt.Ctx, dbTypeSli[1], dbTypeSli[0])
+	if err != nil {
+		return err
+	}
+	buildInDefaultValueRulesT, err := model.GetBuildInDefaultValueRuleRW().QueryBuildInDefaultValueRule(dmt.Ctx, dbTypeSli[1], dbTypeSli[0])
 	if err != nil {
 		return err
 	}
@@ -197,19 +205,6 @@ func (dmt *StructCompareTask) Start() error {
 					return errW
 				}
 
-				columnRouteRuleMap := make(map[string]string)
-				columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(dmt.Ctx, &rule.ColumnRouteRule{
-					TaskName:    dmt.Task.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-				})
-				if err != nil {
-					return err
-				}
-				for _, c := range columnRoutes {
-					columnRouteRuleMap[c.ColumnNameS] = c.ColumnNameT
-				}
-
 				switch {
 				case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
 					oracleProcessor, err := database.IStructCompareProcessor(&processor.OracleProcessor{
@@ -218,16 +213,16 @@ func (dmt *StructCompareTask) Start() error {
 						TaskFlow:                 dmt.Task.TaskFlow,
 						SchemaName:               dt.SchemaNameS,
 						TableName:                dt.TableNameS,
-						DBCharset:                dmt.DatasourceS.ConnectCharset,
+						DBCharset:                stringutil.StringUpper(dmt.DatasourceS.ConnectCharset),
 						DBCollation:              dbCollationS,
 						Database:                 databaseS,
-						BuildinDatatypeRules:     buildInDatatypeRules,
-						BuildinDefaultValueRules: buildInDefaultValueRules,
-						ColumnRouteRules:         columnRouteRuleMap,
+						BuildinDatatypeRules:     buildInDatatypeRulesS,
+						BuildinDefaultValueRules: buildInDefaultValueRulesS,
+						ColumnRouteRules:         make(map[string]string),
 						IsBaseline:               true,
 					})
 					if err != nil {
-						return err
+						return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DatasourceS.DbType, err)
 					}
 
 					// oracle baseline, mysql not configure task and not configure rules
@@ -237,15 +232,15 @@ func (dmt *StructCompareTask) Start() error {
 						TaskFlow:                 dmt.Task.TaskFlow,
 						SchemaName:               dt.SchemaNameT,
 						TableName:                dt.TableNameT,
-						DBCharset:                dmt.DatasourceT.ConnectCharset,
+						DBCharset:                stringutil.StringUpper(dmt.DatasourceT.ConnectCharset),
 						Database:                 databaseT,
-						BuildinDatatypeRules:     nil,
-						BuildinDefaultValueRules: nil,
-						ColumnRouteRules:         nil,
+						BuildinDatatypeRules:     buildInDatatypeRulesT,
+						BuildinDefaultValueRules: buildInDefaultValueRulesT,
+						ColumnRouteRules:         make(map[string]string),
 						IsBaseline:               false,
 					})
 					if err != nil {
-						return err
+						return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DatasourceT.DbType, err)
 					}
 
 					compareDetail, err := database.IStructCompareTable(&processor.Table{
@@ -255,7 +250,7 @@ func (dmt *StructCompareTask) Start() error {
 						Target:   mysqlProcessor,
 					})
 					if err != nil {
-						return err
+						return fmt.Errorf("the struct compare table processor failed: %v", err)
 					}
 					if strings.EqualFold(compareDetail, "") {
 						errW = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
@@ -293,11 +288,11 @@ func (dmt *StructCompareTask) Start() error {
 
 					originStructS, err := databaseS.GetDatabaseTableOriginStruct(dt.SchemaNameS, dt.TableNameS, "TABLE")
 					if err != nil {
-						return err
+						return fmt.Errorf("the struct compare table get source origin struct failed: %v", err)
 					}
-					originStructT, err := databaseT.GetDatabaseTableOriginStruct(dt.SchemaNameT, dt.SchemaNameT, "")
+					originStructT, err := databaseT.GetDatabaseTableOriginStruct(dt.SchemaNameT, dt.TableNameT, "")
 					if err != nil {
-						return err
+						return fmt.Errorf("the struct compare table get target origin struct failed: %v", err)
 					}
 
 					encOriginS := snappy.Encode(nil, []byte(originStructS))

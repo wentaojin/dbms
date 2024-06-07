@@ -339,10 +339,24 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 		if val, ok := buildinDatatypeMap[constant.BuildInOracleDatatypeNchar]; ok {
 			if strings.EqualFold(c.CharUsed, "C") {
 				originColumnType = fmt.Sprintf("%s(%s)", constant.BuildInOracleDatatypeNchar, c.CharLength)
-				buildInColumnType = fmt.Sprintf("%s(%s)", stringutil.StringUpper(val), c.CharLength)
+
+				size, err := stringutil.StrconvIntBitSize(c.CharLength, 64)
+				if err != nil {
+					return "", "", err
+				}
+				// Error 1074 (42000): Column length too big for column 'CHAR6' (max = 255); use BLOB or TEXT instead
+				if size > 255 {
+					buildInColumnType = fmt.Sprintf("VARCHAR(%s)", c.CharLength)
+				} else {
+					buildInColumnType = fmt.Sprintf("%s(%s)", stringutil.StringUpper(val), c.CharLength)
+				}
 			} else {
 				originColumnType = fmt.Sprintf("%s(%d)", constant.BuildInOracleDatatypeNchar, dataLength)
-				buildInColumnType = fmt.Sprintf("%s(%d)", stringutil.StringUpper(val), dataLength)
+				if dataLength > 255 {
+					buildInColumnType = fmt.Sprintf("VARCHAR(%s)", c.CharLength)
+				} else {
+					buildInColumnType = fmt.Sprintf("%s(%d)", stringutil.StringUpper(val), dataLength)
+				}
 			}
 			return originColumnType, buildInColumnType, nil
 		} else {
@@ -922,8 +936,10 @@ func oracleHandleColumnDefaultValueCharset(columnName, defaultVal, sourceCharset
 		// 'K'
 		dataDefault = "'" + stringutil.BytesToString(convertTargetRaw) + "'"
 	} else {
-		if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.OracleDatabaseTableColumnDefaultValueWithStringNull) {
+		if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.OracleDatabaseTableColumnDefaultValueWithEmptyString) {
 			dataDefault = "'" + stringutil.BytesToString(convertTargetRaw) + "'"
+		} else if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.OracleDatabaseTableColumnDefaultValueWithNULLSTRING) {
+			dataDefault = constant.OracleDatabaseTableColumnDefaultValueWithNULL
 		} else {
 			dataDefault = stringutil.BytesToString(convertTargetRaw)
 		}

@@ -681,23 +681,45 @@ ORDER BY
 }
 
 func (d *Database) GetDatabaseSchemaTableViewNameLengthOverLimit(schemaName []string, limit int) ([]map[string]string, error) {
+	// Oracle database 11g Release 2 and UP
+	//	querySQL := fmt.Sprintf(`SELECT
+	//	OWNER,
+	//	VIEW_NAME,
+	//	READ_ONLY,
+	//	LENGTH(VIEW_NAME) LENGTH_OVER
+	//FROM
+	//	DBA_VIEWS
+	//WHERE
+	//	OWNER IN (%s)
+	//	AND LENGTH(VIEW_NAME) > %d
+	//ORDER BY
+	//	OWNER,
+	//	VIEW_NAME`, strings.Join(schemaName, ","), limit)
+	// Oracle database 9i and UP
 	querySQL := fmt.Sprintf(`SELECT
-	OWNER,
-	VIEW_NAME,
-	READ_ONLY,
-	LENGTH(VIEW_NAME) LENGTH_OVER
-FROM
-	DBA_VIEWS
-WHERE
-	OWNER IN (%s)
-	AND LENGTH(VIEW_NAME) > %d
-ORDER BY
-	OWNER,
-	VIEW_NAME`, strings.Join(schemaName, ","), limit)
-
+		OWNER,
+		VIEW_NAME,
+		TEXT AS READ_ONLY,
+		LENGTH(VIEW_NAME) LENGTH_OVER
+	FROM
+		DBA_VIEWS
+	WHERE
+		OWNER IN (%s)
+		AND LENGTH(VIEW_NAME) > %d
+	ORDER BY
+		OWNER,
+		VIEW_NAME`, strings.Join(schemaName, ","), limit)
 	_, res, err := d.GeneralQuery(querySQL)
 	if err != nil {
 		return res, err
+	}
+
+	for _, r := range res {
+		if strings.Contains(r["READ_ONLY"], "WITH READ ONLY") {
+			r["READ_ONLY"] = "Y"
+		} else {
+			r["READ_ONLY"] = "N"
+		}
 	}
 	return res, nil
 }

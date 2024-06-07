@@ -31,12 +31,13 @@ type StructCompareConfig struct {
 
 	CaseFieldRule      CaseFieldRule      `toml:"case-field-rule" json:"caseFieldRule"`
 	SchemaRouteRule    SchemaRouteRule    `toml:"schema-route-rule" json:"schemaRouteRule"`
-	StructCompareParam StructCompareParam `toml:"struct-migrate-param" json:"structCompareParam"`
+	StructCompareParam StructCompareParam `toml:"struct-compare-param" json:"structCompareParam"`
 	StructCompareRule  StructCompareRule  `toml:"struct-compare-rule" json:"structCompareRule"`
 }
 
 type StructCompareParam struct {
-	CompareThread int64 `toml:"migrate-thread" json:"migrateThread"`
+	CompareThread    int64 `toml:"compare-thread" json:"compareThread"`
+	EnableCheckpoint bool  `toml:"enable-checkpoint" json:"enableCheckpoint"`
 }
 
 type StructCompareRule struct {
@@ -47,7 +48,7 @@ type StructCompareRule struct {
 }
 
 func (s *StructCompareConfig) String() string {
-	jsonStr, _ := stringutil.MarshalJSON(s)
+	jsonStr, _ := stringutil.MarshalIndentJSON(s)
 	return jsonStr
 }
 

@@ -10,6 +10,20 @@
 收集现有 ORACLE 数据库中的表、索引、分区表、字段长度等信息，输出类似AWR报告文件的文件，用于评估迁移成本
 
 ------
+### 数据扫描
+数据扫描任务配置[示例](../example/data_scan_task.toml)
+
+ORACLE MIGRATE MYSQL 兼容性数据库，提供以下功能实现（数据扫描 NUMBER 数据类型，识别 NUMBER 数据类型适配建议）：
+- schema、表名区分大小写
+- 全表以及表采样扫描，自定义表采样率以及 Hint
+- 断点续传
+- 一致性读/非一致性读
+
+<mark>NOTE:</mark>
+- 断点续传期间，参数配置文件 chunk-size 不能动态变更，但可通过配置 enable-checkpoint = false 自动清理断点以及已迁移的表数据，重新导出导入
+- 如果程序遇到报错，进程不会终止，具体错误表以及对应的错误详情参见元数据表[data_scan_task]数据
+
+------
 ### 结构迁移
 结构迁移任务配置[示例](../example/struct_migrate_task.toml) 
 

@@ -155,7 +155,7 @@ var BuildInOracleO2MDatatypeNameMap = map[string]string{
 	BuildInOracleDatatypeLongRAW:                     "LONGBLOB",
 	BuildInOracleDatatypeBinaryFloat:                 "DOUBLE",
 	BuildInOracleDatatypeBinaryDouble:                "DOUBLE",
-	BuildInOracleDatatypeNchar:                       "NCHAR",
+	BuildInOracleDatatypeNchar:                       "CHAR",
 	BuildInOracleDatatypeNcharVarying:                "NCHAR VARYING",
 	BuildInOracleDatatypeNclob:                       "LONGTEXT",
 	BuildInOracleDatatypeNumeric:                     "NUMERIC",

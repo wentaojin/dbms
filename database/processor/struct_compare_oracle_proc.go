@@ -18,6 +18,7 @@ package processor
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/model/rule"
 	"strings"
 
 	"github.com/wentaojin/dbms/database/mapping"
@@ -140,6 +141,18 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 		if err != nil {
 			return nil, nil, err
 		}
+
+		columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(p.Ctx, &rule.ColumnRouteRule{
+			TaskName:    p.TaskName,
+			SchemaNameS: p.SchemaName,
+			TableNameS:  p.TableName,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, c := range columnRoutes {
+			p.ColumnRouteRules[c.ColumnNameS] = c.ColumnNameT
+		}
 	}
 
 	newColumns := make(map[string]structure.NewColumn, len(infos))
@@ -201,14 +214,14 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 				columnCollation = ""
 			}
 
-			originColumnCharset, originColumnCollation := p.genDatabaseTableColumnCharsetCollationByOldColumn(c["DATA_TYPE"], columnCollation)
+			originColumnCharset, originColumnCollation := p.genOracleMappingMYSQLCompatibleDatabaseTableColumnCharsetCollationByOldColumn(c["DATA_TYPE"], columnCollation)
 
 			newColumns[columnNameNew] = structure.NewColumn{
-				Datatype:    originColumnType,
+				Datatype:    stringutil.StringUpper(originColumnType),
 				NULLABLE:    c["NULLABLE"],
 				DataDefault: colDefaultVal,
-				Charset:     originColumnCharset,
-				Collation:   originColumnCollation,
+				Charset:     stringutil.StringUpper(originColumnCharset),
+				Collation:   stringutil.StringUpper(originColumnCollation),
 				Comment:     columnComment,
 			}
 
@@ -271,12 +284,12 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 					columnCollation = ""
 				}
 
-				convColumnCharset, convColumnCollation, err := p.genDatabaseTableColumnCharsetCollationByNewColumn(columnName, c["DATA_TYPE"], columnCollation)
+				convColumnCharset, convColumnCollation, err := p.genOracleMappingMYSQLCompatibleDatabaseTableColumnCharsetCollationByNewColumn(columnName, c["DATA_TYPE"], columnCollation)
 				if err != nil {
 					return nil, nil, err
 				}
 
-				originColumnCharset, originColumnCollation := p.genDatabaseTableColumnCharsetCollationByOldColumn(c["DATA_TYPE"], columnCollation)
+				originColumnCharset, originColumnCollation := p.genOracleMappingMYSQLCompatibleDatabaseTableColumnCharsetCollationByOldColumn(c["DATA_TYPE"], columnCollation)
 
 				// MYSQL compatible database integer column datatype exclude decimal "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT"
 				if val, ok := constant.MYSQLCompatibleDatabaseTableIntegerColumnDatatypeExcludeDecimal[convertColumnDatatype]; ok {
@@ -284,11 +297,11 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 				}
 
 				newColumns[columnNameNew] = structure.NewColumn{
-					Datatype:    convertColumnDatatype,
+					Datatype:    stringutil.StringUpper(convertColumnDatatype),
 					NULLABLE:    c["NULLABLE"],
 					DataDefault: convertColumnDefaultValue,
-					Charset:     convColumnCharset,
-					Collation:   convColumnCollation,
+					Charset:     stringutil.StringUpper(convColumnCharset),
+					Collation:   stringutil.StringUpper(convColumnCollation),
 					Comment:     columnComment,
 				}
 
@@ -329,6 +342,12 @@ func (p *OracleProcessor) GenDatabaseTableIndexDetail() (map[string]structure.In
 		}
 		columnList := stringutil.BytesToString(utf8Raw)
 
+		utf8Raw, err = stringutil.CharsetConvert([]byte(c["INDEX_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(p.DBCharset)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return nil, fmt.Errorf("[GenDatabaseTableIndexDetail] oracle schema [%s] table [%s] index_owner [%s] charset [%v] convert [UTFMB4] failed, error: %v", p.SchemaName, p.TableName, p.DBCharset, c["INDEX_OWNER"], err)
+		}
+		indexOwner := stringutil.BytesToString(utf8Raw)
+
 		utf8Raw, err = stringutil.CharsetConvert([]byte(c["INDEX_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(p.DBCharset)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return nil, fmt.Errorf("[GenDatabaseTableIndexDetail] oracle schema [%s] table [%s] index_name [%s] charset [%v] convert [UTFMB4] failed, error: %v", p.SchemaName, p.TableName, p.DBCharset, c["INDEX_NAME"], err)
@@ -347,13 +366,35 @@ func (p *OracleProcessor) GenDatabaseTableIndexDetail() (map[string]structure.In
 		}
 		parameters := stringutil.BytesToString(utf8Raw)
 
+		// ignore the same index name under different schema users
+		// marvin00.idx_name00、marvin01.idx_name00
+		// Note:
+		// additional processing of the same index name in different schemas
+		// automatically change index names for index names that are not under the current schema，for example:
+		// the migrate schema is marvin00, index_names list: marvin00.idx_marvin, marvin01.idx_marvin, then marvin01.idx_marvin -> marvin00.idx_marvin_marvin01
+		if !strings.EqualFold(indexOwner, p.SchemaName) {
+			indexName = stringutil.StringBuilder(indexName, "_ow_", indexOwner)
+		}
+
 		// column route
-		var indexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
-			if val, ok := p.ColumnRouteRules[col]; ok {
-				indexColumns = append(indexColumns, val)
+		indexColumns := strings.Split(columnList, "|+|")
+		// Function Index: SUBSTR("NAME8",1,8)|+|NAME9
+		for i, s := range indexColumns {
+			// SUBSTR("NAME8",1,8) OR NAME9
+			brackets := stringutil.StringExtractorWithinBrackets(s)
+			if len(brackets) == 0 {
+				// NAME9 PART
+				if val, ok := p.ColumnRouteRules[s]; ok {
+					indexColumns[i] = val
+				} else {
+					indexColumns[i] = s
+				}
 			} else {
-				indexColumns = append(indexColumns, col)
+				for k, v := range p.ColumnRouteRules {
+					if stringutil.StringMatcher(s, "\""+k+"\"") {
+						indexColumns[i] = stringutil.StringReplacer(s, "\""+k+"\"", v)
+					}
+				}
 			}
 		}
 
@@ -379,6 +420,12 @@ func (p *OracleProcessor) GenDatabaseTableIndexDetail() (map[string]structure.In
 		}
 		columnList := stringutil.BytesToString(utf8Raw)
 
+		utf8Raw, err = stringutil.CharsetConvert([]byte(c["INDEX_OWNER"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(p.DBCharset)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return nil, fmt.Errorf("[GenDatabaseTableIndexDetail] oracle schema [%s] table [%s] index_owner [%s] charset [%v] convert [UTFMB4] failed, error: %v", p.SchemaName, p.TableName, p.DBCharset, c["INDEX_OWNER"], err)
+		}
+		indexOwner := stringutil.BytesToString(utf8Raw)
+
 		utf8Raw, err = stringutil.CharsetConvert([]byte(c["INDEX_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(p.DBCharset)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return nil, fmt.Errorf("[GenDatabaseTableIndexDetail] oracle schema [%s] table [%s] index_name [%s] charset [%v] convert [UTFMB4] failed, error: %v", p.SchemaName, p.TableName, p.DBCharset, c["INDEX_NAME"], err)
@@ -397,13 +444,35 @@ func (p *OracleProcessor) GenDatabaseTableIndexDetail() (map[string]structure.In
 		}
 		parameters := stringutil.BytesToString(utf8Raw)
 
+		// ignore the same index name under different schema users
+		// marvin00.idx_name00、marvin01.idx_name00
+		// Note:
+		// additional processing of the same index name in different schemas
+		// automatically change index names for index names that are not under the current schema，for example:
+		// the migrate schema is marvin00, index_names list: marvin00.idx_marvin, marvin01.idx_marvin, then marvin01.idx_marvin -> marvin00.idx_marvin_marvin01
+		if !strings.EqualFold(indexOwner, p.SchemaName) {
+			indexName = stringutil.StringBuilder(indexName, "_ow_", indexOwner)
+		}
+
 		// column route
-		var indexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
-			if val, ok := p.ColumnRouteRules[col]; ok {
-				indexColumns = append(indexColumns, val)
+		indexColumns := strings.Split(columnList, "|+|")
+		// Function Index: SUBSTR("NAME8",1,8)|+|NAME9
+		for i, s := range indexColumns {
+			// SUBSTR("NAME8",1,8) OR NAME9
+			brackets := stringutil.StringExtractorWithinBrackets(s)
+			if len(brackets) == 0 {
+				// NAME9 PART
+				if val, ok := p.ColumnRouteRules[s]; ok {
+					indexColumns[i] = val
+				} else {
+					indexColumns[i] = s
+				}
 			} else {
-				indexColumns = append(indexColumns, col)
+				for k, v := range p.ColumnRouteRules {
+					if stringutil.StringMatcher(s, "\""+k+"\"") {
+						indexColumns[i] = stringutil.StringReplacer(s, "\""+k+"\"", v)
+					}
+				}
 			}
 		}
 
@@ -594,14 +663,14 @@ func (p *OracleProcessor) GenDatabaseTablePartitionDetail() ([]structure.Partiti
 	return partitions, nil
 }
 
-func (p *OracleProcessor) genDatabaseTableColumnCharsetCollationByNewColumn(columnName, datatype, columnCollation string) (string, string, error) {
+func (p *OracleProcessor) genOracleMappingMYSQLCompatibleDatabaseTableColumnCharsetCollationByNewColumn(columnName, datatype, columnCollation string) (string, string, error) {
 	var charset, collation string
 	// the oracle 12.2 and the above version support column collation
 	if p.DBCollation {
 		// check column sort collation
 		if val, ok := constant.MigrateTableStructureDatabaseCollationMap[p.TaskFlow][strings.ToUpper(columnCollation)][constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][stringutil.StringUpper(p.DBCharset)]]; ok {
 			collation = val
-			charset = constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][p.DBCharset]
+			charset = constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][stringutil.StringUpper(p.DBCharset)]
 		} else {
 			// exclude the column with the integer datatype
 			if !strings.EqualFold(columnCollation, "") {
@@ -615,7 +684,8 @@ func (p *OracleProcessor) genDatabaseTableColumnCharsetCollationByNewColumn(colu
 		switch datatype {
 		case constant.BuildInOracleDatatypeCharacter, constant.BuildInOracleDatatypeLong, constant.BuildInOracleDatatypeNcharVarying,
 			constant.BuildInOracleDatatypeVarchar, constant.BuildInOracleDatatypeChar, constant.BuildInOracleDatatypeNchar, constant.BuildInOracleDatatypeVarchar2, constant.BuildInOracleDatatypeNvarchar2:
-			charset = constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][p.DBCharset]
+			charset = constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][stringutil.StringUpper(p.DBCharset)]
+
 			if strings.EqualFold(columnCollation, "") && !strings.EqualFold(p.TableCollation, "") {
 				if val, ok := constant.MigrateTableStructureDatabaseCollationMap[p.TaskFlow][strings.ToUpper(p.TableCollation)][charset]; ok {
 					collation = val
@@ -632,9 +702,16 @@ func (p *OracleProcessor) genDatabaseTableColumnCharsetCollationByNewColumn(colu
 				if val, ok := constant.MigrateTableStructureDatabaseCollationMap[p.TaskFlow][strings.ToUpper(p.NLSComp)][charset]; ok {
 					collation = val
 				} else {
-					return charset, collation, fmt.Errorf("the oracle schema [%s] table [%s] column [%s] charset [%v] nlscomp collation [%s] mapping failed", p.SchemaName, p.TableName, columnName, p.DBCharset, columnCollation)
+					return charset, collation, fmt.Errorf("the oracle schema [%s] table [%s] column [%s] charset [%v] nlscomp collation [%s] mapping failed", p.SchemaName, p.TableName, columnName, p.DBCharset, p.NLSComp)
 				}
 			}
+
+			// TODO NOTE:
+			// O->M
+			// NCLOB -> LONGTEXT
+			// ROWID、UROWID -> VARCHAR
+			// the target database LONGTEXT AND VARCHAR there are charset and collation, so the struct compare would display not equal
+
 		default:
 			charset = "UNKNOWN"
 			collation = "UNKNOWN"
@@ -643,7 +720,7 @@ func (p *OracleProcessor) genDatabaseTableColumnCharsetCollationByNewColumn(colu
 	return charset, collation, nil
 }
 
-func (p *OracleProcessor) genDatabaseTableColumnCharsetCollationByOldColumn(datatype string, columnCollation string) (string, string) {
+func (p *OracleProcessor) genOracleMappingMYSQLCompatibleDatabaseTableColumnCharsetCollationByOldColumn(datatype string, columnCollation string) (string, string) {
 	if p.DBCollation {
 		if !strings.EqualFold(columnCollation, "") {
 			return p.DBCharset, columnCollation

@@ -330,9 +330,11 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 		panic(err)
 	}
 
+	var columnNameSli []string
 	columnDatatypeMap := make(map[string]string)
 	for _, res := range results {
 		columnDatatypeMap[res["COLUMN_NAME"]] = res["DATA_TYPE"]
+		columnNameSli = append(columnNameSli, res["COLUMN_NAME"])
 	}
 
 	pkSlis, err := databaseS.GetDatabaseTablePrimaryKey(schemaNameS, tableNameS)
@@ -343,13 +345,25 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 		var pkColumns []string
 		pkArrs := stringutil.StringSplit(pkSlis[0]["COLUMN_LIST"], ",")
 		for _, s := range pkArrs {
-			if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[s]) {
-				break
+			brackets := stringutil.StringExtractorWithinBrackets(s)
+			if len(brackets) == 0 {
+				if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[stringutil.RemovePrefixSuffixOnce(s, "\"", "\"")]) {
+					break
+				} else {
+					pkColumns = append(pkColumns, stringutil.RemovePrefixSuffixOnce(s, "\"", "\""))
+				}
 			} else {
-				pkColumns = append(pkColumns, s)
+				marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+				for _, m := range marks {
+					if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[stringutil.RemovePrefixSuffixOnce(m, "\"", "\"")]) {
+						break
+					} else {
+						pkColumns = append(pkColumns, stringutil.RemovePrefixSuffixOnce(m, "\"", "\""))
+					}
+				}
 			}
 		}
-		if len(pkColumns) == len(pkArrs) {
+		if len(pkColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(pkSlis[0]["COLUMN_LIST"], columnNameSli...)) {
 			return pkColumns, nil
 		}
 	} else if len(pkSlis) > 1 {
@@ -365,13 +379,25 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 			var ukColumns []string
 			ukArrs := stringutil.StringSplit(uk["COLUMN_LIST"], ",")
 			for _, s := range ukArrs {
-				if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[s]) {
-					break
+				brackets := stringutil.StringExtractorWithinBrackets(s)
+				if len(brackets) == 0 {
+					if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[stringutil.RemovePrefixSuffixOnce(s, "\"", "\"")]) {
+						break
+					} else {
+						ukColumns = append(ukColumns, stringutil.RemovePrefixSuffixOnce(s, "\"", "\""))
+					}
 				} else {
-					ukColumns = append(ukColumns, s)
+					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+					for _, m := range marks {
+						if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[stringutil.RemovePrefixSuffixOnce(m, "\"", "\"")]) {
+							break
+						} else {
+							ukColumns = append(ukColumns, stringutil.RemovePrefixSuffixOnce(m, "\"", "\""))
+						}
+					}
 				}
 			}
-			if len(ukColumns) == len(ukArrs) {
+			if len(ukColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(uk["COLUMN_LIST"], columnNameSli...)) {
 				return ukColumns, nil
 			}
 		}
@@ -384,15 +410,27 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 	if len(uiSlis) > 0 {
 		for _, ui := range uiSlis {
 			var uiColumns []string
-			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], ",")
+			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], "|+|")
 			for _, s := range uiArrs {
-				if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[s]) {
-					break
+				brackets := stringutil.StringExtractorWithinBrackets(s)
+				if len(brackets) == 0 {
+					if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[stringutil.RemovePrefixSuffixOnce(s, "\"", "\"")]) {
+						break
+					} else {
+						uiColumns = append(uiColumns, stringutil.RemovePrefixSuffixOnce(s, "\"", "\""))
+					}
 				} else {
-					uiColumns = append(uiColumns, s)
+					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+					for _, m := range marks {
+						if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[stringutil.RemovePrefixSuffixOnce(m, "\"", "\"")]) {
+							break
+						} else {
+							uiColumns = append(uiColumns, stringutil.RemovePrefixSuffixOnce(m, "\"", "\""))
+						}
+					}
 				}
 			}
-			if len(uiColumns) == len(uiArrs) {
+			if len(uiColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(ui["COLUMN_LIST"], columnNameSli...)) {
 				return uiColumns, nil
 			}
 		}
@@ -405,15 +443,27 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 	if len(niSlis) > 0 {
 		for _, ni := range niSlis {
 			var niColumns []string
-			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], ",")
+			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], "|+|")
 			for _, s := range niArrs {
-				if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[s]) {
-					break
+				brackets := stringutil.StringExtractorWithinBrackets(s)
+				if len(brackets) == 0 {
+					if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[stringutil.RemovePrefixSuffixOnce(s, "\"", "\"")]) {
+						break
+					} else {
+						niColumns = append(niColumns, stringutil.RemovePrefixSuffixOnce(s, "\"", "\""))
+					}
 				} else {
-					niColumns = append(niColumns, s)
+					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+					for _, m := range marks {
+						if !FilterDatabaseTableColumnCompareDatatype(columnDatatypeMap[stringutil.RemovePrefixSuffixOnce(m, "\"", "\"")]) {
+							break
+						} else {
+							niColumns = append(niColumns, stringutil.RemovePrefixSuffixOnce(m, "\"", "\""))
+						}
+					}
 				}
 			}
-			if len(niColumns) == len(niArrs) {
+			if len(niColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(ni["COLUMN_LIST"], columnNameSli...)) {
 				return niColumns, nil
 			}
 		}

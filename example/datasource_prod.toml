@@ -1,0 +1,22 @@
+[[datasource]]
+datasource-name = "oracle10g"
+db-type = "oracle"
+username = "marvin"
+password = "marvin"
+host = "120.92.211.117"
+port = 31521
+connect-charset = "al32utf8"
+connect-params = ""
+service-name = "jem10g"
+#pdb-name = ""
+[[datasource]]
+datasource-name = "tidb233"
+db-type = "tidb"
+username = "root"
+password = ""
+host = "120.92.19.233"
+port = 4000
+connect-charset = "utf8mb4"
+#connect-params = ""
+#service-name = ""
+#pdb-name = ""

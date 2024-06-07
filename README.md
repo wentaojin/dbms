@@ -35,13 +35,13 @@
   - Schema 表数据迁移，支持 sql、csv 一致性或非一致性迁移以及自定义 sql 语句迁移
   - Schema 表数据校验，支持 schema、表、列级别路由规则以及自定义筛选过滤字段
   - Schema 表对象信息评估，支持输出类 AWR 报告
+  - Schema NUMBER 数据类型列采样或全扫描，识别 NUMBER 数据类型适配建议
 - ...
 
 **未来计划**
-- ORACLE NUMBER 数据类型列采样或全扫描，用于识别 NUMBER 数据类型字段值是否同时存在整数和小数类型
+- POSTGRESQL 数据库表结构迁移到 MYSQL 兼容性数据库
 - MYSQL 兼容性数据库表结构迁移至 ORACLE 数据库
 - MYSQL 兼容性数据库表结构与 ORACLE 数据库表结构对比
-- POSTGRESQL 数据库表结构迁移到 MYSQL 兼容性数据库
 - ORACLE 数据实时同步到 MYSQL 兼容性数据库（基于 logminer）
 
 ------
@@ -50,10 +50,10 @@
 ![DBMS ARCH](/image/dbms-arch.png "DBMS ARCH")
 
 DBMS 数据库分布式迁移服务平台由 Master、Worker、DBMSCTL、DBMS 四个组件组成，主要功能：
-- Master：实例注册、服务发现、健康检查、api访问（仅leader）
-- Worker：任务运行者
-- DBMSCTL：与 Master Leader 节点交互进行提交任务
-- DBMS：提供集群部署安装、扩容收缩、启动、停止、重启等集群管理操作
+- dbms-master：实例注册、服务发现、健康检查、api访问（仅leader）
+- dbms-worker：任务运行者
+- dbms-ctl：与 Master Leader 节点交互进行提交任务
+- dbms-cluster：提供集群部署安装、扩容收缩、启动、停止、重启等集群管理操作
 
 ------
 ### Quick Start 🛠️

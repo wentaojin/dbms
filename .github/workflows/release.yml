@@ -54,15 +54,15 @@ jobs:
           cd ${{ github.workspace }}
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master -targets=linux/amd64 -pkg component/master ${{ github.workspace }}
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker -targets=linux/amd64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms -targets=linux/amd64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=linux/amd64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-cluster -targets=linux/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-ctl -targets=linux/amd64 -pkg component/cli ${{ github.workspace }}
           
           ls -lnrt ${{ github.workspace }}/bin
           
           sudo mv ${{ github.workspace }}/bin/dbms-master-linux-amd64 ${{ github.workspace }}/bin/dbms-master 
           sudo mv ${{ github.workspace }}/bin/dbms-worker-linux-amd64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-linux-amd64 ${{ github.workspace }}/bin/dbms 
-          sudo mv ${{ github.workspace }}/bin/dbmsctl-linux-amd64 ${{ github.workspace }}/bin/dbmsctl 
+          sudo mv ${{ github.workspace }}/bin/dbms-cluster-linux-amd64 ${{ github.workspace }}/bin/dbms-cluster 
+          sudo mv ${{ github.workspace }}/bin/dbms-ctl-linux-amd64 ${{ github.workspace }}/bin/dbms-ctl 
           
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/example
@@ -72,8 +72,8 @@ jobs:
           pwd
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz dbms-master
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-worker-${{ github.ref_name }}-linux-amd64.tar.gz dbms-worker
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-${{ github.ref_name }}-linux-amd64.tar.gz dbms
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbmsctl-${{ github.ref_name }}-linux-amd64.tar.gz dbmsctl
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-cluster-${{ github.ref_name }}-linux-amd64.tar.gz dbms-cluster
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-ctl-${{ github.ref_name }}-linux-amd64.tar.gz dbms-ctl
           
           sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/example/
           sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
@@ -93,14 +93,14 @@ jobs:
           cd ${{ github.workspace }}
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master -targets=linux/arm64 -pkg component/master ${{ github.workspace }}
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker -targets=linux/arm64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms -targets=linux/arm64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-cluster -targets=linux/arm64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-ctl -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
           sudo mv ${{ github.workspace }}/bin/dbms-master-linux-arm64 ${{ github.workspace }}/bin/dbms-master 
           sudo mv ${{ github.workspace }}/bin/dbms-worker-linux-arm64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-linux-arm64 ${{ github.workspace }}/bin/dbms 
-          sudo mv ${{ github.workspace }}/bin/dbmsctl-linux-arm64 ${{ github.workspace }}/bin/dbmsctl 
+          sudo mv ${{ github.workspace }}/bin/dbms-linux-arm64 ${{ github.workspace }}/bin/dbms-cluster
+          sudo mv ${{ github.workspace }}/bin/dbms-ctl-linux-arm64 ${{ github.workspace }}/bin/dbms-ctl 
           
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/example
@@ -110,8 +110,8 @@ jobs:
           pwd
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-master-${{ github.ref_name }}-linux-arm64.tar.gz dbms-master
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-worker-${{ github.ref_name }}-linux-arm64.tar.gz dbms-worker
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-${{ github.ref_name }}-linux-arm64.tar.gz dbms
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbmsctl-${{ github.ref_name }}-linux-arm64.tar.gz dbmsctl
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-cluster-${{ github.ref_name }}-linux-arm64.tar.gz dbms-cluster
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-ctl-${{ github.ref_name }}-linux-arm64.tar.gz dbms-ctl
 
           sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/example/
           sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
@@ -131,14 +131,14 @@ jobs:
           cd ${{ github.workspace }}
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master -targets=darwin/amd64 -pkg component/master ${{ github.workspace }}
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker -targets=darwin/amd64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms -targets=darwin/amd64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-cluster -targets=darwin/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-ctl -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
           sudo mv ${{ github.workspace }}/bin/dbms-master-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-master 
           sudo mv ${{ github.workspace }}/bin/dbms-worker-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms 
-          sudo mv ${{ github.workspace }}/bin/dbmsctl-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbmsctl 
+          sudo mv ${{ github.workspace }}/bin/dbms-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-cluster 
+          sudo mv ${{ github.workspace }}/bin/dbms-ctl-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-ctl 
           
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/example
@@ -148,8 +148,8 @@ jobs:
           pwd
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-master
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-worker-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-worker
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-${{ github.ref_name }}-darwin-amd64.tar.gz dbms
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbmsctl-${{ github.ref_name }}-darwin-amd64.tar.gz dbmsctl
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-cluster-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-cluster
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-ctl-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-ctl
 
           sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/example/
           sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/
@@ -169,14 +169,14 @@ jobs:
           cd ${{ github.workspace }}
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-master -targets=darwin/arm64 -pkg component/master ${{ github.workspace }}
           xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-worker -targets=darwin/arm64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms -targets=darwin/arm64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbmsctl -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-cluster -targets=darwin/arm64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.21.x -out=dbms-ctl -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
           sudo mv ${{ github.workspace }}/bin/dbms-master-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-master 
           sudo mv ${{ github.workspace }}/bin/dbms-worker-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms 
-          sudo mv ${{ github.workspace }}/bin/dbmsctl-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbmsctl 
+          sudo mv ${{ github.workspace }}/bin/dbms-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-cluster 
+          sudo mv ${{ github.workspace }}/bin/dbms-ctl-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-ctl 
           
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/example
@@ -186,8 +186,8 @@ jobs:
           pwd
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-master-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-master
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-worker-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-worker
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-${{ github.ref_name }}-darwin-arm64.tar.gz dbms
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbmsctl-${{ github.ref_name }}-darwin-arm64.tar.gz dbmsctl
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-cluster-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-cluster
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-ctl-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-ctl
 
           sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/example/
           sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/

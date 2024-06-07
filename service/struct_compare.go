@@ -572,6 +572,10 @@ func StartStructCompareTask(ctx context.Context, taskName, workerAddr string) er
 		if err != nil {
 			return err
 		}
+		err = model.GetITaskLogRW().DeleteLog(txnCtx, []string{taskName})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -677,7 +681,7 @@ func StartStructCompareTask(ctx context.Context, taskName, workerAddr string) er
 	if failedResults > 0 || waitResults > 0 || runResults > 0 || stopResults > 0 {
 		err = model.Transaction(ctx, func(txnCtx context.Context) error {
 			_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
-				TaskName: taskInfo.TaskName,
+				TaskName: taskName,
 			}, map[string]interface{}{
 				"TaskStatus": constant.TaskDatabaseStatusFailed,
 				"EndTime":    time.Now(),
@@ -722,11 +726,12 @@ func StartStructCompareTask(ctx context.Context, taskName, workerAddr string) er
 			zap.Int64("not equal records", notEqualResults),
 			zap.String("detail tips", "please see [struct_compare_task] detail"),
 			zap.String("cost", time.Now().Sub(startTime).String()))
+
 		return nil
 	}
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
-			TaskName: taskInfo.TaskName,
+			TaskName: taskName,
 		}, map[string]interface{}{
 			"TaskStatus": constant.TaskDatabaseStatusSuccess,
 			"EndTime":    time.Now(),

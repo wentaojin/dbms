@@ -119,7 +119,7 @@ func MYSQLDatabaseTableColumnMapORACLECompatibleDatatypeRule(c *Column, buildinD
 			return originColumnType, buildInColumnType, fmt.Errorf("mysql compatible database table column type [%s] map oracle column type rule isn't exist, please checkin", constant.BuildInMySQLDatatypeFloat)
 		}
 	case constant.BuildInMySQLDatatypeDouble:
-		originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInMySQLDatatypeDouble, dataPrecision, dataScale)
+		originColumnType = fmt.Sprintf("%s", constant.BuildInMySQLDatatypeDouble)
 		if val, ok := buildinDatatypeMap[constant.BuildInMySQLDatatypeDouble]; ok {
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
@@ -153,7 +153,11 @@ func MYSQLDatabaseTableColumnMapORACLECompatibleDatatypeRule(c *Column, buildinD
 		}
 
 	case constant.BuildInMySQLDatatypeTime:
-		originColumnType = fmt.Sprintf("%s(%d)", constant.BuildInMySQLDatatypeTime, datetimePrecision)
+		if datetimePrecision == 0 {
+			originColumnType = fmt.Sprintf("%s", constant.BuildInMySQLDatatypeTime)
+		} else {
+			originColumnType = fmt.Sprintf("%s(%d)", constant.BuildInMySQLDatatypeTime, datetimePrecision)
+		}
 		if val, ok := buildinDatatypeMap[constant.BuildInMySQLDatatypeTime]; ok {
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
@@ -169,7 +173,11 @@ func MYSQLDatabaseTableColumnMapORACLECompatibleDatatypeRule(c *Column, buildinD
 			return originColumnType, buildInColumnType, fmt.Errorf("mysql compatible database table column type [%s] map oracle column type rule isn't exist, please checkin", constant.BuildInMySQLDatatypeDate)
 		}
 	case constant.BuildInMySQLDatatypeDatetime:
-		originColumnType = fmt.Sprintf("%s(%d)", constant.BuildInMySQLDatatypeDatetime, datetimePrecision)
+		if datetimePrecision == 0 {
+			originColumnType = fmt.Sprintf("%s", constant.BuildInMySQLDatatypeDatetime)
+		} else {
+			originColumnType = fmt.Sprintf("%s(%d)", constant.BuildInMySQLDatatypeDatetime, datetimePrecision)
+		}
 		if val, ok := buildinDatatypeMap[constant.BuildInMySQLDatatypeDatetime]; ok {
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
@@ -258,9 +266,9 @@ func MYSQLDatabaseTableColumnMapORACLECompatibleDatatypeRule(c *Column, buildinD
 			return originColumnType, buildInColumnType, fmt.Errorf("mysql compatible database table column type [%s] map oracle column type rule isn't exist, please checkin", constant.BuildInMySQLDatatypeBinary)
 		}
 	case constant.BuildInMySQLDatatypeVarbinary:
-		originColumnType = fmt.Sprintf("%s(%d)", constant.BuildInMySQLDatatypeVarbinary, dataPrecision)
+		originColumnType = fmt.Sprintf("%s(%d)", constant.BuildInMySQLDatatypeVarbinary, dataLength)
 		if val, ok := buildinDatatypeMap[constant.BuildInMySQLDatatypeVarbinary]; ok {
-			buildInColumnType = fmt.Sprintf("%s(%d)", stringutil.StringUpper(val), dataPrecision)
+			buildInColumnType = fmt.Sprintf("%s(%d)", stringutil.StringUpper(val), dataLength)
 			return originColumnType, buildInColumnType, nil
 		} else {
 			return originColumnType, buildInColumnType, fmt.Errorf("mysql compatible database table column type [%s] map oracle column type rule isn't exist, please checkin", constant.BuildInMySQLDatatypeVarbinary)
@@ -583,6 +591,8 @@ func mysqlHandleColumnDefaultValueCharset(columnName, datatype, defaultVal, sour
 	} else {
 		if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.MYSQLDatabaseTableColumnDefaultValueWithStringNull) {
 			dataDefault = "'" + stringutil.BytesToString(convertTargetRaw) + "'"
+		} else if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.MYSQLDatabaseTableColumnDefaultValueWithNULLSTRING) {
+			dataDefault = constant.MYSQLDatabaseTableColumnDefaultValueWithNULL
 		} else {
 			dataDefault = stringutil.BytesToString(convertTargetRaw)
 		}

@@ -20,7 +20,7 @@ sh local_install.sh
 
 集群部署参数配置[示例](../example/topology.yaml)  
 ```shell
-dbms deploy ${cluster_name} ${cluster_version} ${topology.yaml} --mirror-dir ${offline_package_path} -u ${deploy_user} 
+dbms-cluster deploy ${cluster_name} ${cluster_version} ${topology.yaml} --mirror-dir ${offline_package_path} -u ${deploy_user} 
 ```
 
 更多集群运维管理命令
@@ -29,8 +29,8 @@ dbms deploy ${cluster_name} ${cluster_version} ${topology.yaml} --mirror-dir ${o
 the application for the dbms cluster
 
 Usage:
-  dbms [flags]
-  dbms [command]
+  dbms-cluster [flags]
+  dbms-cluster [command]
 
 Available Commands:
   completion  Generate the autocompletion script for the specified shell
@@ -63,5 +63,5 @@ Flags:
   -v, --version             version for app client
       --wait-timeout uint   Timeout in seconds to wait for an operation to complete, ignored for operations that don't fit (default 120)
 
-Use "dbms [command] --help" for more information about a command.
+Use "dbms-cluster [command] --help" for more information about a command.
 ```

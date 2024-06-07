@@ -145,9 +145,11 @@ func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNa
 		return nil, err
 	}
 
+	var columnNameSli []string
 	columnDatatypeMap := make(map[string]string)
 	for _, res := range results {
 		columnDatatypeMap[res["COLUMN_NAME"]] = res["DATA_TYPE"]
+		columnNameSli = append(columnNameSli, res["COLUMN_NAME"])
 	}
 
 	if !strings.EqualFold(columnNameS, "") && d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[columnNameS]) {
@@ -162,13 +164,25 @@ func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNa
 		var pkColumns []string
 		pkArrs := stringutil.StringSplit(pkSlis[0]["COLUMN_LIST"], ",")
 		for _, s := range pkArrs {
-			if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
-				break
+			brackets := stringutil.StringExtractorWithinBrackets(s)
+			if len(brackets) == 0 {
+				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+					break
+				} else {
+					pkColumns = append(pkColumns, s)
+				}
 			} else {
-				pkColumns = append(pkColumns, s)
+				marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+				for _, m := range marks {
+					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
+						break
+					} else {
+						pkColumns = append(pkColumns, m)
+					}
+				}
 			}
 		}
-		if len(pkColumns) == len(pkArrs) {
+		if len(pkColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(pkSlis[0]["COLUMN_LIST"], columnNameSli...)) {
 			return pkColumns, nil
 		}
 	} else if len(pkSlis) > 1 {
@@ -184,13 +198,25 @@ func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNa
 			var ukColumns []string
 			ukArrs := stringutil.StringSplit(uk["COLUMN_LIST"], ",")
 			for _, s := range ukArrs {
-				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
-					break
+				brackets := stringutil.StringExtractorWithinBrackets(s)
+				if len(brackets) == 0 {
+					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+						break
+					} else {
+						ukColumns = append(ukColumns, s)
+					}
 				} else {
-					ukColumns = append(ukColumns, s)
+					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+					for _, m := range marks {
+						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
+							break
+						} else {
+							ukColumns = append(ukColumns, m)
+						}
+					}
 				}
 			}
-			if len(ukColumns) == len(ukArrs) {
+			if len(ukColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(uk["COLUMN_LIST"], columnNameSli...)) {
 				return ukColumns, nil
 			}
 		}
@@ -203,15 +229,27 @@ func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNa
 	if len(uiSlis) > 0 {
 		for _, ui := range uiSlis {
 			var uiColumns []string
-			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], ",")
+			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], "|+|")
 			for _, s := range uiArrs {
-				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
-					break
+				brackets := stringutil.StringExtractorWithinBrackets(s)
+				if len(brackets) == 0 {
+					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+						break
+					} else {
+						uiColumns = append(uiColumns, s)
+					}
 				} else {
-					uiColumns = append(uiColumns, s)
+					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+					for _, m := range marks {
+						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
+							break
+						} else {
+							uiColumns = append(uiColumns, m)
+						}
+					}
 				}
 			}
-			if len(uiColumns) == len(uiArrs) {
+			if len(uiColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(ui["COLUMN_LIST"], columnNameSli...)) {
 				return uiColumns, nil
 			}
 		}
@@ -224,15 +262,27 @@ func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNa
 	if len(niSlis) > 0 {
 		for _, ni := range niSlis {
 			var niColumns []string
-			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], ",")
+			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], "|+|")
 			for _, s := range niArrs {
-				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
-					break
+				brackets := stringutil.StringExtractorWithinBrackets(s)
+				if len(brackets) == 0 {
+					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+						break
+					} else {
+						niColumns = append(niColumns, s)
+					}
 				} else {
-					niColumns = append(niColumns, s)
+					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+					for _, m := range marks {
+						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
+							break
+						} else {
+							niColumns = append(niColumns, m)
+						}
+					}
 				}
 			}
-			if len(niColumns) == len(niArrs) {
+			if len(niColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(ni["COLUMN_LIST"], columnNameSli...)) {
 				return niColumns, nil
 			}
 		}

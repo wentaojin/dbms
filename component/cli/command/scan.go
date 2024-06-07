@@ -35,7 +35,7 @@ func (a *App) AppScan() component.Cmder {
 
 func (a *AppScan) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "compare",
+		Use:              "scan",
 		Short:            "Operator cluster data scan",
 		Long:             `Operator cluster data scan`,
 		RunE:             a.RunE,

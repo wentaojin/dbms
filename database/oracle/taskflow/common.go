@@ -71,7 +71,7 @@ func inspectMigrateTask(taskName, taskFlow, taskMode string, databaseS database.
 		return version, "", oracleCollation, fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
 	}
 	if !stringutil.IsContainedString(constant.MigrateDataSupportCharset, stringutil.StringUpper(connectDBCharsetT)) {
-		return version, "", oracleCollation, fmt.Errorf("mysql current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
+		return version, "", oracleCollation, fmt.Errorf("mysql compatible database current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
 	}
 
 	if strings.EqualFold(taskMode, constant.TaskModeStructMigrate) {
