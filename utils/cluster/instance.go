@@ -501,13 +501,13 @@ func (b *BaseInstance) InitSystemdConfig(ctx context.Context, e executor.Executo
 
 	serviceCfgName := filepath.Join(cacheDir, fmt.Sprintf("%s-%s-%d.service", compName, instHost, instPort))
 
-	systemMode := opt.SystemdMode
-	if len(systemMode) == 0 {
-		systemMode = SystemMode
+	systemdMode := opt.SystemdMode
+	if len(systemdMode) == 0 {
+		systemdMode = SystemMode
 	}
 
 	if err := systemd.NewSystemdConfig(compName, user, b.InstanceDeployDir()).
-		WithSystemMode(string(systemMode)).
+		WithSystemdMode(string(systemdMode)).
 		ConfigToFile(serviceCfgName); err != nil {
 		return err
 	}

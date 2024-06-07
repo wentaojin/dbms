@@ -30,7 +30,7 @@ type Config struct {
 	ServiceName        string
 	User               string
 	DeployDir          string
-	SystemMode         string
+	SystemdMode        string
 	GrantCapNetRaw     bool
 	DisableSendSigkill bool
 	// Takes one of no, on-success, on-failure, on-abnormal, on-watchdog, on-abort, or always.
@@ -60,8 +60,8 @@ func (c *Config) WithRestart(action string) *Config {
 	return c
 }
 
-func (c *Config) WithSystemMode(mode string) *Config {
-	c.SystemMode = mode
+func (c *Config) WithSystemdMode(mode string) *Config {
+	c.SystemdMode = mode
 	return c
 }
 
