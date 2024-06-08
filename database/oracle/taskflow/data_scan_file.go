@@ -195,7 +195,7 @@ func (s *DataScanFile) writeScanFile(str string) (int, error) {
 }
 
 func (s *DataScanFile) initOutputScanFile() error {
-	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("scan_%s.sql", stringutil.StringLower(s.TaskName))), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("data_scan_%s.sql", stringutil.StringLower(s.TaskName))), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}

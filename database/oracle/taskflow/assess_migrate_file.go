@@ -101,7 +101,7 @@ func (s *AssessMigrateFile) SyncFile() error {
 }
 
 func (s *AssessMigrateFile) initOutputAssessFile() error {
-	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("report_%s.html", s.TaskName)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("assess_report_%s.html", s.TaskName)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}

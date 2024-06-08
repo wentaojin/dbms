@@ -91,12 +91,14 @@ func GenMYSQLCompatibleDatabaseInsertStmtSQL(targetSchemaName, targetTableName, 
 		}
 	}
 
-	var columnDataSli []string
-	for i := 0; i < columnDataCounts; i++ {
-		columnDataSli = append(columnDataSli, columnDataT)
+	columnDatas := stringutil.StringSplit(columnDataT, constant.StringSeparatorComma)
+	columnDataSli := stringutil.StringSplitSlice(columnDatas, columnDataCounts/len(columnDetailT))
+	var suffixVal []string
+	for _, vals := range columnDataSli {
+		suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, stringutil.StringJoin(vals, constant.StringSeparatorComma), `)`))
 	}
 
-	return stringutil.StringBuilder(prefixSQL, `(`, stringutil.StringJoin(columnDataSli, constant.StringSeparatorComma), `)`)
+	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma))
 }
 
 func GenMYSQLCompatibleDatabaseDeleteStmtSQL(targetSchemaName, targetTableName, sqlHintT string, columnDetailT []string, columnDataT []string, columnDataCounts int) string {

@@ -77,9 +77,9 @@ $ make runWorker
 ```
 **验证测试**
 
-dbmsctl 命令 help，通过子命令进行任务提交验证测试
+dbms-ctl 命令 help，通过子命令进行任务提交验证测试
 ```shell
-$ go run component/cli/main.go --help
+$ dbms-ctl --help
 CLI dbmsctl app for dbms cluster
 
 Usage:

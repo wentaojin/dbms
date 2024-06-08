@@ -138,7 +138,7 @@ func (s *DataCompareFile) writeCompareFile(str string) (int, error) {
 }
 
 func (s *DataCompareFile) initOutputCompareFile() error {
-	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("fixed_%s.sql", stringutil.StringLower(s.TaskName))), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("struct_compare_%s.sql", stringutil.StringLower(s.TaskName))), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}

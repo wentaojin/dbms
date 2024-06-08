@@ -321,7 +321,7 @@ func (s *StructMigrateFile) writeStructIncompatibleFile(str string) (int, error)
 }
 
 func (s *StructMigrateFile) initOutputCompatibleFile() error {
-	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("compatible_%s.sql", s.SchemaNameS)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("struct_migrate_compatible_%s.sql", s.SchemaNameS)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
@@ -331,7 +331,7 @@ func (s *StructMigrateFile) initOutputCompatibleFile() error {
 }
 
 func (s *StructMigrateFile) initOutputInCompatibleFile() error {
-	outInCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("incompatible_%s.sql", s.SchemaNameS)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	outInCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("struct_migrate_incompatible_%s.sql", s.SchemaNameS)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
