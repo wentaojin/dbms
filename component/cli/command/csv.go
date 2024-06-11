@@ -129,7 +129,6 @@ func (a *AppCsvDelete) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete Csv Migrate Task [%v]！！！\n", a.task)
 	return nil
 }
 

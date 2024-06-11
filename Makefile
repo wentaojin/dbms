@@ -92,8 +92,8 @@ seedWorker:
 build: clean gotool
 	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms-master $(MASTERCMD)
 	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms-worker $(WORKERCMD)
-	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbmsctl $(CTLCMD)
-	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms $(CLUSTERCMD)
+	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms-ctl $(CTLCMD)
+	$(GOBUILD) -ldflags '$(LDFLAGS)' -o $(BINARYPATH)/dbms-cluster $(CLUSTERCMD)
 
 gotool:
 	$(GO) mod tidy

@@ -397,7 +397,7 @@ func (s *Server) proxy() gin.HandlerFunc {
 			if !s.dbConnReady.Load() && !strings.EqualFold(c.Request.URL.Path, stringutil.StringBuilder(openapi.DBMSAPIBasePath, openapi.APIDatabasePath)) {
 				c.JSON(http.StatusOK, openapi.Response{
 					Code:  http.StatusBadRequest,
-					Error: fmt.Sprintf("database connection is not ready, disable service, please check whether the database connection has been created. if it has been created, please wait 30s and retry sending the request. if it has not beed created, please create the database connection and wait 30s sending the request."),
+					Error: fmt.Sprintf("database connection is not ready, disable service, please check whether the database connection has been created. if it has been created, please wait 30s-120s and retry sending the request. if it has not beed created, please create the database connection and wait 30s-120s sending the request."),
 				})
 				c.Abort()
 				return

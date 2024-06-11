@@ -563,7 +563,6 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir str
 		return err
 	}
 
-	fmt.Printf("the data compare task table records aren't eqal record sql file had be output to [%v], please forward to view\n", outputDir)
 	return nil
 }
 

@@ -129,7 +129,6 @@ func (a *AppStatementDelete) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete statement migrate Task [%v]！！！\n", a.task)
 	return nil
 }
 

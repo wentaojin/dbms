@@ -18,6 +18,7 @@ package taskflow
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -74,8 +75,8 @@ func (s *DataCompareFile) SyncFile() error {
 		return err
 	}
 	if len(migrateTasks) == 0 {
-		fmt.Printf("the data compare task all of the table records are equal, current not exist not equal table records.\n")
-		return nil
+		// fmt.Printf("the data compare task all of the table records are equal, current not exist not equal table records.\n")
+		return errors.New(constant.TaskDatabaseStatusEqual)
 	}
 
 	tableTaskM := make(map[string]string)

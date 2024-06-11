@@ -19,10 +19,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/constant"
 	"strconv"
 	"strings"
-
-	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
 
@@ -69,6 +68,9 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	if !strings.EqualFold(datasource.PdbName, "") {
 		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CONTAINER = %s`, datasource.PdbName))
 	}
+	// Testing
+	// Fixed MACOS SIP Security, DYLD_LIBRARY_PATH not working
+	oraDSN.LibDir = "/Users/marvin/storehouse/oracle/instantclient_19_16"
 
 	// session params
 	sessionParams = append(sessionParams, []string{

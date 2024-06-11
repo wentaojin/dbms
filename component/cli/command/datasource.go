@@ -129,7 +129,6 @@ func (a *AppDatasourceDelete) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete Datasource [%v]！！！\n", a.name)
 	return nil
 }
 

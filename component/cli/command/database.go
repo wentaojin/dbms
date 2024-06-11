@@ -130,9 +130,6 @@ func (a *AppDatabaseDelete) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Success Delete Database！！！\n")
-
 	return nil
 }
 

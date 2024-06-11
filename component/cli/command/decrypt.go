@@ -17,6 +17,7 @@ package command
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
@@ -53,23 +54,37 @@ func (a *AppDecrypt) Cmd() *cobra.Command {
 }
 
 func (a *AppDecrypt) RunE(cmd *cobra.Command, args []string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("decrypt"))
+	fmt.Printf("Category:     %s\n", cyan.Sprint(a.category))
+	fmt.Printf("Data:         %s\n", cyan.Sprint(a.data))
+
 	if strings.EqualFold(a.category, "chunk") {
 		desChunkDetailS, err := stringutil.Decrypt(a.data, []byte(constant.DefaultDataEncryptDecryptKey))
 		if err != nil {
-			return err
+			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+			fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
+			return nil
 		}
 		decChunkDetailS, err := snappy.Decode(nil, []byte(desChunkDetailS))
 		if err != nil {
-			return err
+			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+			fmt.Printf("Response:     %s\n", color.RedString("error decode failed: %v", err))
+			return nil
 		}
-		fmt.Printf("the database table chunk decrypt:\n%v\n", stringutil.BytesToString(decChunkDetailS))
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.GreenString("the database table chunk decrypt: %v\n", stringutil.BytesToString(decChunkDetailS)))
+		return nil
 	} else {
 		decString, err := stringutil.Decrypt(a.data, []byte(constant.DefaultDataEncryptDecryptKey))
 		if err != nil {
-			return err
+			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+			fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
+			return nil
 		}
-		fmt.Printf("the database table decrypt:\n%v\n", decString)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.GreenString("the database table decrypt: %v\n", decString))
+		return nil
 	}
-
-	return nil
 }

@@ -17,6 +17,7 @@ package command
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
@@ -78,8 +79,16 @@ func (a *AppTaskStart) Cmd() *cobra.Command {
 }
 
 func (a *AppTaskStart) RunE(cmd *cobra.Command, args []string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("start"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+
 	if strings.EqualFold(a.task, "") {
-		return fmt.Errorf("operate task flag [task] can't be null, please setting")
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
+		return nil
 	}
 
 	bodyReq := make(map[string]interface{})
@@ -89,25 +98,33 @@ func (a *AppTaskStart) RunE(cmd *cobra.Command, args []string) error {
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
+		return nil
 	}
 	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
-
-	fmt.Println(formattedJSON)
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
 
@@ -134,8 +151,16 @@ func (a *AppTaskStop) Cmd() *cobra.Command {
 }
 
 func (a *AppTaskStop) RunE(cmd *cobra.Command, args []string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("stop"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+
 	if strings.EqualFold(a.task, "") {
-		return fmt.Errorf("operate task flag [task] can't be null, please setting")
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
+		return nil
 	}
 
 	bodyReq := make(map[string]interface{})
@@ -145,25 +170,33 @@ func (a *AppTaskStop) RunE(cmd *cobra.Command, args []string) error {
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
+		return nil
 	}
 	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
-
-	fmt.Println(formattedJSON)
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
 
@@ -190,10 +223,17 @@ func (a *AppTaskDelete) Cmd() *cobra.Command {
 }
 
 func (a *AppTaskDelete) RunE(cmd *cobra.Command, args []string) error {
-	if strings.EqualFold(a.task, "") {
-		return fmt.Errorf("operate task flag [task] can't be null, please setting")
-	}
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("delete"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
 
+	if strings.EqualFold(a.task, "") {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
+		return nil
+	}
 	bodyReq := make(map[string]interface{})
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationDelete
@@ -201,25 +241,33 @@ func (a *AppTaskDelete) RunE(cmd *cobra.Command, args []string) error {
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
+		return nil
 	}
 	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
-
-	fmt.Println(formattedJSON)
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
 
@@ -248,12 +296,22 @@ func (a *AppTaskCrontab) Cmd() *cobra.Command {
 }
 
 func (a *AppTaskCrontab) RunE(cmd *cobra.Command, args []string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("crontab"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+
 	if strings.EqualFold(a.task, "") {
-		return fmt.Errorf("operate task flag [task] can't be null, please setting")
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
+		return nil
 	}
 
 	if strings.EqualFold(a.express, "") {
-		return fmt.Errorf("operate task flag [express] can't be null, please setting")
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [express] can't be null, please setting"))
+		return nil
 	}
 
 	bodyReq := make(map[string]interface{})
@@ -263,25 +321,33 @@ func (a *AppTaskCrontab) RunE(cmd *cobra.Command, args []string) error {
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
+		return nil
 	}
 	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
-
-	fmt.Println(formattedJSON)
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
 
@@ -308,10 +374,17 @@ func (a *AppTaskClear) Cmd() *cobra.Command {
 }
 
 func (a *AppTaskClear) RunE(cmd *cobra.Command, args []string) error {
-	if strings.EqualFold(a.task, "") {
-		return fmt.Errorf("operate task flag [task] can't be null, please setting")
-	}
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("delete"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
 
+	if strings.EqualFold(a.task, "") {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
+		return nil
+	}
 	bodyReq := make(map[string]interface{})
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationClear
@@ -319,25 +392,33 @@ func (a *AppTaskClear) RunE(cmd *cobra.Command, args []string) error {
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
+		return nil
 	}
 	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
-
-	fmt.Println(formattedJSON)
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
 
@@ -364,10 +445,17 @@ func (a *AppTaskGet) Cmd() *cobra.Command {
 }
 
 func (a *AppTaskGet) RunE(cmd *cobra.Command, args []string) error {
-	if strings.EqualFold(a.task, "") {
-		return fmt.Errorf("operate task flag [task] can't be null, please setting")
-	}
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("delete"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
 
+	if strings.EqualFold(a.task, "") {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
+		return nil
+	}
 	bodyReq := make(map[string]interface{})
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationGet
@@ -375,24 +463,32 @@ func (a *AppTaskGet) RunE(cmd *cobra.Command, args []string) error {
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
+		return nil
 	}
 	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
 	}
-
-	fmt.Println(formattedJSON)
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }

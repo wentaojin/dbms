@@ -21,8 +21,8 @@ import (
 
 type Datasource struct {
 	ID             uint64 `gorm:"primarykey;autoIncrement;comment:id" json:"id"`
-	DatasourceName string `gorm:"not null;type:varchar(10);uniqueIndex:uniq_datasource_name;comment:name of datasource" json:"datasourceName"`
-	DbType         string `gorm:"not null;type:varchar(10);uniqueIndex:uniq_datasource_complex;comment:type of datasource, eg.Oracle/Mysql/Tidb" json:"dbType"`
+	DatasourceName string `gorm:"not null;type:varchar(30);uniqueIndex:uniq_datasource_name;comment:name of datasource" json:"datasourceName"`
+	DbType         string `gorm:"not null;type:varchar(30);uniqueIndex:uniq_datasource_complex;comment:type of datasource, eg.Oracle/Mysql/Tidb" json:"dbType"`
 	Username       string `gorm:"type:varchar(100);uniqueIndex:uniq_datasource_complex;comment:username" json:"username"`
 	Password       string `gorm:"type:varchar(100);comment:user password" json:"password"`
 	Host           string `gorm:"type:varchar(15);uniqueIndex:uniq_datasource_complex;comment:host ip" json:"host"`

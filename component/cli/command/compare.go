@@ -18,6 +18,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"github.com/fatih/color"
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
@@ -132,7 +133,6 @@ func (a *AppCompareDelete) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Success Delete struct compare Task [%v]！！！\n", a.task)
 	return nil
 }
 
@@ -203,15 +203,27 @@ func (a *AppCompareGen) RunE(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("compare"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("gen"))
+
 	if strings.EqualFold(a.task, "") || strings.EqualFold(a.outputDir, "") {
-		return fmt.Errorf("flag parameter [task] and [outputDir] are requirement, can not null")
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("flag parameter [task] and [outputDir] are requirement, can not null"))
+		return nil
 	}
 
 	err := service.GenStructCompareTask(context.Background(), a.Server, a.task, a.outputDir)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
-	fmt.Printf("the struct compare task ddl sql file had be output to [%v], please forward to view\n", a.outputDir)
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", color.GreenString("the struct compare task ddl sql file had be output to [%v], please forward to view\n", a.outputDir))
 	return nil
 }

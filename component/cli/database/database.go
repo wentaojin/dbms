@@ -17,6 +17,7 @@ package database
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 
 	"github.com/wentaojin/dbms/openapi"
 
@@ -45,67 +46,107 @@ func (d *Database) String() string {
 
 func Upsert(serverAddr string, file string) error {
 	var cfg = &Config{}
+
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("database"))
+	fmt.Printf("File:         %s\n", cyan.Sprint(file))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("upsert"))
+
 	if _, err := toml.DecodeFile(file, cfg); err != nil {
-		return fmt.Errorf("failed decode toml config file %s: %v", file, err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("failed decode toml config file %s: %v", file, err))
+		return nil
 	}
 
 	resp, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatabasePath), []byte(cfg.Database.String()))
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		return nil
 	}
-	fmt.Println(formattedJSON)
+
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
 
 func Delete(serverAddr string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("database"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("delete"))
+
 	resp, err := openapi.Request(openapi.RequestDELETEMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatabasePath), nil)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		return nil
 	}
-	fmt.Println(formattedJSON)
 
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
 
 func Get(serverAddr string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("database"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("get"))
+
 	resp, err := openapi.Request(openapi.RequestGETMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APIDatabasePath), nil)
 	if err != nil {
-		return err
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
 	}
 
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
-		return fmt.Errorf("error decoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
-		return fmt.Errorf("error encoding JSON: %v", err)
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		return nil
 	}
-	fmt.Println(formattedJSON)
-
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
