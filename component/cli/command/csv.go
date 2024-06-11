@@ -151,6 +151,7 @@ func (a *AppCsvGet) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "get csv migrate task config")
 	return cmd
 }
 

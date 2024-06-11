@@ -147,8 +147,8 @@ func (a *AppDatabase) AppDatabaseGet() component.Cmder {
 func (a *AppDatabaseGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster database",
-		Long:             `get cluster database`,
+		Short:            "get cluster database config",
+		Long:             `get cluster database config`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,

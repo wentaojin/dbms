@@ -151,6 +151,7 @@ func (a *AppStatementGet) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "get statement migrate task config")
 	return cmd
 }
 

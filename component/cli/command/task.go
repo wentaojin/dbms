@@ -359,7 +359,7 @@ func (a *AppTaskGet) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-	cmd.Flags().StringVarP(&a.task, "task", "t", "", "operate task name")
+	cmd.Flags().StringVarP(&a.task, "task", "t", "", "get the task log information")
 	return cmd
 }
 

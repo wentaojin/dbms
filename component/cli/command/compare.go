@@ -154,6 +154,7 @@ func (a *AppCompareGet) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "get struct compare task config")
 	return cmd
 }
 

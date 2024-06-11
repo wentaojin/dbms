@@ -151,6 +151,7 @@ func (a *AppSqlGet) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "get sql migrate task config")
 	return cmd
 }
 

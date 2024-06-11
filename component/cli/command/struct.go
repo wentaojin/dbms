@@ -154,6 +154,7 @@ func (a *AppStructGet) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "get struct migrate task config")
 	return cmd
 }
 

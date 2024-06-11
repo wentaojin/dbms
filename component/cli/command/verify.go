@@ -154,6 +154,7 @@ func (a *AppVerifyGet) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "get data verify task config")
 	return cmd
 }
 

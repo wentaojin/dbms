@@ -341,6 +341,6 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 		return err
 	}
 
-	mg.Logger.Infof("Cluster `%s` deployed successfully, you can start it with command: `%s`", clusterName, color.New(color.Bold).Sprintf("dbms start %s", clusterName))
+	mg.Logger.Infof("Cluster `%s` deployed successfully, you can start it with command: `%s`", clusterName, color.New(color.Bold).Sprintf("dbms-cluster start %s", clusterName))
 	return nil
 }

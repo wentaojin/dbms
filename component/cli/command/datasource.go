@@ -147,13 +147,13 @@ func (a *AppDatasource) AppDatasourceGet() component.Cmder {
 func (a *AppDatasourceGet) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "get",
-		Short:            "get cluster datasource",
-		Long:             `get cluster datasource`,
+		Short:            "get cluster datasource config",
+		Long:             `get cluster datasource config`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-	cmd.Flags().StringVarP(&a.name, "name", "n", "xxx", "get datasource name")
+	cmd.Flags().StringVarP(&a.name, "name", "n", "xxx", "get datasource config")
 	return cmd
 }
 

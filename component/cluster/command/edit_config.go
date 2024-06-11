@@ -98,6 +98,6 @@ func (a *AppEditConfig) EditConfig(clusterName string, gOpt *operator.Options) e
 		return fmt.Errorf("failed to save meta, error detail: %v", err)
 	}
 
-	mg.Logger.Infof("Applied successfully, please use `dbms reload %s [-N <nodes>] [-R <roles>]` to reload config.", clusterName)
+	mg.Logger.Infof("Applied successfully, please use `dbms-cluster reload %s [-N <nodes>] [-R <roles>]` to reload config.", clusterName)
 	return nil
 }
