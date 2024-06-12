@@ -479,16 +479,15 @@ func valueToString(value reflect.Value) string {
 	}
 }
 
-func GetOutBoundIP() (ip string, err error) {
+// GetOutBoundIP used for the host ipaddr
+func GetOutBoundIP() (string, error) {
 	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err != nil {
-		fmt.Println(err)
-		return
+		return "", fmt.Errorf("get host ip err: %v", err)
 	}
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	fmt.Println(localAddr.String())
-	ip = strings.Split(localAddr.String(), ":")[0]
-	return
+	ip := strings.Split(localAddr.String(), ":")[0]
+	return ip, nil
 }
 
 // VersionOrdinal used for the database version comparison

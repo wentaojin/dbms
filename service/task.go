@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"strings"
 
 	"google.golang.org/grpc/credentials/insecure"
@@ -40,11 +41,33 @@ import (
 )
 
 func StartTask(ctx context.Context, cli *clientv3.Client, discoveries *etcdutil.Discovery, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
+	// the non-scheduled task request express is always empty and needs to be judged by branching.
+	// when the scheduled task request calls the StartTask function,
+	// the crontab mark will be set artificially, and there is no need to go through the branch to judge.
+	if !strings.EqualFold(req.Express, "crontab") {
+		// according to the configuring prefix key, and get key information
+		key := stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, req.TaskName)
+		exprResp, err := etcdutil.GetKey(cli, key)
+		if err != nil {
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: err.Error(),
+			}}, err
+		}
+		if len(exprResp.Kvs) != 0 {
+			errMsg := fmt.Errorf("the task [%s] express [%s] has be submited to crontab job, disable direct start the task, please wait the crontab task running or clear the crontab task and retry start the task", req.TaskName, req.Express)
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: errMsg.Error(),
+			}}, errMsg
+		}
+	}
+
 	workerAddr, err := discoveries.GetFreeWorker(req.TaskName)
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
+			Message: workerAddr,
 		}}, err
 	}
 	// send worker request
@@ -166,12 +189,45 @@ func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRe
 			Message: err.Error(),
 		}}, err
 	}
+
 	if strings.EqualFold(t.TaskName, "") {
 		errMsg := fmt.Errorf("the task [%s] is not exist, forbid delete, please double check", req.TaskName)
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
 			Message: errMsg.Error(),
 		}}, errMsg
+	}
+
+	// exclude crontab task
+	// according to the configuring prefix key, and get key information from etcd
+	key := stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, req.TaskName)
+	exprResp, err := etcdutil.GetKey(cli, key)
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result: openapi.ResponseResultStatusFailed,
+			Message: fmt.Sprintf("the task [%s] get key [%s] failed, disable delete task. If need, please retry delete task",
+				req.TaskName, key),
+		}}, err
+	}
+
+	// if an existing task is the same as the new task, skip creating it again
+	if len(exprResp.Kvs) != 0 {
+		for _, resp := range exprResp.Kvs {
+			var expr *Express
+			err = stringutil.UnmarshalJSON(resp.Value, &expr)
+			if err != nil {
+				return &pb.OperateTaskResponse{Response: &pb.Response{
+					Result:  openapi.ResponseResultStatusFailed,
+					Message: fmt.Sprintf("the task [%s] and express [%s] unmarshal failed, disable delete task", req.TaskName, req.Express),
+				}}, err
+			}
+			if strings.EqualFold(expr.TaskName, req.TaskName) && !strings.EqualFold(expr.Express, "") {
+				return &pb.OperateTaskResponse{Response: &pb.Response{
+					Result:  openapi.ResponseResultStatusFailed,
+					Message: fmt.Sprintf("the task [%s] and express [%v] has be submited, disable delete task. If need, please clear the crontab task [%s] and retry delete task", req.TaskName, req.Express, req.TaskName),
+				}}, err
+			}
+		}
 	}
 
 	if strings.EqualFold(t.TaskStatus, constant.TaskDatabaseStatusRunning) {
@@ -286,72 +342,58 @@ func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskRe
 }
 
 type Cronjob struct {
-	ctx         context.Context
 	cli         *clientv3.Client
 	discoveries *etcdutil.Discovery
 	taskName    string
 }
 
-func NewCronjob(ctx context.Context,
+func NewCronjob(
 	cli *clientv3.Client, discoveries *etcdutil.Discovery, taskName string) *Cronjob {
 	return &Cronjob{
-		ctx:         ctx,
 		cli:         cli,
 		discoveries: discoveries,
 		taskName:    taskName}
 }
 
 func (c *Cronjob) Run() {
-	_, err := StartTask(c.ctx, c.cli, c.discoveries, &pb.OperateTaskRequest{
+	key := stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, c.taskName)
+	// rpc error: code = Canceled desc = context canceled
+	// resolved using context.TODO()
+	_, err := StartTask(context.TODO(), c.cli, c.discoveries, &pb.OperateTaskRequest{
 		Operate:  constant.TaskOperationStart,
 		TaskName: c.taskName,
+		Express:  "crontab", // only avoid start the task error
 	})
 	if err != nil {
-		panic(err)
+		logger.Warn("the crontab task start failed, If need, please retry submit crontab task",
+			zap.String("task", c.taskName),
+			zap.String("key", key),
+			zap.Error(err))
+		panic(fmt.Errorf("the crontab task [%s] start failed, If need, please retry submit crontab task, error: %v", c.taskName, err))
 	}
-	_, err = etcdutil.TxnKey(c.cli,
-		clientv3.OpDelete(
-			stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, c.taskName)),
-		clientv3.OpDelete(
-			stringutil.StringBuilder(constant.DefaultMasterCrontabEntryPrefixKey, c.taskName)))
+	_, err = etcdutil.DeleteKey(c.cli, key)
 	if err != nil {
-		panic(err)
+		logger.Warn("the crontab task delete key failed",
+			zap.String("task", c.taskName),
+			zap.String("key", key),
+			zap.Error(err))
+		panic(fmt.Errorf("the crontab task [%s] delete key [%s] failed, error: %v", c.taskName, key, err))
 	}
+}
+
+// Express used to the store key-value information
+type Express struct {
+	TaskName string
+	EntryID  cron.EntryID
+	Express  string
+}
+
+func (e *Express) String() string {
+	jsonStr, _ := stringutil.MarshalJSON(e)
+	return jsonStr
 }
 
 func AddCronTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req *pb.OperateTaskRequest, job cron.Job) (*pb.OperateTaskResponse, error) {
-	newEntryID, err := c.AddJob(req.Express, cron.NewChain(cron.Recover(logger.NewCronLogger(logger.GetRootLogger()))).Then(job))
-	if err != nil {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
-	newEntry := &Entry{EntryID: newEntryID}
-
-	txnResp, err := etcdutil.TxnKey(cli,
-		clientv3.OpPut(stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, req.TaskName), req.Express), clientv3.OpPut(stringutil.StringBuilder(constant.DefaultMasterCrontabEntryPrefixKey, req.TaskName), newEntry.String()))
-	if err != nil {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
-
-	if txnResp.Succeeded {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result: openapi.ResponseResultStatusSuccess,
-		}}, nil
-	} else {
-		errMsg := fmt.Errorf("transaction failed")
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusSuccess,
-			Message: errMsg.Error(),
-		}}, errMsg
-	}
-}
-
-func ClearCronTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
 	t, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
@@ -359,12 +401,109 @@ func ClearCronTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTas
 			Message: err.Error(),
 		}}, err
 	}
-	if strings.EqualFold(t.TaskName, "") {
-		_, err = etcdutil.TxnKey(cli,
-			clientv3.OpDelete(
-				stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, req.TaskName)),
-			clientv3.OpDelete(
-				stringutil.StringBuilder(constant.DefaultMasterCrontabEntryPrefixKey, req.TaskName)))
+	if !strings.EqualFold(t.TaskStatus, constant.TaskDatabaseStatusWaiting) && strings.EqualFold(t.TaskName, req.TaskName) {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result: openapi.ResponseResultStatusFailed,
+			Message: fmt.Sprintf("the task [%s] has exist and task_status [%s], disable creating crontab task. If need, please delete the task [%s] and retry crontab task",
+				req.TaskName, stringutil.StringLower(t.TaskStatus), req.TaskName),
+		}}, err
+	}
+
+	// according to the configuring prefix key, and get key information from etcd
+	key := stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, req.TaskName)
+	expressKeyResp, err := etcdutil.GetKey(cli, key)
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result: openapi.ResponseResultStatusFailed,
+			Message: fmt.Sprintf("the task [%s] get key [%s] failed, disable creating crontab task. If need, please retry crontab task",
+				req.TaskName, key),
+		}}, err
+	}
+
+	// if an existing task is the same as the new task, skip creating it again
+	if len(expressKeyResp.Kvs) != 0 {
+		for _, resp := range expressKeyResp.Kvs {
+			var expr *Express
+			err = stringutil.UnmarshalJSON(resp.Value, &expr)
+			if err != nil {
+				return &pb.OperateTaskResponse{Response: &pb.Response{
+					Result:  openapi.ResponseResultStatusFailed,
+					Message: fmt.Sprintf("the task [%s] and express [%s] unmarshal failed, disable repeat create crontab task. If need, please delete the task [%s] and retry crontab task", req.TaskName, req.Express, req.TaskName),
+				}}, err
+			}
+			if strings.EqualFold(expr.TaskName, req.TaskName) && strings.EqualFold(expr.Express, req.Express) {
+				return &pb.OperateTaskResponse{Response: &pb.Response{
+					Result:  openapi.ResponseResultStatusFailed,
+					Message: fmt.Sprintf("the task [%s] and express [%v] has be submited, disable repeat create crontab task. If need, please delete the task [%s] and retry crontab task", req.TaskName, req.Express, req.TaskName),
+				}}, err
+			}
+		}
+	}
+
+	newEntryID, err := c.AddJob(req.Express, cron.NewChain(cron.Recover(logger.NewCronLogger(logger.GetRootLogger()))).Then(job))
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+
+	newExprVal := &Express{
+		TaskName: req.TaskName,
+		EntryID:  newEntryID,
+		Express:  req.Express,
+	}
+	_, err = etcdutil.PutKey(cli, stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, req.TaskName), newExprVal.String())
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.OperateTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: fmt.Sprintf("add crontab task [%v] express [%s] success, please waiting schedule running", req.TaskName, req.Express),
+	}}, nil
+
+}
+
+func ClearCronTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
+	t, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	if strings.EqualFold(t.TaskStatus, constant.TaskDatabaseStatusWaiting) && strings.EqualFold(t.TaskName, req.TaskName) {
+		key := stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, req.TaskName)
+		exprResp, err := etcdutil.GetKey(cli, key)
+		if err != nil {
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result: openapi.ResponseResultStatusFailed,
+				Message: fmt.Sprintf("the task [%s] get key [%s] failed, disable clear crontab task. If need, please retry clear crontab task",
+					req.TaskName, key),
+			}}, err
+		}
+		if len(exprResp.Kvs) != 1 {
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result: openapi.ResponseResultStatusFailed,
+				Message: fmt.Sprintf("the task [%s] get key [%s] failed, disable clear crontab task. the current return result counts [%d] are not equal one",
+					req.TaskName, key, len(exprResp.Kvs)),
+			}}, err
+		}
+
+		var expr *Express
+		err = stringutil.UnmarshalJSON(exprResp.Kvs[0].Value, &expr)
+		if err != nil {
+			return &pb.OperateTaskResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: fmt.Sprintf("the task [%s] and express [%s] unmarshal failed, disable clear crontab task. If need, please retry clear the crontab task", req.Express, req.TaskName),
+			}}, err
+		}
+		c.Remove(expr.EntryID)
+
+		_, err = etcdutil.DeleteKey(cli, key)
 		if err != nil {
 			return &pb.OperateTaskResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -373,10 +512,11 @@ func ClearCronTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTas
 		}
 
 		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result: openapi.ResponseResultStatusSuccess,
+			Result:  openapi.ResponseResultStatusSuccess,
+			Message: fmt.Sprintf("clear crontab task [%v] success", req.TaskName),
 		}}, nil
 	} else {
-		errMsg := fmt.Errorf("the crontab task [%s] has scheduled, the operation cann't [%v], the current task status is [%v], running worker addr is [%v]", req.TaskName, req.Operate, t.TaskStatus, t.WorkerAddr)
+		errMsg := fmt.Errorf("the crontab task [%s] has scheduled, the operation cann't [%v], the current task status is [%v], running worker addr is [%v]", req.TaskName, stringutil.StringLower(req.Operate), t.TaskStatus, t.WorkerAddr)
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
 			Message: errMsg.Error(),

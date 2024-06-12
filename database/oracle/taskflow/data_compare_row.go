@@ -418,7 +418,15 @@ FROM
 
 	endTime := time.Now()
 
-	if resultStrS == resultStrT {
+	resultS, err := stringutil.StrconvIntBitSize(resultStrS, 64)
+	if err != nil {
+		return err
+	}
+	resultT, err := stringutil.StrconvIntBitSize(resultStrT, 64)
+	if err != nil {
+		return err
+	}
+	if resultS == resultT {
 		logger.Info("data compare task chunk md5 compare is equaled",
 			zap.String("task_name", r.Dmt.TaskName),
 			zap.String("task_mode", r.TaskMode),

@@ -18,6 +18,8 @@ package command
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/stringutil"
+	"path/filepath"
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
@@ -203,6 +205,22 @@ func (a *AppAssessGen) RunE(cmd *cobra.Command, args []string) error {
 	}
 	if strings.EqualFold(a.task, "") || strings.EqualFold(a.outputDir, "") {
 		return fmt.Errorf("flag parameter [task] and [outputDir] are requirement, can not null")
+	}
+
+	if filepath.IsAbs(a.outputDir) {
+		abs, err := filepath.Abs(a.outputDir)
+		if err != nil {
+			return err
+		}
+		err = stringutil.PathNotExistOrCreate(abs)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := stringutil.PathNotExistOrCreate(a.outputDir)
+		if err != nil {
+			return err
+		}
 	}
 
 	err := service.GenAssessMigrateTask(context.Background(), a.Server, a.task, a.outputDir)

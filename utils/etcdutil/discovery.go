@@ -135,7 +135,10 @@ func (d *Discovery) GetFreeWorker(taskName string) (string, error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	var nodes []string
+	var (
+		nodes []string
+		dists []*Node
+	)
 	registerKeyResp, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerRegisterPrefixKey), clientv3.WithPrefix())
 	if err != nil {
 		return "", err
@@ -150,6 +153,7 @@ func (d *Discovery) GetFreeWorker(taskName string) (string, error) {
 				return "", err
 			}
 			nodes = append(nodes, n.Addr)
+			dists = append(dists, n)
 		}
 	}
 
@@ -161,6 +165,7 @@ func (d *Discovery) GetFreeWorker(taskName string) (string, error) {
 	var (
 		freeWorkers   []string
 		activeWorkers []string
+		workers       []*Worker
 	)
 
 	if len(stateKeyResp.Kvs) == 0 {
@@ -172,6 +177,8 @@ func (d *Discovery) GetFreeWorker(taskName string) (string, error) {
 			if err != nil {
 				return "", err
 			}
+
+			workers = append(workers, w)
 
 			switch {
 			case strings.EqualFold(w.State, constant.DefaultWorkerStoppedState) && strings.EqualFold(w.TaskName, taskName):
@@ -204,21 +211,34 @@ func (d *Discovery) GetFreeWorker(taskName string) (string, error) {
 			}
 		}
 	}
+
+	data := make(map[string]interface{})
+	data["workerNodes"] = dists
+	data["workerStates"] = workers
+	jsonStr, err := stringutil.MarshalJSON(data)
+	if err != nil {
+		return "", err
+	}
+
 	if len(freeWorkers) == 0 {
-		elem, err := stringutil.GetRandomElem(stringutil.StringItemsFilterDifference(nodes, activeWorkers))
+		filterFree := stringutil.StringItemsFilterDifference(nodes, activeWorkers)
+		if len(filterFree) == 0 {
+			return jsonStr, fmt.Errorf("there are not free node currently, please waiting or scale-out worker node")
+		}
+		elem, err := stringutil.GetRandomElem(filterFree)
 		if err != nil {
-			return "", err
+			return jsonStr, err
 		}
 		return elem, nil
 	}
 	if len(freeWorkers) > 0 {
 		elem, err := stringutil.GetRandomElem(freeWorkers)
 		if err != nil {
-			return "", err
+			return jsonStr, err
 		}
 		return elem, nil
 	}
-	return "", fmt.Errorf("there are not free node currently, please waiting or scale-out worker node")
+	return jsonStr, fmt.Errorf("there are not free node currently, please waiting or scale-out worker node")
 }
 
 // Close used for close service

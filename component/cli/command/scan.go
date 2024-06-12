@@ -23,6 +23,8 @@ import (
 	"github.com/wentaojin/dbms/component"
 	"github.com/wentaojin/dbms/component/cli/migrate"
 	"github.com/wentaojin/dbms/service"
+	"github.com/wentaojin/dbms/utils/stringutil"
+	"path/filepath"
 	"strings"
 )
 
@@ -211,6 +213,22 @@ func (a *AppScanGen) RunE(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("flag parameter [task] and [outputDir] are requirement, can not null"))
 		return nil
+	}
+
+	if filepath.IsAbs(a.outputDir) {
+		abs, err := filepath.Abs(a.outputDir)
+		if err != nil {
+			return err
+		}
+		err = stringutil.PathNotExistOrCreate(abs)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := stringutil.PathNotExistOrCreate(a.outputDir)
+		if err != nil {
+			return err
+		}
 	}
 
 	err := service.GenDataScanTask(context.Background(), a.Server, a.task, a.outputDir)

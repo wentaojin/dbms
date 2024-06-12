@@ -888,7 +888,7 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 	}
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
-			TaskName: taskInfo.TaskName,
+			TaskName: taskName,
 		}, map[string]interface{}{
 			"TaskStatus": constant.TaskDatabaseStatusSuccess,
 			"EndTime":    time.Now(),
@@ -897,11 +897,11 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 			return err
 		}
 		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-			TaskName: taskInfo.TaskName,
+			TaskName: taskName,
 			LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] running success, total records [%d], success records [%d], cost: [%v]",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeStructMigrate),
-				taskInfo.WorkerAddr,
+				workerAddr,
 				taskName,
 				migrateTotalsResults,
 				migrateSuccessResults,

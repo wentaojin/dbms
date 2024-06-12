@@ -49,7 +49,7 @@
 
 ![DBMS ARCH](/image/dbms-arch.png "DBMS ARCH")
 
-DBMS 数据库分布式迁移服务平台由 Master、Worker、DBMSCTL、DBMS 四个组件组成，主要功能：
+DBMS 数据库分布式迁移服务平台由 dbms-master、dbms-worker、dbms-ctl、dbms-cluster 四个组件组成，主要功能：
 - dbms-master：实例注册、服务发现、健康检查、api访问（仅leader）
 - dbms-worker：任务运行者
 - dbms-ctl：与 Master Leader 节点交互进行提交任务

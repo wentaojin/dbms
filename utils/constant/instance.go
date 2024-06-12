@@ -21,8 +21,7 @@ import "time"
 const (
 	// DefaultMasterDatabaseDBMSKey is used for saving dbms meta database infos
 	DefaultMasterDatabaseDBMSKey         = "/dbms-master/database"
-	DefaultMasterCrontabExpressPrefixKey = "/dbms-master/crontab/express"
-	DefaultMasterCrontabEntryPrefixKey   = "/dbms-master/crontab/entry"
+	DefaultMasterCrontabExpressPrefixKey = "/dbms-master/crontab/express/"
 	DefaultMasterRegisterPrefixKey       = "/dbms-master/register/"
 	DefaultMasterLeaderPrefixKey         = "/dbms-master/leader"
 )

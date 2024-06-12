@@ -59,6 +59,7 @@ type Server struct {
 	dbConnReady *atomic.Bool
 
 	mu         sync.Mutex
+	cancelCtx  context.Context
 	cancelFunc context.CancelFunc
 
 	// UnimplementedWorkerServer
@@ -170,7 +171,9 @@ func (s *Server) watchConn() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logger.Error("dbms-worker create database failed", zap.Any("panic", r))
+				logger.Error("dbms-worker create database failed",
+					zap.Any("panic", r),
+					zap.Any("stack", stringutil.BytesToString(debug.Stack())))
 			}
 		}()
 		err := conn.Watch(constant.DefaultMasterDatabaseDBMSKey)
@@ -207,10 +210,9 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	cancelCtx, cancelFunc := context.WithCancel(context.TODO())
-	s.cancelFunc = cancelFunc
+	s.cancelCtx, s.cancelFunc = context.WithCancel(context.TODO())
 
-	t, err := model.GetITaskRW().GetTask(cancelCtx, &task.Task{TaskName: req.TaskName})
+	t, err := model.GetITaskRW().GetTask(s.cancelCtx, &task.Task{TaskName: req.TaskName})
 	if err != nil {
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
@@ -220,7 +222,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 
 	switch stringutil.StringUpper(t.TaskMode) {
 	case constant.TaskModeAssessMigrate:
-		err = s.operateAssessMigrateTask(cancelCtx, t, req)
+		err = s.operateAssessMigrateTask(s.cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -228,7 +230,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			}}, err
 		}
 	case constant.TaskModeStructMigrate:
-		err = s.operateStructMigrateTask(cancelCtx, t, req)
+		err = s.operateStructMigrateTask(s.cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -236,7 +238,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			}}, err
 		}
 	case constant.TaskModeStmtMigrate:
-		err = s.operateStmtMigrateTask(cancelCtx, t, req)
+		err = s.operateStmtMigrateTask(s.cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -244,7 +246,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			}}, err
 		}
 	case constant.TaskModeCSVMigrate:
-		err = s.operateCsvMigrateTask(cancelCtx, t, req)
+		err = s.operateCsvMigrateTask(s.cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -252,7 +254,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			}}, err
 		}
 	case constant.TaskModeSqlMigrate:
-		err = s.operateSqlMigrateTask(cancelCtx, t, req)
+		err = s.operateSqlMigrateTask(s.cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -260,7 +262,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			}}, err
 		}
 	case constant.TaskModeDataCompare:
-		err = s.operateDataCompareTask(cancelCtx, t, req)
+		err = s.operateDataCompareTask(s.cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -268,7 +270,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			}}, err
 		}
 	case constant.TaskModeStructCompare:
-		err = s.operateStructCompareTask(cancelCtx, t, req)
+		err = s.operateStructCompareTask(s.cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -276,7 +278,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			}}, err
 		}
 	case constant.TaskModeDataScan:
-		err = s.operateDataScanTask(cancelCtx, t, req)
+		err = s.operateDataScanTask(s.cancelCtx, t, req)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -286,7 +288,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 	default:
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result: openapi.ResponseResultStatusFailed,
-		}}, fmt.Errorf("current worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode)
+		}}, fmt.Errorf("the worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode)
 	}
 
 	if strings.EqualFold(req.Operate, constant.TaskOperationStart) {
@@ -297,7 +299,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 	} else {
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] operation is [%v] by the task mode [%v] in the worker [%v], please query the task status", t.TaskName, stringutil.StringLower(req.Operate), stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
+			Message: fmt.Sprintf("the task [%v] and the task_mode [%v] sending operation [%v] in the worker [%v] success, please query the task status", t.TaskName, stringutil.StringLower(req.Operate), stringutil.StringLower(t.TaskMode), s.WorkerOptions.WorkerAddr),
 		}}, nil
 	}
 }
@@ -370,7 +372,7 @@ func (s *Server) operateAssessMigrateTask(ctx context.Context, t *task.Task, req
 		return nil
 	default:
 		s.cancelFunc()
-		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+		return fmt.Errorf("the worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
 	}
 }
 
@@ -442,7 +444,7 @@ func (s *Server) operateStructMigrateTask(ctx context.Context, t *task.Task, req
 		return nil
 	default:
 		s.cancelFunc()
-		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+		return fmt.Errorf("the worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
 	}
 }
 
@@ -514,7 +516,7 @@ func (s *Server) operateStmtMigrateTask(ctx context.Context, t *task.Task, req *
 		return nil
 	default:
 		s.cancelFunc()
-		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+		return fmt.Errorf("the worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
 	}
 }
 
@@ -586,7 +588,7 @@ func (s *Server) operateCsvMigrateTask(ctx context.Context, t *task.Task, req *p
 		return nil
 	default:
 		s.cancelFunc()
-		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+		return fmt.Errorf("the worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
 	}
 }
 
@@ -658,7 +660,7 @@ func (s *Server) operateSqlMigrateTask(ctx context.Context, t *task.Task, req *p
 		return nil
 	default:
 		s.cancelFunc()
-		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+		return fmt.Errorf("the worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
 	}
 }
 
@@ -730,7 +732,7 @@ func (s *Server) operateDataCompareTask(ctx context.Context, t *task.Task, req *
 		return nil
 	default:
 		s.cancelFunc()
-		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+		return fmt.Errorf("the worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
 	}
 }
 
@@ -802,7 +804,7 @@ func (s *Server) operateStructCompareTask(ctx context.Context, t *task.Task, req
 		return nil
 	default:
 		s.cancelFunc()
-		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+		return fmt.Errorf("the worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
 	}
 }
 
@@ -874,7 +876,7 @@ func (s *Server) operateDataScanTask(ctx context.Context, t *task.Task, req *pb.
 		return nil
 	default:
 		s.cancelFunc()
-		return fmt.Errorf("current worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
+		return fmt.Errorf("the worker [%s] task [%v] operation [%s] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, req.TaskName, req.Operate)
 	}
 }
 

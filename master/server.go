@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -176,7 +177,11 @@ func (s *Server) Start(ctx context.Context) error {
 
 				s.cron.Start()
 
-				s.crontab(ctx)
+				// crontab
+				err = service.NewServiceCrontab(ctx, s.etcdClient, s.discWorkers, s.cron).Load(constant.DefaultMasterCrontabExpressPrefixKey)
+				if err != nil {
+					return err
+				}
 
 				// leader register
 				_, err = etcdutil.PutKey(s.etcdClient, constant.DefaultMasterLeaderPrefixKey, s.MasterOptions.ClientAddr)
@@ -197,6 +202,7 @@ func (s *Server) Start(ctx context.Context) error {
 				// reset
 				s.dbConnReady.Store(false)
 
+				// stops the scheduled scheduler but does not stop any running jobs
 				s.cron.Stop()
 
 				logger.Info("server leader lost", zap.String("lost leader identity", s.MasterOptions.ClientAddr))
@@ -272,29 +278,12 @@ func (s *Server) watchConn() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				logger.Error("dbms-master create database failed", zap.Any("PANIC", r))
+				logger.Error("dbms-master create database failed",
+					zap.Any("panic", r),
+					zap.Any("stack", stringutil.BytesToString(debug.Stack())))
 			}
 		}()
 		err := conn.Watch(constant.DefaultMasterDatabaseDBMSKey)
-		if err != nil {
-			panic(err)
-		}
-	}()
-}
-
-func (s *Server) crontab(ctx context.Context) {
-	conn := service.NewServiceCrontab(ctx, s.etcdClient, s.discWorkers, s.cron)
-
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				logger.Error("dbms-master crontab running failed", zap.Any("PANIC", r))
-			}
-		}()
-		err := conn.Watch(
-			constant.DefaultMasterCrontabExpressPrefixKey,
-			constant.DefaultMasterCrontabEntryPrefixKey,
-		)
 		if err != nil {
 			panic(err)
 		}
@@ -323,10 +312,10 @@ func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*
 		return service.StopTask(ctx, s.etcdClient, req)
 	case constant.TaskOperationCrontab:
 		return service.AddCronTask(ctx, s.cron, s.etcdClient, req,
-			service.NewCronjob(ctx, s.etcdClient, s.discWorkers, req.TaskName))
+			service.NewCronjob(s.etcdClient, s.discWorkers, req.TaskName))
 		// cleanup tasks are used for scheduled job tasks that are running.
 	case constant.TaskOperationClear:
-		return service.ClearCronTask(ctx, s.etcdClient, req)
+		return service.ClearCronTask(ctx, s.cron, s.etcdClient, req)
 		// delete tasks are used to delete tasks that are not running or have stopped running.
 	case constant.TaskOperationDelete:
 		return service.DeleteTask(ctx, s.etcdClient, req)
@@ -335,9 +324,9 @@ func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*
 	default:
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result: openapi.ResponseResultStatusFailed,
-			Message: fmt.Sprintf("task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate,
+			Message: fmt.Sprintf("the task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate,
 				stringutil.StringJoin([]string{constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontab, constant.TaskOperationClear, constant.TaskOperationDelete, constant.TaskOperationGet}, ",")),
-		}}, fmt.Errorf("task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate, stringutil.StringJoin([]string{constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontab, constant.TaskOperationClear, constant.TaskOperationDelete, constant.TaskOperationGet}, ","))
+		}}, fmt.Errorf("the task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate, stringutil.StringJoin([]string{constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontab, constant.TaskOperationClear, constant.TaskOperationDelete, constant.TaskOperationGet}, ","))
 	}
 }
 
