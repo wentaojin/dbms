@@ -20,8 +20,10 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/wentaojin/dbms/utils/constant"
+	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
 
@@ -70,7 +72,34 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	}
 	// Testing
 	// Fixed MACOS SIP Security, DYLD_LIBRARY_PATH not working
-	oraDSN.LibDir = "/Users/marvin/storehouse/oracle/instantclient_19_16"
+	switch runtime.GOOS {
+	case "darwin":
+		libDir, isFound := syscall.Getenv("DYLD_LIBRARY_PATH")
+		if !isFound {
+			localIP, err := stringutil.GetOutBoundIP()
+			if err != nil {
+				return nil, fmt.Errorf("error on get local ipaddr from the database: %v", err)
+			}
+			return nil, fmt.Errorf("the host [%s] environment [DYLD_LIBRARY_PATH] not found, please setting and retry", localIP)
+		}
+		oraDSN.LibDir = libDir
+	case "linux":
+		libDir, isFound := syscall.Getenv("LD_LIBRARY_PATH")
+		if !isFound {
+			localIP, err := stringutil.GetOutBoundIP()
+			if err != nil {
+				return nil, fmt.Errorf("error on get local ipaddr from the database: %v", err)
+			}
+			return nil, fmt.Errorf("the host [%s] environment [LD_LIBRARY_PATH] not found, please setting and retry", localIP)
+		}
+		oraDSN.LibDir = libDir
+	default:
+		localIP, err := stringutil.GetOutBoundIP()
+		if err != nil {
+			return nil, fmt.Errorf("error on get local ipaddr from the database: %v", err)
+		}
+		return nil, fmt.Errorf("the host [%s] os [%s] is not support, please contact author or reselct", localIP, runtime.GOOS)
+	}
 
 	// session params
 	sessionParams = append(sessionParams, []string{
