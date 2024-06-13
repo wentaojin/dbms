@@ -707,7 +707,7 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 
 	logger.Info("struct migrate task init task information",
 		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	err = initStructMigrateTask(ctx, taskInfo, databaseS)
+	err = initStructMigrateTask(ctx, taskInfo, databaseS, taskParams.EnableCheckpoint)
 	if err != nil {
 		return err
 	}
@@ -977,7 +977,19 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 	return taskParam, nil
 }
 
-func initStructMigrateTask(ctx context.Context, taskInfo *task.Task, databaseS database.IDatabase) error {
+func initStructMigrateTask(ctx context.Context, taskInfo *task.Task, databaseS database.IDatabase, enableCheckpoint bool) error {
+	// delete checkpoint
+	if !enableCheckpoint {
+		err := model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(ctx, []string{taskInfo.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTaskName(ctx, []string{taskInfo.TaskName})
+		if err != nil {
+			return err
+		}
+	}
+
 	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(ctx,
 		&rule.SchemaRouteRule{TaskName: taskInfo.TaskName})
 	if err != nil {

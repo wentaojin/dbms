@@ -303,18 +303,6 @@ func (st *StructMigrateTask) structMigrateStart(
 	buildInDatatypeRules []*buildin.BuildinDatatypeRule,
 	buildInDefaultValueRules []*buildin.BuildinDefaultvalRule,
 	dbCollationS bool) error {
-	// delete checkpoint
-	if !st.TaskParams.EnableCheckpoint {
-		err := model.GetIStructMigrateTaskRW().DeleteStructMigrateTaskName(st.Ctx, []string{st.Task.TaskName})
-		if err != nil {
-			return err
-		}
-		err = model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(st.Ctx, []string{st.Task.TaskName})
-		if err != nil {
-			return err
-		}
-	}
-
 	// if the schema table success, skip
 	if strings.EqualFold(smt.TaskStatus, constant.TaskDatabaseStatusSuccess) {
 		logger.Warn("struct migrate task process",
