@@ -26,13 +26,14 @@ import (
 )
 
 type DBMSMasterScript struct {
-	ClientAddr     string
-	PeerAddr       string
-	InitialCluster string
-
-	DeployDir string
-	DataDir   string
-	LogDir    string
+	ClientAddr       string
+	PeerAddr         string
+	InitialCluster   string
+	OS               string
+	InstantClientDir string
+	DeployDir        string
+	DataDir          string
+	LogDir           string
 
 	InstanceNumaNode string
 }
@@ -62,9 +63,11 @@ type DBMSMasterScaleScript struct {
 	PeerAddr   string
 	Join       string
 
-	DeployDir string
-	DataDir   string
-	LogDir    string
+	OS               string
+	InstantClientDir string
+	DeployDir        string
+	DataDir          string
+	LogDir           string
 
 	InstanceNumaNode string
 }

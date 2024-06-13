@@ -18,6 +18,8 @@ package command
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/constant"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -116,6 +118,9 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 		return err
 	}
 
+	// get old topology
+	oldTopo := metadata.GetTopology()
+
 	var (
 		sshConnProps  *operator.SSHConnectionProps = &operator.SSHConnectionProps{}
 		sshProxyProps *operator.SSHConnectionProps = &operator.SSHConnectionProps{}
@@ -196,11 +201,43 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 
 	// Build the scale out tasks
 	var (
-		envInitTasks       []*task.StepDisplay // tasks which are used to initialize environment
-		deployCompTasks    []*task.StepDisplay // tasks which are used to copy components to remote host
-		refreshConfigTasks []*task.StepDisplay // tasks which are used to refresh config to remote host
-		scaleConfigTasks   []*task.StepDisplay // tasks which are used to copy certificate to remote host
+		envInitTasks             []*task.StepDisplay // tasks which are used to initialize environment
+		deployCompTasks          []*task.StepDisplay // tasks which are used to copy components to remote host
+		deployInstantClientTasks []*task.StepDisplay // tasks which are used to copy instantclient to remote host
+		refreshConfigTasks       []*task.StepDisplay // tasks which are used to refresh config to remote host
+		scaleConfigTasks         []*task.StepDisplay // tasks which are used to copy certificate to remote host
 	)
+
+	// Get instantClient package information
+	var instantFileNames []string
+	err = filepath.Walk(filepath.Join(a.MirrorDir, cluster.InstantClientDir), func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			instantFileNames = append(instantFileNames, info.Name())
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(instantFileNames) != 1 {
+		return fmt.Errorf("the mirror-dir [%s] instantClient dir file counts are over than one, please contact author check the download offline package or remove repeat the instantClient file", a.MirrorDir)
+	}
+
+	instantClientSplits := stringutil.StringSplit(instantFileNames[0], constant.StringSeparatorCenterLine)
+	if len(instantClientSplits) != 4 {
+		return fmt.Errorf("the mirror-dir [%s] instantClient dir filename does not comply with the rules, normal is instantclient-{version}-{os}-{arch}.tar.gz, current filename is [%s]", a.MirrorDir, instantFileNames[0])
+	}
+
+	// get unique host from old topology
+	uniqueHosts := make(map[string]int) // host -> ssh-port
+	oldTopo.IterInstance(func(inst cluster.Instance) {
+		if _, found := uniqueHosts[inst.InstanceHost()]; !found {
+			uniqueHosts[inst.InstanceHost()] = inst.InstanceSshPort()
+		}
+	})
 
 	// Initialize the environments
 	globalOptions := metadata.GetTopology().GlobalOptions
@@ -209,7 +246,6 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 
 	scaleOutTopo.IterInstance(func(inst cluster.Instance) {
 		scaleOutNodes[inst.InstanceName()] = struct{}{}
-		host := inst.InstanceManageHost()
 
 		var dirs []string
 		for _, dir := range []string{globalOptions.DeployDir, globalOptions.DataDir, globalOptions.LogDir} {
@@ -246,9 +282,25 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 			).
 			EnvInit(inst.InstanceManageHost(), globalOptions.User, globalOptions.Group, a.SkipCreateUser || globalOptions.User == a.User, sudo).
 			Mkdir(globalOptions.User, inst.InstanceManageHost(), sudo, dirs...).
-			BuildAsStep(fmt.Sprintf("  - Initialized host %s ", host))
+			BuildAsStep(fmt.Sprintf("  - Initialized host %s ", inst.InstanceManageHost()))
 
 		envInitTasks = append(envInitTasks, t)
+
+		// if the old topology is exits, ignore copy deploy instant client
+		if _, ok := uniqueHosts[inst.InstanceManageHost()]; !ok {
+			c := task.NewSimpleUerSSH(mg.Logger, inst.InstanceManageHost(), inst.InstanceSshPort(), globalOptions.User, gOpt, sshProxyProps, executor.SSHType(globalOptions.SSHType)).CopyComponent(
+				instantFileNames[0],
+				instantFileNames[2],
+				instantFileNames[3],
+				instantFileNames[1],
+				filepath.Join(gOpt.MirrorDir, cluster.InstantClientDir),
+				inst.InstanceManageHost(),
+				globalOptions.DeployDir)
+
+			deployInstantClientTasks = append(deployInstantClientTasks,
+				c.BuildAsStep(fmt.Sprintf("  - Copy %s -> %s", instantFileNames[0], inst.InstanceManageHost())),
+			)
+		}
 	})
 
 	// Deploy the new topology and refresh the configuration
@@ -333,18 +385,35 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 	defer mg.ReleaseScaleOutLock(clusterName)
 
 	// task prepare
-	bf := task.NewBuilder(mg.Logger).
-		Step("+ Generate SSH keys",
-			task.NewBuilder(mg.Logger).
-				SSHKeyGen(mg.Path(clusterName, cluster.SshDirName, "id_rsa")).
-				Build(),
-			mg.Logger).
-		ParallelStep("+ Initialize target host environments", gOpt.Force, envInitTasks...).
-		ParallelStep("+ Deploy TiDB instance", gOpt.Force, deployCompTasks...).
-		ParallelStep("+ Generate scale-out config", gOpt.Force, scaleConfigTasks...).
-		ParallelStep("+ Refresh components config", gOpt.Force, refreshConfigTasks...).Func("Start new instances", func(ctx context.Context) error {
-		return operator.Start(ctx, scaleOutTopo, gOpt, nil)
-	}).Build()
+	var bf task.Task
+	if len(deployInstantClientTasks) == 0 {
+		bf = task.NewBuilder(mg.Logger).
+			Step("+ Generate SSH keys",
+				task.NewBuilder(mg.Logger).
+					SSHKeyGen(mg.Path(clusterName, cluster.SshDirName, "id_rsa")).
+					Build(),
+				mg.Logger).
+			ParallelStep("+ Initialize target host environments", gOpt.Force, envInitTasks...).
+			ParallelStep("+ Deploy TiDB instance", gOpt.Force, deployCompTasks...).
+			ParallelStep("+ Generate scale-out config", gOpt.Force, scaleConfigTasks...).
+			ParallelStep("+ Refresh components config", gOpt.Force, refreshConfigTasks...).Func("Start new instances", func(ctx context.Context) error {
+			return operator.Start(ctx, scaleOutTopo, gOpt, nil)
+		}).Build()
+	} else {
+		bf = task.NewBuilder(mg.Logger).
+			Step("+ Generate SSH keys",
+				task.NewBuilder(mg.Logger).
+					SSHKeyGen(mg.Path(clusterName, cluster.SshDirName, "id_rsa")).
+					Build(),
+				mg.Logger).
+			ParallelStep("+ Initialize target host environments", gOpt.Force, envInitTasks...).
+			ParallelStep("+ Deploy target host instantClients", gOpt.Force, deployInstantClientTasks...).
+			ParallelStep("+ Deploy TiDB instance", gOpt.Force, deployCompTasks...).
+			ParallelStep("+ Generate scale-out config", gOpt.Force, scaleConfigTasks...).
+			ParallelStep("+ Refresh components config", gOpt.Force, refreshConfigTasks...).Func("Start new instances", func(ctx context.Context) error {
+			return operator.Start(ctx, scaleOutTopo, gOpt, nil)
+		}).Build()
+	}
 
 	if err = bf.Execute(ctxt.New(context.Background(), gOpt.Concurrency, mg.Logger)); err != nil {
 		return err

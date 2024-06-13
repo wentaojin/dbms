@@ -147,6 +147,8 @@ func (m *MasterInstance) InstanceInitConfig(ctx context.Context, e executor.Exec
 		ClientAddr:       stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePort()),
 		PeerAddr:         stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePeerPort()),
 		InitialCluster:   stringutil.StringJoin(initialCluster, ","),
+		OS:               stringutil.StringLower(m.OSVersion),
+		InstantClientDir: filepath.Join(m.topo.GlobalOptions.DeployDir, InstantClientDir),
 		DeployDir:        m.DeployDir,
 		DataDir:          m.DataDir,
 		LogDir:           m.LogDir,
@@ -186,6 +188,8 @@ func (m *MasterInstance) InstanceScaleConfig(ctx context.Context, e executor.Exe
 	cfg := &script.DBMSMasterScaleScript{
 		ClientAddr:       stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePort()),
 		PeerAddr:         stringutil.JoinHostPort(m.InstanceListenHost(), m.InstancePeerPort()),
+		OS:               stringutil.StringLower(m.OSVersion),
+		InstantClientDir: filepath.Join(m.topo.GlobalOptions.DeployDir, InstantClientDir),
 		DeployDir:        m.DeployDir,
 		DataDir:          m.DataDir,
 		LogDir:           m.LogDir,
@@ -229,6 +233,8 @@ func (w *WorkerInstance) InstanceInitConfig(ctx context.Context, e executor.Exec
 	cfg := &script.DBMSWorkerScript{
 		WorkerAddr:       stringutil.JoinHostPort(w.InstanceListenHost(), w.InstancePort()),
 		Join:             stringutil.StringJoin(masters, ","),
+		OS:               stringutil.StringLower(w.OSVersion),
+		InstantClientDir: filepath.Join(w.topo.GlobalOptions.DeployDir, InstantClientDir),
 		DeployDir:        w.DeployDir,
 		LogDir:           w.LogDir,
 		InstanceNumaNode: w.NumaNode,
@@ -268,6 +274,8 @@ func (w *WorkerInstance) InstanceScaleConfig(ctx context.Context, e executor.Exe
 	cfg := &script.DBMSWorkerScript{
 		WorkerAddr:       stringutil.JoinHostPort(w.InstanceListenHost(), w.InstancePort()),
 		Join:             stringutil.StringJoin(masters, ","),
+		OS:               stringutil.StringLower(w.OSVersion),
+		InstantClientDir: filepath.Join(w.topo.GlobalOptions.DeployDir, InstantClientDir),
 		DeployDir:        w.DeployDir,
 		LogDir:           w.LogDir,
 		InstanceNumaNode: w.NumaNode,

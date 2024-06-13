@@ -68,7 +68,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CONTAINER = %s`, datasource.PdbName))
 	}
 
-	// Testing
+	// Local Testing
 	// Fixed MACOS SIP Security, DYLD_LIBRARY_PATH not working
 	//oraDSN.LibDir = "/Users/marvin/storehouse/oracle/instantclient_19_16"
 

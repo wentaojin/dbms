@@ -13,11 +13,16 @@ NOTE：本文档前提假设已部署安装 DBMS 分布式迁移服务平台
 
 **使用指引**
 
-1，下载 oracle client，参考官网下载地址 https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
+1，下载 dbms 离线安装包，参考官网下载地址 https://github.com/wentaojin/dbms/releases
 
-2，上传 oracle client 至所有 **dbms-worker** 节点所在服务器，解压目录并配置环境变量
+Note：MacOS ARM64 无 instantClient，采用 AMD64 instanceClient 运行
+
+2，上传 dbms 离线安装包至所在服务器，解压目录并进行集群部署
 ```shell
-$ export LD_LIBRARY_PATH=${oracle client 解压目录所在路径}
+$ tar -zxvf dbms-community-{version}-{os}-{arch}.tar.gz
+$ cd dbms-community-{version}-{os}-{arch}
+$ sh local_install.sh
+$ dbms-cluster deploy ${cluster_name} ${cluster_version} ${topology.yaml} --mirror-dir ${offline_package_path} -u ${deploy_user} 
 ```
 
 3，查看已安装 DBMS 分布式迁移服务平台集群

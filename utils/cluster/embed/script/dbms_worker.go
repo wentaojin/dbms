@@ -30,8 +30,10 @@ type DBMSWorkerScript struct {
 	WorkerAddr string
 	Join       string
 
-	DeployDir string
-	LogDir    string
+	OS               string
+	InstantClientDir string
+	DeployDir        string
+	LogDir           string
 
 	InstanceNumaNode string
 

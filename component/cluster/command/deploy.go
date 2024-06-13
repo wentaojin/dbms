@@ -18,6 +18,8 @@ package command
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/constant"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -211,9 +213,10 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 	}
 
 	var (
-		envInitTasks       []*task.StepDisplay // tasks which are used to initialize environment
-		deployCompTasks    []*task.StepDisplay // tasks which are used to copy components to remote host
-		refreshConfigTasks []*task.StepDisplay // tasks which are used to refresh config tasks
+		envInitTasks             []*task.StepDisplay // tasks which are used to initialize environment
+		deployCompTasks          []*task.StepDisplay // tasks which are used to copy components to remote host
+		deployInstantClientTasks []*task.StepDisplay // tasks which are used to copy instantclient to remote host
+		refreshConfigTasks       []*task.StepDisplay // tasks which are used to refresh config tasks
 	)
 
 	// Initialize environment
@@ -229,6 +232,29 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 			uniqueHosts[inst.InstanceHost()] = inst.InstanceSshPort()
 		}
 	})
+
+	// Get instantClient package information
+	var instantFileNames []string
+	err = filepath.Walk(filepath.Join(a.MirrorDir, cluster.InstantClientDir), func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			instantFileNames = append(instantFileNames, info.Name())
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(instantFileNames) != 1 {
+		return fmt.Errorf("the mirror-dir [%s] instantClient dir file counts are over than one, please contact author check the download offline package or remove repeat the instantClient file", a.MirrorDir)
+	}
+
+	instantClientSplits := stringutil.StringSplit(instantFileNames[0], constant.StringSeparatorCenterLine)
+	if len(instantClientSplits) != 4 {
+		return fmt.Errorf("the mirror-dir [%s] instantClient dir filename does not comply with the rules, normal is instantclient-{version}-{os}-{arch}.tar.gz, current filename is [%s]", a.MirrorDir, instantFileNames[0])
+	}
 
 	for host, sshPort := range uniqueHosts {
 		var dirs []string
@@ -271,6 +297,19 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 			Mkdir(globalOptions.User, host, sudo, dirs...).
 			BuildAsStep(fmt.Sprintf("  - Prepare %s:%d", host, sshPort))
 		envInitTasks = append(envInitTasks, t)
+
+		c := task.NewSimpleUerSSH(mg.Logger, host, sshPort, globalOptions.User, gOpt, sshProxyProps, executor.SSHType(globalOptions.SSHType)).CopyComponent(
+			instantFileNames[0],
+			instantFileNames[2],
+			instantFileNames[3],
+			instantFileNames[1],
+			filepath.Join(gOpt.MirrorDir, cluster.InstantClientDir),
+			host,
+			globalOptions.DeployDir)
+
+		deployInstantClientTasks = append(deployInstantClientTasks,
+			c.BuildAsStep(fmt.Sprintf("  - Copy %s -> %s", instantFileNames[0], host)),
+		)
 	}
 
 	// Deploy components to remote
@@ -328,6 +367,7 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 				Build(),
 			mg.Logger).
 		ParallelStep("+ Initialize target host environments", false, envInitTasks...).
+		ParallelStep("+ Deploy target host instantClients", false, deployInstantClientTasks...).
 		ParallelStep("+ Deploy TiDB instance", false, deployCompTasks...).
 		ParallelStep("+ Init instance configs", gOpt.Force, refreshConfigTasks...).Build()
 

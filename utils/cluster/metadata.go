@@ -33,6 +33,9 @@ const (
 	LockDirName      = "lock"
 	ScaleOutLockName = "scale-out.yaml"
 
+	// InstantClientDir is the directory to store the oracle instance client
+	InstantClientDir = "instantclient"
+
 	// cluster
 	// BinDirName is the directory to save bin files
 	BinDirName = "bin"
