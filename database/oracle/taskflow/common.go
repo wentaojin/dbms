@@ -44,15 +44,11 @@ func inspectMigrateTask(taskName, taskFlow, taskMode string, databaseS database.
 		return version, "", false, err
 	}
 
-	var nlsComp string
 	oracleCollation := false
 	if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
 		oracleCollation = true
 	} else {
-		nlsComp, err = databaseS.GetDatabaseCollation()
-		if err != nil {
-			return version, "", false, err
-		}
+		oracleCollation = false
 	}
 
 	// whether the oracle version can specify table and field collation，if the oracle database version is 12.2 and the above version, it's specify table and field collation, otherwise can't specify
@@ -75,6 +71,10 @@ func inspectMigrateTask(taskName, taskFlow, taskMode string, databaseS database.
 	}
 
 	if strings.EqualFold(taskMode, constant.TaskModeStructMigrate) {
+		nlsComp, err := databaseS.GetDatabaseCollation()
+		if err != nil {
+			return version, "", false, err
+		}
 		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)]; !ok {
 			return version, "", oracleCollation, fmt.Errorf("oracle database collation nlssort [%v] isn't support", nlsComp)
 		}

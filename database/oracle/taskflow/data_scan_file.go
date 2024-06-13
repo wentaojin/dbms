@@ -113,11 +113,11 @@ func (s *DataScanFile) SyncFile() error {
 			wt.SetTitle(fmt.Sprintf("TABLE_NAME:	%s.%s", schemaName, tableName))
 			wt.AppendHeader(table.Row{"COLUMN_NAME", "BIGINT", "BIGINT_UNSIGNED", "DECIMAL_INT", "DECIMAL_POINT", "UNKNOWN"})
 
-			var tableScans []ScanResultMYSQLCompatible
+			var tableScans []*ScanResultMYSQLCompatible
 
 			for _, mt := range migrateTasks {
 				if strings.EqualFold(schemaName, mt.SchemaNameS) && strings.EqualFold(tableName, mt.TableNameS) {
-					var scanResults []ScanResultMYSQLCompatible
+					var scanResults []*ScanResultMYSQLCompatible
 					err = stringutil.UnmarshalJSON([]byte(mt.ScanResult), scanResults)
 					if err != nil {
 						return err

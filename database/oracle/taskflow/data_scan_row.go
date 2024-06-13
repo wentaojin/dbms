@@ -150,10 +150,10 @@ FROM
 	switch {
 	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
 		excludeCategory := cols[1:]
-		var scanResults []ScanResultMYSQLCompatible
+		var scanResults []*ScanResultMYSQLCompatible
 
 		for _, col := range excludeCategory {
-			var srm ScanResultMYSQLCompatible
+			srm := &ScanResultMYSQLCompatible{}
 			srm.ColumnName = col
 			for _, res := range resultS {
 				switch stringutil.StringUpper(res["CATEGORY"]) {

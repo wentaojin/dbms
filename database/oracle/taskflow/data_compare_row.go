@@ -348,10 +348,10 @@ func (r *DataCompareRow) CompareMD5() error {
 
 	if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
 		execQueryS = fmt.Sprintf(`SELECT
-	NVL(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
+	TO_CHAR(NVL(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'xxxxxxxx')+
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'xxxxxxxx')+ 
-	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'xxxxxxxx')),0) AS ROWSCHECKSUM
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'xxxxxxxx')),0)) AS ROWSCHECKSUM
 FROM
 	(%v) subq`, execQueryS)
 		execQueryT = fmt.Sprintf(`
