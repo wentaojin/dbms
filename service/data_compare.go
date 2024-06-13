@@ -127,23 +127,7 @@ func DeleteDataCompareTask(ctx context.Context, req *pb.DeleteDataCompareTaskReq
 		if err != nil {
 			return err
 		}
-		err = model.GetIMigrateSchemaRouteRW().DeleteSchemaRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIMigrateTableRouteRW().DeleteTableRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIMigrateColumnRouteRW().DeleteColumnRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataCompareSummaryRW().DeleteDataCompareSummaryName(txnCtx, req.TaskName)
+		err = model.GetIDataCompareRuleRW().DeleteDataCompareRule(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}

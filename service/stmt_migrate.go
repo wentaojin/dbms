@@ -122,27 +122,7 @@ func DeleteStmtMigrateTask(ctx context.Context, req *pb.DeleteStmtMigrateTaskReq
 		if err != nil {
 			return err
 		}
-		err = model.GetIMigrateSchemaRouteRW().DeleteSchemaRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIMigrateTableRouteRW().DeleteTableRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIMigrateColumnRouteRW().DeleteColumnRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
 		err = model.GetIDataMigrateRuleRW().DeleteDataMigrateRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}

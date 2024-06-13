@@ -367,6 +367,18 @@ func (dst *DataScanTask) Start() error {
 }
 
 func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersion string, dbCollationS bool, schemaNameS string) error {
+	// delete checkpoint
+	if !dst.TaskParams.EnableCheckpoint {
+		err := model.GetIDataScanTaskRW().DeleteDataScanTaskName(dst.Ctx, []string{dst.Task.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIDataScanSummaryRW().DeleteDataScanSummaryName(dst.Ctx, []string{dst.Task.TaskName})
+		if err != nil {
+			return err
+		}
+	}
+
 	dbRole, err := databaseS.GetDatabaseRole()
 	if err != nil {
 		return err

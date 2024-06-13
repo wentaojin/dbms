@@ -100,7 +100,7 @@ func (dmt *StructCompareTask) Start() error {
 
 	logger.Info("struct compare task init task",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
-	err = initStructCompareTask(dmt.Ctx, dmt.Task, databaseS, databaseT, schemaRoute)
+	err = dmt.initStructCompareTask(databaseS, databaseT, schemaRoute)
 	if err != nil {
 		return err
 	}
@@ -487,9 +487,21 @@ func (dmt *StructCompareTask) Start() error {
 	return nil
 }
 
-func initStructCompareTask(ctx context.Context, taskInfo *task.Task, databaseS, databaseT database.IDatabase, schemaRoute *rule.SchemaRouteRule) error {
+func (dmt *StructCompareTask) initStructCompareTask(databaseS, databaseT database.IDatabase, schemaRoute *rule.SchemaRouteRule) error {
+	// delete checkpoint
+	if !dmt.TaskParams.EnableCheckpoint {
+		err := model.GetIStructCompareTaskRW().DeleteStructCompareTaskName(dmt.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIStructCompareSummaryRW().DeleteStructCompareSummaryName(dmt.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+	}
+
 	// filter database table
-	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(ctx, &rule.MigrateTaskTable{
+	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(dmt.Ctx, &rule.MigrateTaskTable{
 		TaskName:    schemaRoute.TaskName,
 		SchemaNameS: schemaRoute.SchemaNameS,
 	})
@@ -529,7 +541,7 @@ func initStructCompareTask(ctx context.Context, taskInfo *task.Task, databaseS, 
 	tableRouteRule := make(map[string]string)
 	tableRouteRuleT := make(map[string]string)
 
-	tableRoutes, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(ctx, &rule.TableRouteRule{
+	tableRoutes, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(dmt.Ctx, &rule.TableRouteRule{
 		TaskName:    schemaRoute.TaskName,
 		SchemaNameS: schemaRoute.SchemaNameS,
 	})
@@ -554,11 +566,11 @@ func initStructCompareTask(ctx context.Context, taskInfo *task.Task, databaseS, 
 		}
 	}
 	if len(panicTables) > 0 {
-		return fmt.Errorf("the task [%v] task_flow [%v] task_mode [%v] source database tables aren't existed in the target database, please create the tables [%v]", taskInfo.TaskName, taskInfo.TaskFlow, taskInfo.TaskMode, stringutil.StringJoin(panicTables, constant.StringSeparatorComma))
+		return fmt.Errorf("the task [%v] task_flow [%v] task_mode [%v] source database tables aren't existed in the target database, please create the tables [%v]", dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, stringutil.StringJoin(panicTables, constant.StringSeparatorComma))
 	}
 
 	// clear the struct compare task table
-	migrateTasks, err := model.GetIStructCompareTaskRW().BatchFindStructCompareTask(ctx, &task.StructCompareTask{TaskName: taskInfo.TaskName})
+	migrateTasks, err := model.GetIStructCompareTaskRW().BatchFindStructCompareTask(dmt.Ctx, &task.StructCompareTask{TaskName: dmt.Task.TaskName})
 	if err != nil {
 		return err
 	}
@@ -572,7 +584,7 @@ func initStructCompareTask(ctx context.Context, taskInfo *task.Task, databaseS, 
 		}
 		for _, smt := range migrateTasks {
 			if _, ok := taskTablesMap[smt.TableNameS]; !ok {
-				err = model.GetIStructCompareTaskRW().DeleteStructCompareTask(ctx, smt.ID)
+				err = model.GetIStructCompareTaskRW().DeleteStructCompareTask(dmt.Ctx, smt.ID)
 				if err != nil {
 					return err
 				}
@@ -582,7 +594,7 @@ func initStructCompareTask(ctx context.Context, taskInfo *task.Task, databaseS, 
 		}
 	}
 
-	err = model.GetIStructCompareSummaryRW().DeleteStructCompareSummary(ctx, &task.StructCompareSummary{TaskName: taskInfo.TaskName})
+	err = model.GetIStructCompareSummaryRW().DeleteStructCompareSummary(dmt.Ctx, &task.StructCompareSummary{TaskName: dmt.Task.TaskName})
 	if err != nil {
 		return err
 	}
@@ -591,8 +603,8 @@ func initStructCompareTask(ctx context.Context, taskInfo *task.Task, databaseS, 
 	// init database table
 	// get table column route rule
 	for _, sourceTable := range databaseTables {
-		initStructInfos, err := model.GetIStructCompareTaskRW().GetStructCompareTaskTable(ctx, &task.StructCompareTask{
-			TaskName:    taskInfo.TaskName,
+		initStructInfos, err := model.GetIStructCompareTaskRW().GetStructCompareTaskTable(dmt.Ctx, &task.StructCompareTask{
+			TaskName:    dmt.Task.TaskName,
 			SchemaNameS: schemaRoute.SchemaNameS,
 			TableNameS:  sourceTable,
 		})
@@ -613,19 +625,19 @@ func initStructCompareTask(ctx context.Context, taskInfo *task.Task, databaseS, 
 			targetTable = val
 		} else {
 			// the according target case field rule convert
-			if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+			if strings.EqualFold(dmt.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
 				targetTable = stringutil.StringLower(sourceTable)
 			}
-			if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+			if strings.EqualFold(dmt.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
 				targetTable = stringutil.StringUpper(sourceTable)
 			}
-			if strings.EqualFold(taskInfo.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+			if strings.EqualFold(dmt.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
 				targetTable = sourceTable
 			}
 		}
 
-		_, err = model.GetIStructCompareTaskRW().CreateStructCompareTask(ctx, &task.StructCompareTask{
-			TaskName:    taskInfo.TaskName,
+		_, err = model.GetIStructCompareTaskRW().CreateStructCompareTask(dmt.Ctx, &task.StructCompareTask{
+			TaskName:    dmt.Task.TaskName,
 			SchemaNameS: schemaRoute.SchemaNameS,
 			TableNameS:  sourceTable,
 			TableTypeS:  databaseTableTypeMap[sourceTable],
@@ -638,9 +650,9 @@ func initStructCompareTask(ctx context.Context, taskInfo *task.Task, databaseS, 
 		}
 	}
 
-	_, err = model.GetIStructCompareSummaryRW().CreateStructCompareSummary(ctx,
+	_, err = model.GetIStructCompareSummaryRW().CreateStructCompareSummary(dmt.Ctx,
 		&task.StructCompareSummary{
-			TaskName:    taskInfo.TaskName,
+			TaskName:    dmt.Task.TaskName,
 			SchemaNameS: schemaRoute.SchemaNameS,
 			TableTotals: uint64(len(databaseTables)),
 		})

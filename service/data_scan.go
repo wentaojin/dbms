@@ -273,29 +273,11 @@ func DeleteDataScanTask(ctx context.Context, req *pb.DeleteDataScanTaskRequest) 
 		if err != nil {
 			return err
 		}
-
 		err = model.GetIParamsRW().DeleteTaskCustomParam(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}
-		if err != nil {
-			return err
-		}
-		if err != nil {
-			return err
-		}
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataScanTaskRW().DeleteDataScanTaskName(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
 		err = model.GetIDataScanRuleRW().DeleteDataScanRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataScanSummaryRW().DeleteDataScanSummaryName(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}

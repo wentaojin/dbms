@@ -118,7 +118,7 @@ func (s *DataScanFile) SyncFile() error {
 			for _, mt := range migrateTasks {
 				if strings.EqualFold(schemaName, mt.SchemaNameS) && strings.EqualFold(tableName, mt.TableNameS) {
 					var scanResults []*ScanResultMYSQLCompatible
-					err = stringutil.UnmarshalJSON([]byte(mt.ScanResult), scanResults)
+					err = stringutil.UnmarshalJSON([]byte(mt.ScanResult), &scanResults)
 					if err != nil {
 						return err
 					}

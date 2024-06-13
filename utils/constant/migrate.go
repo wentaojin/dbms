@@ -416,6 +416,7 @@ const (
 	ParamNameStructMigrateMigrateThread      = "migrateThread"
 	ParamNameStructMigrateCreateIfNotExist   = "createIfNotExist"
 	ParamNameStructMigrateEnableDirectCreate = "enableDirectCreate"
+	ParamNameStructMigrateEnableCheckpoint   = "enableCheckpoint"
 
 	// ParamValueStructMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

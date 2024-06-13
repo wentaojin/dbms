@@ -346,15 +346,6 @@ func DeleteSchemaRouteRule(ctx context.Context, taskName []string) error {
 		if err != nil {
 			return err
 		}
-
-		err = model.GetIDataMigrateRuleRW().DeleteDataMigrateRule(txnCtx, taskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataCompareRuleRW().DeleteDataCompareRule(txnCtx, taskName)
-		if err != nil {
-			return err
-		}
 		return nil
 	})
 	if err != nil {

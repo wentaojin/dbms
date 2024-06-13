@@ -1253,6 +1253,8 @@ components:
           type: boolean
         enableDirectCreate:
           type: boolean
+        enableCheckpoint:
+          type: boolean
     StructCompareParam:
       type: object
       properties:

@@ -438,6 +438,18 @@ func (stm *StmtMigrateTask) Start() error {
 }
 
 func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.IDatabase, dbVersion string, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+	// delete checkpoint
+	if !stm.TaskParams.EnableCheckpoint {
+		err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(stm.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(stm.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+	}
+
 	dbRole, err := databaseS.GetDatabaseRole()
 	if err != nil {
 		return err

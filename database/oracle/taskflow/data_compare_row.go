@@ -348,10 +348,10 @@ func (r *DataCompareRow) CompareMD5() error {
 
 	if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
 		execQueryS = fmt.Sprintf(`SELECT
-	TO_CHAR(NVL(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
+	TO_CHAR(NVL(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'xxxxxxxx')+
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'xxxxxxxx')+ 
-	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'xxxxxxxx')),0)) AS ROWSCHECKSUM
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'xxxxxxxx'))),0)) AS ROWSCHECKSUM
 FROM
 	(%v) subq`, execQueryS)
 		execQueryT = fmt.Sprintf(`
@@ -420,11 +420,11 @@ FROM
 
 	resultS, err := stringutil.StrconvIntBitSize(resultStrS, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse the database source failed: %v", err)
 	}
 	resultT, err := stringutil.StrconvIntBitSize(resultStrT, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse the database target failed: %v", err)
 	}
 	if resultS == resultT {
 		logger.Info("data compare task chunk md5 compare is equaled",

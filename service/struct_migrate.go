@@ -349,18 +349,6 @@ func DeleteStructMigrateTask(ctx context.Context, req *pb.DeleteStructMigrateTas
 		if err != nil {
 			return err
 		}
-		err = model.GetIMigrateSchemaRouteRW().DeleteSchemaRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIMigrateTableRouteRW().DeleteTableRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIMigrateColumnRouteRW().DeleteColumnRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
 		err = model.GetIStructMigrateTaskRuleRW().DeleteTaskStructRule(txnCtx, req.TaskName)
 		if err != nil {
 			return err
@@ -378,14 +366,6 @@ func DeleteStructMigrateTask(ctx context.Context, req *pb.DeleteStructMigrateTas
 			return err
 		}
 		err = model.GetIStructMigrateTableAttrsRuleRW().DeleteTableAttrsRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTaskName(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}
@@ -985,6 +965,13 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 				return taskParam, err
 			}
 			taskParam.EnableDirectCreate = enableDirectCreate
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateEnableCheckpoint) {
+			enableCheckpoint, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.EnableCheckpoint = enableCheckpoint
 		}
 	}
 	return taskParam, nil

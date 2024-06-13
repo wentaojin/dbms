@@ -547,6 +547,7 @@ message StructMigrateParam {
   uint64 migrateThread = 1;
   bool createIfNotExist = 2;
   bool enableDirectCreate = 3;
+  bool enableCheckpoint = 4;
 }
 
 message StructMigrateRule {

@@ -462,6 +462,18 @@ func (cmt *CsvMigrateTask) Start() error {
 }
 
 func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVersion string, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+	// delete checkpoint
+	if !cmt.TaskParams.EnableCheckpoint {
+		err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(cmt.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(cmt.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+	}
+
 	dbRole, err := databaseS.GetDatabaseRole()
 	if err != nil {
 		return err
@@ -498,7 +510,6 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 	}
 
 	// clear the csv migrate task table
-	// repeatInitTableMap used for store the struct_migrate_task table name has be finished, avoid repeated initialization
 	migrateGroupTasks, err := model.GetIDataMigrateTaskRW().FindDataMigrateTaskGroupByTaskSchemaTable(cmt.Ctx, cmt.Task.TaskName)
 	if err != nil {
 		return err

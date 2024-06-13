@@ -391,6 +391,17 @@ func (dmt *DataCompareTask) Start() error {
 }
 
 func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.IDatabase, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+	// delete checkpoint
+	if !dmt.TaskParams.EnableCheckpoint {
+		err := model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(dmt.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIDataCompareSummaryRW().DeleteDataCompareSummaryName(dmt.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+	}
 	// filter database table
 	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(dmt.Ctx, &rule.MigrateTaskTable{
 		TaskName:    schemaRoute.TaskName,

@@ -313,18 +313,6 @@ func DeleteStructCompareTask(ctx context.Context, req *pb.DeleteStructCompareTas
 		if err != nil {
 			return err
 		}
-		err = model.GetIMigrateSchemaRouteRW().DeleteSchemaRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIMigrateTableRouteRW().DeleteTableRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIMigrateColumnRouteRW().DeleteColumnRouteRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
 		err = model.GetIStructMigrateTaskRuleRW().DeleteTaskStructRule(txnCtx, req.TaskName)
 		if err != nil {
 			return err
@@ -338,14 +326,6 @@ func DeleteStructCompareTask(ctx context.Context, req *pb.DeleteStructCompareTas
 			return err
 		}
 		err = model.GetIStructMigrateColumnRuleRW().DeleteColumnStructRule(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIStructCompareTaskRW().DeleteStructCompareTaskName(txnCtx, req.TaskName)
-		if err != nil {
-			return err
-		}
-		err = model.GetIStructCompareSummaryRW().DeleteStructCompareSummaryName(txnCtx, req.TaskName)
 		if err != nil {
 			return err
 		}
