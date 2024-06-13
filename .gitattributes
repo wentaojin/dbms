@@ -1,0 +1,4 @@
+instantclient/instantclient-v19.23.0-linux-arm64.tar.gz filter=lfs diff=lfs merge=lfs -text
+instantclient/instantclient-v19.8.0-darwin-amd64.tar.gz filter=lfs diff=lfs merge=lfs -text
+instantclient/instantclient-v19.8.0-darwin-arm64.tar.gz filter=lfs diff=lfs merge=lfs -text
+instantclient/instantclient-v19.23.0-linux-amd64.tar.gz filter=lfs diff=lfs merge=lfs -text
