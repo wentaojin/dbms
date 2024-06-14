@@ -91,11 +91,14 @@ func GenMYSQLCompatibleDatabaseInsertStmtSQL(targetSchemaName, targetTableName, 
 		}
 	}
 
-	columnDatas := stringutil.StringSplit(columnDataT, constant.StringSeparatorComma)
-	columnDataSli := stringutil.StringSplitSlice(columnDatas, columnDataCounts/len(columnDetailT))
+	var restoreColDatas []string
+	for i := 0; i < columnDataCounts; i++ {
+		restoreColDatas = append(restoreColDatas, columnDataT)
+	}
+
 	var suffixVal []string
-	for _, vals := range columnDataSli {
-		suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, stringutil.StringJoin(vals, constant.StringSeparatorComma), `)`))
+	for _, vals := range restoreColDatas {
+		suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
 	}
 
 	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma))

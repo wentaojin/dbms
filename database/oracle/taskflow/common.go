@@ -293,19 +293,44 @@ func optimizerMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS string, 
 		if dataScaleV == 0 {
 			return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
 		} else if dataScaleV > 0 {
+			// dataPrecisionV max value 38
 			if dataScaleV < dataPrecisionV {
 				inteNums := dataPrecisionV - dataScaleV
 				return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM`, stringutil.PaddingString(inteNums, "9", "0"), `.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(`, dataPrecisionS, `,`, dataScaleS, `)),0)`), nil
 			}
-			// oracle dataScale > dataPrecision
+
+			// TODO:
+			// number, number(*), number(38,*) SQL query will be processed into number(38,127). It is impossible to distinguish between manual writing and query processing. If number(38,127) is manually written in the database, dataScaleV should be used normally. >30 logic, no distinction is made here
 			// MYSQL compatible database data scale decimal max is 30, and oracle database to_char max 62 digits
-			if dataScaleV >= 30 {
+			// number、number(*)、number(38,*)、number(38,127)
+			if dataScaleV == 127 && dataPrecisionV == 38 {
+				// number -> to_char(number(38,24))
+				// decimal(65,24)
 				return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM`, stringutil.PaddingString(dataPrecisionV, "9", "0"), `.`, stringutil.PaddingString(62-dataPrecisionV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,`, strconv.Itoa(62-dataPrecisionV), `)),0)`), nil
 			}
-			return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM`, stringutil.PaddingString(dataPrecisionV, "9", "0"), `.`, stringutil.PaddingString(62-dataPrecisionV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,`, strconv.Itoa(62-dataPrecisionV), `)),0)`), nil
+
+			// oracle dataScale > dataPrecision, eg: number(2,6) indicates that decimals without integers are stored.
+			// Regarding precision, scale can also be expressed as follows
+			//The precision (p) and scale (s) of fixed-point numbers follow the following rules:
+			//1) When the length of the integer part of a number > p-s, Oracle will report an error
+			//2) When the length of the decimal part of a number > s, Oracle will round.
+			//3) When s(scale) is a negative number, Oracle rounds the s numbers to the left of the decimal point.
+			//4) When s > p, p represents the maximum number of digits to the left of the sth digit after the decimal point. If it is greater than p, Oracle will report an error, and the digits to the right of the sth digit after the decimal point will be rounded.
+			if dataScaleV == 30 {
+				return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM0.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,30)),0)`), nil
+			}
+
+			// normal compare
+			if dataScaleV > 30 {
+				// max 30
+				return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM0.`, stringutil.PaddingString(30, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,30)),0)`), nil
+			}
+
+			return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM0.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,`, dataScaleS, `)),0)`), nil
 		} else {
-			inteNums := dataPrecisionV - dataPrecisionV
-			return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM`, stringutil.PaddingString(inteNums, "9", "0")), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+			// 8--4
+			inteNums := dataPrecisionV - dataScaleV
+			return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM`, stringutil.PaddingString(inteNums, "9", "0")), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(`, strconv.Itoa(inteNums), `,0)),0)`), nil
 		}
 	case constant.BuildInOracleDatatypeInt, constant.BuildInOracleDatatypeInteger, constant.BuildInOracleDatatypeSmallint:
 		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
@@ -346,6 +371,7 @@ func optimizerMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS string, 
 	case constant.BuildInOracleDatatypeLong, constant.BuildInOracleDatatypeLongRAW, constant.BuildInOracleDatatypeBfile:
 		// can't appear, if the column datatype appear long or long raw, it will be disabled checksum
 		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+	// TODO: BFILE COMPARE SUPPORT
 	// oracle bfile datatype -> mysql compatible database varchar, so if the data compare meet bfile, it will be disabled checksum
 	//case constant.BuildInOracleDatatypeBfile:
 	//	return stringutil.StringBuilder(`NVL(UPPER(DBMS_CRYPTO.HASH(TO_CLOB("`, columnNameS, `"),2)), 0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'))),0)`), nil

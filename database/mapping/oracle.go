@@ -102,11 +102,12 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 						}
 					} else {
+						// number s>p, eg: number(3,5)
 						// oracle number(*) -> number(38,127)
 						// number  -> number(38,127)
 						// number(*,x) ->  number(38,x)
 						// decimal(x,y) -> y max 30
-						if dataPrecision == 38 && dataScale == 127 {
+						if dataScale >= 30 {
 							originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
 								buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, 30)
@@ -114,17 +115,9 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 							}
 							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 						} else {
-							if (dataScale - dataPrecision) >= 30 {
-								originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-								if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-									buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, 30)
-									return originColumnType, buildInColumnType, nil
-								}
-								return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
-							}
 							originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-								buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, dataScale-dataPrecision)
+								buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, dataScale)
 								return originColumnType, buildInColumnType, nil
 							}
 							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
@@ -136,60 +129,54 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 					// number(5,-2) -> accurate to s places to the left of the decimal point， significant digits <= p+|s|
 
 					// the tidb database table join decimal vs integer lower performance, so convert uniformly to decimal
+					originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 
 					dataPrecision = dataPrecision - dataScale
 
-					originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-					if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-						buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", dataPrecision, 0)
-						return originColumnType, buildInColumnType, nil
+					switch {
+					case dataPrecision >= 1 && dataPrecision < 3:
+						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
+						if _, ok = numberDatatypeMap["TINYINT"]; ok {
+							buildInColumnType = "TINYINT(4)"
+							return originColumnType, buildInColumnType, nil
+						}
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [TINYINT]", c.ColumnName, originColumnType)
+					case dataPrecision >= 3 && dataPrecision < 5:
+						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
+						if _, ok = numberDatatypeMap["SMALLINT"]; ok {
+							buildInColumnType = "SMALLINT(6)"
+							return originColumnType, buildInColumnType, nil
+						}
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [SMALLINT]", c.ColumnName, originColumnType)
+					case dataPrecision >= 5 && dataPrecision < 9:
+						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
+						if _, ok = numberDatatypeMap["INT"]; ok {
+							buildInColumnType = "INT(11)"
+							return originColumnType, buildInColumnType, nil
+						}
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [INT]", c.ColumnName, originColumnType)
+					case dataPrecision >= 9 && dataPrecision < 19:
+						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
+						if _, ok = numberDatatypeMap["BIGINT"]; ok {
+							buildInColumnType = "BIGINT(20)"
+							return originColumnType, buildInColumnType, nil
+						}
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [BIGINT]", c.ColumnName, originColumnType)
+					case dataPrecision >= 19 && dataPrecision <= 38:
+						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
+						if _, ok = numberDatatypeMap["DECIMAL"]; ok {
+							buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", dataPrecision, 0)
+							return originColumnType, buildInColumnType, nil
+						}
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+					default:
+						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
+						if _, ok = numberDatatypeMap["DECIMAL"]; ok {
+							buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, 0)
+							return originColumnType, buildInColumnType, nil
+						}
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 					}
-					return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
-
-					//switch {
-					//case dataPrecision >= 1 && dataPrecision < 3:
-					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-					//	if _, ok = numberDatatypeMap["TINYINT"]; ok {
-					//		buildInColumnType = "TINYINT(4)"
-					//		return originColumnType, buildInColumnType, nil
-					//	}
-					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [TINYINT]", c.ColumnName, originColumnType)
-					//case dataPrecision >= 3 && dataPrecision < 5:
-					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-					//	if _, ok = numberDatatypeMap["SMALLINT"]; ok {
-					//		buildInColumnType = "SMALLINT(6)"
-					//		return originColumnType, buildInColumnType, nil
-					//	}
-					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [SMALLINT]", c.ColumnName, originColumnType)
-					//case dataPrecision >= 5 && dataPrecision < 9:
-					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-					//	if _, ok = numberDatatypeMap["INT"]; ok {
-					//		buildInColumnType = "INT(11)"
-					//		return originColumnType, buildInColumnType, nil
-					//	}
-					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [INT]", c.ColumnName, originColumnType)
-					//case dataPrecision >= 9 && dataPrecision < 19:
-					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-					//	if _, ok = numberDatatypeMap["BIGINT"]; ok {
-					//		buildInColumnType = "BIGINT(20)"
-					//		return originColumnType, buildInColumnType, nil
-					//	}
-					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [BIGINT]", c.ColumnName, originColumnType)
-					//case dataPrecision >= 19 && dataPrecision <= 38:
-					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-					//	if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-					//		buildInColumnType = fmt.Sprintf("DECIMAL(%d)", dataPrecision)
-					//		return originColumnType, buildInColumnType, nil
-					//	}
-					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
-					//default:
-					//	originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-					//	if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-					//		buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, 0)
-					//		return originColumnType, buildInColumnType, nil
-					//	}
-					//	return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
-					//}
 				}
 			} else {
 				return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column data precison can't be equal or less than [%d], please checkin", c.ColumnName, originColumnType, dataPrecision)

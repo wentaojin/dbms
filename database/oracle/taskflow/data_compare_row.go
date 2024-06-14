@@ -926,35 +926,34 @@ func (r *DataCompareRow) compareMd5Row() error {
 	columnDataTM := <-columnDataTMC
 	columnNameT := <-columnNameTC
 
+	fmt.Println(columnDataSM)
+	fmt.Println(columnDataTM)
 	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
 
 	var (
 		addDetails []string
 		delDetails []string
 	)
-	if len(addDestSets) > 0 {
-		for dk, dv := range addDestSets {
-			switch {
-			case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
-			default:
-				return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
-			}
-
+	for dk, dv := range addDestSets {
+		switch {
+		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+			addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+				r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+		default:
+			return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
 		}
+
 	}
-	if len(delDestSets) > 0 {
-		for dk, dv := range delDestSets {
-			switch {
-			case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
-			default:
-				return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
-			}
 
+	for dk, dv := range delDestSets {
+		switch {
+		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+			delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+				r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+		default:
+			return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
 		}
+
 	}
 
 	if len(addDetails) > 0 {

@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/greatcloak/decimal"
+	"github.com/shopspring/decimal"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
@@ -134,7 +134,18 @@ func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int,
 				case "sql.NullFloat64":
 					rowData = append(rowData, stringutil.BytesToString(val))
 				default:
-					if strings.EqualFold(databaaseTypes[i], "DECIMAL") {
+					if strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeDecimal) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeBigint) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeDouble) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeDoublePrecision) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeFloat) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeInt) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeInteger) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeMediumint) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeNumeric) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeReal) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeSmallint) ||
+						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeTinyint) {
 						rfs, err := decimal.NewFromString(stringutil.BytesToString(val))
 						if err != nil {
 							return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaaseTypes[i], val, err)
