@@ -723,7 +723,7 @@ func GenDataScanTask(ctx context.Context, serverAddr, taskName, outputDir string
 	}
 
 	var w database.IFileWriter
-	w = taskflow.NewDataScanFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, outputDir)
+	w = taskflow.NewDataScanFile(ctx, taskInfo.TaskName, taskInfo.TaskMode, taskInfo.TaskFlow, outputDir)
 	err = w.InitFile()
 	if err != nil {
 		return err
@@ -737,7 +737,6 @@ func GenDataScanTask(ctx context.Context, serverAddr, taskName, outputDir string
 		return err
 	}
 
-	fmt.Printf("the data scan task record detail had be output to [%v], please forward to view\n", outputDir)
 	return nil
 }
 

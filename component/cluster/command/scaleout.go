@@ -215,7 +215,8 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 			return err
 		}
 		if !info.IsDir() {
-			instantFileNames = append(instantFileNames, info.Name())
+			// remove filename suffix
+			instantFileNames = append(instantFileNames, strings.TrimSuffix(info.Name(), ".tar.gz"))
 		}
 		return nil
 	})
@@ -289,16 +290,16 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 		// if the old topology is exits, ignore copy deploy instant client
 		if _, ok := uniqueHosts[inst.InstanceManageHost()]; !ok {
 			c := task.NewSimpleUerSSH(mg.Logger, inst.InstanceManageHost(), inst.InstanceSshPort(), globalOptions.User, gOpt, sshProxyProps, executor.SSHType(globalOptions.SSHType)).CopyComponent(
-				instantFileNames[0],
-				instantFileNames[2],
-				instantFileNames[3],
-				instantFileNames[1],
+				instantClientSplits[0],
+				instantClientSplits[2],
+				instantClientSplits[3],
+				instantClientSplits[1],
 				filepath.Join(gOpt.MirrorDir, cluster.InstantClientDir),
 				inst.InstanceManageHost(),
 				globalOptions.DeployDir)
 
 			deployInstantClientTasks = append(deployInstantClientTasks,
-				c.BuildAsStep(fmt.Sprintf("  - Copy %s -> %s", instantFileNames[0], inst.InstanceManageHost())),
+				c.BuildAsStep(fmt.Sprintf("  - Copy %s -> %s", instantClientSplits[0], inst.InstanceManageHost())),
 			)
 		}
 	})

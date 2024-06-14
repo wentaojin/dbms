@@ -16,8 +16,10 @@ limitations under the License.
 package command
 
 import (
+	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/service"
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
@@ -271,10 +273,79 @@ func (a *AppTaskDelete) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+type AppTaskStatus struct {
+	*AppTask
+	task string
+}
+
+func (a *AppTask) AppTaskStatus() component.Cmder {
+	return &AppTaskStatus{AppTask: a}
+}
+
+func (a *AppTaskStatus) Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:              "status",
+		Short:            "get cluster task status log information",
+		Long:             `get cluster task status log information`,
+		RunE:             a.RunE,
+		TraverseChildren: true,
+		SilenceUsage:     true,
+	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "", "configure the task name")
+	return cmd
+}
+
+func (a *AppTaskStatus) RunE(cmd *cobra.Command, args []string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("status"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+
+	if strings.EqualFold(a.task, "") {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
+		return nil
+	}
+	bodyReq := make(map[string]interface{})
+	bodyReq["taskName"] = a.task
+	bodyReq["operate"] = constant.TaskOperationGet
+	bodyReq["express"] = ""
+
+	jsonStr, err := stringutil.MarshalJSON(bodyReq)
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
+		return nil
+	}
+	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
+	}
+
+	var jsonData map[string]interface{}
+	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
+		return nil
+	}
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
+	return nil
+}
+
 type AppTaskCrontab struct {
 	*AppTask
-	task    string
-	express string
 }
 
 func (a *AppTask) AppTaskCrontab() component.Cmder {
@@ -290,16 +361,45 @@ func (a *AppTaskCrontab) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
+	return cmd
+}
+
+func (a *AppTaskCrontab) RunE(cmd *cobra.Command, args []string) error {
+	if err := cmd.Help(); err != nil {
+		return err
+	}
+	return nil
+}
+
+type AppTaskCrontabSubmit struct {
+	*AppTaskCrontab
+	task    string
+	express string
+}
+
+func (a *AppTaskCrontab) AppTaskCrontabSubmit() component.Cmder {
+	return &AppTaskCrontabSubmit{AppTaskCrontab: a}
+}
+
+func (a *AppTaskCrontabSubmit) Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:              "submit",
+		Short:            "submit the crontab cluster task",
+		Long:             `submit the crontab cluster task`,
+		RunE:             a.RunE,
+		TraverseChildren: true,
+		SilenceUsage:     true,
+	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "operate task name")
 	cmd.Flags().StringVarP(&a.express, "express", "e", "", "crontab task setting")
 	return cmd
 }
 
-func (a *AppTaskCrontab) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppTaskCrontabSubmit) RunE(cmd *cobra.Command, args []string) error {
 	cyan := color.New(color.FgCyan, color.Bold)
 	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
-	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
-	fmt.Printf("Action:       %s\n", cyan.Sprint("crontab"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task crontab"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("submit"))
 	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
 
 	if strings.EqualFold(a.task, "") {
@@ -351,20 +451,20 @@ func (a *AppTaskCrontab) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-type AppTaskClear struct {
-	*AppTask
+type AppTaskCrontabClear struct {
+	*AppTaskCrontab
 	task string
 }
 
-func (a *AppTask) AppTaskClear() component.Cmder {
-	return &AppTaskClear{AppTask: a}
+func (a *AppTaskCrontab) AppTaskCrontabClear() component.Cmder {
+	return &AppTaskCrontabClear{AppTaskCrontab: a}
 }
 
-func (a *AppTaskClear) Cmd() *cobra.Command {
+func (a *AppTaskCrontabClear) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "clear",
-		Short:            "clear cluster crontab task",
-		Long:             `clear cluster crontab task`,
+		Short:            "clear the crontab cluster task",
+		Long:             `clear the crontab cluster task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -373,11 +473,11 @@ func (a *AppTaskClear) Cmd() *cobra.Command {
 	return cmd
 }
 
-func (a *AppTaskClear) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppTaskCrontabClear) RunE(cmd *cobra.Command, args []string) error {
 	cyan := color.New(color.FgCyan, color.Bold)
 	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
-	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
-	fmt.Printf("Action:       %s\n", cyan.Sprint("delete"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task crontab"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("clear"))
 	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
 
 	if strings.EqualFold(a.task, "") {
@@ -422,65 +522,47 @@ func (a *AppTaskClear) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-type AppTaskGet struct {
-	*AppTask
+type AppTaskCrontabDisplay struct {
+	*AppTaskCrontab
 	task string
 }
 
-func (a *AppTask) AppTaskGet() component.Cmder {
-	return &AppTaskGet{AppTask: a}
+func (a *AppTaskCrontab) AppTaskCrontabDisplay() component.Cmder {
+	return &AppTaskCrontabDisplay{AppTaskCrontab: a}
 }
 
-func (a *AppTaskGet) Cmd() *cobra.Command {
+func (a *AppTaskCrontabDisplay) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "get",
-		Short:            "get cluster task status log information",
-		Long:             `get cluster task status log information`,
+		Use:              "display",
+		Short:            "display the crontab cluster task",
+		Long:             `display the crontab cluster task`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-	cmd.Flags().StringVarP(&a.task, "task", "t", "", "get the task log information")
+	cmd.Flags().StringVarP(&a.task, "task", "t", "", "operate task name")
 	return cmd
 }
 
-func (a *AppTaskGet) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppTaskCrontabDisplay) RunE(cmd *cobra.Command, args []string) error {
+	var task string
+	if strings.EqualFold(a.task, "") {
+		task = "all"
+	} else {
+		task = a.task
+	}
 	cyan := color.New(color.FgCyan, color.Bold)
 	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
-	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
-	fmt.Printf("Action:       %s\n", cyan.Sprint("delete"))
-	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task crontab"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("display"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(task))
 
-	if strings.EqualFold(a.task, "") {
-		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
-		return nil
-	}
-	bodyReq := make(map[string]interface{})
-	bodyReq["taskName"] = a.task
-	bodyReq["operate"] = constant.TaskOperationGet
-	bodyReq["express"] = ""
-
-	jsonStr, err := stringutil.MarshalJSON(bodyReq)
+	cronTasks, err := service.DisplayCronTask(context.TODO(), a.Server, a.task)
 	if err != nil {
-		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
-		return nil
+		return err
 	}
-	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
-	if err != nil {
-		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
-		return nil
-	}
-
-	var jsonData map[string]interface{}
-	err = stringutil.UnmarshalJSON(resp, &jsonData)
-	if err != nil {
-		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
-		return nil
-	}
+	jsonData := make(map[string]interface{})
+	jsonData["tasks"] = cronTasks
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {

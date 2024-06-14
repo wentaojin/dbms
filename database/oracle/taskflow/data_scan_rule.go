@@ -69,19 +69,15 @@ func (r *DataScanRule) GenTableNameRule() (string, error) {
 func (r *DataScanRule) GenTableColumnNameRule() (string, string, error) {
 	var (
 		columnDetailSli, groupColumnSli []string
-		dbTypeS, dbTypeT                string
 	)
-	dbTypeSli := stringutil.StringSplit(r.TaskFlow, constant.StringSeparatorAite)
-	dbTypeS = dbTypeSli[0]
-	dbTypeT = dbTypeSli[1]
 
 	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS, r.DBCollationS)
 	if err != nil {
 		return "", "", err
 	}
 
-	switch stringutil.StringUpper(dbTypeS) {
-	case constant.DatabaseTypeOracle:
+	switch {
+	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
 		for _, rowCol := range sourceColumnInfos {
 			columnName := rowCol["COLUMN_NAME"]
 			datatypeName := rowCol["DATA_TYPE"]
@@ -89,10 +85,7 @@ func (r *DataScanRule) GenTableColumnNameRule() (string, string, error) {
 			dataScale := rowCol["DATA_SCALE"]
 			// NUMBER(38,127) = NUMBER/NUMBER(*)
 			if strings.EqualFold(datatypeName, constant.BuildInOracleDatatypeNumber) && dataPrecision == "38" && dataScale == "127" {
-				datatype, err := r.genOracleNumberColumnDatatype(columnName, dbTypeT)
-				if err != nil {
-					return "", "", err
-				}
+				datatype := r.genMYSQLCompatibleDatabaseOracleNumberColumnDatatype(columnName)
 				columnDetailSli = append(columnDetailSli, datatype)
 				groupColumnSli = append(groupColumnSli, fmt.Sprintf("%s_CATEGORY", columnName))
 			}
@@ -141,23 +134,22 @@ func (r *DataScanRule) GenSchemaTableCustomRule() (string, string, error) {
 	return mr.TableSamplerateS, mr.SqlHintS, nil
 }
 
-func (r *DataScanRule) genOracleNumberColumnDatatype(columnName, dbTypeT string) (string, error) {
-	switch {
-	case strings.EqualFold(dbTypeT, constant.DatabaseTypeMySQL) || strings.EqualFold(dbTypeT, constant.DatabaseTypeTiDB):
-		return fmt.Sprintf(`CASE
+func (r *DataScanRule) genMYSQLCompatibleDatabaseOracleNumberColumnDatatype(columnName string) string {
+	return fmt.Sprintf(`CASE
 		WHEN %[1]s BETWEEN %v AND %v
 		AND %[1]s = TRUNC(%[1]s) THEN 'BIGINT'
 		WHEN %[1]s BETWEEN %v AND %v
 		AND %[1]s = TRUNC(%[1]s) THEN 'BIGINT_UNSIGNED'
-		WHEN %[1]s > %v
+		WHEN %[1]s >= %v
 		AND LENGTH(%[1]s) <= 65
 		AND %[1]s = TRUNC(%[1]s) THEN 'DECIMAL_INT'
 		WHEN %[1]s - TRUNC(%[1]s) != 0 THEN 'DECIMAL_POINT'
 		ELSE 'UNKNOWN'
-	END AS %[1]s_CATEGORY`, columnName,
-			constant.DefaultMYSQLCompatibleBigintLowBound, constant.DefaultMYSQLCompatibleBigintUpperBound,
-			constant.DefaultMYSQLCompatibleBigintUnsignedLowBound, constant.DefaultMYSQLCompatibleBigintUnsignedUpperBound, constant.DefaultMYSQLCompatibleDecimalLowerBound), nil
-	default:
-		return "", fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskMode, r.TaskFlow)
-	}
+	END AS %[1]s_CATEGORY`,
+		columnName,
+		constant.DefaultMYSQLCompatibleBigintLowBound,
+		constant.DefaultMYSQLCompatibleBigintUpperBound,
+		constant.DefaultMYSQLCompatibleBigintUnsignedLowBound,
+		constant.DefaultMYSQLCompatibleBigintUnsignedUpperBound,
+		constant.DefaultMYSQLCompatibleDecimalLowerBound)
 }

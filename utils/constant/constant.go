@@ -57,5 +57,5 @@ const (
 	DefaultMYSQLCompatibleBigintUpperBound         = "9223372036854775807"
 	DefaultMYSQLCompatibleBigintUnsignedLowBound   = "9223372036854775808"
 	DefaultMYSQLCompatibleBigintUnsignedUpperBound = "18446744073709551615"
-	DefaultMYSQLCompatibleDecimalLowerBound        = "18446744073709551615"
+	DefaultMYSQLCompatibleDecimalLowerBound        = "18446744073709551616"
 )

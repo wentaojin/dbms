@@ -240,7 +240,8 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 			return err
 		}
 		if !info.IsDir() {
-			instantFileNames = append(instantFileNames, info.Name())
+			// remove filename suffix
+			instantFileNames = append(instantFileNames, strings.TrimSuffix(info.Name(), ".tar.gz"))
 		}
 		return nil
 	})
@@ -299,16 +300,16 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 		envInitTasks = append(envInitTasks, t)
 
 		c := task.NewSimpleUerSSH(mg.Logger, host, sshPort, globalOptions.User, gOpt, sshProxyProps, executor.SSHType(globalOptions.SSHType)).CopyComponent(
-			instantFileNames[0],
-			instantFileNames[2],
-			instantFileNames[3],
-			instantFileNames[1],
+			instantClientSplits[0],
+			instantClientSplits[2],
+			instantClientSplits[3],
+			instantClientSplits[1],
 			filepath.Join(gOpt.MirrorDir, cluster.InstantClientDir),
 			host,
 			globalOptions.DeployDir)
 
 		deployInstantClientTasks = append(deployInstantClientTasks,
-			c.BuildAsStep(fmt.Sprintf("  - Copy %s -> %s", instantFileNames[0], host)),
+			c.BuildAsStep(fmt.Sprintf("  - Copy %s -> %s", instantClientSplits[0], host)),
 		)
 	}
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/wentaojin/dbms/logger/printer"
@@ -155,6 +156,31 @@ func DeleteGlobalDirs(ctx context.Context, host string, options *cluster.GlobalO
 	e := ctxt.GetInner(ctx).Get(host)
 	logger := ctx.Value(printer.ContextKeyLogger).(*printer.Logger)
 	logger.Infof("Clean global directories %s", host)
+
+	// remove instant client
+	instantDir := filepath.Join(options.DeployDir, cluster.InstantClientDir)
+	logger.Infof("\tClean directory %s on instance %s", instantDir, host)
+
+	c := module.ShellModuleConfig{
+		Command:  fmt.Sprintf("rmdir %s > /dev/null 2>&1 || true", instantDir),
+		Chdir:    "",
+		UseShell: false,
+	}
+	shell := module.NewShellModule(c)
+	stdout, stderr, err := shell.Execute(ctx, e)
+
+	if len(stdout) > 0 {
+		logger.Infof(string(stdout))
+	}
+	if len(stderr) > 0 {
+		logger.Errorf(string(stderr))
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to clean directory %s on: %s, error detail: %v", instantDir, host, err)
+	}
+
+	// remove global dirs
 	for _, dir := range []string{options.LogDir, options.DeployDir, options.DataDir} {
 		if dir == "" {
 			continue

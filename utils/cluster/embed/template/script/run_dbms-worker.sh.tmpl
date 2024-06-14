@@ -6,11 +6,13 @@ set -e
 DEPLOY_DIR={{.DeployDir}}
 cd "${DEPLOY_DIR}" || exit 1
 
+
 {{- if eq .OS "darwin"}}
 export DYLD_LIBRARY_PATH={{.InstantClientDir}}
 {{- else}}
 export LD_LIBRARY_PATH={{.InstantClientDir}}
 {{- end}}
+
 
 {{- if .InstanceNumaNode}}
 exec numactl --cpunodebind={{.InstanceNumaNode}} --membind={{.InstanceNumaNode}} bin/dbms-worker \

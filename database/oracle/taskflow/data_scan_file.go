@@ -38,16 +38,18 @@ type DataScanFile struct {
 	CompFile   *os.File        `json:"-"`
 	CompWriter *bufio.Writer   `json:"-"`
 	TaskName   string          `json:"taskName"`
+	TaskMode   string          `json:"taskMode"`
 	TaskFlow   string          `json:"taskFlow"`
 	OutputDir  string          `json:"outputDir"`
 }
 
 func NewDataScanFile(ctx context.Context,
-	taskName, taskFlow, outputDir string) *DataScanFile {
+	taskName, taskMode, taskFlow, outputDir string) *DataScanFile {
 	return &DataScanFile{
 		Ctx:       ctx,
 		TaskName:  taskName,
 		TaskFlow:  taskFlow,
+		TaskMode:  taskMode,
 		OutputDir: outputDir,
 		Mutex:     &sync.Mutex{},
 	}
@@ -108,78 +110,109 @@ func (s *DataScanFile) SyncFile() error {
 				columns = append(columns, columnCategorySli[0])
 			}
 
-			wt := table.NewWriter()
-			wt.SetStyle(table.StyleLight)
-			wt.SetTitle(fmt.Sprintf("TABLE_NAME:	%s.%s", schemaName, tableName))
-			wt.AppendHeader(table.Row{"COLUMN_NAME", "BIGINT", "BIGINT_UNSIGNED", "DECIMAL_INT", "DECIMAL_POINT", "UNKNOWN"})
+			switch {
+			case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToMySQL):
+				wt := table.NewWriter()
+				wt.SetStyle(table.StyleLight)
+				wt.SetTitle("TABLE_NAME: %s.%s", schemaName, tableName)
+				wt.AppendHeader(table.Row{"COLUMN_NAME", "BIGINT", "BIGINT_UNSIGNED", "DECIMAL_INT", "DECIMAL_POINT", "UNKNOWN", "SUGGEST"})
 
-			var tableScans []*ScanResultMYSQLCompatible
+				var tableScans []*ScanResultMYSQLCompatible
 
-			for _, mt := range migrateTasks {
-				if strings.EqualFold(schemaName, mt.SchemaNameS) && strings.EqualFold(tableName, mt.TableNameS) {
-					var scanResults []*ScanResultMYSQLCompatible
-					err = stringutil.UnmarshalJSON([]byte(mt.ScanResult), &scanResults)
-					if err != nil {
-						return err
-					}
-					tableScans = append(tableScans, scanResults...)
-				}
-			}
-
-			for _, c := range columns {
-				var (
-					bigint         int64
-					bigintUnsigned int64
-					decimalInt     int64
-					decimalPoint   int64
-					unknown        int64
-				)
-
-				for _, ts := range tableScans {
-					if strings.EqualFold(c, ts.ColumnName) {
-						bigintS, err := stringutil.StrconvIntBitSize(ts.Bigint, 64)
+				for _, mt := range migrateTasks {
+					if strings.EqualFold(schemaName, mt.SchemaNameS) && strings.EqualFold(tableName, mt.TableNameS) {
+						var scanResults []*ScanResultMYSQLCompatible
+						err = stringutil.UnmarshalJSON([]byte(mt.ScanResult), &scanResults)
 						if err != nil {
 							return err
 						}
-						bigint += bigintS
-
-						bigintUS, err := stringutil.StrconvIntBitSize(ts.BigintUnsigned, 64)
-						if err != nil {
-							return err
-						}
-						bigintUnsigned += bigintUS
-
-						decimalI, err := stringutil.StrconvIntBitSize(ts.DecimalInt, 64)
-						if err != nil {
-							return err
-						}
-						decimalInt += decimalI
-
-						decimalIP, err := stringutil.StrconvIntBitSize(ts.DecimalPoint, 64)
-						if err != nil {
-							return err
-						}
-						decimalPoint += decimalIP
-
-						unknownS, err := stringutil.StrconvIntBitSize(ts.Unknown, 64)
-						if err != nil {
-							return err
-						}
-						unknown += unknownS
+						tableScans = append(tableScans, scanResults...)
 					}
 				}
 
-				wt.AppendRow(table.Row{c, bigint, bigintUnsigned, decimalInt, decimalPoint, unknown})
+				for _, c := range columns {
+					var (
+						bigint         int64
+						bigintUnsigned int64
+						decimalInt     int64
+						decimalPoint   int64
+						unknown        int64
+						suggest        string
+					)
+
+					for _, ts := range tableScans {
+						if strings.EqualFold(c, ts.ColumnName) {
+							if !strings.EqualFold(ts.Bigint, "") {
+								bigintS, err := stringutil.StrconvIntBitSize(ts.Bigint, 64)
+								if err != nil {
+									return err
+								}
+								bigint += bigintS
+							}
+
+							if !strings.EqualFold(ts.BigintUnsigned, "") {
+								bigintUS, err := stringutil.StrconvIntBitSize(ts.BigintUnsigned, 64)
+								if err != nil {
+									return err
+								}
+								bigintUnsigned += bigintUS
+							}
+
+							if !strings.EqualFold(ts.DecimalInt, "") {
+								decimalI, err := stringutil.StrconvIntBitSize(ts.DecimalInt, 64)
+								if err != nil {
+									return err
+								}
+								decimalInt += decimalI
+							}
+
+							if !strings.EqualFold(ts.DecimalPoint, "") {
+								decimalIP, err := stringutil.StrconvIntBitSize(ts.DecimalPoint, 64)
+								if err != nil {
+									return err
+								}
+								decimalPoint += decimalIP
+							}
+
+							if !strings.EqualFold(ts.Unknown, "") {
+								unknownS, err := stringutil.StrconvIntBitSize(ts.Unknown, 64)
+								if err != nil {
+									return err
+								}
+								unknown += unknownS
+							}
+						}
+					}
+
+					switch {
+					case bigint > 0 && bigintUnsigned == 0 && decimalInt == 0 && decimalPoint == 0 && unknown == 0:
+						suggest = "BIGINT"
+					case bigint == 0 && bigintUnsigned > 0 && decimalInt == 0 && decimalPoint == 0 && unknown == 0:
+						suggest = "BIGINT UNSIGNED"
+					case bigint == 0 && bigintUnsigned == 0 && decimalInt > 0 && decimalPoint == 0 && unknown == 0:
+						suggest = "DECIMAL(65,0)"
+					case bigint == 0 && bigintUnsigned == 0 && decimalInt == 0 && decimalPoint > 0 && unknown == 0:
+						suggest = "DECIMAL(65,X), But cannot confirm how much X is"
+					case bigint == 0 && bigintUnsigned == 0 && decimalInt == 0 && decimalPoint == 0 && unknown > 0:
+						suggest = "UNKNOWN, Over mysql compatible database datatype range"
+					default:
+						suggest = "ERROR, Cannot confirm which data type to use"
+					}
+
+					wt.AppendRow(table.Row{c, bigint, bigintUnsigned, decimalInt, decimalPoint, unknown, suggest})
+				}
+
+				wt.SetCaption(fmt.Sprintf("%d rows in set (scan detail)", len(columns)))
+
+				sqlComp.WriteString(wt.Render() + "\n\n")
+			default:
+				return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] is not supoort, please contact author or reselect", s.TaskName, s.TaskMode, s.TaskFlow)
 			}
-
-			wt.SetCaption(fmt.Sprintf("%d rows in set (scan detail)", len(columns)))
-
-			sqlComp.WriteString(wt.Render() + "\n\n")
 		}
 
 	}
 
-	if strings.EqualFold(sqlComp.String(), "") {
+	if !strings.EqualFold(sqlComp.String(), "") {
 		_, err = s.writeScanFile(sqlComp.String())
 		if err != nil {
 			return err
