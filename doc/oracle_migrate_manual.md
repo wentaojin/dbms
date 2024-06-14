@@ -40,6 +40,7 @@ ORACLE MIGRATE MYSQL 兼容性数据库，提供以下功能实现：
   - 表属性自定义（仅限 TiDB 数据库）
   - 列默认值内置 sysdate -> now() 和 sys_guid -> uuid 规则，并提供 [buildin_datatype_rule] 和 [buildin_defaultval_rule] 元数据表，能够编写更多规则
 - 经过转换的表结构可直接在下游数据库进行创建
+- 断点续传
 - ORACLE 迁移 MYSQL 兼容性数据库[内置列数据类型映射规则](../doc/buildin_rule_reverse_o.md)
 - 数据库序列 Sequence 迁移（需要下游数据库支持序列）
 

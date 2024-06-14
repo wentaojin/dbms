@@ -966,7 +966,7 @@ ORDER BY
 
 func (d *Database) GetDatabaseTableUniqueIndex(schemaName string, tableName string) ([]map[string]string, error) {
 	// Oracle database 11g Release 2 and UP
-	//	queryStr := fmt.Sprintf(`SELECT
+	//queryStr := fmt.Sprintf(`SELECT
 	//	TEMP.INDEX_OWNER,
 	//	TEMP.TABLE_NAME,
 	//	TEMP.UNIQUENESS,
@@ -1037,12 +1037,31 @@ func (d *Database) GetDatabaseTableUniqueIndex(schemaName string, tableName stri
 	//		SELECT
 	//			1
 	//		FROM
-	//			DBA_CONSTRAINTS C
+	//			(
+	//			SELECT
+	//				AU.OWNER,
+	//				AU.TABLE_NAME,
+	//				AU.INDEX_NAME,
+	//				CU.COLUMN_NAME,
+	//				CU.POSITION
+	//			FROM
+	//				DBA_CONS_COLUMNS CU,
+	//				DBA_CONSTRAINTS AU
+	//			WHERE
+	//				CU.CONSTRAINT_NAME = AU.CONSTRAINT_NAME
+	//				AND AU.CONSTRAINT_TYPE IN ('P', 'U')
+	//				AND AU.STATUS = 'ENABLED'
+	//				AND CU.OWNER = AU.OWNER
+	//				AND CU.TABLE_NAME = AU.TABLE_NAME
+	//				AND AU.OWNER = '%s'
+	//				AND AU.TABLE_NAME = '%s'
+	//		) C
 	//		WHERE
 	//			I.INDEX_NAME = C.INDEX_NAME
 	//			AND I.TABLE_OWNER = C.OWNER
 	//			AND I.TABLE_NAME = C.TABLE_NAME
-	//			AND C.CONSTRAINT_TYPE IN ('P', 'U')
+	//			AND T.COLUMN_NAME = C.COLUMN_NAME
+	//			AND T.COLUMN_POSITION = C.POSITION
 	//	)) TEMP
 	//GROUP BY
 	//		TEMP.INDEX_OWNER,
@@ -1054,10 +1073,12 @@ func (d *Database) GetDatabaseTableUniqueIndex(schemaName string, tableName stri
 	//		TEMP.ITYP_OWNER,
 	//		TEMP.ITYP_NAME,
 	//		TEMP.PARAMETERS`,
-	//		schemaName,
-	//		tableName,
-	//		schemaName,
-	//		tableName)
+	//	schemaName,
+	//	tableName,
+	//	schemaName,
+	//	tableName,
+	//	schemaName,
+	//	tableName)
 	// Oracle database 9i and UP
 	queryStr := fmt.Sprintf(`SELECT
 	INDEX_OWNER,
@@ -1085,10 +1106,7 @@ FROM
 		TEMP.PARAMETERS,
 		TEMP.COLUMN_NAME,
 		TEMP.COLUMN_POSITION,
-		ROW_NUMBER() OVER (PARTITION BY TEMP.INDEX_OWNER,
-		TEMP.INDEX_NAME
-	ORDER BY
-		TEMP.COLUMN_POSITION)-1 RN_LAG
+		ROW_NUMBER() OVER (PARTITION BY TEMP.INDEX_OWNER,TEMP.INDEX_NAME ORDER BY TEMP.COLUMN_POSITION)-1 RN_LAG
 	FROM
 		(
 		SELECT
@@ -1131,10 +1149,10 @@ WHERE
 	COLUMN_EXPRESSION VARCHAR2 (4000) 
 	) XS 
 WHERE
-XS.INDEX_OWNER = T.INDEX_OWNER
+	XS.INDEX_OWNER = T.INDEX_OWNER
 	AND XS.INDEX_NAME = T.INDEX_NAME
-AND XS.COLUMN_POSITION = T.COLUMN_POSITION)) COLUMN_NAME,
-			T.COLUMN_POSITION
+	AND XS.COLUMN_POSITION = T.COLUMN_POSITION)) COLUMN_NAME,
+		T.COLUMN_POSITION
 		FROM
 			DBA_IND_COLUMNS T,
 			DBA_INDEXES I
@@ -1144,19 +1162,39 @@ AND XS.COLUMN_POSITION = T.COLUMN_POSITION)) COLUMN_NAME,
 			AND T.INDEX_NAME = I.INDEX_NAME
 			AND T.INDEX_OWNER = I.OWNER
 			AND I.UNIQUENESS = 'UNIQUE'
-			AND I.TABLE_OWNER = '%s'
-			AND I.TABLE_NAME = '%s'
-			-- exclude primary and unique 
+			AND T.TABLE_OWNER = '%s'
+			AND T.TABLE_NAME = '%s'
+			-- exclude constraint index
 			AND NOT EXISTS (
 			SELECT
 				1
 			FROM
-				DBA_CONSTRAINTS C
+				(
+				SELECT
+					AU.OWNER,
+					AU.TABLE_NAME,
+					AU.INDEX_NAME,
+					CU.COLUMN_NAME,
+					CU.POSITION
+				FROM
+					DBA_CONS_COLUMNS CU,
+					DBA_CONSTRAINTS AU
+				WHERE
+					CU.CONSTRAINT_NAME = AU.CONSTRAINT_NAME
+					AND AU.CONSTRAINT_TYPE IN ('P', 'U')
+					AND AU.STATUS = 'ENABLED'
+					AND CU.OWNER = AU.OWNER
+					AND CU.TABLE_NAME = AU.TABLE_NAME
+					AND AU.OWNER = '%s'
+					AND AU.TABLE_NAME = '%s'
+			) C
 			WHERE
 				I.INDEX_NAME = C.INDEX_NAME
 				AND I.TABLE_OWNER = C.OWNER
 				AND I.TABLE_NAME = C.TABLE_NAME
-				AND C.CONSTRAINT_TYPE IN ('P', 'U'))) TEMP)
+				AND T.COLUMN_NAME = C.COLUMN_NAME
+				AND T.COLUMN_POSITION = C.POSITION)
+			) TEMP)
 GROUP BY
 		INDEX_OWNER,
 		TABLE_OWNER,
@@ -1183,6 +1221,8 @@ ORDER BY
 	ITYP_OWNER,
 	ITYP_NAME,
 	PARAMETERS`,
+		schemaName,
+		tableName,
 		schemaName,
 		tableName,
 		schemaName,
