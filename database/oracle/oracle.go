@@ -70,7 +70,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 
 	// Local Testing
 	// Fixed MACOS SIP Security, DYLD_LIBRARY_PATH not working
-	oraDSN.LibDir = "/Users/marvin/storehouse/oracle/instantclient_19_16"
+	//oraDSN.LibDir = "/Users/marvin/storehouse/oracle/instantclient_19_16"
 
 	// session params
 	sessionParams = append(sessionParams, []string{
