@@ -524,7 +524,7 @@ func ClearCronTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req 
 	}
 }
 
-func DisplayCronTask(ctx context.Context, serverAddr, taskName string) ([]string, error) {
+func DisplayCronTask(ctx context.Context, serverAddr, taskName string) ([]*Express, error) {
 	cli, err := etcdutil.CreateClient(ctx, []string{serverAddr}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("the server create client failed, disable display crontab task. If need, please retry display crontab task, error: %v", err)
@@ -541,11 +541,18 @@ func DisplayCronTask(ctx context.Context, serverAddr, taskName string) ([]string
 			return nil, fmt.Errorf("the task [%s] get result counts [%d] over than one, disable display crontab task. If need, please retry display crontab task", taskName, len(exprKeyResp.Kvs))
 		}
 
-		return []string{string(exprKeyResp.Kvs[0].Value)}, nil
+		var expr *Express
+
+		err = stringutil.UnmarshalJSON(exprKeyResp.Kvs[0].Value, &expr)
+		if err != nil {
+			return nil, err
+		}
+
+		return []*Express{expr}, nil
 	}
 
 	key := constant.DefaultMasterCrontabExpressPrefixKey
-	exprKeyResp, err := etcdutil.GetKey(cli, key)
+	exprKeyResp, err := etcdutil.GetKey(cli, key, clientv3.WithPrefix())
 	if err != nil {
 		return nil, fmt.Errorf("get the all tasks results failed, disable display crontab task. If need, please retry display crontab task")
 	}
@@ -553,9 +560,14 @@ func DisplayCronTask(ctx context.Context, serverAddr, taskName string) ([]string
 		return nil, fmt.Errorf("get the all tasks results counts [%d] are equal zero, disable display crontab task", len(exprKeyResp.Kvs))
 	}
 
-	var resps []string
+	var resps []*Express
 	for _, resp := range exprKeyResp.Kvs {
-		resps = append(resps, string(resp.Value))
+		var expr *Express
+		err = stringutil.UnmarshalJSON(resp.Value, &expr)
+		if err != nil {
+			return nil, err
+		}
+		resps = append(resps, expr)
 	}
 	return resps, nil
 }
