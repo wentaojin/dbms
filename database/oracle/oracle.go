@@ -68,10 +68,6 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 		sessionParams = append(sessionParams, fmt.Sprintf(`ALTER SESSION SET CONTAINER = %s`, datasource.PdbName))
 	}
 
-	// Local Testing
-	// Fixed MACOS SIP Security, DYLD_LIBRARY_PATH not working
-	oraDSN.LibDir = "/Users/marvin/storehouse/oracle/instantclient_19_16"
-
 	// session params
 	sessionParams = append(sessionParams, []string{
 		"BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM (DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', TRUE); END;",
