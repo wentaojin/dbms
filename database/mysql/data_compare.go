@@ -118,11 +118,11 @@ func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int,
 
 		for i, colName := range columnNames {
 			val := rawResult[i]
-			// ORACLE database NULL and "" are the same
+			// ORACLE database NULL and "" are the same, but mysql database NULL and "" are the different
 			if val == nil {
 				rowData = append(rowData, `NULL`)
 			} else if stringutil.BytesToString(val) == "" {
-				rowData = append(rowData, `NULL`)
+				rowData = append(rowData, "")
 			} else {
 				switch scanTypes[i] {
 				case "sql.NullInt16":

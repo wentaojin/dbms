@@ -143,7 +143,7 @@ ORACLE MIGRATE MYSQL 兼容性数据库，以上游 ORACLE 数据库为基准，
 - 移除主键、唯一键、唯一索引要求限制，采用数据对比过程结合数据记录行数规避
 
 <mark>NOTE:</mark>
-- 数据库版本要求 >= ORACLE 10G
+- 数据库版本要求 >= ORACLE 10G，MYSQL Compatible Database Null And "" 不额外处理，以原始值对比
 - 除 LONG/LONG RAW/BFILE 数据类型字段表，采用程序 CRC32 方式校验外，其他的采用数据库 MD5 方式校验，但可通过忽略 LONG/LONG RAW/BFILE 数据类型字段规避方式来使用数据库 MD5 方式校验
 - 对于无精度 Number 数据类型统一以 TO_CHAR(38 位整数,24 位小数) VS DECIMAL(65,24) 数据对比，优先保整数部分（TO_CHAR 格式化 MAX 62 位）
 - 为尽可能避免 ORA-22835 字段拼接超过 4000，对于字符数据超过 32 字符或者 LOB 类型数据提前 MD5 加密运算，其他维持原样运算

@@ -926,8 +926,6 @@ func (r *DataCompareRow) compareMd5Row() error {
 	columnDataTM := <-columnDataTMC
 	columnNameT := <-columnNameTC
 
-	fmt.Println(columnDataSM)
-	fmt.Println(columnDataTM)
 	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
 
 	var (
