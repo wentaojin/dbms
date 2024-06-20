@@ -17,9 +17,10 @@ package constant
 
 // Database Type
 const (
-	DatabaseTypeOracle = "ORACLE"
-	DatabaseTypeMySQL  = "MYSQL"
-	DatabaseTypeTiDB   = "TIDB"
+	DatabaseTypeOracle     = "ORACLE"
+	DatabaseTypeMySQL      = "MYSQL"
+	DatabaseTypeTiDB       = "TIDB"
+	DatabaseTypePostgresql = "POSTGRESQL"
 )
 
 // DefaultRecordCreateBatchSize Model Create Record Default Batch Size

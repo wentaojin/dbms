@@ -118,7 +118,7 @@ func GenMYSQLCompatibleDatabaseDeleteStmtSQL(targetSchemaName, targetTableName, 
 		if strings.EqualFold(columnDataT[i], constant.MYSQLDatabaseTableColumnDefaultValueWithNULL) {
 			columnConds = append(columnConds, stringutil.StringBuilder("`", c, "`", ` IS `, columnDataT[i]))
 		} else if strings.EqualFold(columnDataT[i], constant.MYSQLDatabaseTableColumnDefaultValueWithStringNull) {
-			columnConds = append(columnConds, `''`)
+			columnConds = append(columnConds, stringutil.StringBuilder("`", c, "`", ` = ''`))
 		} else {
 			columnConds = append(columnConds, stringutil.StringBuilder("`", c, "`", ` = `, columnDataT[i]))
 		}

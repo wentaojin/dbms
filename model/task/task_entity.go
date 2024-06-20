@@ -31,6 +31,7 @@ type Task struct {
 	WorkerAddr      string     `gorm:"type:varchar(30);comment:worker addr" json:"workerAddr"`
 	CaseFieldRuleS  string     `gorm:"type:varchar(30);comment:source case field rule" json:"caseFieldRuleS"`
 	CaseFieldRuleT  string     `gorm:"type:varchar(30);comment:target case field rule" json:"CaseFieldRuleT"`
+	TaskInit        string     `gorm:"type:varchar(30);default:N;comment:the task init status" json:"TaskInit"`
 	TaskStatus      string     `gorm:"type:varchar(30);comment:task status" json:"taskStatus"`
 	StartTime       *time.Time `gorm:"default:null;comment:task start running time" json:"startTime"`
 	EndTime         *time.Time `gorm:"default:null;comment:task end running time" json:"endTime"`

@@ -439,7 +439,11 @@ func (stm *StmtMigrateTask) Start() error {
 
 func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.IDatabase, dbVersion string, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
 	// delete checkpoint
-	if !stm.TaskParams.EnableCheckpoint {
+	initFlags, err := model.GetITaskRW().GetTask(stm.Ctx, &task.Task{TaskName: stm.Task.TaskName})
+	if err != nil {
+		return err
+	}
+	if !stm.TaskParams.EnableCheckpoint || strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusNotFinished) {
 		err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(stm.Ctx, []string{schemaRoute.TaskName})
 		if err != nil {
 			return err
@@ -448,6 +452,13 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 		if err != nil {
 			return err
 		}
+	} else if stm.TaskParams.EnableCheckpoint && strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusFinished) {
+		logger.Warn("stmt migrate task init skip",
+			zap.String("task_name", stm.Task.TaskName),
+			zap.String("task_mode", stm.Task.TaskMode),
+			zap.String("task_flow", stm.Task.TaskFlow),
+			zap.String("task_init", constant.TaskInitStatusFinished))
+		return nil
 	}
 
 	dbRole, err := databaseS.GetDatabaseRole()
@@ -1031,6 +1042,11 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 			zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow),
 			zap.String("schema_name_s", schemaRoute.SchemaNameS),
 			zap.Error(err))
+		return err
+	}
+
+	_, err = model.GetITaskRW().UpdateTask(stm.Ctx, &task.Task{TaskName: stm.Task.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
+	if err != nil {
 		return err
 	}
 	return nil

@@ -22,9 +22,11 @@ require (
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
 	github.com/greatcloak/decimal v1.4.4
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
+	github.com/jackc/pgx/v5 v5.6.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/joomcode/errorx v1.1.1
 	github.com/labstack/gommon v0.4.0
+	github.com/lib/pq v1.10.9
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/otiai10/copy v1.14.0
 	github.com/pingcap/errors v0.11.5-0.20201126102027-b0a155152ca3
@@ -95,6 +97,8 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/yaml v0.3.1 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jonboulle/clockwork v0.4.0 // indirect

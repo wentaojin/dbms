@@ -368,7 +368,11 @@ func (dst *DataScanTask) Start() error {
 
 func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersion string, dbCollationS bool, schemaNameS string) error {
 	// delete checkpoint
-	if !dst.TaskParams.EnableCheckpoint {
+	initFlags, err := model.GetITaskRW().GetTask(dst.Ctx, &task.Task{TaskName: dst.Task.TaskName})
+	if err != nil {
+		return err
+	}
+	if !dst.TaskParams.EnableCheckpoint || strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusNotFinished) {
 		err := model.GetIDataScanTaskRW().DeleteDataScanTaskName(dst.Ctx, []string{dst.Task.TaskName})
 		if err != nil {
 			return err
@@ -377,6 +381,13 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 		if err != nil {
 			return err
 		}
+	} else if dst.TaskParams.EnableCheckpoint && strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusFinished) {
+		logger.Warn("data scan task init skip",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
+			zap.String("task_init", constant.TaskInitStatusFinished))
+		return nil
 	}
 
 	dbRole, err := databaseS.GetDatabaseRole()
@@ -924,6 +935,10 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 			zap.String("task_flow", dst.Task.TaskFlow),
 			zap.String("schema_name_s", schemaNameS),
 			zap.Error(err))
+		return err
+	}
+	_, err = model.GetITaskRW().UpdateTask(dst.Ctx, &task.Task{TaskName: dst.Task.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
+	if err != nil {
 		return err
 	}
 	return nil

@@ -292,6 +292,31 @@ func (smt *SqlMigrateTask) Start() error {
 }
 
 func (smt *SqlMigrateTask) InitSqlMigrateTask(databaseS database.IDatabase) error {
+	var (
+		initFlags *task.Task
+		err       error
+	)
+	err = model.Transaction(smt.Ctx, func(txnCtx context.Context) error {
+		initFlags, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: smt.Task.TaskName})
+		if err != nil {
+			return err
+		}
+		if strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusNotFinished) {
+			err = model.GetISqlMigrateTaskRW().DeleteSqlMigrateTaskName(txnCtx, []string{smt.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetISqlMigrateSummaryRW().DeleteSqlMigrateSummaryName(txnCtx, []string{smt.Task.TaskName})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	// repeatedDoneInfos used for store the sql_migrate_task information has be finished, avoid repeated initialization
 	migrateDoneInfos, err := model.GetISqlMigrateTaskRW().FindSqlMigrateTaskByTaskStatus(smt.Ctx, &task.SqlMigrateTask{TaskName: smt.Task.TaskName, TaskStatus: constant.TaskDatabaseStatusSuccess})
 	if err != nil {
@@ -371,6 +396,10 @@ func (smt *SqlMigrateTask) InitSqlMigrateTask(databaseS database.IDatabase) erro
 	}
 
 	err = model.Transaction(smt.Ctx, func(txnCtx context.Context) error {
+		_, err = model.GetITaskRW().UpdateTask(txnCtx, &task.Task{TaskName: smt.Task.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
+		if err != nil {
+			return err
+		}
 		err = model.GetISqlMigrateTaskRW().CreateInBatchSqlMigrateTask(txnCtx, sqlMigrateTasks, constant.DefaultRecordCreateBatchSize)
 		if err != nil {
 			return err

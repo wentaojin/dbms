@@ -103,7 +103,7 @@ func UpsertDataScanTask(ctx context.Context, req *pb.UpsertDataScanTaskRequest) 
 			return err
 		}
 		defer databaseS.Close()
-		allOraSchemas, err := databaseS.FilterDatabaseSchema()
+		allOraSchemas, err := databaseS.GetDatabaseSchema()
 		if err != nil {
 			return err
 		}

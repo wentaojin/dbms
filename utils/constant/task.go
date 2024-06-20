@@ -64,3 +64,8 @@ const (
 	TaskOperationDelete  = "DELETE"
 	TaskOperationGet     = "GET"
 )
+
+const (
+	TaskInitStatusFinished    = "Y"
+	TaskInitStatusNotFinished = "N"
+)

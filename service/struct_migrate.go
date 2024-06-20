@@ -979,7 +979,11 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 
 func initStructMigrateTask(ctx context.Context, taskInfo *task.Task, databaseS database.IDatabase, enableCheckpoint bool) error {
 	// delete checkpoint
-	if !enableCheckpoint {
+	initFlags, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskInfo.TaskName})
+	if err != nil {
+		return err
+	}
+	if !enableCheckpoint || strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusNotFinished) {
 		err := model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(ctx, []string{taskInfo.TaskName})
 		if err != nil {
 			return err
@@ -988,6 +992,13 @@ func initStructMigrateTask(ctx context.Context, taskInfo *task.Task, databaseS d
 		if err != nil {
 			return err
 		}
+	} else if enableCheckpoint && strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusFinished) {
+		logger.Warn("struct migrate task init skip",
+			zap.String("task_name", taskInfo.TaskName),
+			zap.String("task_mode", taskInfo.TaskMode),
+			zap.String("task_flow", taskInfo.TaskFlow),
+			zap.String("task_init", constant.TaskInitStatusFinished))
+		return nil
 	}
 
 	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(ctx,
@@ -1123,6 +1134,10 @@ func initStructMigrateTask(ctx context.Context, taskInfo *task.Task, databaseS d
 			SchemaNameS: schemaRoute.SchemaNameS,
 			TableTotals: uint64(len(databaseTables) + 1), // include schema create sql
 		})
+	if err != nil {
+		return err
+	}
+	_, err = model.GetITaskRW().UpdateTask(ctx, &task.Task{TaskName: taskInfo.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
 	if err != nil {
 		return err
 	}

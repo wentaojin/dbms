@@ -392,7 +392,11 @@ func (dmt *DataCompareTask) Start() error {
 
 func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.IDatabase, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
 	// delete checkpoint
-	if !dmt.TaskParams.EnableCheckpoint {
+	initFlags, err := model.GetITaskRW().GetTask(dmt.Ctx, &task.Task{TaskName: dmt.Task.TaskName})
+	if err != nil {
+		return err
+	}
+	if !dmt.TaskParams.EnableCheckpoint || strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusNotFinished) {
 		err := model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(dmt.Ctx, []string{schemaRoute.TaskName})
 		if err != nil {
 			return err
@@ -401,6 +405,13 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 		if err != nil {
 			return err
 		}
+	} else if dmt.TaskParams.EnableCheckpoint && strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusFinished) {
+		logger.Warn("data compare task init skip",
+			zap.String("task_name", dmt.Task.TaskName),
+			zap.String("task_mode", dmt.Task.TaskMode),
+			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("task_init", constant.TaskInitStatusFinished))
+		return nil
 	}
 	// filter database table
 	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(dmt.Ctx, &rule.MigrateTaskTable{
@@ -833,6 +844,10 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow),
 			zap.String("schema_name_s", schemaRoute.SchemaNameS),
 			zap.Error(err))
+		return err
+	}
+	_, err = model.GetITaskRW().UpdateTask(dmt.Ctx, &task.Task{TaskName: dmt.Task.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
+	if err != nil {
 		return err
 	}
 	return nil

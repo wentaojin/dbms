@@ -463,7 +463,11 @@ func (cmt *CsvMigrateTask) Start() error {
 
 func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVersion string, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
 	// delete checkpoint
-	if !cmt.TaskParams.EnableCheckpoint {
+	initFlags, err := model.GetITaskRW().GetTask(cmt.Ctx, &task.Task{TaskName: cmt.Task.TaskName})
+	if err != nil {
+		return err
+	}
+	if !cmt.TaskParams.EnableCheckpoint || strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusNotFinished) {
 		err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(cmt.Ctx, []string{schemaRoute.TaskName})
 		if err != nil {
 			return err
@@ -472,6 +476,13 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 		if err != nil {
 			return err
 		}
+	} else if cmt.TaskParams.EnableCheckpoint && strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusFinished) {
+		logger.Warn("csv migrate task init skip",
+			zap.String("task_name", cmt.Task.TaskName),
+			zap.String("task_mode", cmt.Task.TaskMode),
+			zap.String("task_flow", cmt.Task.TaskFlow),
+			zap.String("task_init", constant.TaskInitStatusFinished))
+		return nil
 	}
 
 	dbRole, err := databaseS.GetDatabaseRole()
@@ -1061,6 +1072,11 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", schemaRoute.SchemaNameS),
 			zap.Error(err))
+		return err
+	}
+
+	_, err = model.GetITaskRW().UpdateTask(cmt.Ctx, &task.Task{TaskName: cmt.Task.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
+	if err != nil {
 		return err
 	}
 	return nil

@@ -24,14 +24,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func (d *Database) FilterDatabaseSchema() ([]string, error) {
-	allOraSchemas, err := d.GetDatabaseSchema()
-	if err != nil {
-		return allOraSchemas, err
-	}
-	return allOraSchemas, nil
-}
-
 func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error) {
 	startTime := time.Now()
 	var (

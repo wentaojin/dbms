@@ -18,6 +18,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"github.com/wentaojin/dbms/database/postgresql"
 	"strings"
 
 	"github.com/wentaojin/dbms/database/mysql"
@@ -44,7 +45,6 @@ type IDatabase interface {
 }
 
 type IDatabaseObjectFilter interface {
-	FilterDatabaseSchema() ([]string, error)
 	FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error)
 }
 
@@ -68,6 +68,11 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, migrate
 		}
 	case strings.EqualFold(datasource.DbType, constant.DatabaseTypeTiDB) || strings.EqualFold(datasource.DbType, constant.DatabaseTypeMySQL):
 		database, err = mysql.NewDatabase(ctx, datasource)
+		if err != nil {
+			return database, err
+		}
+	case strings.EqualFold(datasource.DbType, constant.DatabaseTypePostgresql):
+		database, err = postgresql.NewDatabase(ctx, datasource)
 		if err != nil {
 			return database, err
 		}
