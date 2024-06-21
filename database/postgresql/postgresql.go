@@ -32,7 +32,7 @@ type Database struct {
 	DBConn *sql.DB
 }
 
-func NewDatabase(ctx context.Context, datasource *datasource.Datasource, currentSchema string) (*Database, error) {
+func NewDatabase(ctx context.Context, datasource *datasource.Datasource) (*Database, error) {
 	var (
 		connString string
 		err        error
