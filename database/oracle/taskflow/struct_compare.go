@@ -146,7 +146,7 @@ func (dmt *StructCompareTask) Start() error {
 			&task.StructCompareTask{
 				TaskName:    dmt.Task.TaskName,
 				SchemaNameS: schemaRoute.SchemaNameS,
-				TaskStatus:  constant.TaskDatabaseStatusRunning})
+				TaskStatus:  constant.TaskDatabaseStatusStopped})
 		if err != nil {
 			return err
 		}

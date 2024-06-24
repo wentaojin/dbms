@@ -453,6 +453,7 @@ const (
 	ParamNameStmtMigrateCallTimeout          = "callTimeout"
 	ParamNameStmtMigrateEnableCheckpoint     = "enableCheckpoint"
 	ParamNameStmtMigrateEnableConsistentRead = "enableConsistentRead"
+	ParamNameStmtMigrateEnableSafeMode       = "enableSafeMode"
 
 	// ParamValueDataMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin
@@ -492,6 +493,7 @@ const (
 	ParamNameSqlMigrateSqlHintT             = "sqlHintT"
 	ParamNameSqlMigrateCallTimeout          = "callTimeout"
 	ParamNameSqlMigrateEnableConsistentRead = "enableConsistentRead"
+	ParamNameSqlMigrateEnableSafeMode       = "enableSafeMode"
 
 	// ParamValueSqlMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

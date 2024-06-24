@@ -22,6 +22,12 @@ jobs:
       run:
         working-directory: ${{ github.workspace }}
     steps:
+      - name: Setup Compile Timezone
+        run: |
+          echo "TZ=Asia/Shanghai" >> $GITHUB_ENV
+      - name: Get Compile Timezone
+        run: |
+          date
       - name: Checkout Project Code
         uses: actions/checkout@v3
         with:
@@ -241,7 +247,13 @@ jobs:
                 },
                 {
                     "title": "## 💬 chore",
-                    "labels": ["chore"]
+                    "labels": []
+                }
+              ],
+              "label_extractor": [
+                {
+                  "pattern": "^(chore|doc|docs|feat|fix|fixed|perf|refactor|revert|style|test){1}(\\([\\w\\-\\.]+\\))?(!)?: ([\\w ])+([\\s\\S]*)",
+                  "target": "$1"
                 }
               ]
             }

@@ -43,6 +43,7 @@ type SqlMigrateParam struct {
 	SqlHintT             string `toml:"sql-hint-t" json:"sqlHintT"`
 	CallTimeout          uint64 `toml:"call-timeout" json:"callTimeout"`
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
+	EnableSafeMode       bool   `toml:"enable-safe-mode" json:"enableSafeMode"`
 }
 
 func (s *SqlConfig) String() string {

@@ -1058,6 +1058,8 @@ components:
           type: boolean
         enableConsistentRead:
           type: boolean
+        enableSafeMode:
+          type: boolean
     DataCompareRule:
       type: object
       properties:
@@ -1242,6 +1244,8 @@ components:
           type: integer
           format: uint64
         enableConsistentRead:
+          type: boolean
+        enableSafeMode:
           type: boolean
     StructMigrateParam:
       type: object

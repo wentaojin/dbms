@@ -165,7 +165,6 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 		if err != nil {
 			return err
 		}
-
 		sqlThreadS, err := strconv.ParseUint(paramMap[constant.ParamNameSqlMigrateSqlThreadS], 10, 64)
 		if err != nil {
 			return err
@@ -182,6 +181,10 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 		if err != nil {
 			return err
 		}
+		enableSafeMode, err := strconv.ParseBool(paramMap[constant.ParamNameSqlMigrateEnableSafeMode])
+		if err != nil {
+			return err
+		}
 
 		param = &pb.SqlMigrateParam{
 			BatchSize:            batchSize,
@@ -190,6 +193,7 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 			SqlHintT:             paramMap[constant.ParamNameSqlMigrateSqlHintT],
 			CallTimeout:          callTimeout,
 			EnableConsistentRead: enableConsistentRead,
+			EnableSafeMode:       enableSafeMode,
 		}
 
 		sqlRouteRules, err := ShowSqlMigrateRule(txnCtx, taskInfo.TaskName)
@@ -537,6 +541,13 @@ func getSqlMigrateTasKParams(ctx context.Context, taskName string) (*pb.SqlMigra
 				return taskParam, err
 			}
 			taskParam.EnableConsistentRead = enableConsistentRead
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateEnableSafeMode) {
+			enableSafeMode, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.EnableSafeMode = enableSafeMode
 		}
 	}
 	return taskParam, nil

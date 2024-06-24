@@ -48,6 +48,7 @@ type StatementMigrateParam struct {
 	CallTimeout          uint64 `toml:"call-timeout" json:"callTimeout"`
 	EnableCheckpoint     bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
+	EnableSafeMode       bool   `toml:"enable-safe-mode" json:"enableSafeMode"`
 }
 
 func (d *StatementConfig) String() string {

@@ -70,3 +70,5 @@ call-timeout = 36000
 enable-checkpoint = true
 # 是否一致性读 ORA
 enable-consistent-read = false
+# 是否 safe-mode , false -> insert into, true -> repalce into
+enable-safe-mode = false

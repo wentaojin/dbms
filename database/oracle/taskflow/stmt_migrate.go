@@ -148,7 +148,7 @@ func (stm *StmtMigrateTask) Start() error {
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SchemaNameS,
 					TableNameS:  s.TableNameS,
-					TaskStatus:  constant.TaskDatabaseStatusRunning})
+					TaskStatus:  constant.TaskDatabaseStatusStopped})
 			if err != nil {
 				return err
 			}
@@ -243,7 +243,7 @@ func (stm *StmtMigrateTask) Start() error {
 						SqlThreadT:    int(stm.TaskParams.SqlThreadT),
 						BatchSize:     int(stm.TaskParams.BatchSize),
 						CallTimeout:   int(stm.TaskParams.CallTimeout),
-						SafeMode:      true,
+						SafeMode:      stm.TaskParams.EnableSafeMode,
 						ReadChan:      make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 						WriteChan:     make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 					})

@@ -629,6 +629,7 @@ message StatementMigrateParam {
   uint64 callTimeout = 8;
   bool enableCheckpoint = 9;
   bool enableConsistentRead = 10;
+  bool enableSafeMode = 11;
 }
 
 message CsvMigrateParam{
@@ -685,6 +686,7 @@ message SqlMigrateParam {
   string sqlHintT = 4;
   uint64 callTimeout = 5;
   bool enableConsistentRead = 6;
+  bool enableSafeMode = 7;
 }
 
 message DataScanRule {

@@ -187,7 +187,7 @@ func (smt *SqlMigrateTask) Start() error {
 						SqlThreadT:    int(smt.TaskParams.SqlThreadT),
 						BatchSize:     int(smt.TaskParams.BatchSize),
 						CallTimeout:   int(smt.TaskParams.CallTimeout),
-						SafeMode:      true,
+						SafeMode:      smt.TaskParams.EnableSafeMode,
 						ReadChan:      make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 						WriteChan:     make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 					})

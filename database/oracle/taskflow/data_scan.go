@@ -140,7 +140,7 @@ func (dst *DataScanTask) Start() error {
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SchemaNameS,
 					TableNameS:  s.TableNameS,
-					TaskStatus:  constant.TaskDatabaseStatusRunning})
+					TaskStatus:  constant.TaskDatabaseStatusStopped})
 			if err != nil {
 				return err
 			}

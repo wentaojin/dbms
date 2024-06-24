@@ -47,3 +47,5 @@ sql-hint-t = ""
 call-timeout = 36000
 # 是否一致性读 ORA
 enable-consistent-read = false
+# 是否 safe-mode , false -> insert into, true -> repalce into
+enable-safe-mode = false
