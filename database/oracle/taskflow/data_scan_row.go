@@ -18,7 +18,6 @@ package taskflow
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -81,9 +80,9 @@ func (r *DataScanRow) ScanRows() error {
 	if strings.EqualFold(chunkDetailS, "sample_scan") && !strings.EqualFold(r.Dst.Samplerate, "") {
 		switch {
 		case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `) AS OF SCN `, strconv.FormatUint(r.Dst.GlobalScnS, 10))
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `) AS OF SCN `, r.Dst.SnapshotPointS)
 		case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && !strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `) AS OF SCN `, strconv.FormatUint(r.Dst.GlobalScnS, 10))
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `) AS OF SCN `, r.Dst.SnapshotPointS)
 		case strings.EqualFold(r.Dst.ConsistentReadS, "NO") && !strings.EqualFold(r.Dst.SqlHintS, ""):
 			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `)`)
 		default:
@@ -92,9 +91,9 @@ func (r *DataScanRow) ScanRows() error {
 	} else {
 		switch {
 		case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" AS OF SCN `, strconv.FormatUint(r.Dst.GlobalScnS, 10), ` WHERE `, chunkDetailS)
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" AS OF SCN `, r.Dst.SnapshotPointS, ` WHERE `, chunkDetailS)
 		case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && !strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" AS OF SCN `, strconv.FormatUint(r.Dst.GlobalScnS, 10), ` WHERE `, chunkDetailS)
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" AS OF SCN `, r.Dst.SnapshotPointS, ` WHERE `, chunkDetailS)
 		case strings.EqualFold(r.Dst.ConsistentReadS, "NO") && !strings.EqualFold(r.Dst.SqlHintS, ""):
 			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" WHERE `, chunkDetailS)
 		default:

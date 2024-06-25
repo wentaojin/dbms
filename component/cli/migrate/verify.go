@@ -54,6 +54,8 @@ type DataCompareParam struct {
 	EnableCheckpoint     bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
 	OnlyCompareRow       bool   `toml:"only-compare-row" json:"onlyCompareRow"`
+	ConsistentReadPointS string `toml:"consistent-read-point-s" json:"consistentReadPointS"`
+	ConsistentReadPointT string `toml:"consistent-read-point-t" json:"consistentReadPointT"`
 }
 
 func (d *CompareConfig) String() string {

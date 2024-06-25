@@ -425,7 +425,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 		includeTables  []string
 		excludeTables  []string
 		databaseTables []string // task tables
-		globalScn      uint64
+		globalScnS     string
+		globalScnT     string
 	)
 	databaseTableTypeMap := make(map[string]string)
 
@@ -532,9 +533,21 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 		return err
 	}
 
-	globalScn, err = databaseS.GetDatabaseConsistentPos()
+	globalScn, err := databaseS.GetDatabaseConsistentPos()
 	if err != nil {
 		return err
+	}
+
+	if dmt.TaskParams.EnableConsistentRead {
+		globalScnS = strconv.FormatUint(globalScn, 10)
+	}
+
+	if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
+		globalScnS = dmt.TaskParams.ConsistentReadPointS
+	}
+
+	if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointT, "") {
+		globalScnT = dmt.TaskParams.ConsistentReadPointT
 	}
 
 	// database tables
@@ -604,7 +617,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							SchemaNameT:     attsRule.SchemaNameT,
 							TableNameT:      attsRule.TableNameT,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScnS,
+							SnapshotPointT:  globalScnT,
 							CompareMethod:   attsRule.CompareMethod,
 							ColumnDetailSO:  attsRule.ColumnDetailSO,
 							ColumnDetailS:   attsRule.ColumnDetailS,
@@ -621,15 +635,16 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							return err
 						}
 						_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(txnCtx, &task.DataCompareSummary{
-							TaskName:    dmt.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							SchemaNameT: attsRule.SchemaNameT,
-							TableNameT:  attsRule.TableNameT,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: 1,
+							TaskName:       dmt.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SchemaNameT:    attsRule.SchemaNameT,
+							TableNameT:     attsRule.TableNameT,
+							SnapshotPointS: globalScnS,
+							SnapshotPointT: globalScnT,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    1,
 						})
 						if err != nil {
 							return err
@@ -670,7 +685,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							SchemaNameT:     attsRule.SchemaNameT,
 							TableNameT:      attsRule.TableNameT,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScnS,
+							SnapshotPointT:  globalScnT,
 							CompareMethod:   attsRule.CompareMethod,
 							ColumnDetailSO:  attsRule.ColumnDetailSO,
 							ColumnDetailS:   attsRule.ColumnDetailS,
@@ -687,15 +703,16 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							return err
 						}
 						_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(txnCtx, &task.DataCompareSummary{
-							TaskName:    dmt.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							SchemaNameT: attsRule.SchemaNameT,
-							TableNameT:  attsRule.TableNameT,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: 1,
+							TaskName:       dmt.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SchemaNameT:    attsRule.SchemaNameT,
+							TableNameT:     attsRule.TableNameT,
+							SnapshotPointS: globalScnS,
+							SnapshotPointT: globalScnT,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    1,
 						})
 						if err != nil {
 							return err
@@ -727,7 +744,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							SchemaNameT:     attsRule.SchemaNameT,
 							TableNameT:      attsRule.TableNameT,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScnS,
+							SnapshotPointT:  globalScnT,
 							CompareMethod:   attsRule.CompareMethod,
 							ColumnDetailSO:  attsRule.ColumnDetailSO,
 							ColumnDetailS:   attsRule.ColumnDetailS,
@@ -744,15 +762,16 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							return err
 						}
 						_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(txnCtx, &task.DataCompareSummary{
-							TaskName:    dmt.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							SchemaNameT: attsRule.SchemaNameT,
-							TableNameT:  attsRule.TableNameT,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: 1,
+							TaskName:       dmt.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SchemaNameT:    attsRule.SchemaNameT,
+							TableNameT:     attsRule.TableNameT,
+							SnapshotPointS: globalScnS,
+							SnapshotPointT: globalScnT,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    1,
 						})
 						if err != nil {
 							return err
@@ -786,7 +805,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 						SchemaNameT:     attsRule.SchemaNameT,
 						TableNameT:      attsRule.TableNameT,
 						TableTypeS:      attsRule.TableTypeS,
-						GlobalScnS:      globalScn,
+						SnapshotPointS:  globalScnS,
+						SnapshotPointT:  globalScnT,
 						CompareMethod:   attsRule.CompareMethod,
 						ColumnDetailSO:  attsRule.ColumnDetailSO,
 						ColumnDetailS:   attsRule.ColumnDetailS,
@@ -807,15 +827,16 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 						return err
 					}
 					_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(txnCtx, &task.DataCompareSummary{
-						TaskName:    dmt.Task.TaskName,
-						SchemaNameS: attsRule.SchemaNameS,
-						TableNameS:  attsRule.TableNameS,
-						SchemaNameT: attsRule.SchemaNameT,
-						TableNameT:  attsRule.TableNameT,
-						GlobalScnS:  globalScn,
-						TableRowsS:  tableRows,
-						TableSizeS:  tableSize,
-						ChunkTotals: uint64(len(bucketRanges)),
+						TaskName:       dmt.Task.TaskName,
+						SchemaNameS:    attsRule.SchemaNameS,
+						TableNameS:     attsRule.TableNameS,
+						SchemaNameT:    attsRule.SchemaNameT,
+						TableNameT:     attsRule.TableNameT,
+						SnapshotPointS: globalScnS,
+						SnapshotPointT: globalScnT,
+						TableRowsS:     tableRows,
+						TableSizeS:     tableSize,
+						ChunkTotals:    uint64(len(bucketRanges)),
 					})
 					if err != nil {
 						return err

@@ -1100,6 +1100,10 @@ components:
           type: boolean
         onlyCompareRow:
           type: boolean
+        consistentReadPointS:
+          type: string
+        consistentReadPointT:
+          type: string
     CsvMigrateParam:
       type: object
       properties:

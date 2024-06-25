@@ -406,7 +406,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 		includeTables  []string
 		excludeTables  []string
 		databaseTables []string // task tables
-		globalScn      uint64
+		globalScn      string
 	)
 	databaseTableTypeMap := make(map[string]string)
 
@@ -513,10 +513,12 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 		return err
 	}
 
-	globalScn, err = databaseS.GetDatabaseConsistentPos()
+	globalScnS, err := databaseS.GetDatabaseConsistentPos()
 	if err != nil {
 		return err
 	}
+
+	globalScn = strconv.FormatUint(globalScnS, 10)
 
 	// database tables
 	// init database table
@@ -598,7 +600,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							SchemaNameS:     attsRule.SchemaNameS,
 							TableNameS:      attsRule.TableNameS,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScn,
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							GroupColumnS:    attsRule.GroupColumnS,
 							SqlHintS:        attsRule.SqlHintS,
@@ -611,13 +613,13 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							return err
 						}
 						_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(txnCtx, &task.DataScanSummary{
-							TaskName:    dst.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: 1,
+							TaskName:       dst.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SnapshotPointS: globalScn,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    1,
 						})
 						if err != nil {
 							return err
@@ -663,7 +665,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 								SchemaNameS:     attsRule.SchemaNameS,
 								TableNameS:      attsRule.TableNameS,
 								TableTypeS:      attsRule.TableTypeS,
-								GlobalScnS:      globalScn,
+								SnapshotPointS:  globalScn,
 								ColumnDetailS:   attsRule.ColumnDetailS,
 								GroupColumnS:    attsRule.GroupColumnS,
 								SqlHintS:        attsRule.SqlHintS,
@@ -676,13 +678,13 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 								return err
 							}
 							_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(txnCtx, &task.DataScanSummary{
-								TaskName:    dst.Task.TaskName,
-								SchemaNameS: attsRule.SchemaNameS,
-								TableNameS:  attsRule.TableNameS,
-								GlobalScnS:  globalScn,
-								TableRowsS:  tableRows,
-								TableSizeS:  tableSize,
-								ChunkTotals: 1,
+								TaskName:       dst.Task.TaskName,
+								SchemaNameS:    attsRule.SchemaNameS,
+								TableNameS:     attsRule.TableNameS,
+								SnapshotPointS: globalScn,
+								TableRowsS:     tableRows,
+								TableSizeS:     tableSize,
+								ChunkTotals:    1,
 							})
 							if err != nil {
 								return err
@@ -724,7 +726,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 								SchemaNameS:     attsRule.SchemaNameS,
 								TableNameS:      attsRule.TableNameS,
 								TableTypeS:      attsRule.TableTypeS,
-								GlobalScnS:      globalScn,
+								SnapshotPointS:  globalScn,
 								ColumnDetailS:   attsRule.ColumnDetailS,
 								GroupColumnS:    attsRule.GroupColumnS,
 								SqlHintS:        attsRule.SqlHintS,
@@ -737,13 +739,13 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 								return err
 							}
 							_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(txnCtx, &task.DataScanSummary{
-								TaskName:    dst.Task.TaskName,
-								SchemaNameS: attsRule.SchemaNameS,
-								TableNameS:  attsRule.TableNameS,
-								GlobalScnS:  globalScn,
-								TableRowsS:  tableRows,
-								TableSizeS:  tableSize,
-								ChunkTotals: 1,
+								TaskName:       dst.Task.TaskName,
+								SchemaNameS:    attsRule.SchemaNameS,
+								TableNameS:     attsRule.TableNameS,
+								SnapshotPointS: globalScn,
+								TableRowsS:     tableRows,
+								TableSizeS:     tableSize,
+								ChunkTotals:    1,
 							})
 							if err != nil {
 								return err
@@ -772,7 +774,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							SchemaNameS:     attsRule.SchemaNameS,
 							TableNameS:      attsRule.TableNameS,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScn,
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							GroupColumnS:    attsRule.GroupColumnS,
 							SqlHintS:        attsRule.SqlHintS,
@@ -789,13 +791,13 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							return err
 						}
 						_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(txnCtx, &task.DataScanSummary{
-							TaskName:    dst.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: uint64(len(bucketRanges)),
+							TaskName:       dst.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SnapshotPointS: globalScn,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    uint64(len(bucketRanges)),
 						})
 						if err != nil {
 							return err
@@ -832,7 +834,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							SchemaNameS:     attsRule.SchemaNameS,
 							TableNameS:      attsRule.TableNameS,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScn,
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							GroupColumnS:    attsRule.GroupColumnS,
 							SqlHintS:        attsRule.SqlHintS,
@@ -845,13 +847,13 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							return err
 						}
 						_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(txnCtx, &task.DataScanSummary{
-							TaskName:    dst.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: 1,
+							TaskName:       dst.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SnapshotPointS: globalScn,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    1,
 						})
 						if err != nil {
 							return err
@@ -881,7 +883,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 						SchemaNameS:     attsRule.SchemaNameS,
 						TableNameS:      attsRule.TableNameS,
 						TableTypeS:      attsRule.TableTypeS,
-						GlobalScnS:      globalScn,
+						SnapshotPointS:  globalScn,
 						ColumnDetailS:   attsRule.ColumnDetailS,
 						GroupColumnS:    attsRule.GroupColumnS,
 						SqlHintS:        attsRule.SqlHintS,
@@ -898,13 +900,13 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 						return err
 					}
 					_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(txnCtx, &task.DataScanSummary{
-						TaskName:    dst.Task.TaskName,
-						SchemaNameS: attsRule.SchemaNameS,
-						TableNameS:  attsRule.TableNameS,
-						GlobalScnS:  globalScn,
-						TableRowsS:  tableRows,
-						TableSizeS:  tableSize,
-						ChunkTotals: uint64(len(chunks)),
+						TaskName:       dst.Task.TaskName,
+						SchemaNameS:    attsRule.SchemaNameS,
+						TableNameS:     attsRule.TableNameS,
+						SnapshotPointS: globalScn,
+						TableRowsS:     tableRows,
+						TableSizeS:     tableSize,
+						ChunkTotals:    uint64(len(chunks)),
 					})
 					if err != nil {
 						return err

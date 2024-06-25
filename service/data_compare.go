@@ -212,6 +212,8 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			EnableCheckpoint:     enableCheckpoint,
 			EnableConsistentRead: enableConsistentRead,
 			OnlyCompareRow:       onlyCompareRow,
+			ConsistentReadPointS: paramMap[constant.ParamNameDataCompareConsistentReadPointS],
+			ConsistentReadPointT: paramMap[constant.ParamNameDataCompareConsistentReadPointT],
 		}
 
 		schemaRouteRule, _, dataCompareRules, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -616,6 +618,12 @@ func getDataCompareTasKParams(ctx context.Context, taskName string) (*pb.DataCom
 				return taskParam, err
 			}
 			taskParam.OnlyCompareRow = onlyCompareRow
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareConsistentReadPointS) {
+			taskParam.ConsistentReadPointS = p.ParamValue
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareConsistentReadPointT) {
+			taskParam.ConsistentReadPointT = p.ParamValue
 		}
 	}
 	return taskParam, nil

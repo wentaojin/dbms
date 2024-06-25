@@ -102,3 +102,9 @@ var (
 		BuildInOracleDatatypeCharacter,
 		BuildInOracleDatatypeNcharVarying}
 )
+
+const (
+	// pg's transaction snapshot export function was initially supported in version 9.2
+	// which allows multiple transactions to share a consistent view of the same current database state that has been obtained
+	PostgresqlDatabaseSnapshotReadSupportVersion = "9.2"
+)

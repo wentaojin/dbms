@@ -477,7 +477,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 		includeTables  []string
 		excludeTables  []string
 		databaseTables []string // task tables
-		globalScn      uint64
+		globalScn      string
 	)
 	databaseTableTypeMap := make(map[string]string)
 
@@ -584,10 +584,12 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 		return err
 	}
 
-	globalScn, err = databaseS.GetDatabaseConsistentPos()
+	globalScnS, err := databaseS.GetDatabaseConsistentPos()
 	if err != nil {
 		return err
 	}
+
+	globalScn = strconv.FormatUint(globalScnS, 10)
 
 	// database tables
 	// init database table
@@ -656,7 +658,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 							SchemaNameT:     attsRule.SchemaNameT,
 							TableNameT:      attsRule.TableNameT,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScn,
 							ColumnDetailO:   attsRule.ColumnDetailO,
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
@@ -670,15 +672,15 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 							return err
 						}
 						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:    stm.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							SchemaNameT: attsRule.SchemaNameT,
-							TableNameT:  attsRule.TableNameT,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: 1,
+							TaskName:       stm.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SchemaNameT:    attsRule.SchemaNameT,
+							TableNameT:     attsRule.TableNameT,
+							SnapshotPointS: globalScn,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    1,
 						})
 						if err != nil {
 							return err
@@ -731,7 +733,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 								SchemaNameT:     attsRule.SchemaNameT,
 								TableNameT:      attsRule.TableNameT,
 								TableTypeS:      attsRule.TableTypeS,
-								GlobalScnS:      globalScn,
+								SnapshotPointS:  globalScn,
 								ColumnDetailO:   attsRule.ColumnDetailO,
 								ColumnDetailS:   attsRule.ColumnDetailS,
 								ColumnDetailT:   attsRule.ColumnDetailT,
@@ -745,15 +747,15 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 								return err
 							}
 							_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-								TaskName:    stm.Task.TaskName,
-								SchemaNameS: attsRule.SchemaNameS,
-								TableNameS:  attsRule.TableNameS,
-								SchemaNameT: attsRule.SchemaNameT,
-								TableNameT:  attsRule.TableNameT,
-								GlobalScnS:  globalScn,
-								TableRowsS:  tableRows,
-								TableSizeS:  tableSize,
-								ChunkTotals: 1,
+								TaskName:       stm.Task.TaskName,
+								SchemaNameS:    attsRule.SchemaNameS,
+								TableNameS:     attsRule.TableNameS,
+								SchemaNameT:    attsRule.SchemaNameT,
+								TableNameT:     attsRule.TableNameT,
+								SnapshotPointS: globalScn,
+								TableRowsS:     tableRows,
+								TableSizeS:     tableSize,
+								ChunkTotals:    1,
 							})
 							if err != nil {
 								return err
@@ -802,7 +804,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 								SchemaNameT:     attsRule.SchemaNameT,
 								TableNameT:      attsRule.TableNameT,
 								TableTypeS:      attsRule.TableTypeS,
-								GlobalScnS:      globalScn,
+								SnapshotPointS:  globalScn,
 								ColumnDetailO:   attsRule.ColumnDetailO,
 								ColumnDetailS:   attsRule.ColumnDetailS,
 								ColumnDetailT:   attsRule.ColumnDetailT,
@@ -816,15 +818,15 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 								return err
 							}
 							_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-								TaskName:    stm.Task.TaskName,
-								SchemaNameS: attsRule.SchemaNameS,
-								TableNameS:  attsRule.TableNameS,
-								SchemaNameT: attsRule.SchemaNameT,
-								TableNameT:  attsRule.TableNameT,
-								GlobalScnS:  globalScn,
-								TableRowsS:  tableRows,
-								TableSizeS:  tableSize,
-								ChunkTotals: 1,
+								TaskName:       stm.Task.TaskName,
+								SchemaNameS:    attsRule.SchemaNameS,
+								TableNameS:     attsRule.TableNameS,
+								SchemaNameT:    attsRule.SchemaNameT,
+								TableNameT:     attsRule.TableNameT,
+								SnapshotPointS: globalScn,
+								TableRowsS:     tableRows,
+								TableSizeS:     tableSize,
+								ChunkTotals:    1,
 							})
 							if err != nil {
 								return err
@@ -859,7 +861,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 							SchemaNameT:     attsRule.SchemaNameT,
 							TableNameT:      attsRule.TableNameT,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScn,
 							ColumnDetailO:   attsRule.ColumnDetailO,
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
@@ -877,15 +879,15 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 							return err
 						}
 						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:    stm.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							SchemaNameT: attsRule.SchemaNameT,
-							TableNameT:  attsRule.TableNameT,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: uint64(len(bucketRanges)),
+							TaskName:       stm.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SchemaNameT:    attsRule.SchemaNameT,
+							TableNameT:     attsRule.TableNameT,
+							SnapshotPointS: globalScn,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    uint64(len(bucketRanges)),
 						})
 						if err != nil {
 							return err
@@ -928,7 +930,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 							SchemaNameT:     attsRule.SchemaNameT,
 							TableNameT:      attsRule.TableNameT,
 							TableTypeS:      attsRule.TableTypeS,
-							GlobalScnS:      globalScn,
+							SnapshotPointS:  globalScn,
 							ColumnDetailO:   attsRule.ColumnDetailO,
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
@@ -942,15 +944,15 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 							return err
 						}
 						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:    stm.Task.TaskName,
-							SchemaNameS: attsRule.SchemaNameS,
-							TableNameS:  attsRule.TableNameS,
-							SchemaNameT: attsRule.SchemaNameT,
-							TableNameT:  attsRule.TableNameT,
-							GlobalScnS:  globalScn,
-							TableRowsS:  tableRows,
-							TableSizeS:  tableSize,
-							ChunkTotals: 1,
+							TaskName:       stm.Task.TaskName,
+							SchemaNameS:    attsRule.SchemaNameS,
+							TableNameS:     attsRule.TableNameS,
+							SchemaNameT:    attsRule.SchemaNameT,
+							TableNameT:     attsRule.TableNameT,
+							SnapshotPointS: globalScn,
+							TableRowsS:     tableRows,
+							TableSizeS:     tableSize,
+							ChunkTotals:    1,
 						})
 						if err != nil {
 							return err
@@ -987,7 +989,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 						SchemaNameT:     attsRule.SchemaNameT,
 						TableNameT:      attsRule.TableNameT,
 						TableTypeS:      attsRule.TableTypeS,
-						GlobalScnS:      globalScn,
+						SnapshotPointS:  globalScn,
 						ColumnDetailO:   attsRule.ColumnDetailO,
 						ColumnDetailS:   attsRule.ColumnDetailS,
 						ColumnDetailT:   attsRule.ColumnDetailT,
@@ -1005,15 +1007,15 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 						return err
 					}
 					_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-						TaskName:    stm.Task.TaskName,
-						SchemaNameS: attsRule.SchemaNameS,
-						TableNameS:  attsRule.TableNameS,
-						SchemaNameT: attsRule.SchemaNameT,
-						TableNameT:  attsRule.TableNameT,
-						GlobalScnS:  globalScn,
-						TableRowsS:  tableRows,
-						TableSizeS:  tableSize,
-						ChunkTotals: uint64(len(chunks)),
+						TaskName:       stm.Task.TaskName,
+						SchemaNameS:    attsRule.SchemaNameS,
+						TableNameS:     attsRule.TableNameS,
+						SchemaNameT:    attsRule.SchemaNameT,
+						TableNameT:     attsRule.TableNameT,
+						SnapshotPointS: globalScn,
+						TableRowsS:     tableRows,
+						TableSizeS:     tableSize,
+						ChunkTotals:    uint64(len(chunks)),
 					})
 					if err != nil {
 						return err

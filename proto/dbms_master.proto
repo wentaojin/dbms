@@ -669,6 +669,8 @@ message DataCompareParam{
   bool enableCheckpoint = 7;
   bool enableConsistentRead = 8;
   bool OnlyCompareRow = 9;
+  string consistentReadPointS = 10;
+  string consistentReadPointT = 11;
 }
 
 message SqlMigrateRule {

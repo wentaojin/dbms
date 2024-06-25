@@ -126,23 +126,23 @@ type StructCompareTask struct {
 }
 
 type DataMigrateSummary struct {
-	ID           uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
-	SchemaNameS  string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
-	TableNameS   string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
-	SchemaNameT  string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
-	TableNameT   string  `gorm:"type:varchar(60);not null;comment:target table name" json:"tableNameT"`
-	GlobalScnS   uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
-	TableRowsS   uint64  `gorm:"comment:source table rows" json:"tableRowsS"`
-	TableSizeS   float64 `gorm:"comment:source table size (MB)" json:"tableSizeS"`
-	ChunkTotals  uint64  `gorm:"type:int;comment:source table chunk totals" json:"chunkTotals"`
-	ChunkSuccess uint64  `gorm:"type:int;comment:source table chunk success" json:"chunkSuccess"`
-	ChunkFails   uint64  `gorm:"type:int;comment:source table chunk fails" json:"chunkFails"`
-	ChunkWaits   uint64  `gorm:"type:int;comment:source table chunk waits" json:"chunkWaits"`
-	ChunkRuns    uint64  `gorm:"type:int;comment:source table chunk runs" json:"chunkRuns"`
-	ChunkStops   uint64  `gorm:"type:int;comment:source table chunk stops" json:"chunkStops"`
-	Refused      string  `gorm:"type:text;comment:csv migrate table refused" json:"refused"`
-	Duration     float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	ID             uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName       string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	SchemaNameS    string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
+	TableNameS     string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
+	SchemaNameT    string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
+	TableNameT     string  `gorm:"type:varchar(60);not null;comment:target table name" json:"tableNameT"`
+	SnapshotPointS string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
+	TableRowsS     uint64  `gorm:"comment:source table rows" json:"tableRowsS"`
+	TableSizeS     float64 `gorm:"comment:source table size (MB)" json:"tableSizeS"`
+	ChunkTotals    uint64  `gorm:"type:int;comment:source table chunk totals" json:"chunkTotals"`
+	ChunkSuccess   uint64  `gorm:"type:int;comment:source table chunk success" json:"chunkSuccess"`
+	ChunkFails     uint64  `gorm:"type:int;comment:source table chunk fails" json:"chunkFails"`
+	ChunkWaits     uint64  `gorm:"type:int;comment:source table chunk waits" json:"chunkWaits"`
+	ChunkRuns      uint64  `gorm:"type:int;comment:source table chunk runs" json:"chunkRuns"`
+	ChunkStops     uint64  `gorm:"type:int;comment:source table chunk stops" json:"chunkStops"`
+	Refused        string  `gorm:"type:text;comment:csv migrate table refused" json:"refused"`
+	Duration       float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }
 
@@ -154,7 +154,7 @@ type DataMigrateTask struct {
 	SchemaNameT     string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
 	TableNameT      string  `gorm:"type:varchar(60);not null;comment:target table name" json:"tableNameT"`
 	TableTypeS      string  `gorm:"type:varchar(60);comment:source table type" json:"tableTypeS"`
-	GlobalScnS      uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
+	SnapshotPointS  string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
 	ColumnDetailO   string  `gorm:"type:longtext;comment:source column store origin information" json:"columnDetailO"`
 	ColumnDetailS   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailS"`
 	ColumnDetailT   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailT"`
@@ -187,7 +187,7 @@ type SqlMigrateTask struct {
 	TaskName        string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;" json:"taskName"`
 	SchemaNameT     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:target schema name" json:"schemaNameT"`
 	TableNameT      string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:target table name" json:"tableNameT"`
-	GlobalScnS      uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
+	SnapshotPointS  string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
 	ColumnDetailO   string  `gorm:"type:longtext;comment:source column store origin information" json:"columnDetailO"`
 	ColumnDetailS   string  `gorm:"type:longtext;comment:source column information" json:"columnDetailS"`
 	ColumnDetailT   string  `gorm:"type:longtext;comment:source column information" json:"columnDetailT"`
@@ -207,7 +207,8 @@ type DataCompareSummary struct {
 	TableNameS     string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	SchemaNameT    string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
 	TableNameT     string  `gorm:"type:varchar(60);not null;comment:target table name" json:"tableNameT"`
-	GlobalScnS     uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
+	SnapshotPointS string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
+	SnapshotPointT string  `gorm:"type:varchar(120);comment:target snapshot point" json:"snapshotPointT"`
 	TableRowsS     uint64  `gorm:"comment:source table rows" json:"tableRowsS"`
 	TableSizeS     float64 `gorm:"comment:source table size (MB)" json:"tableSizeS"`
 	ChunkTotals    uint64  `gorm:"type:int;comment:source table chunk totals" json:"chunkTotals"`
@@ -229,7 +230,8 @@ type DataCompareTask struct {
 	SchemaNameT     string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
 	TableNameT      string  `gorm:"type:varchar(60);not null;comment:target table name" json:"tableNameT"`
 	TableTypeS      string  `gorm:"type:varchar(60);comment:source table type" json:"tableTypeS"`
-	GlobalScnS      uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
+	SnapshotPointS  string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
+	SnapshotPointT  string  `gorm:"type:varchar(120);comment:target snapshot point" json:"snapshotPointT"`
 	CompareMethod   string  `gorm:"type:varchar(50);not null;comment:compare method status" json:"compareMethod"`
 	ColumnDetailSO  string  `gorm:"type:longtext;not null;comment:source table column origin detail" json:"columnDetailSO"`
 	ColumnDetailS   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailS"`
@@ -249,20 +251,20 @@ type DataCompareTask struct {
 }
 
 type DataScanSummary struct {
-	ID           uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
-	SchemaNameS  string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
-	TableNameS   string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
-	GlobalScnS   uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
-	TableRowsS   uint64  `gorm:"comment:source table rows" json:"tableRowsS"`
-	TableSizeS   float64 `gorm:"comment:source table size (MB)" json:"tableSizeS"`
-	ChunkTotals  uint64  `gorm:"type:int;comment:source table chunk totals" json:"chunkTotals"`
-	ChunkSuccess uint64  `gorm:"type:int;comment:source table chunk success" json:"chunkSuccess"`
-	ChunkFails   uint64  `gorm:"type:int;comment:source table chunk fails" json:"chunkFails"`
-	ChunkWaits   uint64  `gorm:"type:int;comment:source table chunk waits" json:"chunkWaits"`
-	ChunkRuns    uint64  `gorm:"type:int;comment:source table chunk runs" json:"chunkRuns"`
-	ChunkStops   uint64  `gorm:"type:int;comment:source table chunk stops" json:"chunkStops"`
-	Duration     float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	ID             uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName       string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	SchemaNameS    string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
+	TableNameS     string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
+	SnapshotPointS string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
+	TableRowsS     uint64  `gorm:"comment:source table rows" json:"tableRowsS"`
+	TableSizeS     float64 `gorm:"comment:source table size (MB)" json:"tableSizeS"`
+	ChunkTotals    uint64  `gorm:"type:int;comment:source table chunk totals" json:"chunkTotals"`
+	ChunkSuccess   uint64  `gorm:"type:int;comment:source table chunk success" json:"chunkSuccess"`
+	ChunkFails     uint64  `gorm:"type:int;comment:source table chunk fails" json:"chunkFails"`
+	ChunkWaits     uint64  `gorm:"type:int;comment:source table chunk waits" json:"chunkWaits"`
+	ChunkRuns      uint64  `gorm:"type:int;comment:source table chunk runs" json:"chunkRuns"`
+	ChunkStops     uint64  `gorm:"type:int;comment:source table chunk stops" json:"chunkStops"`
+	Duration       float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }
 
@@ -272,7 +274,7 @@ type DataScanTask struct {
 	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableNameS      string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	TableTypeS      string  `gorm:"type:varchar(60);comment:source table type" json:"tableTypeS"`
-	GlobalScnS      uint64  `gorm:"type:bigint;comment:source global scn" json:"globalScnS"`
+	SnapshotPointS  string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
 	ColumnDetailS   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailS"`
 	GroupColumnS    string  `gorm:"type:longtext;comment:source column used to group column information" json:"groupColumnS"`
 	SqlHintS        string  `gorm:"type:varchar(300);comment:source sql hint" json:"sqlHintS"`

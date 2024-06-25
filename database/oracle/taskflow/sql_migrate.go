@@ -328,10 +328,15 @@ func (smt *SqlMigrateTask) InitSqlMigrateTask(databaseS database.IDatabase) erro
 		repeatedDoneInfos[stringutil.StringBuilder(m.TaskName, m.SchemaNameT, m.TableNameT, m.SqlQueryS)] = struct{}{}
 	}
 
-	globalScn, err := databaseS.GetDatabaseConsistentPos()
+	var globalScn string
+
+	globalScnS, err := databaseS.GetDatabaseConsistentPos()
 	if err != nil {
 		return err
 	}
+
+	globalScn = strconv.FormatUint(globalScnS, 10)
+
 	logger.Info("sql migrate task init sql",
 		zap.String("task_name", smt.Task.TaskName),
 		zap.String("task_mode", smt.Task.TaskMode),
@@ -379,7 +384,7 @@ func (smt *SqlMigrateTask) InitSqlMigrateTask(databaseS database.IDatabase) erro
 			TaskName:        smt.Task.TaskName,
 			SchemaNameT:     attrs.SchemaNameT,
 			TableNameT:      attrs.TableNameT,
-			GlobalScnS:      globalScn,
+			SnapshotPointS:  globalScn,
 			ColumnDetailO:   attrs.ColumnDetailO,
 			ColumnDetailS:   attrs.ColumnDetailS,
 			ColumnDetailT:   attrs.ColumnDetailT,

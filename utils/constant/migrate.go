@@ -515,6 +515,8 @@ const (
 	ParamNameDataCompareEnableCheckpoint     = "enableCheckpoint"
 	ParamNameDataCompareEnableConsistentRead = "enableConsistentRead"
 	ParamNameDataCompareOnlyCompareRow       = "onlyCompareRow"
+	ParamNameDataCompareConsistentReadPointS = "consistentReadPointS"
+	ParamNameDataCompareConsistentReadPointT = "consistentReadPointT"
 
 	// ParamValueDataCompareCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

@@ -19,7 +19,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -62,7 +61,7 @@ func (r *SqlMigrateRow) MigrateRead() error {
 	}
 	switch {
 	case strings.EqualFold(r.Smt.ConsistentReadS, "YES"):
-		execQuerySQL = stringutil.StringBuilder(`SELECT * FROM (`, sqlText, `) AS OF SCN `, strconv.FormatUint(r.Smt.GlobalScnS, 10))
+		execQuerySQL = stringutil.StringBuilder(`SELECT * FROM (`, sqlText, `) AS OF SCN `, r.Smt.SnapshotPointS)
 	default:
 		execQuerySQL = sqlText
 	}
