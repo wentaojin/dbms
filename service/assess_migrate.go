@@ -157,6 +157,14 @@ func DeleteAssessMigrateTask(ctx context.Context, req *pb.DeleteAssessMigrateTas
 		if err != nil {
 			return err
 		}
+		err = model.GetIAssessMigrateTaskRW().DeleteAssessMigrateTaskName(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
+		err = model.GetITaskLogRW().DeleteLog(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {

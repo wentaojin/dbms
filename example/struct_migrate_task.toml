@@ -21,18 +21,20 @@ case-field-rule-s = "0"
 # 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写，default-value-t 参数配置始终以参数配置大小为准与源端对比
 case-field-rule-t = "0"
 
-
 [schema-route-rule]
 schema-name-s = "MARVIN"
 schema-name-t = "STEVEN"
 include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
 exclude-table-s = []
-#exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
 
 [[schema-route-rule.table-route-rules]]
 table-name-s = "MARVIN00"
 table-name-t = "STEVEN00"
 column-route-rules = {"NAME" = "T_NAME00"}
+[[schema-route-rule.table-route-rules]]
+table-name-s = "MARVIN01"
+table-name-t = "STEVEN01"
+column-route-rules = {"NAME" = "t_name00"}
 
 # 默认值规则设置分为字符类型 OR 数值类型 OR 函数表达式 OR '' 空字符串 OR NULL 字符
 # 字符类型设置需要带单引号

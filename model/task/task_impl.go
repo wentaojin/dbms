@@ -160,7 +160,7 @@ func (rw *RWAssessMigrateTask) TableName(ctx context.Context) string {
 
 func (rw *RWAssessMigrateTask) CreateAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) (*AssessMigrateTask, error) {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}},
 		UpdateAll: true,
 	}).Create(task).Error
 	if err != nil {

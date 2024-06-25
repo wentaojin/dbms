@@ -49,8 +49,8 @@ type Log struct {
 
 type AssessMigrateTask struct {
 	ID           uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name" json:"taskName"`
-	SchemaNameS  string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
+	TaskName     string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
+	SchemaNameS  string  `gorm:"type:varchar(60);not null;comment:source schema name" json:"schemaNameS"`
 	TaskStatus   string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
 	AssessDetail string  `gorm:"type:longtext;comment:assess detail" json:"assessDetail"`
 	AssessUser   string  `gorm:"type:varchar(200);comment:assess username" json:"assessUser"`

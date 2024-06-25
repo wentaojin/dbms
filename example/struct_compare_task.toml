@@ -25,7 +25,6 @@ schema-name-s = "MARVIN"
 schema-name-t = "STEVEN"
 include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
 exclude-table-s = []
-#exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
 
 [[schema-route-rule.table-route-rules]]
 table-name-s = "MARVIN00"
