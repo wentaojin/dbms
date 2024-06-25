@@ -120,12 +120,17 @@ $ dbms-ctl task delete -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task
 
 设置定时任务
 ```shell
-$ dbms-ctl task crontab -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} --express ${参考 linux crontab 写法}
+$ dbms-ctl task crontab submit -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} --express ${参考 linux crontab 写法}
 ```
 
 清理定时任务（未启动运行任务状态）
 ```shell
-$ dbms-ctl task clear -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+$ dbms-ctl task crontab clear -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+```
+
+展示定时任务（未启动运行任务状态）
+```shell
+$ dbms-ctl task crontab display -s ${dbms-master-ip-leader}:${dbms-master-port} [-t ${task-name} 可选]
 ```
 
 8，获取结构迁移兼容以及不兼容性对象信息报告
@@ -149,9 +154,8 @@ $ dbms-ctl verify gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-
 ```
 
 12，获取任务运行状态日志信息
-
 ```shell
-$ dbms-ctl task get -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+$ dbms-ctl task status -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
 ```
 任务日志信息当前只返回当前查询最后一条日志（日志量过大），输出格式如下
 ```json

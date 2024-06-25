@@ -818,21 +818,26 @@ components:
           format: uint64
         connectParams:
           type: string
+          nullable: true
           format: string
         connectCharset:
           type: string
           format: string
         connectStatus:
           type: string
+          nullable: true
           format: string
         serviceName:
           type: string
+          nullable: true
           format: string
         pdbName:
           type: string
+          nullable: true
           format: string
         comment:
           type: string
+          nullable: true
           format: string
     StructMigrateTask:
       type: object
@@ -848,6 +853,7 @@ components:
           format: string
         comment:
           type: string
+          nullable: true
           format: string
         caseFieldRule:
           $ref: '#/components/schemas/CaseFieldRule'
@@ -871,6 +877,7 @@ components:
           format: string
         comment:
           type: string
+          nullable: true
           format: string
         caseFieldRule:
           $ref: '#/components/schemas/CaseFieldRule'
@@ -894,6 +901,7 @@ components:
           format: string
         comment:
           type: string
+          nullable: true
           format: string
         assessMigrateParam:
           $ref: '#/components/schemas/AssessMigrateParam'
@@ -911,6 +919,7 @@ components:
           format: string
         comment:
           type: string
+          nullable: true
           format: string
         caseFieldRule:
           $ref: '#/components/schemas/CaseFieldRule'
@@ -918,6 +927,7 @@ components:
           $ref: '#/components/schemas/SchemaRouteRule'
         DataMigrateRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/DataMigrateRule'
         statementMigrateParam:
@@ -936,6 +946,7 @@ components:
           format: string
         comment:
           type: string
+          nullable: true
           format: string
         caseFieldRule:
           $ref: '#/components/schemas/CaseFieldRule'
@@ -943,6 +954,7 @@ components:
           $ref: '#/components/schemas/SchemaRouteRule'
         dataCompareRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/DataCompareRule'
         dataCompareParam:
@@ -961,6 +973,7 @@ components:
           format: string
         comment:
           type: string
+          nullable: true
           format: string
         caseFieldRule:
           $ref: '#/components/schemas/CaseFieldRule'
@@ -968,6 +981,7 @@ components:
           $ref: '#/components/schemas/SchemaRouteRule'
         dataMigrateRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/DataMigrateRule'
         csvMigrateParam:
@@ -986,11 +1000,13 @@ components:
           format: string
         comment:
           type: string
+          nullable: true
           format: string
         caseFieldRule:
           $ref: '#/components/schemas/CaseFieldRule'
         sqlMigrateRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/SqlMigrateRule'
         sqlMigrateParam:
@@ -1009,6 +1025,7 @@ components:
           format: string
         comment:
           type: string
+          nullable: true
           format: string
         caseFieldRule:
           $ref: '#/components/schemas/CaseFieldRule'
@@ -1016,6 +1033,7 @@ components:
           $ref: '#/components/schemas/SchemaRouteRule'
         dataScanRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/DataScanRule'
         dataScanParam:
@@ -1165,11 +1183,13 @@ components:
           format: string
         includeTableS:
           type: array
+          nullable: true
           items:
             type: string
             format: string
         excludeTableS:
           type: array
+          nullable: true
           items:
             type: string
             format: string
@@ -1189,6 +1209,7 @@ components:
           format: string
         columnRouteRules:
           type: object
+          nullable: true
           additionalProperties:
             type: string
             format: string
@@ -1226,6 +1247,7 @@ components:
           format: string
         columnRouteRules:
           type: object
+          nullable: true
           additionalProperties:
             type: string
             format: string
@@ -1285,22 +1307,27 @@ components:
       properties:
         taskStructRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/TaskStructRule'
         schemaStructRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/SchemaStructRule'
         tableStructRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/TableStructRule'
         columnStructRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/ColumnStructRule'
         tableAttrsRules:
           type: array
+          nullable: true
           items:
             $ref: '#/components/schemas/TableAttrsRule'
     StructCompareRule:
@@ -1308,18 +1335,22 @@ components:
      properties:
       taskStructRules:
         type: array
+        nullable: true
         items:
           $ref: '#/components/schemas/TaskStructRule'
       schemaStructRules:
         type: array
+        nullable: true
         items:
           $ref: '#/components/schemas/SchemaStructRule'
       tableStructRules:
         type: array
+        nullable: true
         items:
           $ref: '#/components/schemas/TableStructRule'
       columnStructRules:
         type: array
+        nullable: true
         items:
           $ref: '#/components/schemas/ColumnStructRule'
     TaskStructRule:
@@ -1327,15 +1358,19 @@ components:
       properties:
         columnTypeS:
           type: string
+          nullable: true
           format: string
         columnTypeT:
           type: string
+          nullable: true
           format: string
         defaultValueS:
           type: string
+          nullable: true
           format: string
         defaultValueT:
           type: string
+          nullable: true
           format: string
     SchemaStructRule:
       type: object
@@ -1345,15 +1380,19 @@ components:
           format: string
         columnTypeS:
           type: string
+          nullable: true
           format: string
         columnTypeT:
           type: string
+          nullable: true
           format: string
         defaultValueS:
           type: string
+          nullable: true
           format: string
         defaultValueT:
           type: string
+          nullable: true
           format: string
     TableStructRule:
       type: object
@@ -1366,15 +1405,19 @@ components:
           format: string
         columnTypeS:
           type: string
+          nullable: true
           format: string
         columnTypeT:
           type: string
+          nullable: true
           format: string
         defaultValueS:
           type: string
+          nullable: true
           format: string
         defaultValueT:
           type: string
+          nullable: true
           format: string
     ColumnStructRule:
       type: object
@@ -1390,15 +1433,19 @@ components:
           format: string
         columnTypeS:
           type: string
+          nullable: true
           format: string
         columnTypeT:
           type: string
+          nullable: true
           format: string
         defaultValueS:
           type: string
+          nullable: true
           format: string
         defaultValueT:
           type: string
+          nullable: true
           format: string
     TableAttrsRule:
       type: object
@@ -1408,11 +1455,13 @@ components:
           format: string
         tableNamesS:
           type: array
+          nullable: true
           items:
             type: string
             format: string
         tableAttrsT:
           type: string
+          nullable: true
           format: string
     DataScanRule:
       type: object

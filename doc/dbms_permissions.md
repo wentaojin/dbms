@@ -2,7 +2,7 @@
   DBMS PERMISSIONS
 </h1>
 <p align="center">
-    This document is used to describe the permissions required by the DBMS sufficient platform
+  本文档用于描述 DBMS 分布式迁移服务平台所需数据源权限
 </p>
 
 -------

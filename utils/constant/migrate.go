@@ -53,13 +53,19 @@ const (
 	// MYSQL database expression index support version > 8.0.0
 	MYSQLDatabaseExpressionIndexSupportVersion = "8.0.0"
 
+	MYSQLDatabaseSequenceSupportVersion = "8.0"
+	TIDBDatabaseSequenceSupportVersion  = "4.0"
+
+	// pg's transaction snapshot export function was initially supported in version 9.3
+	// which allows multiple transactions to share a consistent view of the same current database state that has been obtained
+	// but pg 9.5 begins to support insert on conflict update syntax, similar to mysql replace into, so unified version requirements pg 9.5
+	// PostgresqlDatabaseSnapshotReadSupportVersion = "9.3"
+	PostgresqlDatabaseSupportVersionRequire = "9.5"
+
 	// struct migrate type
 	DatabaseStructMigrateSqlSchemaCategory   = "SCHEMA"
 	DatabaseStructMigrateSqlTableCategory    = "TABLE"
 	DatabaseStructMigrateSqlSequenceCategory = "SEQUENCE"
-
-	MYSQLDatabaseSequenceSupportVersion = "8.0"
-	TIDBDatabaseSequenceSupportVersion  = "4.0"
 
 	// struct compare
 	StructCompareColumnsStructureJSONFormat   = "COLUMN"

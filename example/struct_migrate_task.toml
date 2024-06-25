@@ -33,10 +33,6 @@ exclude-table-s = []
 table-name-s = "MARVIN00"
 table-name-t = "STEVEN00"
 column-route-rules = {"NAME" = "T_NAME00"}
-[[schema-route-rule.table-route-rules]]
-table-name-s = "MARVIN01"
-table-name-t = "STEVEN01"
-column-route-rules = {"NAME" = "t_name00"}
 
 # 默认值规则设置分为字符类型 OR 数值类型 OR 函数表达式 OR '' 空字符串 OR NULL 字符
 # 字符类型设置需要带单引号
