@@ -27,7 +27,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinDatatypes []*buildin.BuildinDatatypeRule) (string, string, error) {
+func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(taskFlow string, c *Column, buildinDatatypes []*buildin.BuildinDatatypeRule) (string, string, error) {
 	var (
 		// origin column datatype
 		originColumnType string
@@ -77,14 +77,14 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 								buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, 30)
 								return originColumnType, buildInColumnType, nil
 							}
-							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 						case dataPrecision == 38 && dataScale <= 30:
 							originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
 								buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, dataScale)
 								return originColumnType, buildInColumnType, nil
 							}
-							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 						default:
 							if dataScale <= 30 {
 								originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
@@ -92,14 +92,14 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 									buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", dataPrecision, dataScale)
 									return originColumnType, buildInColumnType, nil
 								}
-								return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+								return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 							}
 							originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
 								buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", dataPrecision, 30)
 								return originColumnType, buildInColumnType, nil
 							}
-							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 						}
 					} else {
 						// number s>p, eg: number(3,5)
@@ -113,14 +113,14 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 								buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, 30)
 								return originColumnType, buildInColumnType, nil
 							}
-							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 						} else {
 							originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
 								buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, dataScale)
 								return originColumnType, buildInColumnType, nil
 							}
-							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+							return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 						}
 					}
 				default:
@@ -136,53 +136,81 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 					switch {
 					case dataPrecision >= 1 && dataPrecision < 3:
 						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-						if _, ok = numberDatatypeMap["TINYINT"]; ok {
-							buildInColumnType = "TINYINT(4)"
-							return originColumnType, buildInColumnType, nil
+						if strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL) {
+							if _, ok = numberDatatypeMap["TINYINT"]; ok {
+								buildInColumnType = "TINYINT(4)"
+								return originColumnType, buildInColumnType, nil
+							}
+						} else if strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) {
+							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
+								buildInColumnType = "DECIMAL(4,0)"
+								return originColumnType, buildInColumnType, nil
+							}
 						}
-						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [TINYINT]", c.ColumnName, originColumnType)
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [TINYINT/DECIMAL]", c.ColumnName, originColumnType)
 					case dataPrecision >= 3 && dataPrecision < 5:
 						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-						if _, ok = numberDatatypeMap["SMALLINT"]; ok {
-							buildInColumnType = "SMALLINT(6)"
-							return originColumnType, buildInColumnType, nil
+						if strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL) {
+							if _, ok = numberDatatypeMap["SMALLINT"]; ok {
+								buildInColumnType = "SMALLINT(6)"
+								return originColumnType, buildInColumnType, nil
+							}
+						} else if strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) {
+							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
+								buildInColumnType = "DECIMAL(6,0)"
+								return originColumnType, buildInColumnType, nil
+							}
 						}
-						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [SMALLINT]", c.ColumnName, originColumnType)
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [SMALLINT/DECIMAL]", c.ColumnName, originColumnType)
 					case dataPrecision >= 5 && dataPrecision < 9:
 						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-						if _, ok = numberDatatypeMap["INT"]; ok {
-							buildInColumnType = "INT(11)"
-							return originColumnType, buildInColumnType, nil
+						if strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL) {
+							if _, ok = numberDatatypeMap["INT"]; ok {
+								buildInColumnType = "INT(11)"
+								return originColumnType, buildInColumnType, nil
+							}
+						} else if strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) {
+							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
+								buildInColumnType = "DECIMAL(11,0)"
+								return originColumnType, buildInColumnType, nil
+							}
 						}
-						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [INT]", c.ColumnName, originColumnType)
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [INT/DECIMAL]", c.ColumnName, originColumnType)
 					case dataPrecision >= 9 && dataPrecision < 19:
 						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
-						if _, ok = numberDatatypeMap["BIGINT"]; ok {
-							buildInColumnType = "BIGINT(20)"
-							return originColumnType, buildInColumnType, nil
+						if strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL) {
+							if _, ok = numberDatatypeMap["BIGINT"]; ok {
+								buildInColumnType = "BIGINT(20)"
+								return originColumnType, buildInColumnType, nil
+							}
+						} else if strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) {
+							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
+								buildInColumnType = "DECIMAL(20,0)"
+								return originColumnType, buildInColumnType, nil
+							}
 						}
-						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [BIGINT]", c.ColumnName, originColumnType)
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [BIGINT/DECIMAL]", c.ColumnName, originColumnType)
 					case dataPrecision >= 19 && dataPrecision <= 38:
 						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 						if _, ok = numberDatatypeMap["DECIMAL"]; ok {
 							buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", dataPrecision, 0)
 							return originColumnType, buildInColumnType, nil
 						}
-						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 					default:
 						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 						if _, ok = numberDatatypeMap["DECIMAL"]; ok {
 							buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, 0)
 							return originColumnType, buildInColumnType, nil
 						}
-						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
+						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 					}
 				}
 			} else {
-				return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column data precison can't be equal or less than [%d], please checkin", c.ColumnName, originColumnType, dataPrecision)
+				return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table data precison can't be equal or less than [%d], please checkin", c.ColumnName, originColumnType, dataPrecision)
 			}
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNumber)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNumber)
 		}
 	case constant.BuildInOracleDatatypeBfile:
 		originColumnType = constant.BuildInOracleDatatypeBfile
@@ -190,7 +218,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s(255)", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeBfile)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeBfile)
 		}
 	case constant.BuildInOracleDatatypeChar:
 		if val, ok := buildinDatatypeMap[constant.BuildInOracleDatatypeChar]; ok {
@@ -203,7 +231,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			}
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeChar)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeChar)
 		}
 	case constant.BuildInOracleDatatypeCharacter:
 		if val, ok := buildinDatatypeMap[constant.BuildInOracleDatatypeCharacter]; ok {
@@ -216,7 +244,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			}
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeCharacter)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeCharacter)
 		}
 	case constant.BuildInOracleDatatypeClob:
 		originColumnType = constant.BuildInOracleDatatypeClob
@@ -224,7 +252,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = stringutil.StringUpper(val)
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeClob)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeClob)
 		}
 	case constant.BuildInOracleDatatypeBlob:
 		originColumnType = constant.BuildInOracleDatatypeBlob
@@ -232,7 +260,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = stringutil.StringUpper(val)
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeBlob)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeBlob)
 		}
 	case constant.BuildInOracleDatatypeDate:
 		originColumnType = constant.BuildInOracleDatatypeDate
@@ -240,7 +268,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = stringutil.StringUpper(val)
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeDate)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeDate)
 		}
 	case constant.BuildInOracleDatatypeDecimal:
 		originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeDecimal, dataPrecision, dataScale)
@@ -248,7 +276,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s(%d,%d)", stringutil.StringUpper(val), dataPrecision, dataScale)
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeDecimal)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeDecimal)
 		}
 	case constant.BuildInOracleDatatypeDec:
 		originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeDecimal, dataPrecision, dataScale)
@@ -256,7 +284,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s(%d,%d)", stringutil.StringUpper(val), dataPrecision, dataScale)
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeDec)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeDec)
 		}
 	case constant.BuildInOracleDatatypeDoublePrecision:
 		originColumnType = constant.BuildInOracleDatatypeDoublePrecision
@@ -264,7 +292,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeDoublePrecision)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeDoublePrecision)
 		}
 	case constant.BuildInOracleDatatypeFloat:
 		originColumnType = constant.BuildInOracleDatatypeFloat
@@ -272,7 +300,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeFloat)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeFloat)
 		}
 	case constant.BuildInOracleDatatypeInteger:
 		originColumnType = constant.BuildInOracleDatatypeInteger
@@ -280,7 +308,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeInteger)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeInteger)
 		}
 	case constant.BuildInOracleDatatypeInt:
 		originColumnType = constant.BuildInOracleDatatypeInteger
@@ -288,7 +316,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeInt)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeInt)
 		}
 	case constant.BuildInOracleDatatypeLong:
 		originColumnType = constant.BuildInOracleDatatypeLong
@@ -296,7 +324,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeLong)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeLong)
 		}
 	case constant.BuildInOracleDatatypeLongRAW:
 		originColumnType = constant.BuildInOracleDatatypeLongRAW
@@ -304,7 +332,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeLongRAW)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeLongRAW)
 		}
 	case constant.BuildInOracleDatatypeBinaryFloat:
 		originColumnType = constant.BuildInOracleDatatypeBinaryFloat
@@ -312,7 +340,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeBinaryFloat)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeBinaryFloat)
 		}
 	case constant.BuildInOracleDatatypeBinaryDouble:
 		originColumnType = constant.BuildInOracleDatatypeBinaryDouble
@@ -320,7 +348,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeBinaryDouble)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeBinaryDouble)
 		}
 	case constant.BuildInOracleDatatypeNchar:
 		if val, ok := buildinDatatypeMap[constant.BuildInOracleDatatypeNchar]; ok {
@@ -347,7 +375,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			}
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNchar)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNchar)
 		}
 	case constant.BuildInOracleDatatypeNcharVarying:
 		if val, ok := buildinDatatypeMap[constant.BuildInOracleDatatypeNcharVarying]; ok {
@@ -360,7 +388,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			}
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNcharVarying)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNcharVarying)
 		}
 	case constant.BuildInOracleDatatypeNclob:
 		originColumnType = constant.BuildInOracleDatatypeNclob
@@ -368,7 +396,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNclob)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNclob)
 		}
 	case constant.BuildInOracleDatatypeNumeric:
 		originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumeric, dataPrecision, dataScale)
@@ -376,7 +404,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s(%d,%d)", stringutil.StringUpper(val), dataPrecision, dataScale)
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNumeric)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNumeric)
 		}
 	case constant.BuildInOracleDatatypeNvarchar2:
 		if val, ok := buildinDatatypeMap[constant.BuildInOracleDatatypeNvarchar2]; ok {
@@ -389,7 +417,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			}
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNvarchar2)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeNvarchar2)
 		}
 	case constant.BuildInOracleDatatypeRaw:
 		originColumnType = fmt.Sprintf("%s(%d)", constant.BuildInOracleDatatypeRaw, dataLength)
@@ -403,7 +431,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s(%d)", stringutil.StringUpper(val), dataLength)
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeRaw)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeRaw)
 		}
 	case constant.BuildInOracleDatatypeReal:
 		originColumnType = constant.BuildInOracleDatatypeReal
@@ -411,7 +439,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeReal)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeReal)
 		}
 	case constant.BuildInOracleDatatypeRowid:
 		originColumnType = constant.BuildInOracleDatatypeRowid
@@ -419,7 +447,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s(64)", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeRowid)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeRowid)
 		}
 	case constant.BuildInOracleDatatypeSmallint:
 		originColumnType = constant.BuildInOracleDatatypeSmallint
@@ -427,7 +455,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeSmallint)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeSmallint)
 		}
 	case constant.BuildInOracleDatatypeUrowid:
 		originColumnType = constant.BuildInOracleDatatypeUrowid
@@ -435,7 +463,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s(%d)", stringutil.StringUpper(val), dataLength)
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeUrowid)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeUrowid)
 		}
 	case constant.BuildInOracleDatatypeVarchar2:
 		if val, ok := buildinDatatypeMap[constant.BuildInOracleDatatypeVarchar2]; ok {
@@ -448,7 +476,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			}
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeVarchar2)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeVarchar2)
 		}
 	case constant.BuildInOracleDatatypeVarchar:
 		if val, ok := buildinDatatypeMap[constant.BuildInOracleDatatypeVarchar]; ok {
@@ -461,7 +489,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			}
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeVarchar)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeVarchar)
 		}
 	case constant.BuildInOracleDatatypeXmltype:
 		originColumnType = constant.BuildInOracleDatatypeXmltype
@@ -469,7 +497,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 			buildInColumnType = fmt.Sprintf("%s", stringutil.StringUpper(val))
 			return originColumnType, buildInColumnType, nil
 		} else {
-			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeXmltype)
+			return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, constant.BuildInOracleDatatypeXmltype)
 		}
 	default:
 		if strings.Contains(c.Datatype, "INTERVAL YEAR") {
@@ -478,7 +506,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 				buildInColumnType = fmt.Sprintf("%s(30)", stringutil.StringUpper(val))
 				return originColumnType, buildInColumnType, nil
 			} else {
-				return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, stringutil.StringUpper(originColumnType))
+				return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, stringutil.StringUpper(originColumnType))
 			}
 		} else if strings.Contains(c.Datatype, "INTERVAL DAY") {
 			originColumnType = c.Datatype
@@ -486,7 +514,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 				buildInColumnType = fmt.Sprintf("%s(30)", stringutil.StringUpper(val))
 				return originColumnType, buildInColumnType, nil
 			} else {
-				return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, stringutil.StringUpper(originColumnType))
+				return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, stringutil.StringUpper(originColumnType))
 			}
 		} else if strings.Contains(c.Datatype, "TIMESTAMP") {
 			originColumnType = c.Datatype
@@ -495,14 +523,14 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(c *Column, buildinD
 					buildInColumnType = fmt.Sprintf("%s(%d)", stringutil.StringUpper(val), dataScale)
 					return originColumnType, buildInColumnType, nil
 				} else {
-					return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, stringutil.StringUpper(originColumnType))
+					return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, stringutil.StringUpper(originColumnType))
 				}
 			} else {
 				if val, ok := buildinDatatypeMap[stringutil.StringUpper(originColumnType)]; ok {
 					buildInColumnType = fmt.Sprintf("%s(%d)", stringutil.StringUpper(val), 6)
 					return originColumnType, buildInColumnType, nil
 				} else {
-					return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql column type rule isn't exist, please checkin", c.ColumnName, stringutil.StringUpper(originColumnType))
+					return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin", c.ColumnName, stringutil.StringUpper(originColumnType))
 				}
 			}
 		} else {

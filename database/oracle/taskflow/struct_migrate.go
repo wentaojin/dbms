@@ -18,6 +18,7 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/model/rule"
 	"strings"
 	"time"
 
@@ -51,6 +52,13 @@ type StructMigrateTask struct {
 
 func (st *StructMigrateTask) Start() error {
 	schemaStartTime := time.Now()
+	logger.Info("struct migrate task inspect migrate task",
+		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	_, nlsComp, dbCollationS, err := inspectMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, st.DatabaseS, st.DBCharsetS, st.DBCharsetT)
+	if err != nil {
+		return err
+	}
+
 	logger.Info("struct migrate task get buildin rule",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 
@@ -64,9 +72,9 @@ func (st *StructMigrateTask) Start() error {
 		return err
 	}
 
-	logger.Info("struct migrate task inspect migrate task",
+	logger.Info("struct migrate task init task information",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
-	_, nlsComp, dbCollationS, err := inspectMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, st.DatabaseS, st.DBCharsetS, st.DBCharsetT)
+	err = st.initStructMigrateTask()
 	if err != nil {
 		return err
 	}
@@ -263,6 +271,7 @@ func (st *StructMigrateTask) Start() error {
 		}
 	}
 
+	// sequence migrate exclude struct_migrate_summary compute counts
 	err = st.sequenceMigrateStart(st.DatabaseS, st.DatabaseT)
 	if err != nil {
 		return err
@@ -550,5 +559,189 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("task_stage", "struct sequence database"),
 		zap.String("cost", time.Now().Sub(writerTime).String()))
+	return nil
+}
+
+func (st *StructMigrateTask) initStructMigrateTask() error {
+	// delete checkpoint
+	initFlags, err := model.GetITaskRW().GetTask(st.Ctx, &task.Task{TaskName: st.Task.TaskName})
+	if err != nil {
+		return err
+	}
+	if !st.TaskParams.EnableCheckpoint || strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusNotFinished) {
+		err := model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(st.Ctx, []string{st.Task.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTaskName(st.Ctx, []string{st.Task.TaskName})
+		if err != nil {
+			return err
+		}
+	} else if st.TaskParams.EnableCheckpoint && strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusFinished) {
+		logger.Warn("struct migrate task init skip",
+			zap.String("task_name", st.Task.TaskName),
+			zap.String("task_mode", st.Task.TaskMode),
+			zap.String("task_flow", st.Task.TaskFlow),
+			zap.String("task_init", constant.TaskInitStatusFinished))
+		return nil
+	}
+
+	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(st.Ctx,
+		&rule.SchemaRouteRule{TaskName: st.Task.TaskName})
+	if err != nil {
+		return err
+	}
+
+	// filter database table
+	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(st.Ctx, &rule.MigrateTaskTable{
+		TaskName:    schemaRoute.TaskName,
+		SchemaNameS: schemaRoute.SchemaNameS,
+	})
+	if err != nil {
+		return err
+	}
+	var (
+		includeTables      []string
+		excludeTables      []string
+		databaseTaskTables []string // task tables
+	)
+	databaseTableTypeMap := make(map[string]string)
+
+	for _, t := range schemaTaskTables {
+		if strings.EqualFold(t.IsExclude, constant.MigrateTaskTableIsExclude) {
+			excludeTables = append(excludeTables, t.TableNameS)
+		}
+		if strings.EqualFold(t.IsExclude, constant.MigrateTaskTableIsNotExclude) {
+			includeTables = append(includeTables, t.TableNameS)
+		}
+	}
+
+	databaseFilterTables, err := st.DatabaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
+	if err != nil {
+		return err
+	}
+
+	// rule case field
+	for _, t := range databaseFilterTables {
+		var tabName string
+		// the according target case field rule convert
+		if strings.EqualFold(st.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+			tabName = stringutil.StringLower(t)
+		}
+		if strings.EqualFold(st.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+			tabName = stringutil.StringUpper(t)
+		}
+		if strings.EqualFold(st.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+			tabName = t
+		}
+		databaseTaskTables = append(databaseTaskTables, tabName)
+	}
+
+	databaseTableTypeMap, err = st.DatabaseS.GetDatabaseTableType(schemaRoute.SchemaNameS)
+	if err != nil {
+		return err
+	}
+
+	// get table route rule
+	tableRouteRule := make(map[string]string)
+
+	tableRoutes, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(st.Ctx, &rule.TableRouteRule{
+		TaskName:    schemaRoute.TaskName,
+		SchemaNameS: schemaRoute.SchemaNameS,
+	})
+	for _, tr := range tableRoutes {
+		tableRouteRule[tr.TableNameS] = tr.TableNameT
+	}
+
+	// clear the struct migrate task table
+	migrateTasks, err := model.GetIStructMigrateTaskRW().BatchFindStructMigrateTask(st.Ctx, &task.StructMigrateTask{TaskName: st.Task.TaskName})
+	if err != nil {
+		return err
+	}
+
+	// repeatInitTableMap used for store the struct_migrate_task table name has be finished, avoid repeated initialization
+	repeatInitTableMap := make(map[string]struct{})
+	if len(migrateTasks) > 0 {
+		taskTablesMap := make(map[string]struct{})
+		for _, t := range databaseTaskTables {
+			taskTablesMap[t] = struct{}{}
+		}
+		for _, smt := range migrateTasks {
+			if _, ok := taskTablesMap[smt.TableNameS]; !ok {
+				err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTask(st.Ctx, smt.ID)
+				if err != nil {
+					return err
+				}
+			} else {
+				repeatInitTableMap[smt.TableNameS] = struct{}{}
+			}
+		}
+	}
+
+	// database tables
+	// init database table
+	// get table column route rule
+	for _, sourceTable := range databaseTaskTables {
+		initStructInfos, err := model.GetIStructMigrateTaskRW().GetStructMigrateTaskTable(st.Ctx, &task.StructMigrateTask{
+			TaskName:    st.Task.TaskName,
+			SchemaNameS: schemaRoute.SchemaNameS,
+			TableNameS:  sourceTable,
+		})
+		if err != nil {
+			return err
+		}
+		if len(initStructInfos) > 1 {
+			return fmt.Errorf("the struct migrate task table is over one, it should be only one")
+		}
+		// if the table is existed, then skip init
+		if _, ok := repeatInitTableMap[sourceTable]; ok {
+			continue
+		}
+		var (
+			targetTable string
+		)
+		if val, ok := tableRouteRule[sourceTable]; ok {
+			targetTable = val
+		} else {
+			// the according target case field rule convert
+			if strings.EqualFold(st.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+				targetTable = stringutil.StringLower(sourceTable)
+			}
+			if strings.EqualFold(st.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+				targetTable = stringutil.StringUpper(sourceTable)
+			}
+			if strings.EqualFold(st.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+				targetTable = sourceTable
+			}
+		}
+
+		_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(st.Ctx, &task.StructMigrateTask{
+			TaskName:    st.Task.TaskName,
+			SchemaNameS: schemaRoute.SchemaNameS,
+			TableNameS:  sourceTable,
+			TableTypeS:  databaseTableTypeMap[sourceTable],
+			SchemaNameT: schemaRoute.SchemaNameT,
+			TableNameT:  targetTable,
+			TaskStatus:  constant.TaskDatabaseStatusWaiting,
+			Category:    constant.DatabaseStructMigrateSqlTableCategory,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = model.GetIStructMigrateSummaryRW().CreateStructMigrateSummary(st.Ctx,
+		&task.StructMigrateSummary{
+			TaskName:    st.Task.TaskName,
+			SchemaNameS: schemaRoute.SchemaNameS,
+			TableTotals: uint64(len(databaseTaskTables) + 1), // include schema create sql
+		})
+	if err != nil {
+		return err
+	}
+	_, err = model.GetITaskRW().UpdateTask(st.Ctx, &task.Task{TaskName: st.Task.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
+	if err != nil {
+		return err
+	}
 	return nil
 }

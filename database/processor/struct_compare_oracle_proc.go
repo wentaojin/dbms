@@ -185,18 +185,20 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 		}
 
 		if !p.IsBaseline {
-			originColumnType, _, err := mapping.OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(&mapping.Column{
-				ColumnName:    columnName,
-				Datatype:      c["DATA_TYPE"],
-				CharUsed:      c["CHAR_USED"],
-				CharLength:    c["CHAR_LENGTH"],
-				DataPrecision: c["DATA_PRECISION"],
-				DataLength:    c["DATA_LENGTH"],
-				DataScale:     c["DATA_SCALE"],
-				DataDefault:   columnDefaultValue,
-				Nullable:      c["NULLABLE"],
-				Comment:       columnComment,
-			}, p.BuildinDatatypeRules)
+			originColumnType, _, err := mapping.OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(
+				p.TaskFlow,
+				&mapping.Column{
+					ColumnName:    columnName,
+					Datatype:      c["DATA_TYPE"],
+					CharUsed:      c["CHAR_USED"],
+					CharLength:    c["CHAR_LENGTH"],
+					DataPrecision: c["DATA_PRECISION"],
+					DataLength:    c["DATA_LENGTH"],
+					DataScale:     c["DATA_SCALE"],
+					DataDefault:   columnDefaultValue,
+					Nullable:      c["NULLABLE"],
+					Comment:       columnComment,
+				}, p.BuildinDatatypeRules)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -243,18 +245,20 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 			// task flow
 			switch {
 			case strings.EqualFold(p.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(p.TaskFlow, constant.TaskFlowOracleToTiDB):
-				originColumnType, buildInColumnType, err := mapping.OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(&mapping.Column{
-					ColumnName:    columnName,
-					Datatype:      c["DATA_TYPE"],
-					CharUsed:      c["CHAR_USED"],
-					CharLength:    c["CHAR_LENGTH"],
-					DataPrecision: c["DATA_PRECISION"],
-					DataLength:    c["DATA_LENGTH"],
-					DataScale:     c["DATA_SCALE"],
-					DataDefault:   columnDefaultValue,
-					Nullable:      c["NULLABLE"],
-					Comment:       columnComment,
-				}, p.BuildinDatatypeRules)
+				originColumnType, buildInColumnType, err := mapping.OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(
+					p.TaskFlow,
+					&mapping.Column{
+						ColumnName:    columnName,
+						Datatype:      c["DATA_TYPE"],
+						CharUsed:      c["CHAR_USED"],
+						CharLength:    c["CHAR_LENGTH"],
+						DataPrecision: c["DATA_PRECISION"],
+						DataLength:    c["DATA_LENGTH"],
+						DataScale:     c["DATA_SCALE"],
+						DataDefault:   columnDefaultValue,
+						Nullable:      c["NULLABLE"],
+						Comment:       columnComment,
+					}, p.BuildinDatatypeRules)
 				if err != nil {
 					return nil, nil, err
 				}

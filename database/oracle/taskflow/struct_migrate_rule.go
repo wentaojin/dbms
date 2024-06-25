@@ -220,18 +220,20 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 		// task flow
 		switch {
 		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-			originColumnType, buildInColumnType, err = mapping.OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(&mapping.Column{
-				ColumnName:    c["COLUMN_NAME"],
-				Datatype:      c["DATA_TYPE"],
-				CharUsed:      c["CHAR_USED"],
-				CharLength:    c["CHAR_LENGTH"],
-				DataPrecision: c["DATA_PRECISION"],
-				DataLength:    c["DATA_LENGTH"],
-				DataScale:     c["DATA_SCALE"],
-				DataDefault:   columnDefaultValues,
-				Nullable:      c["NULLABLE"],
-				Comment:       columnComment,
-			}, r.BuildinDatatypeRules)
+			originColumnType, buildInColumnType, err = mapping.OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(
+				r.TaskFlow,
+				&mapping.Column{
+					ColumnName:    c["COLUMN_NAME"],
+					Datatype:      c["DATA_TYPE"],
+					CharUsed:      c["CHAR_USED"],
+					CharLength:    c["CHAR_LENGTH"],
+					DataPrecision: c["DATA_PRECISION"],
+					DataLength:    c["DATA_LENGTH"],
+					DataScale:     c["DATA_SCALE"],
+					DataDefault:   columnDefaultValues,
+					Nullable:      c["NULLABLE"],
+					Comment:       columnComment,
+				}, r.BuildinDatatypeRules)
 			if err != nil {
 				return nil, nil, nil, err
 			}
