@@ -98,6 +98,10 @@ $ dbms-ctl sql upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${sql_m
 ```shell
 $ dbms-ctl verify upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${data_compare_task00.toml}
 ```
+数据扫描任务配置[示例](../example/data_scan_task.toml)
+```shell
+$ dbms-ctl scan upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${data_scan_task.toml}
+```
 
 8，DBMS 任务管理操作（dbms-ctl）
 
@@ -130,7 +134,7 @@ $ dbms-ctl task crontab clear -s ${dbms-master-ip-leader}:${dbms-master-port} -t
 
 展示定时任务（未启动运行任务状态）
 ```shell
-$ dbms-ctl task crontab display -s ${dbms-master-ip-leader}:${dbms-master-port} [-t ${task-name} 可选]
+$ dbms-ctl task crontab display -s ${dbms-master-ip-leader}:${dbms-master-port} [-t ${task-name} 参数可选]
 ```
 
 8，获取结构迁移兼容以及不兼容性对象信息报告

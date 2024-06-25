@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/database/oracle/taskflow"
 	"github.com/wentaojin/dbms/logger"
@@ -39,20 +40,61 @@ import (
 	"time"
 )
 
-func UpsertDataScanTask(ctx context.Context, req *pb.UpsertDataScanTaskRequest) (string, error) {
-	_, err := DeleteDataScanTask(ctx, &pb.DeleteDataScanTaskRequest{TaskName: []string{req.TaskName}})
+func PromptDataScanTask(ctx context.Context, taskName, serverAddr string) error {
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
 	if err != nil {
-		return "", err
+		return err
 	}
-	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: req.TaskName})
+	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
 	if err != nil {
-		return "", err
-	}
-	if !strings.EqualFold(taskInfo.TaskMode, constant.TaskModeDataScan) && !strings.EqualFold(taskInfo.TaskMode, "") {
-		return "", fmt.Errorf("the task name [%s] has be existed in the task mode [%s], please rename the global unqiue task name", req.TaskName, taskInfo.TaskMode)
+		return err
 	}
 
-	err = model.Transaction(ctx, func(txnCtx context.Context) error {
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		// open database conn
+		var dbCfg *model.Database
+		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+		if err != nil {
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+		}
+		err = model.CreateDatabaseReadWrite(dbCfg)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	}
+	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName})
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(taskInfo.TaskMode, constant.TaskModeDataScan) && !strings.EqualFold(taskInfo.TaskMode, "") {
+		return fmt.Errorf("the task name [%s] has be existed in the task mode [%s], please rename the global unqiue task name", taskName, taskInfo.TaskMode)
+	}
+
+	if strings.EqualFold(taskInfo.TaskMode, constant.TaskModeDataScan) {
+		if err = stringutil.PromptForAnswerOrAbortError(
+			"Yes, I know my configuration file will be overwrite.",
+			fmt.Sprintf("This operation will overwrite the task_mode [%s] task_name [%s] configuration file\n.",
+				color.HiYellowString(strings.ToLower(constant.TaskModeDataScan)),
+				color.HiYellowString(taskInfo.TaskName),
+			)+"\nAre you sure to continue?",
+		); err != nil {
+			return err
+		}
+		_, err := DeleteDataScanTask(ctx, &pb.DeleteDataScanTaskRequest{TaskName: []string{taskName}})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func UpsertDataScanTask(ctx context.Context, req *pb.UpsertDataScanTaskRequest) (string, error) {
+	err := model.Transaction(ctx, func(txnCtx context.Context) error {
 		var (
 			datasourceS *datasource.Datasource
 			datasourceT *datasource.Datasource

@@ -17,8 +17,10 @@ package migrate
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/service"
 
 	"github.com/BurntSushi/toml"
 	"github.com/wentaojin/dbms/openapi"
@@ -67,6 +69,13 @@ func UpsertStmtMigrate(serverAddr string, file string) error {
 	if _, err := toml.DecodeFile(file, cfg); err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("failed decode toml config file %s: %v", file, err))
+		return nil
+	}
+
+	err := service.PromptStmtMigrateTask(context.TODO(), cfg.TaskName, serverAddr)
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("failed prompt stmt migrate file %s: %v", file, err))
 		return nil
 	}
 

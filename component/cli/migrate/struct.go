@@ -17,8 +17,10 @@ package migrate
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/service"
 
 	"github.com/BurntSushi/toml"
 	"github.com/wentaojin/dbms/openapi"
@@ -110,6 +112,14 @@ func UpsertStructMigrate(serverAddr string, file string) error {
 		fmt.Printf("Response:     %s\n", color.RedString("failed decode toml config file %s: %v", file, err))
 		return nil
 	}
+
+	err := service.PromptStructMigrateTask(context.TODO(), cfg.TaskName, serverAddr)
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("failed prompt struct migrate file %s: %v", file, err))
+		return nil
+	}
+
 	resp, err := openapi.Request(openapi.RequestPUTMethod, stringutil.StringBuilder(stringutil.WrapScheme(serverAddr, false), openapi.DBMSAPIBasePath, openapi.APITaskPath, "/", openapi.APIStructMigratePath), []byte(cfg.String()))
 	if err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
