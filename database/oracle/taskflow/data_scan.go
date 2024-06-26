@@ -403,10 +403,10 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 		return err
 	}
 	var (
-		includeTables  []string
-		excludeTables  []string
-		databaseTables []string // task tables
-		globalScn      string
+		includeTables      []string
+		excludeTables      []string
+		databaseTaskTables []string // task tables
+		globalScn          string
 	)
 	databaseTableTypeMap := make(map[string]string)
 
@@ -419,9 +419,25 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 		}
 	}
 
-	databaseTables, err = databaseS.FilterDatabaseTable(schemaNameS, includeTables, excludeTables)
+	databaseFilterTables, err := databaseS.FilterDatabaseTable(schemaNameS, includeTables, excludeTables)
 	if err != nil {
 		return err
+	}
+
+	// rule case field
+	for _, t := range databaseFilterTables {
+		var tabName string
+		// the according target case field rule convert
+		if strings.EqualFold(dst.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+			tabName = stringutil.StringLower(t)
+		}
+		if strings.EqualFold(dst.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+			tabName = stringutil.StringUpper(t)
+		}
+		if strings.EqualFold(dst.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+			tabName = t
+		}
+		databaseTaskTables = append(databaseTaskTables, tabName)
 	}
 
 	// clear the data scan task table
@@ -434,7 +450,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 
 	if len(migrateGroupTasks) > 0 {
 		taskTablesMap := make(map[string]struct{})
-		for _, t := range databaseTables {
+		for _, t := range databaseTaskTables {
 			taskTablesMap[t] = struct{}{}
 		}
 		for _, mt := range migrateGroupTasks {
@@ -528,7 +544,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 	g, gCtx := errgroup.WithContext(dst.Ctx)
 	g.SetLimit(int(dst.TaskParams.TableThread))
 
-	for _, taskJob := range databaseTables {
+	for _, taskJob := range databaseTaskTables {
 		sourceTable := taskJob
 		g.Go(func() error {
 			select {
@@ -568,6 +584,12 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 				attsRule, err := database.IDataScanAttributesRule(dataRule)
 				if err != nil {
 					return err
+				}
+
+				// If the database table ColumnDetailS and GroupColumnS return ""
+				// it means that the database table does not have a number data type field, ignore and skip init
+				if strings.EqualFold(attsRule.ColumnDetailS, "") && strings.EqualFold(attsRule.GroupColumnS, "") {
+					return nil
 				}
 
 				var whereRange string

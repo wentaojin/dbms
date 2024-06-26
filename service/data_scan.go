@@ -689,14 +689,26 @@ func StartDataScanTask(ctx context.Context, taskName, workerAddr string) error {
 		return err
 	}
 
-	logger.Info("data scan task success",
-		zap.String("task_name", taskInfo.TaskName),
-		zap.String("task_mode", taskInfo.TaskMode),
-		zap.String("task_flow", taskInfo.TaskFlow),
-		zap.Int64("total records", migrateTotalsResults),
-		zap.Int64("success records", migrateSuccessResults),
-		zap.String("detail tips", "please see [data_scan_task] detail"),
-		zap.String("cost", time.Now().Sub(startTime).String()))
+	if migrateTotalsResults == 0 {
+		logger.Info("data scan task success",
+			zap.String("task_name", taskInfo.TaskName),
+			zap.String("task_mode", taskInfo.TaskMode),
+			zap.String("task_flow", taskInfo.TaskFlow),
+			zap.Int64("total records", migrateTotalsResults),
+			zap.Int64("success records", migrateSuccessResults),
+			zap.String("scan action", "the task meets the requirements and does not require scanning"),
+			zap.String("detail tips", "please see [data_scan_task] detail"),
+			zap.String("cost", time.Now().Sub(startTime).String()))
+	} else {
+		logger.Info("data scan task success",
+			zap.String("task_name", taskInfo.TaskName),
+			zap.String("task_mode", taskInfo.TaskMode),
+			zap.String("task_flow", taskInfo.TaskFlow),
+			zap.Int64("total records", migrateTotalsResults),
+			zap.Int64("success records", migrateSuccessResults),
+			zap.String("detail tips", "please see [data_scan_task] detail"),
+			zap.String("cost", time.Now().Sub(startTime).String()))
+	}
 	return nil
 }
 

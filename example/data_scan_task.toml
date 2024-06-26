@@ -8,11 +8,9 @@ case-field-rule-s = "0"
 
 [schema-route-rule]
 schema-name-s = "MARVIN"
-#include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["MARVIN00","MARVIN01"]
-#include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
+include-table-s = ["MARVIN10"]
+#include-table-s = ["MARVIN00","MARVIN01"]
 exclude-table-s = []
-#exclude-table-s = ["P4","WUCHAO_TEST_BLOB"]
 
 [[data-scan-rules]]
 table-name-s = "MARVIN00"
@@ -27,7 +25,7 @@ table-samplerate-s = 100
 # 采样扫描下用于表执行并发数
 table-thread = 100
 # 数据写入批量大小
-batch-size = 1
+batch-size = 500
 # 全表扫描
 # 任务 chunk 数，固定动作，一旦确认，不能更改，除非设置 enable-checkpoint = false，重新导出导入
 # 1、代表每张表每并发处理多少行数

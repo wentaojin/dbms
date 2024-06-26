@@ -499,10 +499,10 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 		return err
 	}
 	var (
-		includeTables  []string
-		excludeTables  []string
-		databaseTables []string // task tables
-		globalScn      string
+		includeTables      []string
+		excludeTables      []string
+		databaseTaskTables []string // task tables
+		globalScn          string
 	)
 	databaseTableTypeMap := make(map[string]string)
 
@@ -515,9 +515,25 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 		}
 	}
 
-	databaseTables, err = databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
+	databaseFilterTables, err := databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
 	if err != nil {
 		return err
+	}
+
+	// rule case field
+	for _, t := range databaseFilterTables {
+		var tabName string
+		// the according target case field rule convert
+		if strings.EqualFold(cmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+			tabName = stringutil.StringLower(t)
+		}
+		if strings.EqualFold(cmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+			tabName = stringutil.StringUpper(t)
+		}
+		if strings.EqualFold(cmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+			tabName = t
+		}
+		databaseTaskTables = append(databaseTaskTables, tabName)
 	}
 
 	// clear the csv migrate task table
@@ -529,7 +545,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 
 	if len(migrateGroupTasks) > 0 {
 		taskTablesMap := make(map[string]struct{})
-		for _, t := range databaseTables {
+		for _, t := range databaseTaskTables {
 			taskTablesMap[t] = struct{}{}
 		}
 		for _, smt := range migrateGroupTasks {
@@ -622,7 +638,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 	g, gCtx := errgroup.WithContext(cmt.Ctx)
 	g.SetLimit(int(cmt.TaskParams.TableThread))
 
-	for _, taskJob := range databaseTables {
+	for _, taskJob := range databaseTaskTables {
 		sourceTable := taskJob
 		g.Go(func() error {
 			select {

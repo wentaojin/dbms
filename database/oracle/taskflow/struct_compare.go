@@ -520,9 +520,9 @@ func (dmt *StructCompareTask) initStructCompareTask(databaseS, databaseT databas
 		return err
 	}
 	var (
-		includeTables  []string
-		excludeTables  []string
-		databaseTables []string // task tables
+		includeTables      []string
+		excludeTables      []string
+		databaseTaskTables []string // task tables
 	)
 	databaseTableTypeMap := make(map[string]string)
 
@@ -535,10 +535,27 @@ func (dmt *StructCompareTask) initStructCompareTask(databaseS, databaseT databas
 		}
 	}
 
-	databaseTables, err = databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
+	databaseFilterTables, err := databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
 	if err != nil {
 		return err
 	}
+
+	// rule case field
+	for _, t := range databaseFilterTables {
+		var tabName string
+		// the according target case field rule convert
+		if strings.EqualFold(dmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+			tabName = stringutil.StringLower(t)
+		}
+		if strings.EqualFold(dmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+			tabName = stringutil.StringUpper(t)
+		}
+		if strings.EqualFold(dmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+			tabName = t
+		}
+		databaseTaskTables = append(databaseTaskTables, tabName)
+	}
+
 	databaseTableTypeMap, err = databaseS.GetDatabaseTableType(schemaRoute.SchemaNameS)
 	if err != nil {
 		return err
@@ -571,7 +588,7 @@ func (dmt *StructCompareTask) initStructCompareTask(databaseS, databaseT databas
 	}
 
 	var panicTables []string
-	for _, t := range databaseTables {
+	for _, t := range databaseTaskTables {
 		if _, ok := tableRouteRuleTNew[t]; !ok {
 			panicTables = append(panicTables, t)
 		}
@@ -590,7 +607,7 @@ func (dmt *StructCompareTask) initStructCompareTask(databaseS, databaseT databas
 	repeatInitTableMap := make(map[string]struct{})
 	if len(migrateTasks) > 0 {
 		taskTablesMap := make(map[string]struct{})
-		for _, t := range databaseTables {
+		for _, t := range databaseTaskTables {
 			taskTablesMap[t] = struct{}{}
 		}
 		for _, smt := range migrateTasks {
@@ -613,7 +630,7 @@ func (dmt *StructCompareTask) initStructCompareTask(databaseS, databaseT databas
 	// database tables
 	// init database table
 	// get table column route rule
-	for _, sourceTable := range databaseTables {
+	for _, sourceTable := range databaseTaskTables {
 		initStructInfos, err := model.GetIStructCompareTaskRW().GetStructCompareTaskTable(dmt.Ctx, &task.StructCompareTask{
 			TaskName:    dmt.Task.TaskName,
 			SchemaNameS: schemaRoute.SchemaNameS,
@@ -665,7 +682,7 @@ func (dmt *StructCompareTask) initStructCompareTask(databaseS, databaseT databas
 		&task.StructCompareSummary{
 			TaskName:    dmt.Task.TaskName,
 			SchemaNameS: schemaRoute.SchemaNameS,
-			TableTotals: uint64(len(databaseTables)),
+			TableTotals: uint64(len(databaseTaskTables)),
 		})
 	if err != nil {
 		return err
