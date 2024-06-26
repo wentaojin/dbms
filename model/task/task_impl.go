@@ -71,6 +71,13 @@ func (rw *RWTask) GetTask(ctx context.Context, task *Task) (*Task, error) {
 
 func (rw *RWTask) ListTask(ctx context.Context, page uint64, pageSize uint64) ([]*Task, error) {
 	var dataS []*Task
+	if page == 0 && pageSize == 0 {
+		err := rw.DB(ctx).Model(&Task{}).Find(&dataS).Error
+		if err != nil {
+			return nil, fmt.Errorf("list table [%s] record failed: %v", rw.TableName(ctx), err)
+		}
+		return dataS, nil
+	}
 	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&Task{}).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("list table [%s] record failed: %v", rw.TableName(ctx), err)
@@ -117,9 +124,9 @@ func (rw *RWLog) UpdateLog(ctx context.Context, task *Log, updates map[string]in
 	return task, nil
 }
 
-func (rw *RWLog) QueryLog(ctx context.Context, task *Log) ([]*Log, error) {
+func (rw *RWLog) QueryLog(ctx context.Context, task *Log, last int) ([]*Log, error) {
 	var dataS []*Log
-	err := rw.DB(ctx).Model(&Log{}).Where("task_name = ? order by created_at desc", task.TaskName).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&Log{}).Where("task_name = ? order by created_at desc", task.TaskName).Limit(last).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

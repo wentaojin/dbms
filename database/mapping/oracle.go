@@ -143,7 +143,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(taskFlow string, c 
 							}
 						} else if strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) {
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-								buildInColumnType = "DECIMAL(4,0)"
+								buildInColumnType = fmt.Sprintf("DECIMAL(%d,0)", dataPrecision)
 								return originColumnType, buildInColumnType, nil
 							}
 						}
@@ -157,7 +157,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(taskFlow string, c 
 							}
 						} else if strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) {
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-								buildInColumnType = "DECIMAL(6,0)"
+								buildInColumnType = fmt.Sprintf("DECIMAL(%d,0)", dataPrecision)
 								return originColumnType, buildInColumnType, nil
 							}
 						}
@@ -171,7 +171,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(taskFlow string, c 
 							}
 						} else if strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) {
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-								buildInColumnType = "DECIMAL(11,0)"
+								buildInColumnType = fmt.Sprintf("DECIMAL(%d,0)", dataPrecision)
 								return originColumnType, buildInColumnType, nil
 							}
 						}
@@ -185,7 +185,7 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(taskFlow string, c 
 							}
 						} else if strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) {
 							if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-								buildInColumnType = "DECIMAL(20,0)"
+								buildInColumnType = fmt.Sprintf("DECIMAL(%d,0)", dataPrecision)
 								return originColumnType, buildInColumnType, nil
 							}
 						}
@@ -193,14 +193,14 @@ func OracleDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(taskFlow string, c 
 					case dataPrecision >= 19 && dataPrecision <= 38:
 						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 						if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-							buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", dataPrecision, 0)
+							buildInColumnType = fmt.Sprintf("DECIMAL(%d,0)", dataPrecision)
 							return originColumnType, buildInColumnType, nil
 						}
 						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)
 					default:
 						originColumnType = fmt.Sprintf("%s(%d,%d)", constant.BuildInOracleDatatypeNumber, dataPrecision, dataScale)
 						if _, ok = numberDatatypeMap["DECIMAL"]; ok {
-							buildInColumnType = fmt.Sprintf("DECIMAL(%d,%d)", 65, 0)
+							buildInColumnType = fmt.Sprintf("DECIMAL(%d,0)", 65)
 							return originColumnType, buildInColumnType, nil
 						}
 						return originColumnType, buildInColumnType, fmt.Errorf("column [%s] datatype [%s] map mysql compatible database table type rule isn't exist, please checkin mapping data type [DECIMAL]", c.ColumnName, originColumnType)

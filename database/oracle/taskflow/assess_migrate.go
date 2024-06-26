@@ -61,7 +61,19 @@ func (amt *AssessMigrateTask) Start() error {
 
 	logger.Info("assess migrate task init task",
 		zap.String("task_name", amt.Task.TaskName), zap.String("task_mode", amt.Task.TaskMode), zap.String("task_flow", amt.Task.TaskFlow))
-
+	_, err = model.GetITaskLogRW().CreateLog(amt.Ctx, &task.Log{
+		TaskName:    amt.Task.TaskName,
+		SchemaNameS: amt.TaskParams.SchemaNameS,
+		LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] init",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeAssessMigrate),
+			amt.Task.TaskName,
+			amt.Task.TaskMode,
+			amt.TaskParams.SchemaNameS),
+	})
+	if err != nil {
+		return err
+	}
 	err = amt.InitAssessMigrateTask()
 	if err != nil {
 		return err
@@ -84,6 +96,19 @@ func (amt *AssessMigrateTask) Start() error {
 			zap.String("task_mode", amt.Task.TaskMode),
 			zap.String("task_flow", amt.Task.TaskFlow),
 			zap.String("cost", time.Now().Sub(schemaTaskTime).String()))
+		_, err = model.GetITaskLogRW().CreateLog(amt.Ctx, &task.Log{
+			TaskName:    amt.Task.TaskName,
+			SchemaNameS: amt.TaskParams.SchemaNameS,
+			LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] successfully run, skip running, you can use assess gen command get the report",
+				stringutil.CurrentTimeFormatString(),
+				stringutil.StringLower(constant.TaskModeAssessMigrate),
+				amt.Task.TaskName,
+				amt.Task.TaskMode,
+				amt.TaskParams.SchemaNameS),
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -100,7 +125,7 @@ func (amt *AssessMigrateTask) Start() error {
 		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 			TaskName:    amt.Task.TaskName,
 			SchemaNameS: amt.TaskParams.SchemaNameS,
-			LogDetail: fmt.Sprintf("%v [%v] stmt migrate task [%v] taskflow [%v] schema_name_s [%v] assess start",
+			LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] assess start",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeAssessMigrate),
 				amt.Task.TaskName,
@@ -116,6 +141,19 @@ func (amt *AssessMigrateTask) Start() error {
 		return err
 	}
 
+	_, err = model.GetITaskLogRW().CreateLog(amt.Ctx, &task.Log{
+		TaskName:    amt.Task.TaskName,
+		SchemaNameS: amt.TaskParams.SchemaNameS,
+		LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] query buildin rule",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeAssessMigrate),
+			amt.Task.TaskName,
+			amt.Task.TaskMode,
+			amt.TaskParams.SchemaNameS),
+	})
+	if err != nil {
+		return err
+	}
 	compatibles, err := model.GetBuildInCompatibleRuleRW().QueryBuildInCompatibleRule(amt.Ctx, amt.DBTypeS, amt.DBTypeT)
 	if err != nil {
 		return err
@@ -213,6 +251,19 @@ func (amt *AssessMigrateTask) Start() error {
 		zap.String("task_name", amt.Task.TaskName),
 		zap.String("task_mode", amt.Task.TaskMode),
 		zap.String("task_flow", amt.Task.TaskFlow))
+	_, err = model.GetITaskLogRW().CreateLog(amt.Ctx, &task.Log{
+		TaskName:    amt.Task.TaskName,
+		SchemaNameS: amt.TaskParams.SchemaNameS,
+		LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] query overview result",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeAssessMigrate),
+			amt.Task.TaskName,
+			amt.Task.TaskMode,
+			amt.TaskParams.SchemaNameS),
+	})
+	if err != nil {
+		return err
+	}
 	dbOverview, overviewS, err := GetAssessDatabaseOverviewResult(databaseS, objAssessCompsMap, migrateTasks[0].AssessUser, migrateTasks[0].AssessFile)
 	if err != nil {
 		return err
@@ -227,6 +278,19 @@ func (amt *AssessMigrateTask) Start() error {
 		zap.String("task_name", amt.Task.TaskName),
 		zap.String("task_mode", amt.Task.TaskMode),
 		zap.String("task_flow", amt.Task.TaskFlow))
+	_, err = model.GetITaskLogRW().CreateLog(amt.Ctx, &task.Log{
+		TaskName:    amt.Task.TaskName,
+		SchemaNameS: amt.TaskParams.SchemaNameS,
+		LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] query compatible result",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeAssessMigrate),
+			amt.Task.TaskName,
+			amt.Task.TaskMode,
+			amt.TaskParams.SchemaNameS),
+	})
+	if err != nil {
+		return err
+	}
 	dbCompatibles, compS, err := GetAssessDatabaseCompatibleResult(databaseS, usernamesNew, objAssessCompsMap, buildDatatypeMap, defaultValuesMap)
 	if err != nil {
 		return err
@@ -241,6 +305,19 @@ func (amt *AssessMigrateTask) Start() error {
 		zap.String("task_name", amt.Task.TaskName),
 		zap.String("task_mode", amt.Task.TaskMode),
 		zap.String("task_flow", amt.Task.TaskFlow))
+	_, err = model.GetITaskLogRW().CreateLog(amt.Ctx, &task.Log{
+		TaskName:    amt.Task.TaskName,
+		SchemaNameS: amt.TaskParams.SchemaNameS,
+		LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] query check result",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeAssessMigrate),
+			amt.Task.TaskName,
+			amt.Task.TaskMode,
+			amt.TaskParams.SchemaNameS),
+	})
+	if err != nil {
+		return err
+	}
 	dbChecks, checkS, err := GetAssessDatabaseCheckResult(databaseS, usernamesNew)
 	if err != nil {
 		return err
@@ -255,6 +332,19 @@ func (amt *AssessMigrateTask) Start() error {
 		zap.String("task_name", amt.Task.TaskName),
 		zap.String("task_mode", amt.Task.TaskMode),
 		zap.String("task_flow", amt.Task.TaskFlow))
+	_, err = model.GetITaskLogRW().CreateLog(amt.Ctx, &task.Log{
+		TaskName:    amt.Task.TaskName,
+		SchemaNameS: amt.TaskParams.SchemaNameS,
+		LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] query related result",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeAssessMigrate),
+			amt.Task.TaskName,
+			amt.Task.TaskMode,
+			amt.TaskParams.SchemaNameS),
+	})
+	if err != nil {
+		return err
+	}
 	dbRelated, relatedS, err := GetAssessDatabaseRelatedResult(databaseS, usernamesNew)
 	if err != nil {
 		return err
@@ -299,7 +389,7 @@ func (amt *AssessMigrateTask) Start() error {
 		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 			TaskName:    amt.Task.TaskName,
 			SchemaNameS: amt.TaskParams.SchemaNameS,
-			LogDetail: fmt.Sprintf("%v [%v] stmt migrate task [%v] taskflow [%v] schema_name_s [%v] assess success",
+			LogDetail: fmt.Sprintf("%v [%v] assess migrate task [%v] taskflow [%v] schema_name_s [%v] assess success",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeAssessMigrate),
 				amt.Task.TaskName,
@@ -338,6 +428,10 @@ func (amt *AssessMigrateTask) InitAssessMigrateTask() error {
 			AssessFile:  fmt.Sprintf("report_%s.html", amt.Task.TaskName),
 			TaskStatus:  constant.TaskDatabaseStatusWaiting,
 		})
+		if err != nil {
+			return err
+		}
+		_, err = model.GetITaskRW().UpdateTask(amt.Ctx, &task.Task{TaskName: amt.Task.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
 		if err != nil {
 			return err
 		}

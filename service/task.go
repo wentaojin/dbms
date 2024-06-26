@@ -17,6 +17,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"go.uber.org/zap"
@@ -282,63 +283,167 @@ func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRe
 	}
 }
 
-func GetTask(ctx context.Context, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
-	resp := struct {
-		TaskName        string   `json:"taskName"`
-		TaskMode        string   `json:"taskMode"`
-		DatasourceNameS string   `json:"datasourceNameS"`
-		DatasourceNameT string   `json:"datasourceNameT"`
-		TaskStatus      string   `json:"taskStatus"`
-		WorkerAddr      string   `json:"workerAddr"`
-		LogDetail       []string `json:"logDetail"`
-	}{}
+type Status struct {
+	TaskName        string   `json:"taskName"`
+	TaskFlow        string   `json:"taskFlow"`
+	TaskMode        string   `json:"taskMode"`
+	DatasourceNameS string   `json:"datasourceNameS"`
+	DatasourceNameT string   `json:"datasourceNameT"`
+	TaskStatus      string   `json:"taskStatus"`
+	WorkerAddr      string   `json:"workerAddr"`
+	LogDetail       []string `json:"logDetail"`
+}
 
-	err := model.Transaction(ctx, func(txnCtx context.Context) error {
-		t, err := model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: req.TaskName})
+func StatusTask(ctx context.Context, taskName, serverAddr string, last int) (Status, error) {
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
+	if err != nil {
+		return Status{}, err
+	}
+	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
+	if err != nil {
+		return Status{}, err
+	}
+
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return Status{}, fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		// open database conn
+		var dbCfg *model.Database
+		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+		if err != nil {
+			return Status{}, fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+		}
+		err = model.CreateDatabaseReadWrite(dbCfg)
+		if err != nil {
+			return Status{}, err
+		}
+	default:
+		return Status{}, fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	}
+
+	resp := Status{}
+	err = model.Transaction(ctx, func(txnCtx context.Context) error {
+		t, err := model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName})
 		if err != nil {
 			return err
 		}
 		resp.TaskName = t.TaskName
+		resp.TaskFlow = t.TaskFlow
 		resp.TaskMode = t.TaskMode
 		resp.DatasourceNameS = t.DatasourceNameS
 		resp.DatasourceNameT = t.DatasourceNameT
 		resp.TaskStatus = t.TaskStatus
 		resp.WorkerAddr = t.WorkerAddr
 
-		l, err := model.GetITaskLogRW().QueryLog(txnCtx, &task.Log{
-			TaskName: req.TaskName,
-		})
+		logs, err := model.GetITaskLogRW().QueryLog(txnCtx, &task.Log{
+			TaskName: taskName,
+		}, last)
 		if err != nil {
 			return err
 		}
-		if len(l) != 0 {
-			// DESC 5
-			resp.LogDetail = append(resp.LogDetail, l[4].LogDetail)
-			resp.LogDetail = append(resp.LogDetail, l[3].LogDetail)
-			resp.LogDetail = append(resp.LogDetail, l[2].LogDetail)
-			resp.LogDetail = append(resp.LogDetail, l[1].LogDetail)
-			resp.LogDetail = append(resp.LogDetail, l[0].LogDetail)
+		if len(logs) != 0 {
+			// origin slice desc create_time
+			for _, log := range logs {
+				resp.LogDetail = append(resp.LogDetail, log.LogDetail)
+			}
+			// reverse slice
+			for left, right := 0, len(resp.LogDetail)-1; left < right; left, right = left+1, right-1 {
+				resp.LogDetail[left], resp.LogDetail[right] = resp.LogDetail[right], resp.LogDetail[left]
+			}
 		}
 		return nil
 	})
 	if err != nil {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
+		return Status{}, err
+	}
+	return resp, nil
+}
+
+type List struct {
+	TaskName        string `json:"taskName"`
+	TaskFlow        string `json:"taskFlow"`
+	TaskMode        string `json:"taskMode"`
+	CaseFieldRuleS  string `json:"caseFieldRuleS"`
+	CaseFieldRuleT  string `json:"caseFieldRuleT"`
+	DatasourceNameS string `json:"datasourceNameS"`
+	DatasourceNameT string `json:"datasourceNameT"`
+	TaskStatus      string `json:"taskStatus"`
+	TaskInit        string `json:"taskInit"`
+	WorkerAddr      string `json:"workerAddr"`
+}
+
+func ListTask(ctx context.Context, taskName, serverAddr string) ([]List, error) {
+	var lists []List
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
+	if err != nil {
+		return lists, err
+	}
+	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
+	if err != nil {
+		return lists, err
 	}
 
-	jsonStr, err := stringutil.MarshalJSON(resp)
-	if err != nil {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return lists, fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		// open database conn
+		var dbCfg *model.Database
+		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+		if err != nil {
+			return lists, fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+		}
+		err = model.CreateDatabaseReadWrite(dbCfg)
+		if err != nil {
+			return lists, err
+		}
+	default:
+		return lists, fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
 	}
-	return &pb.OperateTaskResponse{Response: &pb.Response{
-		Result:  openapi.ResponseResultStatusSuccess,
-		Message: jsonStr,
-	}}, nil
+
+	if strings.EqualFold(taskName, "") {
+		tasks, err := model.GetITaskRW().ListTask(ctx, 0, 0)
+		if err != nil {
+			return lists, err
+		}
+		for _, t := range tasks {
+			lists = append(lists, List{
+				TaskName:        t.TaskName,
+				TaskFlow:        t.TaskFlow,
+				TaskMode:        t.TaskMode,
+				CaseFieldRuleS:  t.CaseFieldRuleS,
+				CaseFieldRuleT:  t.CaseFieldRuleT,
+				DatasourceNameS: t.DatasourceNameS,
+				DatasourceNameT: t.DatasourceNameT,
+				TaskStatus:      t.TaskStatus,
+				TaskInit:        t.TaskInit,
+				WorkerAddr:      t.WorkerAddr,
+			})
+		}
+		return lists, nil
+	}
+
+	t, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName})
+	if err != nil {
+		return lists, err
+	}
+	if strings.EqualFold(t.TaskName, "") {
+		return []List{}, nil
+	}
+	lists = append(lists, List{
+		TaskName:        t.TaskName,
+		TaskFlow:        t.TaskFlow,
+		TaskMode:        t.TaskMode,
+		CaseFieldRuleS:  t.CaseFieldRuleS,
+		CaseFieldRuleT:  t.CaseFieldRuleT,
+		DatasourceNameS: t.DatasourceNameS,
+		DatasourceNameT: t.DatasourceNameT,
+		TaskStatus:      t.TaskStatus,
+		TaskInit:        t.TaskInit,
+		WorkerAddr:      t.WorkerAddr,
+	})
+	return lists, nil
 }
 
 type Cronjob struct {

@@ -28,7 +28,7 @@ type ITask interface {
 type ILog interface {
 	CreateLog(ctx context.Context, l *Log) (*Log, error)
 	UpdateLog(ctx context.Context, l *Log, updates map[string]interface{}) (*Log, error)
-	QueryLog(ctx context.Context, l *Log) ([]*Log, error)
+	QueryLog(ctx context.Context, l *Log, last int) ([]*Log, error)
 	ListLog(ctx context.Context, page uint64, pageSize uint64) ([]*Log, error)
 	DeleteLog(ctx context.Context, taskName []string) error
 }

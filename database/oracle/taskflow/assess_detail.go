@@ -73,10 +73,10 @@ func AssessDatabaseOverview(databaseS database.IDatabase, objAssessCompsMap map[
 		if strings.EqualFold(val.IsCompatible, constant.AssessNoCompatible) {
 			assessInComp += 1
 		}
-		if strings.EqualFold(val.IsCompatible, constant.AssessYesConvertible) {
+		if strings.EqualFold(val.IsConvertible, constant.AssessYesConvertible) {
 			assessConvert += 1
 		}
-		if strings.EqualFold(val.IsCompatible, constant.AssessNoCompatible) {
+		if strings.EqualFold(val.IsConvertible, constant.AssessNoCompatible) {
 			assessInConvert += 1
 		}
 	} else {
@@ -731,6 +731,7 @@ func AssessDatabasePartitionTableCountsCheck(databaseS database.IDatabase, schem
 	}
 
 	var listData []SchemaPartitionTableCountsCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -747,7 +748,7 @@ func AssessDatabasePartitionTableCountsCheck(databaseS database.IDatabase, schem
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNamePartitionTableCountsCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -766,6 +767,7 @@ func AssessDatabaseTableRowLengthMBCheck(databaseS database.IDatabase, schemaNam
 	}
 
 	var listData []SchemaTableRowLengthCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -782,7 +784,7 @@ func AssessDatabaseTableRowLengthMBCheck(databaseS database.IDatabase, schemaNam
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameTableRowLengthCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -801,6 +803,7 @@ func AssessDatabaseTableIndexRowLengthCheck(databaseS database.IDatabase, schema
 	}
 
 	var listData []SchemaTableIndexRowLengthCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -818,7 +821,7 @@ func AssessDatabaseTableIndexRowLengthCheck(databaseS database.IDatabase, schema
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameIndexRowLengthCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -837,6 +840,7 @@ func AssessDatabaseTableColumnCountsCheck(databaseS database.IDatabase, schemaNa
 	}
 
 	var listData []SchemaTableColumnCountsCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -853,7 +857,7 @@ func AssessDatabaseTableColumnCountsCheck(databaseS database.IDatabase, schemaNa
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameTableColumnCountsCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -872,6 +876,7 @@ func AssessDatabaseTableIndexCountsCheck(databaseS database.IDatabase, schemaNam
 	}
 
 	var listData []SchemaTableIndexCountsCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -888,7 +893,7 @@ func AssessDatabaseTableIndexCountsCheck(databaseS database.IDatabase, schemaNam
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameTableIndexCountsCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -907,6 +912,7 @@ func AssessDatabaseUsernameLengthCheck(databaseS database.IDatabase, schemaNames
 	}
 
 	var listData []UsernameLengthCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -924,7 +930,7 @@ func AssessDatabaseUsernameLengthCheck(databaseS database.IDatabase, schemaNames
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameUsernameLengthCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -943,6 +949,7 @@ func AssessDatabaseTableNameLengthCheck(databaseS database.IDatabase, schemaName
 	}
 
 	var listData []SchemaTableNameLengthCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -959,7 +966,7 @@ func AssessDatabaseTableNameLengthCheck(databaseS database.IDatabase, schemaName
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameTableNameLengthCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -978,6 +985,7 @@ func AssessDatabaseColumnNameLengthCheck(databaseS database.IDatabase, schemaNam
 	}
 
 	var listData []SchemaTableColumnNameLengthCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -995,7 +1003,7 @@ func AssessDatabaseColumnNameLengthCheck(databaseS database.IDatabase, schemaNam
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameColumnNameLengthCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1014,6 +1022,7 @@ func AssessDatabaseIndexNameLengthCheck(databaseS database.IDatabase, schemaName
 	}
 
 	var listData []SchemaTableIndexNameLengthCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1030,7 +1039,7 @@ func AssessDatabaseIndexNameLengthCheck(databaseS database.IDatabase, schemaName
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameIndexNameLengthCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1049,6 +1058,7 @@ func AssessDatabaseViewNameLengthCheck(databaseS database.IDatabase, schemaNames
 	}
 
 	var listData []SchemaViewNameLengthCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1066,7 +1076,7 @@ func AssessDatabaseViewNameLengthCheck(databaseS database.IDatabase, schemaNames
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameViewNameLengthCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1086,6 +1096,7 @@ func AssessDatabaseSequenceNameLengthCheck(databaseS database.IDatabase, schemaN
 	}
 
 	var listData []SchemaSequenceNameLengthCheck
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1103,7 +1114,7 @@ func AssessDatabaseSequenceNameLengthCheck(databaseS database.IDatabase, schemaN
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeCheck,
 		AssessName:    constant.AssessNameSequenceNameLengthCheck,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1125,6 +1136,7 @@ func AssessDatabaseSchemaOverview(databaseS database.IDatabase, schemaNames []st
 	}
 
 	var listData []SchemaTableSizeData
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1144,7 +1156,7 @@ func AssessDatabaseSchemaOverview(databaseS database.IDatabase, schemaNames []st
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeRelated,
 		AssessName:    constant.AssessNameSchemaDataSizeRelated,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1163,6 +1175,7 @@ func AssessDatabaseMaxActiveSessionCount(databaseS database.IDatabase, schemaNam
 	}
 
 	var listData []SchemaActiveSession
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1182,7 +1195,7 @@ func AssessDatabaseMaxActiveSessionCount(databaseS database.IDatabase, schemaNam
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeRelated,
 		AssessName:    constant.AssessNameSchemaActiveSessionRelated,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1200,6 +1213,7 @@ func AssessDatabaseSchemaTableRowsTOP(databaseS database.IDatabase, schemaNames 
 	}
 
 	var listData []SchemaTableRowsTOP
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1217,7 +1231,7 @@ func AssessDatabaseSchemaTableRowsTOP(databaseS database.IDatabase, schemaNames 
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeRelated,
 		AssessName:    constant.AssessNameSchemaTableRowsTopRelated,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1236,6 +1250,7 @@ func AssessDatabaseSchemaCodeOverview(databaseS database.IDatabase, schemaNames 
 	}
 
 	var listData []SchemaCodeObject
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1254,7 +1269,7 @@ func AssessDatabaseSchemaCodeOverview(databaseS database.IDatabase, schemaNames 
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeRelated,
 		AssessName:    constant.AssessNameSchemaCodeObjectRelated,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1273,6 +1288,7 @@ func AssessDatabaseSchemaSynonymOverview(databaseS database.IDatabase, schemaNam
 	}
 
 	var listData []SchemaSynonymObject
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1291,7 +1307,7 @@ func AssessDatabaseSchemaSynonymOverview(databaseS database.IDatabase, schemaNam
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeRelated,
 		AssessName:    constant.AssessNameSchemaSynonymObjectRelated,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1310,6 +1326,7 @@ func AssessDatabaseSchemaMaterializedViewOverview(databaseS database.IDatabase, 
 	}
 
 	var listData []SchemaMaterializedViewObject
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1330,7 +1347,7 @@ func AssessDatabaseSchemaMaterializedViewOverview(databaseS database.IDatabase, 
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeRelated,
 		AssessName:    constant.AssessNameSchemaMaterializedViewRelated,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1349,6 +1366,7 @@ func AssessDatabaseSchemaTableAvgRowLengthTOP(databaseS database.IDatabase, sche
 	}
 
 	var listData []SchemaTableAvgRowLengthTOP
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1365,7 +1383,7 @@ func AssessDatabaseSchemaTableAvgRowLengthTOP(databaseS database.IDatabase, sche
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeRelated,
 		AssessName:    constant.AssessNameSchemaTableAvgRowLengthTopRelated,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,
@@ -1384,6 +1402,7 @@ func AssessDatabaseSchemaTableNumberTypeEqualZero(databaseS database.IDatabase, 
 	}
 
 	var listData []SchemaTableNumberTypeEqualZero
+	assessTotal := 0
 	assessComp := 0
 	assessInComp := 0
 	assessConvert := 0
@@ -1402,7 +1421,7 @@ func AssessDatabaseSchemaTableNumberTypeEqualZero(databaseS database.IDatabase, 
 	return listData, ReportSummary{
 		AssessType:    constant.AssessTypeObjectTypeRelated,
 		AssessName:    constant.AssessNameSchemaTableNumberTypeEqual0,
-		AssessTotal:   len(listData),
+		AssessTotal:   assessTotal,
 		Compatible:    assessComp,
 		Incompatible:  assessInComp,
 		Convertible:   assessConvert,

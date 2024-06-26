@@ -276,6 +276,7 @@ func (a *AppTaskDelete) RunE(cmd *cobra.Command, args []string) error {
 type AppTaskStatus struct {
 	*AppTask
 	task string
+	last int
 }
 
 func (a *AppTask) AppTaskStatus() component.Cmder {
@@ -292,6 +293,7 @@ func (a *AppTaskStatus) Cmd() *cobra.Command {
 		SilenceUsage:     true,
 	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "configure the task name")
+	cmd.Flags().IntVarP(&a.last, "last", "l", 5, "configure the last N task log records")
 	return cmd
 }
 
@@ -307,33 +309,66 @@ func (a *AppTaskStatus) RunE(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Response:     %s\n", color.RedString("operate task flag [task] can't be null, please setting"))
 		return nil
 	}
-	bodyReq := make(map[string]interface{})
-	bodyReq["taskName"] = a.task
-	bodyReq["operate"] = constant.TaskOperationGet
-	bodyReq["express"] = ""
 
-	jsonStr, err := stringutil.MarshalJSON(bodyReq)
+	status, err := service.StatusTask(context.TODO(), a.task, a.Server, a.last)
 	if err != nil {
-		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
-		return nil
-	}
-	resp, err := openapi.Request(openapi.RequestPOSTMethod, stringutil.StringBuilder(stringutil.WrapScheme(a.Server, false), openapi.DBMSAPIBasePath, openapi.APITaskPath), []byte(jsonStr))
-	if err != nil {
-		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
-		return nil
+		return err
 	}
 
-	var jsonData map[string]interface{}
-	err = stringutil.UnmarshalJSON(resp, &jsonData)
+	formattedJSON, err := stringutil.MarshalIndentJSON(status)
 	if err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
 		return nil
 	}
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", formattedJSON)
+	return nil
+}
 
-	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
+type AppTaskList struct {
+	*AppTask
+	task string
+}
+
+func (a *AppTask) AppTaskList() component.Cmder {
+	return &AppTaskList{AppTask: a}
+}
+
+func (a *AppTaskList) Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:              "list",
+		Short:            "list cluster task information",
+		Long:             `list cluster task information`,
+		RunE:             a.RunE,
+		TraverseChildren: true,
+		SilenceUsage:     true,
+	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "", "configure the task name")
+	return cmd
+}
+
+func (a *AppTaskList) RunE(cmd *cobra.Command, args []string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("task"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("list"))
+	if strings.EqualFold(a.task, "") {
+		fmt.Printf("Task:         %s\n", cyan.Sprint("all"))
+	} else {
+		fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+	}
+
+	tasks, err := service.ListTask(context.TODO(), a.task, a.Server)
+	if err != nil {
+		return err
+	}
+	if len(tasks) == 0 {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+		fmt.Printf("Response:     %s\n", "the task record is empty, please confirm whether had submit task or reconfigure the task name")
+	}
+
+	formattedJSON, err := stringutil.MarshalIndentJSON(tasks)
 	if err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("error decoding JSON: %v", err))
@@ -416,7 +451,7 @@ func (a *AppTaskCrontabSubmit) RunE(cmd *cobra.Command, args []string) error {
 
 	bodyReq := make(map[string]interface{})
 	bodyReq["taskName"] = a.task
-	bodyReq["operate"] = constant.TaskOperationCrontab
+	bodyReq["operate"] = constant.TaskOperationCrontabSubmit
 	bodyReq["express"] = a.express
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
@@ -487,7 +522,7 @@ func (a *AppTaskCrontabClear) RunE(cmd *cobra.Command, args []string) error {
 	}
 	bodyReq := make(map[string]interface{})
 	bodyReq["taskName"] = a.task
-	bodyReq["operate"] = constant.TaskOperationClear
+	bodyReq["operate"] = constant.TaskOperationCrontabClear
 	bodyReq["express"] = ""
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)

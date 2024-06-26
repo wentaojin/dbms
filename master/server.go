@@ -310,23 +310,24 @@ func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*
 		return service.StartTask(ctx, s.etcdClient, s.discWorkers, req)
 	case constant.TaskOperationStop:
 		return service.StopTask(ctx, s.etcdClient, req)
-	case constant.TaskOperationCrontab:
+	case constant.TaskOperationCrontabSubmit:
 		return service.AddCronTask(ctx, s.cron, s.etcdClient, req,
 			service.NewCronjob(s.etcdClient, s.discWorkers, req.TaskName))
 		// cleanup tasks are used for scheduled job tasks that are running.
-	case constant.TaskOperationClear:
+	case constant.TaskOperationCrontabClear:
 		return service.ClearCronTask(ctx, s.cron, s.etcdClient, req)
 		// delete tasks are used to delete tasks that are not running or have stopped running.
 	case constant.TaskOperationDelete:
 		return service.DeleteTask(ctx, s.etcdClient, req)
-	case constant.TaskOperationGet:
-		return service.GetTask(ctx, req)
 	default:
 		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result: openapi.ResponseResultStatusFailed,
-			Message: fmt.Sprintf("the task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate,
-				stringutil.StringJoin([]string{constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontab, constant.TaskOperationClear, constant.TaskOperationDelete, constant.TaskOperationGet}, ",")),
-		}}, fmt.Errorf("the task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate, stringutil.StringJoin([]string{constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontab, constant.TaskOperationClear, constant.TaskOperationDelete, constant.TaskOperationGet}, ","))
+				Result: openapi.ResponseResultStatusFailed,
+				Message: fmt.Sprintf("the task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate,
+					stringutil.StringJoin([]string{
+						constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontabSubmit, constant.TaskOperationCrontabClear, constant.TaskOperationCrontabDisplay, constant.TaskOperationDelete, constant.TaskOperationStatus}, ",")),
+			}}, fmt.Errorf("the task [%v] operate [%v] isn't support, current support operation [%v]", req.TaskName, req.Operate, stringutil.StringJoin([]string{
+				constant.TaskOperationStart, constant.TaskOperationStop, constant.TaskOperationCrontabSubmit, constant.TaskOperationCrontabClear,
+				constant.TaskOperationCrontabDisplay, constant.TaskOperationDelete, constant.TaskOperationStatus}, ","))
 	}
 }
 

@@ -159,7 +159,7 @@ $ dbms-ctl verify gen -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-
 
 12，获取任务运行状态日志信息
 ```shell
-$ dbms-ctl task status -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name}
+$ dbms-ctl task status -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task-name} [-l 10 参数可选]
 ```
 任务日志信息当前只返回当前查询最后一条日志（日志量过大），输出格式如下
 ```json
@@ -174,7 +174,12 @@ $ dbms-ctl task status -s ${dbms-master-ip-leader}:${dbms-master-port} -t ${task
 }
 ```
 
-13，更多 DBMS 任务管理操作
+13，获取任务清单
+```shell
+$ dbms-ctl task list -s ${dbms-master-ip-leader}:${dbms-master-port} [-t ${task-name} 参数可选]
+```
+
+14，更多 DBMS 任务管理操作
 
 ```shell
 $ dbms-ctl --help

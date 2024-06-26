@@ -57,12 +57,13 @@ const (
 )
 
 const (
-	TaskOperationStart   = "START"
-	TaskOperationStop    = "STOP"
-	TaskOperationCrontab = "CRONTAB"
-	TaskOperationClear   = "CLEAR"
-	TaskOperationDelete  = "DELETE"
-	TaskOperationGet     = "GET"
+	TaskOperationStart          = "START"
+	TaskOperationStop           = "STOP"
+	TaskOperationCrontabSubmit  = "CRONTAB SUBMIT"
+	TaskOperationCrontabClear   = "CRONTAB CLEAR"
+	TaskOperationCrontabDisplay = "CRONTAB DISPLAY"
+	TaskOperationDelete         = "DELETE"
+	TaskOperationStatus         = "STATUS"
 )
 
 const (

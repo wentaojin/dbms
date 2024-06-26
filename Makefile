@@ -91,7 +91,7 @@ else
 	export LIBRARY_PATH_VAR := $(LIBRARY_DIR)
 endif
 
-runMaster: clean gotool buildMaster seedMaster masterServer00 masterServer01 masterServer02
+runMaster: gotool buildMaster seedMaster masterServer00 masterServer01 masterServer02
 
 stopMaster: clean
 	ps -ef| grep 'master_script*' | grep -v 'grep' | awk '{print $$2}' | xargs kill -9
@@ -100,7 +100,7 @@ stopMaster: clean
 	rm -f $(MASTERSCRIPT00) $(MASTERSCRIPT01) $(MASTERSCRIPT02)
 	rm -f $(MASTERSCRIPTLOG00) $(MASTERSCRIPTLOG01) $(MASTERSCRIPTLOG02)
 
-runWorker: clean gotool buildWorker seedWorker workerServer00 workerServer01 workerServer02
+runWorker: gotool buildWorker seedWorker workerServer00 workerServer01 workerServer02
 
 stopWorker: clean
 	ps -ef| grep 'worker_script*' | grep -v 'grep' | awk '{print $$2}' | xargs kill -9
