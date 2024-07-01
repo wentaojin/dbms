@@ -490,13 +490,13 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 		}
 	}
 
-	databaseFilterTables, err := databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
+	tableObjs, err := databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
 	if err != nil {
 		return err
 	}
 
 	// rule case field
-	for _, t := range databaseFilterTables {
+	for _, t := range tableObjs.TaskTables {
 		var tabName string
 		// the according target case field rule convert
 		if strings.EqualFold(stm.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {

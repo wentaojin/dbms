@@ -19,6 +19,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/wentaojin/dbms/database/postgresql"
+	"github.com/wentaojin/dbms/utils/structure"
 	"strings"
 
 	"github.com/wentaojin/dbms/database/mysql"
@@ -35,7 +36,7 @@ type IDatabase interface {
 	GeneralQuery(sqlStr string) ([]string, []map[string]string, error)
 	PingDatabaseConnection() error
 	Close() error
-	IDatabaseObjectFilter
+	IDatabaseTableFilter
 	IDatabaseAssessMigrate
 	IDatabaseStructMigrate
 	IDatabaseSequenceMigrate
@@ -44,8 +45,8 @@ type IDatabase interface {
 	IDatabaseStructCompare
 }
 
-type IDatabaseObjectFilter interface {
-	FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error)
+type IDatabaseTableFilter interface {
+	FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) (*structure.TableObjects, error)
 }
 
 type IDatabaseSchemaTableRule interface {

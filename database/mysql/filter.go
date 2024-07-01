@@ -17,6 +17,7 @@ package mysql
 
 import (
 	"fmt"
+	"github.com/wentaojin/dbms/utils/structure"
 	"time"
 
 	"github.com/wentaojin/dbms/utils/filter"
@@ -24,7 +25,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error) {
+func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) (*structure.TableObjects, error) {
 	startTime := time.Now()
 	var (
 		exporterTableSlice []string
@@ -34,7 +35,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 
 	allTables, err := d.GetDatabaseTable(sourceSchema)
 	if err != nil {
-		return exporterTableSlice, err
+		return nil, err
 	}
 
 	switch {
@@ -66,11 +67,11 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 		exporterTableSlice = allTables
 
 	default:
-		return exporterTableSlice, fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
+		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
 	}
 
 	if len(exporterTableSlice) == 0 {
-		return exporterTableSlice, fmt.Errorf("exporter tables aren't exist, please check config params include-table-s/exclude-table-s")
+		return nil, fmt.Errorf("exporter tables aren't exist, please check config params include-table-s/exclude-table-s")
 	}
 
 	endTime := time.Now()
@@ -82,10 +83,18 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 		zap.Int("all table counts", len(allTables)),
 		zap.String("cost", endTime.Sub(startTime).String()))
 
-	return exporterTableSlice, nil
+	return d.FilterDatabaseIncompatibleTable(sourceSchema, exporterTableSlice)
 }
 
-func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) ([]string, []string, []string, []string, []string, error) {
-	//TODO implement me
-	panic("implement me")
+func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) (*structure.TableObjects, error) {
+	return &structure.TableObjects{
+		PartitionTables:   nil,
+		TemporaryTables:   nil,
+		ClusteredTables:   nil,
+		MaterializedViews: nil,
+		ExternalTables:    nil,
+		NormalViews:       nil,
+		CompositeTables:   nil,
+		TaskTables:        exporters,
+	}, nil
 }

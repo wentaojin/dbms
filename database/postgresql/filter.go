@@ -15,7 +15,9 @@ limitations under the License.
 */
 package postgresql
 
-func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error) {
+import "github.com/wentaojin/dbms/utils/structure"
+
+func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) (*structure.TableObjects, error) {
 	//TODO implement me
 	panic("implement me")
 }

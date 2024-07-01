@@ -17,6 +17,7 @@ package oracle
 
 import (
 	"fmt"
+	"github.com/wentaojin/dbms/utils/structure"
 	"time"
 
 	"github.com/wentaojin/dbms/utils/filter"
@@ -26,7 +27,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) ([]string, error) {
+func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) (*structure.TableObjects, error) {
 	startTime := time.Now()
 	var (
 		exporterTableSlice []string
@@ -36,7 +37,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 
 	allTables, err := d.GetDatabaseTable(sourceSchema)
 	if err != nil {
-		return exporterTableSlice, err
+		return nil, err
 	}
 
 	switch {
@@ -68,11 +69,11 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 		exporterTableSlice = allTables
 
 	default:
-		return exporterTableSlice, fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
+		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
 	}
 
 	if len(exporterTableSlice) == 0 {
-		return exporterTableSlice, fmt.Errorf("exporter tables aren't exist, please check config params include-table-s/exclude-table-s")
+		return nil, fmt.Errorf("exporter tables aren't exist, please check config params include-table-s/exclude-table-s")
 	}
 
 	endTime := time.Now()
@@ -84,28 +85,39 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 		zap.Int("all table counts", len(allTables)),
 		zap.String("cost", endTime.Sub(startTime).String()))
 
-	return exporterTableSlice, nil
+	return d.FilterDatabaseIncompatibleTable(sourceSchema, exporterTableSlice)
 }
 
-func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) ([]string, []string, []string, []string, []string, error) {
+func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) (*structure.TableObjects, error) {
 	partitionTables, err := d.filterOraclePartitionTable(sourceSchema, exporters)
 	if err != nil {
-		return []string{}, []string{}, []string{}, []string{}, []string{}, fmt.Errorf("error on filter r.Oracle partition table: %v", err)
+		return nil, fmt.Errorf("error on filter oracle compatible database partition table: %v", err)
 	}
 	temporaryTables, err := d.filterOracleTemporaryTable(sourceSchema, exporters)
 	if err != nil {
-		return []string{}, []string{}, []string{}, []string{}, []string{}, fmt.Errorf("error on filter r.Oracle temporary table: %v", err)
+		return nil, fmt.Errorf("error on filter oracle compatible database temporary table: %v", err)
 
 	}
 	clusteredTables, err := d.filterOracleClusteredTable(sourceSchema, exporters)
 	if err != nil {
-		return []string{}, []string{}, []string{}, []string{}, []string{}, fmt.Errorf("error on filter r.Oracle clustered table: %v", err)
+		return nil, fmt.Errorf("error on filter oracle compatible database clustered table: %v", err)
 
 	}
 	materializedView, err := d.filterOracleMaterializedView(sourceSchema, exporters)
 	if err != nil {
-		return []string{}, []string{}, []string{}, []string{}, []string{}, fmt.Errorf("error on filter r.Oracle materialized view: %v", err)
-
+		return nil, fmt.Errorf("error on filter oracle compatible database materialized view: %v", err)
+	}
+	externalTables, err := d.filterOracleExternalTable(sourceSchema, exporters)
+	if err != nil {
+		return nil, fmt.Errorf("error on filter oracle compatible database external table: %v", err)
+	}
+	normalViews, err := d.filterOracleNormalView(sourceSchema, exporters)
+	if err != nil {
+		return nil, fmt.Errorf("error on filter oracle compatible database normal view: %v", err)
+	}
+	compositeTables, err := d.filterOracleCompositeTypeTable(sourceSchema, exporters)
+	if err != nil {
+		return nil, fmt.Errorf("error on filter oracle compatible database composity table: %v", err)
 	}
 
 	if len(partitionTables) != 0 {
@@ -126,6 +138,27 @@ func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporter
 			zap.Strings("clustered table list", clusteredTables),
 			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
 	}
+	if len(externalTables) != 0 {
+		zap.L().Warn("external tables",
+			zap.String("schema", sourceSchema),
+			zap.Strings("external table list", externalTables),
+			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
+	}
+	if len(normalViews) != 0 {
+		// DBA_TABLES Not Records
+		// VIEWS Records DBA_VIEWS
+		zap.L().Warn("table views",
+			zap.String("schema", sourceSchema),
+			zap.Strings("table view list", normalViews),
+			zap.String("suggest", "if necessary, please manually process the views in the above list"))
+	}
+	if len(compositeTables) != 0 {
+		// DBA_TABLES Records
+		zap.L().Warn("composite tables",
+			zap.String("schema", sourceSchema),
+			zap.Strings("composite table list", compositeTables),
+			zap.String("suggest", "if necessary, please manually process the composite tables in the above list"))
+	}
 
 	var exporterTables []string
 	if len(materializedView) != 0 {
@@ -133,13 +166,23 @@ func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporter
 			zap.String("schema", sourceSchema),
 			zap.Strings("materialized view list", materializedView),
 			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
-
+		// DBA_TABLES
 		// exclude materialized view
 		exporterTables = stringutil.StringItemsFilterDifference(exporters, materializedView)
 	} else {
 		exporterTables = exporters
 	}
-	return partitionTables, temporaryTables, clusteredTables, materializedView, exporterTables, nil
+
+	return &structure.TableObjects{
+		PartitionTables:   partitionTables,
+		TemporaryTables:   temporaryTables,
+		ClusteredTables:   clusteredTables,
+		MaterializedViews: materializedView,
+		ExternalTables:    externalTables,
+		NormalViews:       normalViews,
+		CompositeTables:   compositeTables,
+		TaskTables:        exporterTables,
+	}, nil
 }
 
 func (d *Database) filterOraclePartitionTable(sourceSchema string, exporters []string) ([]string, error) {
@@ -168,6 +211,30 @@ func (d *Database) filterOracleClusteredTable(sourceSchema string, exporters []s
 
 func (d *Database) filterOracleMaterializedView(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseMaterializedView(stringutil.StringUpper(sourceSchema))
+	if err != nil {
+		return nil, err
+	}
+	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
+}
+
+func (d *Database) filterOracleNormalView(sourceSchema string, exporters []string) ([]string, error) {
+	tables, err := d.GetDatabaseNormalView(stringutil.StringUpper(sourceSchema))
+	if err != nil {
+		return nil, err
+	}
+	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
+}
+
+func (d *Database) filterOracleExternalTable(sourceSchema string, exporters []string) ([]string, error) {
+	tables, err := d.GetDatabaseExternalTable(stringutil.StringUpper(sourceSchema))
+	if err != nil {
+		return nil, err
+	}
+	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
+}
+
+func (d *Database) filterOracleCompositeTypeTable(sourceSchema string, exporters []string) ([]string, error) {
+	tables, err := d.GetDatabaseCompositeTypeTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
 	}

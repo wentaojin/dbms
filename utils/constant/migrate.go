@@ -62,6 +62,8 @@ const (
 	// PostgresqlDatabaseSnapshotReadSupportVersion = "9.3"
 	PostgresqlDatabaseSupportVersionRequire = "9.5"
 
+	PostgresqlDatabasePartitionTableSupportVersionRequire = "10.0"
+
 	// struct migrate type
 	DatabaseStructMigrateSqlSchemaCategory   = "SCHEMA"
 	DatabaseStructMigrateSqlTableCategory    = "TABLE"

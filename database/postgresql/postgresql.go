@@ -37,11 +37,18 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource) (*Datab
 		connString string
 		err        error
 	)
-	if strings.EqualFold(datasource.ConnectParams, "") {
-		connString = fmt.Sprintf("postgres://%s:%s@%s:%d?sslmode=disable&client_encoding=%s", datasource.Username, datasource.Password, datasource.Host, datasource.Port, datasource.ConnectCharset)
+	if strings.EqualFold(datasource.DbName, "") {
+		connString = fmt.Sprintf("postgres://%s:%s@%s:%d/postgres", datasource.Username, datasource.Password, datasource.Host, datasource.Port)
 	} else {
-		connString = fmt.Sprintf("postgres://%s:%s@%s:%d?sslmode=disable&client_encoding=%s&%s", datasource.Username, datasource.Password, datasource.Host, datasource.Port, datasource.ConnectCharset, datasource.ConnectParams)
+		connString = fmt.Sprintf("postgres://%s:%s@%s:%d/%s", datasource.Username, datasource.Password, datasource.Host, datasource.Port, datasource.DbName)
 	}
+
+	if strings.EqualFold(datasource.ConnectParams, "") {
+		connString = fmt.Sprintf("%s?sslmode=disable&client_encoding=%s", connString, datasource.ConnectCharset)
+	} else {
+		connString = fmt.Sprintf("%s?sslmode=disable&client_encoding=%s&%s", connString, datasource.ConnectCharset, datasource.ConnectParams)
+	}
+
 	db, err := sql.Open("postgres", connString)
 	if err != nil {
 		return nil, fmt.Errorf("error on open postgresql database connection: %v", err)

@@ -34,5 +34,6 @@ type Datasource struct {
 	ServiceName   string `gorm:"type:varchar(100);comment:oracle service name" json:"serviceName"`
 	PdbName       string `gorm:"type:varchar(100);comment:oracle pdb name'" json:"pdbName"`
 	SessionParams string `gorm:"type:varchar(100);comment:oracle session params" json:"sessionParams"`
+	DbName        string `gorm:"type:varchar(100);comment:postgresql database name" json:"dbName"`
 	*common.Entity
 }

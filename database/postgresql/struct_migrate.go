@@ -15,49 +15,261 @@ limitations under the License.
 */
 package postgresql
 
+import (
+	"fmt"
+	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/stringutil"
+	"strings"
+)
+
 func (d *Database) GetDatabaseSchema() ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+	var (
+		schemas []string
+		err     error
+	)
+	columns, res, err := d.GeneralQuery(`SELECT
+	nspname
+FROM
+	pg_catalog.pg_namespace
+WHERE
+	nspname not like 'pg_%'
+	and nspname != 'information_schema'`)
+	if err != nil {
+		return schemas, err
+	}
+	for _, col := range columns {
+		for _, r := range res {
+			schemas = append(schemas, r[col])
+		}
+	}
+	return schemas, nil
 }
 
 func (d *Database) GetDatabaseTable(schemaName string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+	var (
+		tables []string
+		err    error
+	)
+	columns, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	tablename
+FROM
+	pg_catalog.pg_tables
+WHERE
+	schemaname = '%s'`, schemaName))
+	if err != nil {
+		return tables, err
+	}
+	for _, col := range columns {
+		for _, r := range res {
+			tables = append(tables, r[col])
+		}
+	}
+	return tables, nil
 }
 
 func (d *Database) GetDatabaseCharset() (string, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	pg_encoding_to_char(encoding) as charset
+FROM
+	pg_catalog.pg_database
+WHERE
+	datname = current_database()`))
+	if err != nil {
+		return "", err
+	}
+	return res[0]["charset"], nil
 }
 
 func (d *Database) GetDatabaseCollation() (string, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	datcollate
+FROM
+	pg_catalog.pg_database
+WHERE
+	datname = current_database()`))
+	if err != nil {
+		return "", err
+	}
+	return res[0]["datcollate"], nil
 }
 
 func (d *Database) GetDatabaseVersion() (string, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`show server_version`))
+	if err != nil {
+		return "", err
+	}
+	return res[0]["server_version"], nil
 }
 
 func (d *Database) GetDatabasePartitionTable(schemaName string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+	version, err := d.GetDatabaseVersion()
+	if err != nil {
+		return nil, err
+	}
+	if stringutil.VersionOrdinal(strings.Fields(version)[0]) < stringutil.VersionOrdinal(constant.PostgresqlDatabasePartitionTableSupportVersionRequire) {
+		return nil, nil
+	} else {
+		var tables []string
+		_, res, err := d.GeneralQuery(fmt.Sprintf(`WITH RECURSIVE inheritance_tree AS (
+    SELECT 
+        inhparent::regclass AS parent, 
+        inhrelid::regclass AS child
+    FROM 
+        pg_catalog.pg_inherits
+    UNION ALL
+    SELECT 
+        it.parent, 
+        c.inhrelid::regclass
+    FROM 
+        pg_catalog.pg_inherits c
+    JOIN 
+        inheritance_tree it ON c.inhparent = it.child
+)
+, top_level_parents AS (
+    SELECT 
+        DISTINCT parent 
+    FROM 
+        inheritance_tree
+    WHERE 
+        NOT EXISTS (
+            SELECT 
+                1
+            FROM 
+                inheritance_tree it_inner
+            WHERE 
+                it_inner.child = inheritance_tree.parent
+        )
+)
+SELECT 
+    split_part(top_level_parents.parent::text, '.', 2) AS table_name
+FROM 
+    top_level_parents
+JOIN 
+    pg_catalog.pg_class c ON top_level_parents.parent = c.oid
+JOIN 
+    pg_catalog.pg_namespace nsp ON c.relnamespace = nsp.oid
+WHERE 
+    nsp.nspname = '%s'
+ORDER BY 
+   table_name`, schemaName))
+		if err != nil {
+			return tables, err
+		}
+		for _, r := range res {
+			tables = append(tables, r["table_name"])
+		}
+		return tables, nil
+	}
+
 }
 
 func (d *Database) GetDatabaseTemporaryTable(schemaName string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+	// postgresql database temporary tables are divided into session temporary tables and transaction temporary tables.
+	// The table definition disappears with the suspension of the session or the termination of the transaction, so the definition of the temporary table is skipped.
+	return nil, nil
 }
 
 func (d *Database) GetDatabaseClusteredTable(schemaName string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+	    cls.relname AS table_name
+	FROM 
+	    pg_catalog.pg_class cls
+	JOIN 
+	    pg_catalog.pg_namespace nsp ON cls.relnamespace = nsp.oid
+	JOIN 
+	   pg_catalog.pg_index idx ON cls.oid = idx.indrelid
+	WHERE 
+	    nsp.nspname = '%s'
+	    AND cls.relkind = 'r'
+	    AND idx.indisclustered`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["table_name"])
+	}
+	return tables, nil
 }
 
 func (d *Database) GetDatabaseMaterializedView(schemaName string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+    cls.relname AS table_name
+FROM 
+    pg_catalog.pg_class cls
+JOIN 
+    pg_catalog.pg_namespace nsp ON cls.relnamespace = nsp.oid
+WHERE 
+    nsp.nspname = '%s'
+    AND cls.relkind = 'm'`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["table_name"])
+	}
+	return tables, nil
+}
+
+func (d *Database) GetDatabaseNormalView(schemaName string) ([]string, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+    cls.relname AS table_name
+FROM 
+    pg_catalog.pg_class cls
+JOIN 
+    pg_catalog.pg_namespace nsp ON cls.relnamespace = nsp.oid
+WHERE 
+    nsp.nspname = '%s'
+    AND cls.relkind = 'v'`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["table_name"])
+	}
+	return tables, nil
+}
+
+func (d *Database) GetDatabaseCompositeTypeTable(schemaName string) ([]string, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+    cls.relname AS table_name
+FROM 
+    pg_catalog.pg_class cls
+JOIN 
+    pg_catalog.pg_namespace nsp ON cls.relnamespace = nsp.oid
+WHERE 
+    nsp.nspname = '%s'
+    AND cls.relkind = 'c'`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["table_name"])
+	}
+	return tables, nil
+}
+
+func (d *Database) GetDatabaseExternalTable(schemaName string) ([]string, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+    cls.relname AS table_name
+FROM 
+    pg_catalog.pg_class cls
+JOIN 
+    pg_catalog.pg_namespace nsp ON cls.relnamespace = nsp.oid
+WHERE 
+    nsp.nspname = '%s'
+    AND cls.relkind = 'f'`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["table_name"])
+	}
+	return tables, nil
 }
 
 func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, error) {

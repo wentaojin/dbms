@@ -52,7 +52,7 @@
 DBMS 数据库分布式迁移服务平台由 dbms-master、dbms-worker、dbms-ctl、dbms-cluster 四个组件组成，主要功能：
 - dbms-master：实例注册、服务发现、健康检查、api访问（仅leader）
 - dbms-worker：任务运行者
-- dbms-ctl：与 Master Leader 节点交互进行提交任务
+- dbms-ctl：与 master leader 节点交互进行提交任务
 - dbms-cluster：提供集群部署安装、扩容收缩、启动、停止、重启等集群管理操作
 
 ------

@@ -94,10 +94,93 @@ WHERE
 	return tables, nil
 }
 
+func (d *Database) GetDatabaseNormalView(schemaName string) ([]string, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	VIEW_NAME
+FROM DBA_VIEWS 
+WHERE OWNER = '%s'`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["VIEW_NAME"])
+	}
+	return tables, nil
+}
+
+func (d *Database) GetDatabaseCompositeTypeTable(schemaName string) ([]string, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`WITH CUSTOM_TYPES AS (
+SELECT
+	TYPE_NAME
+FROM
+	DBA_TYPES
+WHERE
+	OWNER = '%s'
+)
+SELECT
+	TABLE_NAME
+FROM
+	DBA_TAB_COLUMNS
+WHERE
+	DATA_TYPE IN (
+	SELECT
+		TYPE_NAME
+	FROM
+		CUSTOM_TYPES)
+	AND OWNER = '%s'
+ORDER BY
+	TABLE_NAME`, schemaName, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["TABLE_NAME"])
+	}
+	return tables, nil
+}
+
+func (d *Database) GetDatabaseExternalTable(schemaName string) ([]string, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	TABLE_NAME
+FROM
+	DBA_EXTERNAL_TABLES
+WHERE
+	OWNER = '%s'`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["TABLE_NAME"])
+	}
+	return tables, nil
+}
+
 func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, error) {
 	tableTypeMap := make(map[string]string)
 
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`WITH CUSTOM_TYPS AS (
+SELECT
+	OWNER,
+	TABLE_NAME
+FROM
+	DBA_TAB_COLUMNS
+WHERE
+	DATA_TYPE IN (
+	SELECT
+		TYPE_NAME
+	FROM
+		DBA_TYPES
+	WHERE
+		OWNER = '%s')
+	AND OWNER = '%s'
+ORDER BY
+	OWNER,
+	TABLE_NAME
+)
+SELECT
 	F.TABLE_NAME,
 	(
 	CASE
@@ -110,28 +193,44 @@ func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, e
 		WHERE
 			V.OWNER = F.OWNER
 			AND F.TABLE_NAME = V.MVIEW_NAME) = 1 THEN 'MATERIALIZED VIEW'
-		ELSE
+		WHEN (
+		SELECT
+			COUNT(1)
+		FROM
+			DBA_EXTERNAL_TABLES E
+		WHERE
+			E.OWNER = F.OWNER
+			AND E.TABLE_NAME = F.TABLE_NAME) = 1 THEN 'EXTERNAL TABLE'
+		WHEN (
+		SELECT
+			COUNT(1)
+		FROM
+			CUSTOM_TYPS CS
+		WHERE
+			CS.OWNER = F.OWNER
+			AND CS.TABLE_NAME = F.TABLE_NAME) = 1 THEN 'USER DEFINE TTYPE TABLE'
+	ELSE
 		CASE
 			WHEN F.IOT_TYPE = 'IOT' THEN
 			CASE
 				WHEN T.IOT_TYPE != 'IOT' THEN T.IOT_TYPE
-				ELSE 'IOT'
-			END
-			ELSE
+			ELSE 'IOT'
+		END
+		ELSE
 				CASE	
 						WHEN F.PARTITIONED = 'YES' THEN 'PARTITIONED'
-				ELSE
+			ELSE
 					CASE
 							WHEN F.TEMPORARY = 'Y' THEN 
 							DECODE(F.DURATION, 'SYS$SESSION', 'SESSION TEMPORARY', 'SYS$TRANSACTION', 'TRANSACTION TEMPORARY')
-					ELSE 'HEAP'
-				END
+				ELSE 'HEAP'
 			END
 		END
-	END ) TABLE_TYPE
+	END
+END ) TABLE_TYPE
 FROM
 	(
-	SELECT
+SELECT
 		TMP.OWNER,
 		TMP.TABLE_NAME,
 		TMP.CLUSTER_NAME,
@@ -139,27 +238,27 @@ FROM
 		TMP.TEMPORARY,
 		TMP.DURATION,
 		TMP.IOT_TYPE
-	FROM
+FROM
 		DBA_TABLES TMP,
 		DBA_TABLES W
-	WHERE
+WHERE
 		TMP.OWNER = W.OWNER
-		AND TMP.TABLE_NAME = W.TABLE_NAME
-		AND TMP.OWNER = '%s'
-		AND (W.IOT_TYPE IS NULL
-			OR W.IOT_TYPE = 'IOT')) F
+	AND TMP.TABLE_NAME = W.TABLE_NAME
+	AND TMP.OWNER = '%s'
+	AND (W.IOT_TYPE IS NULL
+		OR W.IOT_TYPE = 'IOT')) F
 LEFT JOIN (
-	SELECT
+SELECT
 		OWNER,
 		IOT_NAME,
 		IOT_TYPE
-	FROM
+FROM
 		DBA_TABLES
-	WHERE
+WHERE
 		OWNER = '%s')T 
 ON
 	F.OWNER = T.OWNER
-	AND F.TABLE_NAME = T.IOT_NAME`, schemaName, schemaName))
+AND F.TABLE_NAME = T.IOT_NAME`, schemaName, schemaName, schemaName, schemaName))
 	if err != nil {
 		return tableTypeMap, err
 	}

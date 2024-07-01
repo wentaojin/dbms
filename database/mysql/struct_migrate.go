@@ -143,11 +143,6 @@ func (d *Database) GetDatabaseCollation() (string, error) {
 	return res[0]["VALUE"], nil
 }
 
-func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (d *Database) GetDatabasePartitionTable(schemaName string) ([]string, error) {
 	//TODO implement me
 	panic("implement me")
@@ -164,6 +159,26 @@ func (d *Database) GetDatabaseClusteredTable(schemaName string) ([]string, error
 }
 
 func (d *Database) GetDatabaseMaterializedView(schemaName string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseNormalView(schemaName string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseCompositeTypeTable(schemaName string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseExternalTable(schemaName string) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, error) {
 	//TODO implement me
 	panic("implement me")
 }

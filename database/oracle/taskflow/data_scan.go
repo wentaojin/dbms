@@ -419,13 +419,13 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 		}
 	}
 
-	databaseFilterTables, err := databaseS.FilterDatabaseTable(schemaNameS, includeTables, excludeTables)
+	tableObjs, err := databaseS.FilterDatabaseTable(schemaNameS, includeTables, excludeTables)
 	if err != nil {
 		return err
 	}
 
 	// rule case field
-	for _, t := range databaseFilterTables {
+	for _, t := range tableObjs.TaskTables {
 		var tabName string
 		// the according target case field rule convert
 		if strings.EqualFold(dst.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {

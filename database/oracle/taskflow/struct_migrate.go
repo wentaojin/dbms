@@ -325,7 +325,7 @@ func (st *StructMigrateTask) structMigrateStart(
 			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
 	}
-	// if the table is MATERIALIZED VIEW, skip
+	// if the table is MATERIALIZED VIEW, SKIP
 	// MATERIALIZED VIEW isn't support struct migrate
 	if strings.EqualFold(smt.TableTypeS, constant.OracleDatabaseTableTypeMaterializedView) {
 		logger.Warn("struct migrate task process",
@@ -616,13 +616,13 @@ func (st *StructMigrateTask) initStructMigrateTask() error {
 		}
 	}
 
-	databaseFilterTables, err := st.DatabaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
+	tableObjs, err := st.DatabaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
 	if err != nil {
 		return err
 	}
 
 	// rule case field
-	for _, t := range databaseFilterTables {
+	for _, t := range tableObjs.TaskTables {
 		var tabName string
 		// the according target case field rule convert
 		if strings.EqualFold(st.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
