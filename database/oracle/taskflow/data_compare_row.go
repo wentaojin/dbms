@@ -18,6 +18,7 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"maps"
 	"strings"
 	"time"
@@ -447,15 +448,16 @@ FROM
 
 	endTime := time.Now()
 
-	resultS, err := stringutil.StrconvIntBitSize(resultStrS, 64)
+	resultS, err := decimal.NewFromString(resultStrS)
 	if err != nil {
 		return fmt.Errorf("parse the database source failed: %v", err)
 	}
-	resultT, err := stringutil.StrconvIntBitSize(resultStrT, 64)
+
+	resultT, err := decimal.NewFromString(resultStrT)
 	if err != nil {
 		return fmt.Errorf("parse the database target failed: %v", err)
 	}
-	if resultS == resultT {
+	if resultS.Equal(resultT) {
 		logger.Info("data compare task chunk md5 compare is equaled",
 			zap.String("task_name", r.Dmt.TaskName),
 			zap.String("task_mode", r.TaskMode),

@@ -273,8 +273,68 @@ WHERE
 }
 
 func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
+	tableTypeMap := make(map[string]string)
+
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+    cls.relname AS table_name,
+    CASE
+	WHEN cls.relkind = 'r' THEN 'HEAP'
+    WHEN cls.relkind = 'v' THEN 'VIEW'
+    WHEN cls.relkink = 'm' THEN 'MATERIALIZED VIEW'
+    WHEN cls.relkink = 'c' THEN 'USER DEFINE TYPE TABLE'
+    WHEN cls.relkink = 'f' THEN 'EXTERNAL TABLE'
+ 	ELSE
+ 		'UNKNOWN'
+ 	END AS table_type
+FROM 
+    pg_catalog.pg_class cls
+JOIN 
+    pg_catalog.pg_namespace nsp ON cls.relnamespace = nsp.oid
+WHERE 
+    nsp.nspname = '%s'
+    and cls.relkink not in ('i','s','t') -- exclude index、sequence、TOAST`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range res {
+		if len(r) > 2 || len(r) == 0 || len(r) == 1 {
+			return tableTypeMap, fmt.Errorf("postgresql schema [%s] table type values should be 2, result: %v", schemaName, r)
+		}
+		tableTypeMap[r["TABLE_NAME"]] = r["TABLE_TYPE"]
+	}
+
+	tables, err := d.GetDatabasePartitionTable(schemaName)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tables {
+		if _, ok := tableTypeMap[t]; ok {
+			tableTypeMap[t] = "PARTITIONED"
+		}
+	}
+
+	tables, err = d.GetDatabaseClusteredTable(schemaName)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tables {
+		if _, ok := tableTypeMap[t]; ok {
+			tableTypeMap[t] = "CLUSTERED"
+		}
+	}
+
+	tables, err = d.GetDatabaseTemporaryTable(schemaName)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tables {
+		if _, ok := tableTypeMap[t]; ok {
+			tableTypeMap[t] = "TEMPORARY"
+		}
+	}
+
+	return tableTypeMap, nil
 }
 
 func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
