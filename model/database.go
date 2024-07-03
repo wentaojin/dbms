@@ -108,12 +108,13 @@ func CreateDatabaseConnection(cfg *Database, addRole, logLevel string) error {
 		DisableForeignKeyConstraintWhenMigrating: true,
 		PrepareStmt:                              true,
 		DisableNestedTransaction:                 true,
+		DisableAutomaticPing:                     false,
 		Logger:                                   logger.GetGormLogger(logLevel, cfg.SlowThreshold),
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
 	})
-
+	
 	if err != nil || db.Error != nil {
 		return fmt.Errorf("database open failed, database error: [%v]", err)
 	}
@@ -162,6 +163,7 @@ func CreateDatabaseReadWrite(cfg *Database) error {
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		PrepareStmt:                              true,
+		DisableAutomaticPing:                     false,
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
