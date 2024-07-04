@@ -173,6 +173,10 @@ func DeleteDataCompareTask(ctx context.Context, req *pb.DeleteDataCompareTaskReq
 		if err != nil {
 			return err
 		}
+		err = model.GetIDataCompareResultRW().DeleteDataCompareResultName(txnCtx, req.TaskName)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -625,6 +629,13 @@ func getDataCompareTasKParams(ctx context.Context, taskName string) (*pb.DataCom
 				return taskParam, err
 			}
 			taskParam.SqlThread = sqlThread
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareWriteThread) {
+			writeThread, err := strconv.ParseUint(p.ParamValue, 10, 64)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.WriteThread = writeThread
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareSqlHintS) {
 			taskParam.SqlHintS = p.ParamValue

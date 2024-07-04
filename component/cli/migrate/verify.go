@@ -50,6 +50,7 @@ type DataCompareParam struct {
 	TableThread          uint64 `toml:"table-thread" json:"tableThread"`
 	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
 	SqlThread            uint64 `toml:"sql-thread" json:"sqlThread"`
+	WriteThread          uint64 `toml:"write-thread" json:"writeThread"`
 	SqlHintS             string `toml:"sql-hint-s" json:"sqlHintS"`
 	SqlHintT             string `toml:"sql-hint-t" json:"sqlHintT"`
 	CallTimeout          uint64 `toml:"call-timeout" json:"callTimeout"`

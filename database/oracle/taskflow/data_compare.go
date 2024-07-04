@@ -185,6 +185,16 @@ func (dmt *DataCompareTask) Start() error {
 						if err != nil {
 							return err
 						}
+						// clear data compare chunk result
+						err = model.GetIDataCompareResultRW().DeleteDataCompareResult(txnCtx, &task.DataCompareResult{
+							TaskName:     dt.TaskName,
+							SchemaNameS:  dt.SchemaNameS,
+							TableNameS:   dt.TableNameS,
+							ChunkDetailS: dt.ChunkDetailS,
+						})
+						if err != nil {
+							return err
+						}
 						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 							TaskName:    dt.TaskName,
 							SchemaNameS: dt.SchemaNameS,
@@ -222,6 +232,8 @@ func (dmt *DataCompareTask) Start() error {
 						Dmt:         dt,
 						DatabaseS:   databaseS,
 						DatabaseT:   databaseT,
+						BatchSize:   int(dmt.TaskParams.BatchSize),
+						WriteThread: int(dmt.TaskParams.WriteThread),
 						CallTimeout: int(dmt.TaskParams.CallTimeout),
 						DBCharsetS:  constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)],
 						DBCharsetT:  dbCharsetT,
@@ -397,11 +409,15 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 		return err
 	}
 	if !dmt.TaskParams.EnableCheckpoint || strings.EqualFold(initFlags.TaskInit, constant.TaskInitStatusNotFinished) {
-		err := model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(dmt.Ctx, []string{schemaRoute.TaskName})
+		err = model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(dmt.Ctx, []string{schemaRoute.TaskName})
 		if err != nil {
 			return err
 		}
 		err = model.GetIDataCompareSummaryRW().DeleteDataCompareSummaryName(dmt.Ctx, []string{schemaRoute.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIDataCompareResultRW().DeleteDataCompareResultName(dmt.Ctx, []string{schemaRoute.TaskName})
 		if err != nil {
 			return err
 		}

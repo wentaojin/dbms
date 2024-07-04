@@ -24,7 +24,7 @@ type AssessMigrateParam struct {
 // AssessMigrateTask defines model for AssessMigrateTask.
 type AssessMigrateTask struct {
 	AssessMigrateParam *AssessMigrateParam `json:"assessMigrateParam,omitempty"`
-	Comment            *string             `json:"comment,omitempty"`
+	Comment            *string             `json:"comment"`
 	DatasourceNameS    *string             `json:"datasourceNameS,omitempty"`
 	DatasourceNameT    *string             `json:"datasourceNameT,omitempty"`
 	TaskName           *string             `json:"taskName,omitempty"`
@@ -39,10 +39,10 @@ type CaseFieldRule struct {
 // ColumnStructRule defines model for ColumnStructRule.
 type ColumnStructRule struct {
 	ColumnNameS   *string `json:"columnNameS,omitempty"`
-	ColumnTypeS   *string `json:"columnTypeS,omitempty"`
-	ColumnTypeT   *string `json:"columnTypeT,omitempty"`
-	DefaultValueS *string `json:"defaultValueS,omitempty"`
-	DefaultValueT *string `json:"defaultValueT,omitempty"`
+	ColumnTypeS   *string `json:"columnTypeS"`
+	ColumnTypeT   *string `json:"columnTypeT"`
+	DefaultValueS *string `json:"defaultValueS"`
+	DefaultValueT *string `json:"defaultValueT"`
 	SchemaNameS   *string `json:"schemaNameS,omitempty"`
 	TableNameS    *string `json:"tableNameS,omitempty"`
 }
@@ -71,9 +71,9 @@ type CsvMigrateParam struct {
 // CsvMigrateTask defines model for CsvMigrateTask.
 type CsvMigrateTask struct {
 	CaseFieldRule    *CaseFieldRule     `json:"caseFieldRule,omitempty"`
-	Comment          *string            `json:"comment,omitempty"`
+	Comment          *string            `json:"comment"`
 	CsvMigrateParam  *CsvMigrateParam   `json:"csvMigrateParam,omitempty"`
-	DataMigrateRules *[]DataMigrateRule `json:"dataMigrateRules,omitempty"`
+	DataMigrateRules *[]DataMigrateRule `json:"dataMigrateRules"`
 	DatasourceNameS  *string            `json:"datasourceNameS,omitempty"`
 	DatasourceNameT  *string            `json:"datasourceNameT,omitempty"`
 	SchemaRouteRule  *SchemaRouteRule   `json:"schemaRouteRule,omitempty"`
@@ -93,6 +93,7 @@ type DataCompareParam struct {
 	SqlHintT             *string `json:"sqlHintT,omitempty"`
 	SqlThread            *uint64 `json:"sqlThread,omitempty"`
 	TableThread          *uint64 `json:"tableThread,omitempty"`
+	WriteThread          *uint64 `json:"writeThread,omitempty"`
 }
 
 // DataCompareRule defines model for DataCompareRule.
@@ -106,9 +107,9 @@ type DataCompareRule struct {
 // DataCompareTask defines model for DataCompareTask.
 type DataCompareTask struct {
 	CaseFieldRule    *CaseFieldRule     `json:"caseFieldRule,omitempty"`
-	Comment          *string            `json:"comment,omitempty"`
+	Comment          *string            `json:"comment"`
 	DataCompareParam *DataCompareParam  `json:"dataCompareParam,omitempty"`
-	DataCompareRules *[]DataCompareRule `json:"dataCompareRules,omitempty"`
+	DataCompareRules *[]DataCompareRule `json:"dataCompareRules"`
 	DatasourceNameS  *string            `json:"datasourceNameS,omitempty"`
 	DatasourceNameT  *string            `json:"datasourceNameT,omitempty"`
 	SchemaRouteRule  *SchemaRouteRule   `json:"schemaRouteRule,omitempty"`
@@ -146,9 +147,9 @@ type DataScanRule struct {
 // DataScanTask defines model for DataScanTask.
 type DataScanTask struct {
 	CaseFieldRule   *CaseFieldRule   `json:"caseFieldRule,omitempty"`
-	Comment         *string          `json:"comment,omitempty"`
+	Comment         *string          `json:"comment"`
 	DataScanParam   *DataScanParam   `json:"dataScanParam,omitempty"`
-	DataScanRules   *[]DataScanRule  `json:"dataScanRules,omitempty"`
+	DataScanRules   *[]DataScanRule  `json:"dataScanRules"`
 	DatasourceNameS *string          `json:"datasourceNameS,omitempty"`
 	DatasourceNameT *string          `json:"datasourceNameT,omitempty"`
 	SchemaRouteRule *SchemaRouteRule `json:"schemaRouteRule,omitempty"`
@@ -167,17 +168,17 @@ type Database struct {
 
 // Datasource defines model for Datasource.
 type Datasource struct {
-	Comment        *string `json:"comment,omitempty"`
+	Comment        *string `json:"comment"`
 	ConnectCharset *string `json:"connectCharset,omitempty"`
-	ConnectParams  *string `json:"connectParams,omitempty"`
-	ConnectStatus  *string `json:"connectStatus,omitempty"`
+	ConnectParams  *string `json:"connectParams"`
+	ConnectStatus  *string `json:"connectStatus"`
 	DatasourceName *string `json:"datasourceName,omitempty"`
 	DbType         *string `json:"dbType,omitempty"`
 	Host           *string `json:"host,omitempty"`
 	Password       *string `json:"password,omitempty"`
-	PdbName        *string `json:"pdbName,omitempty"`
+	PdbName        *string `json:"pdbName"`
 	Port           *uint64 `json:"port,omitempty"`
-	ServiceName    *string `json:"serviceName,omitempty"`
+	ServiceName    *string `json:"serviceName"`
 	Username       *string `json:"username,omitempty"`
 }
 
@@ -207,8 +208,8 @@ type Response struct {
 
 // SchemaRouteRule defines model for SchemaRouteRule.
 type SchemaRouteRule struct {
-	ExcludeTableS   *[]string         `json:"excludeTableS,omitempty"`
-	IncludeTableS   *[]string         `json:"includeTableS,omitempty"`
+	ExcludeTableS   *[]string         `json:"excludeTableS"`
+	IncludeTableS   *[]string         `json:"includeTableS"`
 	SchemaNameS     *string           `json:"schemaNameS,omitempty"`
 	SchemaNameT     *string           `json:"schemaNameT,omitempty"`
 	TableRouteRules *[]TableRouteRule `json:"tableRouteRules"`
@@ -216,10 +217,10 @@ type SchemaRouteRule struct {
 
 // SchemaStructRule defines model for SchemaStructRule.
 type SchemaStructRule struct {
-	ColumnTypeS   *string `json:"columnTypeS,omitempty"`
-	ColumnTypeT   *string `json:"columnTypeT,omitempty"`
-	DefaultValueS *string `json:"defaultValueS,omitempty"`
-	DefaultValueT *string `json:"defaultValueT,omitempty"`
+	ColumnTypeS   *string `json:"columnTypeS"`
+	ColumnTypeT   *string `json:"columnTypeT"`
+	DefaultValueS *string `json:"defaultValueS"`
+	DefaultValueT *string `json:"defaultValueT"`
 	SchemaNameS   *string `json:"schemaNameS,omitempty"`
 }
 
@@ -237,7 +238,7 @@ type SqlMigrateParam struct {
 // SqlMigrateRule defines model for SqlMigrateRule.
 type SqlMigrateRule struct {
 	CaseFieldRuleT   *string            `json:"caseFieldRuleT,omitempty"`
-	ColumnRouteRules *map[string]string `json:"columnRouteRules,omitempty"`
+	ColumnRouteRules *map[string]string `json:"columnRouteRules"`
 	SchemaNameT      *string            `json:"schemaNameT,omitempty"`
 	SqlHintT         *string            `json:"sqlHintT,omitempty"`
 	SqlQueryS        *string            `json:"sqlQueryS,omitempty"`
@@ -247,11 +248,11 @@ type SqlMigrateRule struct {
 // SqlMigrateTask defines model for SqlMigrateTask.
 type SqlMigrateTask struct {
 	CaseFieldRule   *CaseFieldRule    `json:"caseFieldRule,omitempty"`
-	Comment         *string           `json:"comment,omitempty"`
+	Comment         *string           `json:"comment"`
 	DatasourceNameS *string           `json:"datasourceNameS,omitempty"`
 	DatasourceNameT *string           `json:"datasourceNameT,omitempty"`
 	SqlMigrateParam *SqlMigrateParam  `json:"sqlMigrateParam,omitempty"`
-	SqlMigrateRules *[]SqlMigrateRule `json:"sqlMigrateRules,omitempty"`
+	SqlMigrateRules *[]SqlMigrateRule `json:"sqlMigrateRules"`
 	TaskName        *string           `json:"taskName,omitempty"`
 }
 
@@ -272,9 +273,9 @@ type StatementMigrateParam struct {
 
 // StmtMigrateTask defines model for StmtMigrateTask.
 type StmtMigrateTask struct {
-	DataMigrateRules      *[]DataMigrateRule     `json:"DataMigrateRules,omitempty"`
+	DataMigrateRules      *[]DataMigrateRule     `json:"DataMigrateRules"`
 	CaseFieldRule         *CaseFieldRule         `json:"caseFieldRule,omitempty"`
-	Comment               *string                `json:"comment,omitempty"`
+	Comment               *string                `json:"comment"`
 	DatasourceNameS       *string                `json:"datasourceNameS,omitempty"`
 	DatasourceNameT       *string                `json:"datasourceNameT,omitempty"`
 	SchemaRouteRule       *SchemaRouteRule       `json:"schemaRouteRule,omitempty"`
@@ -290,16 +291,16 @@ type StructCompareParam struct {
 
 // StructCompareRule defines model for StructCompareRule.
 type StructCompareRule struct {
-	ColumnStructRules *[]ColumnStructRule `json:"columnStructRules,omitempty"`
-	SchemaStructRules *[]SchemaStructRule `json:"schemaStructRules,omitempty"`
-	TableStructRules  *[]TableStructRule  `json:"tableStructRules,omitempty"`
-	TaskStructRules   *[]TaskStructRule   `json:"taskStructRules,omitempty"`
+	ColumnStructRules *[]ColumnStructRule `json:"columnStructRules"`
+	SchemaStructRules *[]SchemaStructRule `json:"schemaStructRules"`
+	TableStructRules  *[]TableStructRule  `json:"tableStructRules"`
+	TaskStructRules   *[]TaskStructRule   `json:"taskStructRules"`
 }
 
 // StructCompareTask defines model for StructCompareTask.
 type StructCompareTask struct {
 	CaseFieldRule      *CaseFieldRule      `json:"caseFieldRule,omitempty"`
-	Comment            *string             `json:"comment,omitempty"`
+	Comment            *string             `json:"comment"`
 	DatasourceNameS    *string             `json:"datasourceNameS,omitempty"`
 	DatasourceNameT    *string             `json:"datasourceNameT,omitempty"`
 	SchemaRouteRule    *SchemaRouteRule    `json:"schemaRouteRule,omitempty"`
@@ -318,17 +319,17 @@ type StructMigrateParam struct {
 
 // StructMigrateRule defines model for StructMigrateRule.
 type StructMigrateRule struct {
-	ColumnStructRules *[]ColumnStructRule `json:"columnStructRules,omitempty"`
-	SchemaStructRules *[]SchemaStructRule `json:"schemaStructRules,omitempty"`
-	TableAttrsRules   *[]TableAttrsRule   `json:"tableAttrsRules,omitempty"`
-	TableStructRules  *[]TableStructRule  `json:"tableStructRules,omitempty"`
-	TaskStructRules   *[]TaskStructRule   `json:"taskStructRules,omitempty"`
+	ColumnStructRules *[]ColumnStructRule `json:"columnStructRules"`
+	SchemaStructRules *[]SchemaStructRule `json:"schemaStructRules"`
+	TableAttrsRules   *[]TableAttrsRule   `json:"tableAttrsRules"`
+	TableStructRules  *[]TableStructRule  `json:"tableStructRules"`
+	TaskStructRules   *[]TaskStructRule   `json:"taskStructRules"`
 }
 
 // StructMigrateTask defines model for StructMigrateTask.
 type StructMigrateTask struct {
 	CaseFieldRule      *CaseFieldRule      `json:"caseFieldRule,omitempty"`
-	Comment            *string             `json:"comment,omitempty"`
+	Comment            *string             `json:"comment"`
 	DatasourceNameS    *string             `json:"datasourceNameS,omitempty"`
 	DatasourceNameT    *string             `json:"datasourceNameT,omitempty"`
 	SchemaRouteRule    *SchemaRouteRule    `json:"schemaRouteRule,omitempty"`
@@ -340,23 +341,23 @@ type StructMigrateTask struct {
 // TableAttrsRule defines model for TableAttrsRule.
 type TableAttrsRule struct {
 	SchemaNameS *string   `json:"schemaNameS,omitempty"`
-	TableAttrsT *string   `json:"tableAttrsT,omitempty"`
-	TableNamesS *[]string `json:"tableNamesS,omitempty"`
+	TableAttrsT *string   `json:"tableAttrsT"`
+	TableNamesS *[]string `json:"tableNamesS"`
 }
 
 // TableRouteRule defines model for TableRouteRule.
 type TableRouteRule struct {
-	ColumnRouteRules *map[string]string `json:"columnRouteRules,omitempty"`
+	ColumnRouteRules *map[string]string `json:"columnRouteRules"`
 	TableNameS       *string            `json:"tableNameS,omitempty"`
 	TableNameT       *string            `json:"tableNameT,omitempty"`
 }
 
 // TableStructRule defines model for TableStructRule.
 type TableStructRule struct {
-	ColumnTypeS   *string `json:"columnTypeS,omitempty"`
-	ColumnTypeT   *string `json:"columnTypeT,omitempty"`
-	DefaultValueS *string `json:"defaultValueS,omitempty"`
-	DefaultValueT *string `json:"defaultValueT,omitempty"`
+	ColumnTypeS   *string `json:"columnTypeS"`
+	ColumnTypeT   *string `json:"columnTypeT"`
+	DefaultValueS *string `json:"defaultValueS"`
+	DefaultValueT *string `json:"defaultValueT"`
 	SchemaNameS   *string `json:"schemaNameS,omitempty"`
 	TableNameS    *string `json:"tableNameS,omitempty"`
 }
@@ -370,10 +371,10 @@ type Task struct {
 
 // TaskStructRule defines model for TaskStructRule.
 type TaskStructRule struct {
-	ColumnTypeS   *string `json:"columnTypeS,omitempty"`
-	ColumnTypeT   *string `json:"columnTypeT,omitempty"`
-	DefaultValueS *string `json:"defaultValueS,omitempty"`
-	DefaultValueT *string `json:"defaultValueT,omitempty"`
+	ColumnTypeS   *string `json:"columnTypeS"`
+	ColumnTypeT   *string `json:"columnTypeT"`
+	DefaultValueS *string `json:"defaultValueS"`
+	DefaultValueT *string `json:"defaultValueT"`
 }
 
 // APIPutDatabaseJSONRequestBody defines body for APIPutDatabase for application/json ContentType.
@@ -466,48 +467,49 @@ type APIPutStructMigrateJSONRequestBody = StructMigrateTask
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xcS3PjuBH+KywmR0XyY2qT1Slee7bWVTsTxVJy2ZoDRLZFrEmABkA/4tJ/TwGkRIIv",
-	"AbQkkzO6qchuEN39ob/GQ3hzPRrFlAAR3J2+udwLIELq5xXnwPkXvGJIwAwxFMmnMaMxMIFByXiIw68Y",
-	"Qv8uCWEun4jXGNypywXDZOWuR1mLX1FU+3492jyhyz/BE1JD+/AC8Yfqd1Ft3/7K4N6dun+Z5DZNMoMm",
-	"NdasR9L4CIiQyveURUjkXRtVTfGRQJwmzIOtOdZaC0MtgfiDlDcSr/PidTE0JpEz6JSmtOjeNRomEZkL",
-	"lniioXdKwsbLqcbiNe6gYRoTH+5REor/ojAxj35Bx/Q7pSFjhJZlaAHK2qDwp/axvkTCC+b4fzokE0zE",
-	"T5/yT2AiYAUsRUsYLnAENBHGKkFCHmy+IQfXdYAYB2EexRBHWAAzlcf84T8creBX5AlqqgVEhuQ6AO8h",
-	"pjhNMZnQktIQEClIUcIxF0DEHSC/QZJ7KIZfkPfAQ8SDeqEAkJ/aVX1HkjBUKDQ0gCYiTsQNNjWYQ4wY",
-	"MncQfwx/w0TMzcUXAQPkz02hocZEqmOsAizCxNiI9mFUz1xeOS23kZaew635yqsO6davlcSz4ZU9k11Q",
-	"FmABEd/V1o2u6OauQoyh12OzadqtO5pk3dnR+3lJfB98LD1yTaMYsQ9NsFqqmdHNCKxhx4rgolZw34mO",
-	"kvA189Mdfa6Xsc8dv236b5NqDpZpduCjqSZSL1U+aAhZqo3ICmoF8IrQrAF9JFfridJY1esLO7R/fB70",
-	"a4beruSlyett2GfCYlxPmbDMDRVsbFKKrAWFFFu97iUPWFbJI/c5gMJ46mzs3ENkSEX1vlN6MUz7Kuzm",
-	"KIpDkOCYHz1Ny3jWI7fV0tYk2tWstj72I/Nq6N+VKXPhgrZ9wt1G6JRtpTuWiNeANaDcNI4x4vyZMt9U",
-	"nDLj7JTaburPkD7LEcwDGhqXZwkHRt7rwjT2tVWZzYyMEgKeyFYs7JTUsOB2OnOBRMI7QdxUablQj4yE",
-	"D4g4f2nRaSt8AnvCVi55N96+wnMb5HztnXFOzFQqGbGuB3fwmAAXNxBC43pgvHm87YFJCWb66RnlovHD",
-	"K+NSRsralD5bozoF7g54TAmvTRO+1Zqm6SojY+ZrVQweE8zAd6d/pP3JPrVp5luNRfMqgZVq9RcvTHxY",
-	"qOLlfWgYuZjssTH7VfRcY2Ezo9h6x7xGWWh6m+VZ+dCdCpaAyUBJQ7N7F+XH3BOp9dhj+PFbHBZL/iSd",
-	"EdzDlyx7NE6tFgdbRd9qLLrPR3K/G+xFLqygqo895PtYYEpQONM+YJ498k7bJwP7WPw7AfZqvXqx2MMA",
-	"6MfU8GjTsOrAb52GlcS1FuwSfQn6tUur75zgyRofpOMHuH27911S85R56M2Dg2XYPS1kzUUkWpPBzQH3",
-	"/r7bRPPu9R7eNJpb26lV2k9ykeVl+75ltu9kt2dmMvJ3dqit7M0LY3PkVg4mNU4rurReKdibNtq6NL7Q",
-	"FZuYplvTRT2zWbwWph+s2NhDDqgbdO0JoKJRbseoLxWF/eWQHQdJGSABt/dfqfj8gnl7IWBULtxgBp64",
-	"Vu3Wy0UZ+72bSAvmfacZ6UoIxjskpK3e95/rfsyJ1Z5ynV2xU9Eot2Oe68p16ntzXQn11Q3ibkd7VYsL",
-	"24UCPt//8nxp5bIh1R1uWcb6DMcelk3K+ea00Lrvw+f1WRNeYgbcFCpSM+P6Y/y/osQU3zEmqtav1V7N",
-	"PU3tJAJ5ipwgQjiU6SPGAlD0T/6MVitgY0zdkZvuiLrz9JlzNbt1FoAid+QmTCoFQsR8OpkUlFRvucdw",
-	"LLOHO3WvHK7OxyhtESDhJBy4gxx/GXEHcQcRB15SEUEdHyJKuDpB5twDEgkD7mDiiACcf8VAZCuX4zOH",
-	"x+Dhe+wh9ZmRG2IPsl28rNdXMfICcC7GZ5X+Pj8/j5F6PaZsNcl0+eT32+vPX+ef/3YxPhsHIgoV6LAI",
-	"i064+eXL3B25T8B4auD5+Gx8loGZoBi7U/dSPRq5MRKBAtbEL5zo8NUObfqr6Kl059bZiDrZeQBMiSMD",
-	"JyOe2pqOGkzJrS/tnN2mmttTIyOXZZua6uMXZ582Qc8qEhTHYea6yZ9cfvytcKajjYG3u6UKT7X9Rzst",
-	"yBF9lH4lBF5i8AT4TrppqkYHWnF3+oe7Dcy39chdpec7dPXfMRcVk3ZFRCo1x+PsKHbHaAWOKgscep9b",
-	"EEp7eOJ5wLmTd6y3QYmTmqDMEtFloMwSPSrq2MIv1H/dm83b5tf69r1gCaw/CAi5o9TMuhL8vsZ+PUoT",
-	"Z35wxiB1psKdkmf2ncMAo+Z4jhFEPh0NIpnnUh/3HyRZtFSKyM6oNSRuHRKmqfsYaMhPTBlh4fyDeCNz",
-	"4ECYowiMNu6wzhQZexwUGPo5wp6RyMZjA6GRLRAkkYjNdLU2V8injhRxNlPSuvhTLtSs9zChV033KQ9s",
-	"fNKrwKoO5SGdaNdKGNQIqbyTbSQ4LAnBrELQbqP4IYsE5ashlAc6JnZUCCVAqCRgUCIcEQ4DqBLqnDiA",
-	"cqEGKE0VQweYzJKjoKR6906PyoY6tw2hfigjY8s3+QUNBmTj8acOTJNf6nCimT5jpACFHRxTxIEpwRwL",
-	"BQNgl4r7BkAtZXA08YotNGbJ4ZFRuhCnR3RS8dYQuESDwpZICrdTGC5tOtmpTQsqKdxkceKSvq9XbAJl",
-	"sKS5hYIpmxwNCANZ0tQdOJCVTQ0gbUubVvDIljUPi47y5UI9W9nUHTaUBc4cDxqrzD1ETCmFe4hY8olq",
-	"/kQmPceGipIJkygE2NDI4eM/FA7JXTcQAslB0coexpDIqOOAiNDuReobaeR+GgpjZADY0kX+H1kDwuCP",
-	"YYfVrPzvtCfS6DM8ClDYQRtFHJgSx7FQMADqqLhvAORRBkcTfdhCY5YcHhmlGxR6RCIVbw2BRjQo5ESS",
-	"/zXdhEk2f37uwieFL50Ipc9AKQRqF6NU8GDMK8dCwxCIpd6LQ6CXMlQa+aUTUCTLHBwn5cs5+sQz9V4b",
-	"BNtoyCjQTeFf70aEI+U7bKBof68/8U2/oVIM1U7G0QBhTjdHg8MgCKfqxEGwTQUozXxjDRNFNodHSfW2",
-	"ll4RTtVtw2AbHRklvrGZ4CgHdJndFD904pveg8V4hqMBwo5vThMcjW+GN7upAGUH31hPbg6PkuqNOf3j",
-	"mwHObnRkrLPL64HJ12WALAJw0rdOwkLtVoPpZPIWUC7W07eYMrF+WyIOMySCtTtynxDDaBlu7hRNX6T4",
-	"y/zgTlCMJ0/nk+KN//nb858vxuc//WN8cXk5/nRevI0/l7m4/PvP0v5v6/8HAAD//0htBbygdgAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -517,6 +517,7 @@ const (
 	ParamNameDataCompareTableThread          = "tableThread"
 	ParamNameDataCompareBatchSize            = "batchSize"
 	ParamNameDataCompareSqlThread            = "sqlThread"
+	ParamNameDataCompareWriteThread          = "writeThread"
 	ParamNameDataCompareSqlHintS             = "sqlHintS"
 	ParamNameDataCompareSqlHintT             = "sqlHintT"
 	ParamNameDataCompareCallTimeout          = "callTimeout"

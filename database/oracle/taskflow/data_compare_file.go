@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,51 +75,123 @@ func (s *DataCompareFile) SyncFile() error {
 	if err != nil {
 		return err
 	}
-	if len(migrateTasks) == 0 {
+
+	migrateTaskResults, err := model.GetIDataCompareResultRW().FindDataCompareResult(s.Ctx, &task.DataCompareResult{TaskName: s.TaskName})
+	if err != nil {
+		return err
+	}
+
+	if len(migrateTasks) == 0 && len(migrateTaskResults) == 0 {
 		// fmt.Printf("the data compare task all of the table records are equal, current not exist not equal table records.\n")
 		return errors.New(constant.TaskDatabaseStatusEqual)
 	}
 
 	tableTaskM := make(map[string]string)
+	compareMethodM := make(map[string]string)
 	for _, mt := range migrateTasks {
 		tableTaskM[stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS)] = stringutil.StringBuilder(mt.SchemaNameT, constant.StringSeparatorAite, mt.TableNameT)
+		compareMethodM[stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS)] = mt.CompareMethod
 	}
 
 	for k, v := range tableTaskM {
 		keySli := stringutil.StringSplit(k, constant.StringSeparatorAite)
 		valSli := stringutil.StringSplit(v, constant.StringSeparatorAite)
 
+		if strings.EqualFold(compareMethodM[k], constant.DataCompareMethodCheckRows) {
+			var sqlComp strings.Builder
+
+			sqlComp.WriteString("/*\n")
+			sqlComp.WriteString(" database schema table compare row counts\n")
+			wt := table.NewWriter()
+			wt.SetStyle(table.StyleLight)
+			wt.AppendHeader(table.Row{"#", "TASK_NAME", "TASK_FLOW", "TABLE_NAME_S", "TABLE_NAME_T", "COMPARE_METHOD", "SUGGEST"})
+
+			var rowsCountsS, rowsCountsT decimal.Decimal
+
+			for _, res := range migrateTaskResults {
+				if strings.EqualFold(keySli[0], res.SchemaNameS) && strings.EqualFold(keySli[1], res.TableNameS) &&
+					strings.EqualFold(res.FixStmtType, constant.DataCompareFixStmtTypeRows) {
+					//sample: rowCountsS:500 rowCountsT:600
+					rows := stringutil.StringSplit(res.FixDetailT, " ")
+					rowsS := rows[0]
+					rowsT := rows[1]
+
+					resultS, err := decimal.NewFromString(stringutil.StringSplit(rowsS, ":")[1])
+					if err != nil {
+						return fmt.Errorf("parse the database source rowcounts failed: %v", err)
+					}
+
+					resultT, err := decimal.NewFromString(stringutil.StringSplit(rowsT, ":")[1])
+					if err != nil {
+						return fmt.Errorf("parse the database target rowcounts failed: %v", err)
+					}
+
+					rowsCountsS.Add(resultS)
+					rowsCountsT.Add(resultT)
+				}
+			}
+
+			wt.AppendRows([]table.Row{
+				{"Schema", s.TaskName, s.TaskFlow,
+					fmt.Sprintf("%s.%s: %v", keySli[0], keySli[1], rowsCountsS.String()),
+					fmt.Sprintf("%s.%s: %v", valSli[0], valSli[1], rowsCountsT.String()),
+					compareMethodM[k], "Row Counts Difference, Please Verify Rows"},
+			})
+			sqlComp.WriteString(wt.Render() + "\n")
+			sqlComp.WriteString("*/\n")
+
+			if !strings.EqualFold(sqlComp.String(), "") {
+				_, err = s.writeCompareFile(sqlComp.String())
+				if err != nil {
+					return err
+				}
+			}
+
+			continue
+		}
+
 		var sqlComp strings.Builder
 
 		sqlComp.WriteString("/*\n")
-		sqlComp.WriteString(" database schema table fixed sql\n")
+		sqlComp.WriteString(" database schema table compare row verify\n")
 		wt := table.NewWriter()
 		wt.SetStyle(table.StyleLight)
-		wt.AppendHeader(table.Row{"#", "TASK_NAME", "TASK_FLOW", "SCHEMA_NAME_S", "TABLE_NAME_S", "SCHEMA_NAME_T", "TABLE_NAME_T", "SUGGEST"})
+		wt.AppendHeader(table.Row{"#", "TASK_NAME", "TASK_FLOW", "TABLE_NAME_S", "TABLE_NAME_T", "COMPARE_METHOD", "SUGGEST"})
 		wt.AppendRows([]table.Row{
-			{"Schema", s.TaskName, s.TaskFlow, keySli[0], keySli[1], valSli[0], valSli[1], "Fixed SQL"},
+			{"Schema", s.TaskName, s.TaskFlow,
+				fmt.Sprintf("%s.%s", keySli[0], keySli[1]),
+				fmt.Sprintf("%s.%s", valSli[0], valSli[1]),
+				compareMethodM[k], "Row Verify Difference, Please Fixed SQL"},
 		})
 		sqlComp.WriteString(wt.Render() + "\n")
 		sqlComp.WriteString("*/\n")
 
-		for _, mt := range migrateTasks {
-			if strings.EqualFold(keySli[0], mt.SchemaNameS) && strings.EqualFold(keySli[1], mt.TableNameS) {
-				if !strings.EqualFold(mt.FixDetailDelT, "") {
-					desDelDetails, err := stringutil.Decrypt(mt.FixDetailDelT, []byte(constant.DefaultDataEncryptDecryptKey))
-					if err != nil {
-						return err
-					}
-					sqlComp.WriteString(desDelDetails + ";\n")
+		var delSqls, addSqls []string
+		for _, res := range migrateTaskResults {
+			if strings.EqualFold(keySli[0], res.SchemaNameS) && strings.EqualFold(keySli[1], res.TableNameS) {
+				desDetails, err := stringutil.Decrypt(res.FixDetailT, []byte(constant.DefaultDataEncryptDecryptKey))
+				if err != nil {
+					return err
 				}
-
-				if !strings.EqualFold(mt.FixDetailAddT, "") {
-					desAddDetails, err := stringutil.Decrypt(mt.FixDetailAddT, []byte(constant.DefaultDataEncryptDecryptKey))
-					if err != nil {
-						return err
+				if !strings.EqualFold(desDetails, "") {
+					switch res.FixStmtType {
+					case constant.DataCompareFixStmtTypeDelete:
+						delSqls = append(delSqls, desDetails)
+					case constant.DataCompareFixStmtTypeInsert:
+						addSqls = append(addSqls, desDetails)
+					default:
+						return fmt.Errorf("the data compare statement type is invalid: %v", res.FixStmtType)
 					}
-					sqlComp.WriteString(desAddDetails + ";\n")
 				}
 			}
+		}
+
+		if len(delSqls) > 0 {
+			sqlComp.WriteString(stringutil.StringJoin(delSqls, "\n") + "\n")
+		}
+
+		if len(addSqls) > 0 {
+			sqlComp.WriteString(stringutil.StringJoin(addSqls, "\n") + "\n")
 		}
 
 		if !strings.EqualFold(sqlComp.String(), "") {

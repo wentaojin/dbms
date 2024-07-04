@@ -243,11 +243,21 @@ type DataCompareTask struct {
 	ChunkDetailT    string  `gorm:"type:varchar(500);not null;comment:target table chunk detail" json:"chunkDetailT"`
 	ConsistentReadS string  `gorm:"type:varchar(10);comment:source sql consistent read" json:"consistentReadS"`
 	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
-	FixDetailAddT   string  `gorm:"type:longtext;comment:fix detail infos used to query information" json:"fixDetailAddT"`
-	FixDetailDelT   string  `gorm:"type:longtext;comment:fix detail infos used to query information" json:"fixDetailDelT"`
 	ErrorDetail     string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
 	Duration        float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
+}
+
+type DataCompareResult struct {
+	ID           uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName     string `gorm:"type:varchar(100);not null;index:idx_schema_table_name_complex;comment:task name" json:"taskName"`
+	SchemaNameS  string `gorm:"type:varchar(60);not null;index:idx_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
+	TableNameS   string `gorm:"type:varchar(60);not null;index:idx_schema_table_name_complex;comment:source table name" json:"tableNameS"`
+	SchemaNameT  string `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
+	TableNameT   string `gorm:"type:varchar(60);not null;comment:target table name" json:"tableNameT"`
+	ChunkDetailS string `gorm:"type:varchar(500);not null;index:idx_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
+	FixStmtType  string `gorm:"type:varchar(2);not null;comment:fix stmt type,eg: I represent INSERT D represent DELETE" json:"fixStmtType"`
+	FixDetailT   string `gorm:"type:longtext;comment:fix detail infos used to query information" json:"fixDetailT"`
 }
 
 type DataScanSummary struct {

@@ -671,6 +671,7 @@ message DataCompareParam{
   bool OnlyCompareRow = 9;
   string consistentReadPointS = 10;
   string consistentReadPointT = 11;
+  uint64 writeThread = 13;
 }
 
 message SqlMigrateRule {

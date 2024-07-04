@@ -17,6 +17,7 @@ package taskflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/shopspring/decimal"
 	"maps"
@@ -48,6 +49,8 @@ type DataCompareRow struct {
 	Dmt         *task.DataCompareTask
 	DatabaseS   database.IDatabase
 	DatabaseT   database.IDatabase
+	BatchSize   int
+	WriteThread int
 	CallTimeout int
 	DBCharsetS  string
 	DBCharsetT  string
@@ -194,7 +197,17 @@ func (r *DataCompareRow) CompareRows() error {
 
 	endTime := time.Now()
 
-	if resultStrS == resultStrT {
+	resultS, err := decimal.NewFromString(resultStrS)
+	if err != nil {
+		return fmt.Errorf("parse the database source rowcounts failed: %v", err)
+	}
+
+	resultT, err := decimal.NewFromString(resultStrT)
+	if err != nil {
+		return fmt.Errorf("parse the database target rowcounts failed: %v", err)
+	}
+
+	if resultS.Equal(resultT) {
 		logger.Info("data compare task chunk rows compare is equaled",
 			zap.String("task_name", r.Dmt.TaskName),
 			zap.String("task_mode", r.TaskMode),
@@ -281,6 +294,20 @@ func (r *DataCompareRow) CompareRows() error {
 				r.Dmt.SchemaNameS,
 				r.Dmt.TableNameS,
 				r.Dmt.ChunkDetailS),
+		})
+		if err != nil {
+			return err
+		}
+
+		_, err = model.GetIDataCompareResultRW().CreateDataCompareResult(txnCtx, &task.DataCompareResult{
+			TaskName:     r.Dmt.TaskName,
+			SchemaNameS:  r.Dmt.SchemaNameS,
+			TableNameS:   r.Dmt.TableNameS,
+			SchemaNameT:  r.Dmt.SchemaNameT,
+			TableNameT:   r.Dmt.TableNameT,
+			ChunkDetailS: r.Dmt.ChunkDetailS,
+			FixStmtType:  constant.DataCompareFixStmtTypeRows,
+			FixDetailT:   fmt.Sprintf("rowCountsS:%v rowCountsT:%v", resultS, resultT),
 		})
 		if err != nil {
 			return err
@@ -767,38 +794,80 @@ func (r *DataCompareRow) CompareCRC32() error {
 
 	}
 
-	if len(addDetails) > 0 {
-		encryptAddDetails, err := stringutil.Encrypt(stringutil.StringJoin(addDetails, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
-		if err != nil {
-			return err
+	if len(delDetails) > 0 {
+		groupDelDetails := stringutil.StringSliceSplit(delDetails, r.BatchSize)
+
+		gDel, gDelCtx := errgroup.WithContext(r.Ctx)
+		gDel.SetLimit(r.WriteThread)
+
+		for _, gds := range groupDelDetails {
+			details := gds
+			gDel.Go(func() error {
+				select {
+				case <-gDelCtx.Done():
+					return nil
+				default:
+					encryptDelDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					_, err = model.GetIDataCompareResultRW().CreateDataCompareResult(gDelCtx, &task.DataCompareResult{
+						TaskName:     r.Dmt.TaskName,
+						SchemaNameS:  r.Dmt.SchemaNameS,
+						TableNameS:   r.Dmt.TableNameS,
+						SchemaNameT:  r.Dmt.SchemaNameT,
+						TableNameT:   r.Dmt.TableNameT,
+						ChunkDetailS: r.Dmt.ChunkDetailS,
+						FixStmtType:  constant.DataCompareFixStmtTypeDelete,
+						FixDetailT:   encryptDelDetails,
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+			})
 		}
-		_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(r.Ctx, &task.DataCompareTask{
-			TaskName:     r.Dmt.TaskName,
-			SchemaNameS:  r.Dmt.SchemaNameS,
-			TableNameS:   r.Dmt.TableNameS,
-			ChunkDetailS: r.Dmt.ChunkDetailS,
-		}, map[string]interface{}{
-			"FixDetailAddT": encryptAddDetails,
-		})
-		if err != nil {
+		if err = gDel.Wait(); !errors.Is(err, context.Canceled) {
 			return err
 		}
 	}
 
-	if len(delDetails) > 0 {
-		encryptDelDetails, err := stringutil.Encrypt(stringutil.StringJoin(delDetails, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
-		if err != nil {
-			return err
+	if len(addDetails) > 0 {
+		groupAddDetails := stringutil.StringSliceSplit(addDetails, r.BatchSize)
+
+		gAdd, gAddCtx := errgroup.WithContext(r.Ctx)
+		gAdd.SetLimit(r.WriteThread)
+
+		for _, gds := range groupAddDetails {
+			details := gds
+			gAdd.Go(func() error {
+				select {
+				case <-gAddCtx.Done():
+					return nil
+				default:
+					encryptAddDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					_, err = model.GetIDataCompareResultRW().CreateDataCompareResult(gAddCtx, &task.DataCompareResult{
+						TaskName:     r.Dmt.TaskName,
+						SchemaNameS:  r.Dmt.SchemaNameS,
+						TableNameS:   r.Dmt.TableNameS,
+						SchemaNameT:  r.Dmt.SchemaNameT,
+						TableNameT:   r.Dmt.TableNameT,
+						ChunkDetailS: r.Dmt.ChunkDetailS,
+						FixStmtType:  constant.DataCompareFixStmtTypeInsert,
+						FixDetailT:   encryptAddDetails,
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+			})
 		}
-		_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(r.Ctx, &task.DataCompareTask{
-			TaskName:     r.Dmt.TaskName,
-			SchemaNameS:  r.Dmt.SchemaNameS,
-			TableNameS:   r.Dmt.TableNameS,
-			ChunkDetailS: r.Dmt.ChunkDetailS,
-		}, map[string]interface{}{
-			"FixDetailDelT": encryptDelDetails,
-		})
-		if err != nil {
+		if err = gAdd.Wait(); !errors.Is(err, context.Canceled) {
 			return err
 		}
 	}
@@ -1015,38 +1084,80 @@ func (r *DataCompareRow) compareMd5Row() error {
 
 	}
 
-	if len(addDetails) > 0 {
-		encryptAddDetails, err := stringutil.Encrypt(stringutil.StringJoin(addDetails, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
-		if err != nil {
-			return err
+	if len(delDetails) > 0 {
+		groupDelDetails := stringutil.StringSliceSplit(delDetails, r.BatchSize)
+
+		gDel, gDelCtx := errgroup.WithContext(r.Ctx)
+		gDel.SetLimit(r.WriteThread)
+
+		for _, gds := range groupDelDetails {
+			details := gds
+			gDel.Go(func() error {
+				select {
+				case <-gDelCtx.Done():
+					return nil
+				default:
+					encryptDelDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					_, err = model.GetIDataCompareResultRW().CreateDataCompareResult(gDelCtx, &task.DataCompareResult{
+						TaskName:     r.Dmt.TaskName,
+						SchemaNameS:  r.Dmt.SchemaNameS,
+						TableNameS:   r.Dmt.TableNameS,
+						SchemaNameT:  r.Dmt.SchemaNameT,
+						TableNameT:   r.Dmt.TableNameT,
+						ChunkDetailS: r.Dmt.ChunkDetailS,
+						FixStmtType:  constant.DataCompareFixStmtTypeDelete,
+						FixDetailT:   encryptDelDetails,
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+			})
 		}
-		_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(r.Ctx, &task.DataCompareTask{
-			TaskName:     r.Dmt.TaskName,
-			SchemaNameS:  r.Dmt.SchemaNameS,
-			TableNameS:   r.Dmt.TableNameS,
-			ChunkDetailS: r.Dmt.ChunkDetailS,
-		}, map[string]interface{}{
-			"FixDetailAddT": encryptAddDetails,
-		})
-		if err != nil {
+		if err = gDel.Wait(); !errors.Is(err, context.Canceled) {
 			return err
 		}
 	}
 
-	if len(delDetails) > 0 {
-		encryptDelDetails, err := stringutil.Encrypt(stringutil.StringJoin(delDetails, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
-		if err != nil {
-			return err
+	if len(addDetails) > 0 {
+		groupAddDetails := stringutil.StringSliceSplit(addDetails, r.BatchSize)
+
+		gAdd, gAddCtx := errgroup.WithContext(r.Ctx)
+		gAdd.SetLimit(r.WriteThread)
+
+		for _, gds := range groupAddDetails {
+			details := gds
+			gAdd.Go(func() error {
+				select {
+				case <-gAddCtx.Done():
+					return nil
+				default:
+					encryptAddDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					_, err = model.GetIDataCompareResultRW().CreateDataCompareResult(gAddCtx, &task.DataCompareResult{
+						TaskName:     r.Dmt.TaskName,
+						SchemaNameS:  r.Dmt.SchemaNameS,
+						TableNameS:   r.Dmt.TableNameS,
+						SchemaNameT:  r.Dmt.SchemaNameT,
+						TableNameT:   r.Dmt.TableNameT,
+						ChunkDetailS: r.Dmt.ChunkDetailS,
+						FixStmtType:  constant.DataCompareFixStmtTypeInsert,
+						FixDetailT:   encryptAddDetails,
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				}
+			})
 		}
-		_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(r.Ctx, &task.DataCompareTask{
-			TaskName:     r.Dmt.TaskName,
-			SchemaNameS:  r.Dmt.SchemaNameS,
-			TableNameS:   r.Dmt.TableNameS,
-			ChunkDetailS: r.Dmt.ChunkDetailS,
-		}, map[string]interface{}{
-			"FixDetailDelT": encryptDelDetails,
-		})
-		if err != nil {
+		if err = gAdd.Wait(); !errors.Is(err, context.Canceled) {
 			return err
 		}
 	}

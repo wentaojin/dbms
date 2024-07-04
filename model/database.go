@@ -81,6 +81,7 @@ type database struct {
 	sqlMigrateTaskRW              task.ISqlMigrateTask
 	sqlMigrateSummaryTask         task.ISqlMigrateSummary
 	dataCompareTaskRW             task.IDataCompareTask
+	dataCompareResultRW           task.IDataCompareResult
 	dataCompareRuleRW             rule.IDataCompareRule
 	dataCompareSummaryTask        task.IDataCompareSummary
 	assessMigrateTaskRW           task.IAssessMigrateTask
@@ -114,7 +115,7 @@ func CreateDatabaseConnection(cfg *Database, addRole, logLevel string) error {
 			SingularTable: true,
 		},
 	})
-	
+
 	if err != nil || db.Error != nil {
 		return fmt.Errorf("database open failed, database error: [%v]", err)
 	}
@@ -236,6 +237,7 @@ func (d *database) initReaderWriters() {
 	DefaultDB.sqlMigrateTaskRW = task.NewSqlMigrateTaskRW(d.base)
 	DefaultDB.sqlMigrateSummaryTask = task.NewSqlMigrateSummaryRW(d.base)
 	DefaultDB.dataCompareTaskRW = task.NewDataCompareTaskRW(d.base)
+	DefaultDB.dataCompareResultRW = task.NewDataCompareResultRW(d.base)
 	DefaultDB.dataCompareRuleRW = rule.NewDataCompareRuleRW(d.base)
 	DefaultDB.dataCompareSummaryTask = task.NewDataCompareSummaryRW(d.base)
 	DefaultDB.assessMigrateTaskRW = task.NewAssessMigrateTaskRW(d.base)
@@ -284,6 +286,7 @@ func (d *database) migrateTables() (err error) {
 		new(task.SqlMigrateTask),
 		new(task.SqlMigrateSummary),
 		new(task.DataCompareTask),
+		new(task.DataCompareResult),
 		new(task.DataCompareSummary),
 		new(rule.DataCompareRule),
 		new(task.AssessMigrateTask),
@@ -527,6 +530,10 @@ func GetISqlMigrateSummaryRW() task.ISqlMigrateSummary {
 
 func GetIDataCompareTaskRW() task.IDataCompareTask {
 	return DefaultDB.dataCompareTaskRW
+}
+
+func GetIDataCompareResultRW() task.IDataCompareResult {
+	return DefaultDB.dataCompareResultRW
 }
 
 func GetIDataCompareRuleRW() rule.IDataCompareRule {

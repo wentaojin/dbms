@@ -102,3 +102,9 @@ var (
 		BuildInOracleDatatypeCharacter,
 		BuildInOracleDatatypeNcharVarying}
 )
+
+const (
+	DataCompareFixStmtTypeDelete = "D"
+	DataCompareFixStmtTypeInsert = "I"
+	DataCompareFixStmtTypeRows   = "R" // row counts compare
+)

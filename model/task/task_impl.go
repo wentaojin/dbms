@@ -1153,6 +1153,55 @@ func (rw *RWDataCompareTask) DeleteDataCompareTaskName(ctx context.Context, task
 	return nil
 }
 
+type RWDataCompareResult struct {
+	common.GormDB
+}
+
+func NewDataCompareResultRW(db *gorm.DB) *RWDataCompareResult {
+	m := &RWDataCompareResult{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWDataCompareResult) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(DataCompareResult{}).Name())
+}
+
+func (rw *RWDataCompareResult) CreateDataCompareResult(ctx context.Context, task *DataCompareResult) (*DataCompareResult, error) {
+	err := rw.DB(ctx).Create(task).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWDataCompareResult) FindDataCompareResult(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error) {
+	var dataS []*DataCompareResult
+	err := rw.DB(ctx).Model(&DataCompareResult{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataCompareResult) DeleteDataCompareResult(ctx context.Context, task *DataCompareResult) error {
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_detail_s = ?",
+		task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkDetailS).Delete(&DataCompareResult{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWDataCompareResult) DeleteDataCompareResultName(ctx context.Context, taskName []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&DataCompareResult{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] task [%v] record failed: %v", rw.TableName(ctx), taskName, err)
+	}
+	return nil
+}
+
 type RWDataScanSummary struct {
 	common.GormDB
 }

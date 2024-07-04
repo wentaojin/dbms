@@ -559,6 +559,7 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 			TableThread:          *req.DataCompareParam.TableThread,
 			BatchSize:            *req.DataCompareParam.BatchSize,
 			SqlThread:            *req.DataCompareParam.SqlThread,
+			WriteThread:          *req.DataCompareParam.WriteThread,
 			SqlHintS:             *req.DataCompareParam.SqlHintS,
 			SqlHintT:             *req.DataCompareParam.SqlHintT,
 			CallTimeout:          *req.DataCompareParam.CallTimeout,

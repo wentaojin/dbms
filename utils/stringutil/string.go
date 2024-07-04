@@ -404,8 +404,8 @@ func IsContainedStringIgnoreCase(items []string, item string) bool {
 	return false
 }
 
-// StringSplitSlice used for the according to splitCounts, split slice
-func StringSplitSlice(items []string, splitCounts int) [][]string {
+// StringSliceSplit used for the according to splitCounts, split slice
+func StringSliceSplit(items []string, splitCounts int) [][]string {
 	subArraySize := len(items) / splitCounts
 
 	result := make([][]string, 0)
@@ -420,7 +420,9 @@ func StringSplitSlice(items []string, splitCounts int) [][]string {
 		}
 
 		subArray := items[start:end]
-		result = append(result, subArray)
+		if len(subArray) > 0 {
+			result = append(result, subArray)
+		}
 	}
 
 	return result

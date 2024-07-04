@@ -48,7 +48,9 @@ table-thread = 100
 # 数据写入批量大小
 batch-size = 50
 # 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上下游表数据，可动态变更
-sql-thread = 2
+sql-thread = 16
+# 数据校验写 meta 数据库并发数
+write-thread = 4
 # 指定分片 chunk sql 查询 hint
 sql-hint-s = "/*+ PARALLEL(8) */"
 # 指定分片 chunk sql 查询 Hint

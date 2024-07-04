@@ -140,6 +140,13 @@ type IDataCompareTask interface {
 	DeleteDataCompareTaskName(ctx context.Context, taskName []string) error
 }
 
+type IDataCompareResult interface {
+	CreateDataCompareResult(ctx context.Context, task *DataCompareResult) (*DataCompareResult, error)
+	FindDataCompareResult(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error)
+	DeleteDataCompareResult(ctx context.Context, task *DataCompareResult) error
+	DeleteDataCompareResultName(ctx context.Context, taskName []string) error
+}
+
 type ISqlMigrateSummary interface {
 	CreateSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) (*SqlMigrateSummary, error)
 	GetSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary) (*SqlMigrateSummary, error)

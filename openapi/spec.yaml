@@ -1103,6 +1103,9 @@ components:
         sqlThread:
           type: integer
           format: uint64
+        writeThread:
+          type: integer
+          format: uint64
         sqlHintS:
           type: string
           format: string
