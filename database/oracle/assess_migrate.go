@@ -367,23 +367,30 @@ func (d *Database) GetDatabaseSchemaTableRowsTOP(schemaName []string, top int) (
 FROM
 	(
 	SELECT
-		OWNER,
-		SEGMENT_NAME,
-		SEGMENT_TYPE,
-		ROUND(NVL(SUM(BYTES)/ 1024 / 1024 / 1024 , 0), 2) GB
+		S.OWNER,
+		S.SEGMENT_NAME,
+		S.SEGMENT_TYPE,
+		ROUND(NVL(SUM(S.BYTES)/ 1024 / 1024 / 1024 , 0), 2) GB
 	FROM
-		DBA_SEGMENTS
+		DBA_SEGMENTS S
 	WHERE
-		OWNER IN (%s)
-		AND SEGMENT_TYPE IN (
+		S.OWNER IN (%s)
+		AND S.SEGMENT_TYPE IN (
 			'TABLE',
 			'TABLE PARTITION',
-		'TABLE SUBPARTITION' 
-	)
+		'TABLE SUBPARTITION')
+		AND NOT EXISTS (
+		SELECT 1
+		FROM
+			DBA_RECYCLEBIN B
+		WHERE
+			S.OWNER = B.OWNER
+			AND S.SEGMENT_NAME = B.OBJECT_NAME
+		)
 	GROUP BY
-		OWNER,
-		SEGMENT_NAME,
-		SEGMENT_TYPE
+		S.OWNER,
+		S.SEGMENT_NAME,
+		S.SEGMENT_TYPE
 	ORDER BY
 		GB DESC
 )
@@ -406,7 +413,30 @@ WHERE
 }
 
 func (d *Database) GetDatabaseSchemaCodeObject(schemaName []string) ([]map[string]string, error) {
-	querySQL := fmt.Sprintf(`SELECT OWNER,NAME,TYPE,MAX(LINE) LINES FROM DBA_SOURCE WHERE OWNER IN (%s) GROUP BY OWNER,NAME,TYPE ORDER BY LINES DESC`, strings.Join(schemaName, ","))
+	querySQL := fmt.Sprintf(`SELECT
+	S.OWNER,
+	S.NAME,
+	S.TYPE,
+	MAX(S.LINE) LINES
+FROM
+	DBA_SOURCE S
+WHERE
+	S.OWNER IN (%s)
+	AND NOT EXISTS (
+	SELECT
+		1
+	FROM
+		DBA_RECYCLEBIN B
+	WHERE
+		S.OWNER = B.OWNER
+		AND S.NAME = B.OBJECT_NAME
+		)
+GROUP BY
+	S.OWNER,
+	S.NAME,
+	S.TYPE
+ORDER BY
+	LINES DESC`, strings.Join(schemaName, ","))
 
 	_, res, err := d.GeneralQuery(querySQL)
 	if err != nil {
@@ -417,14 +447,23 @@ func (d *Database) GetDatabaseSchemaCodeObject(schemaName []string) ([]map[strin
 
 func (d *Database) GetDatabaseSchemaPartitionTableType(schemaName []string) ([]map[string]string, error) {
 	querySQL := fmt.Sprintf(`SELECT DISTINCT
-	OWNER,
-	TABLE_NAME,
-	PARTITIONING_TYPE,
-	SUBPARTITIONING_TYPE 
+	S.OWNER,
+	S.TABLE_NAME,
+	S.PARTITIONING_TYPE,
+	S.SUBPARTITIONING_TYPE 
 FROM
-	DBA_PART_TABLES 
+	DBA_PART_TABLES S
 WHERE
-	OWNER IN (%s)`, strings.Join(schemaName, ","))
+	S.OWNER IN (%s)
+	AND NOT EXISTS (
+	SELECT
+		1
+	FROM
+		DBA_RECYCLEBIN B
+	WHERE
+		S.OWNER = B.OWNER
+		AND S.TABLE_NAME = B.OBJECT_NAME
+)`, strings.Join(schemaName, ","))
 
 	_, res, err := d.GeneralQuery(querySQL)
 	if err != nil {
@@ -440,13 +479,21 @@ func (d *Database) GetDatabaseSchemaTableAvgRowLengthTOP(schemaName []string, to
 FROM
 	(
 	SELECT
-		OWNER,
-		TABLE_NAME,
-		AVG_ROW_LEN
+		S.OWNER,
+		S.TABLE_NAME,
+		S.AVG_ROW_LEN
 	FROM
-		DBA_TABLES
+		DBA_TABLES S
 	WHERE
-		OWNER IN (%s)
+		S.OWNER IN (%s)
+		AND NOT EXISTS (
+		SELECT
+			1
+		FROM
+			DBA_RECYCLEBIN B
+		WHERE
+			S.OWNER = B.OWNER
+			AND S.TABLE_NAME = B.OBJECT_NAME)
 	ORDER BY
 		AVG_ROW_LEN DESC NULLS LAST) A
 WHERE
@@ -478,7 +525,24 @@ func (d *Database) GetDatabaseSchemaMaterializedViewObject(schemaName []string) 
 }
 
 func (d *Database) GetDatabaseSchemaPartitionTableCountsOverLimit(schemaName []string, limit int) ([]map[string]string, error) {
-	querySQL := fmt.Sprintf(`SELECT OWNER,TABLE_NAME,PARTITION_COUNT FROM DBA_PART_TABLES WHERE OWNER IN (%s) AND PARTITION_COUNT > %d`, strings.Join(schemaName, ","), limit)
+	querySQL := fmt.Sprintf(`SELECT
+	S.OWNER,
+	S.TABLE_NAME,
+	S.PARTITION_COUNT
+FROM
+	DBA_PART_TABLES S
+WHERE
+	S.OWNER IN (%s)
+	AND S.PARTITION_COUNT > %d
+	AND NOT EXISTS (
+	SELECT
+			1
+	FROM
+			DBA_RECYCLEBIN B
+	WHERE
+			S.OWNER = B.OWNER
+		AND S.TABLE_NAME = B.OBJECT_NAME
+	)`, strings.Join(schemaName, ","), limit)
 
 	_, res, err := d.GeneralQuery(querySQL)
 	if err != nil {
@@ -488,7 +552,24 @@ func (d *Database) GetDatabaseSchemaPartitionTableCountsOverLimit(schemaName []s
 }
 
 func (d *Database) GetDatabaseSchemaTableAvgRowLengthOverLimitMB(schemaName []string, limitMB int) ([]map[string]string, error) {
-	querySQL := fmt.Sprintf(`SELECT OWNER,TABLE_NAME,ROUND(AVG_ROW_LEN/1024/1024,2) AS AVG_ROW_LEN FROM DBA_TABLES WHERE OWNER IN (%s) AND ROUND(AVG_ROW_LEN/1024/1024,2) >= %d`, strings.Join(schemaName, ","), limitMB)
+	querySQL := fmt.Sprintf(`SELECT
+	S.OWNER,
+	S.TABLE_NAME,
+	ROUND(S.AVG_ROW_LEN / 1024 / 1024, 2) AS AVG_ROW_LEN
+FROM
+	DBA_TABLES S
+WHERE
+	S.OWNER IN (%s)
+	AND ROUND(S.AVG_ROW_LEN / 1024 / 1024, 2) >= %d
+	AND NOT EXISTS (
+	SELECT
+			1
+	FROM
+			DBA_RECYCLEBIN B
+	WHERE
+			S.OWNER = B.OWNER
+		AND S.TABLE_NAME = B.OBJECT_NAME
+	)`, strings.Join(schemaName, ","), limitMB)
 
 	_, res, err := d.GeneralQuery(querySQL)
 	if err != nil {
@@ -615,17 +696,27 @@ WHERE
 
 func (d *Database) GetDatabaseSchemaTableNameLengthOverLimit(schemaName []string, limit int) ([]map[string]string, error) {
 	querySQL := fmt.Sprintf(`SELECT
-	OWNER,
-	TABLE_NAME,
-	LENGTH(TABLE_NAME) LENGTH_OVER
+	S.OWNER,
+	S.TABLE_NAME,
+	LENGTH(S.TABLE_NAME) LENGTH_OVER
 FROM
-	DBA_TABLES
+	DBA_TABLES S
 WHERE
-	OWNER IN (%s)
-	AND LENGTH(TABLE_NAME) > %d
+	S.OWNER IN (%s)
+	AND LENGTH(S.TABLE_NAME) > %d
+	AND NOT EXISTS (
+	SELECT
+			1
+	FROM
+			DBA_RECYCLEBIN B
+	WHERE
+			S.OWNER = B.OWNER
+		AND S.TABLE_NAME = B.OBJECT_NAME
+	)
 ORDER BY
 	OWNER,
-	TABLE_NAME`, strings.Join(schemaName, ","), limit)
+	TABLE_NAME
+`, strings.Join(schemaName, ","), limit)
 
 	_, res, err := d.GeneralQuery(querySQL)
 	if err != nil {
@@ -799,6 +890,15 @@ FROM
 			TMP.OWNER = W.OWNER
 			AND TMP.TABLE_NAME = W.TABLE_NAME
 			AND TMP.OWNER IN (%s)
+		  	AND NOT EXISTS (
+		  	    SELECT 
+		  	        1
+		  	    FROM 
+		  	        DBA_RECYCLEBIN B
+		  	    WHERE
+		  	        TMP.OWNER = B.OWNER
+		  	      AND TMP.TABLE_NAME = B.OBJECT_NAME
+		  	)
 			AND (W.IOT_TYPE IS NULL
 				OR W.IOT_TYPE = 'IOT')) F
 	LEFT JOIN (
@@ -840,7 +940,7 @@ FROM
 	WHERE T.TABLE_NAME = C.TABLE_NAME
 	AND T.COLUMN_NAME = C.COLUMN_NAME
 	AND T.OWNER = C.OWNER
-	AND UPPER(T.OWNER) IN (%s)]' )
+	AND T.OWNER IN (%s)]' )
 	FROM
 		DUAL ) COLUMNS OWNER VARCHAR2 (300) PATH 'OWNER',
 		DATA_DEFAULT VARCHAR2 (4000)
@@ -900,16 +1000,31 @@ GROUP BY
 
 func (d *Database) GetDatabaseSchemaPartitionTypeCounts(schemaName []string) ([]map[string]string, error) {
 	// SUBPARTITIONING_TYPE = 'NONE' -> remove subpartition
-	querySQL := fmt.Sprintf(`SELECT
-	OWNER,
-	PARTITIONING_TYPE,
+	querySQL := fmt.Sprintf(`SELECT 
+	TEMP.OWNER,
+	TEMP.PARTITIONING_TYPE,
 	COUNT(1) COUNTS
 FROM
-	DBA_PART_TABLES 
-WHERE
-	OWNER IN (%s)
-AND SUBPARTITIONING_TYPE = 'NONE'
-GROUP BY OWNER,PARTITIONING_TYPE`, strings.Join(schemaName, ","))
+	(
+	SELECT
+		S.OWNER,
+		S.PARTITIONING_TYPE
+	FROM
+		DBA_PART_TABLES S
+	WHERE
+		S.OWNER IN (%s)
+		AND S.SUBPARTITIONING_TYPE = 'NONE'
+		AND NOT EXISTS (
+		SELECT
+			1
+		FROM
+			DBA_RECYCLEBIN B
+		WHERE
+			S.OWNER = B.OWNER
+			AND S.TABLE_NAME = B.OBJECT_NAME)) TEMP
+GROUP BY
+	TEMP.OWNER,
+	TEMP.PARTITIONING_TYPE`, strings.Join(schemaName, ","))
 
 	_, res, err := d.GeneralQuery(querySQL)
 	if err != nil {
@@ -921,20 +1036,31 @@ GROUP BY OWNER,PARTITIONING_TYPE`, strings.Join(schemaName, ","))
 func (d *Database) GetDatabaseSchemaSubPartitionTypeCounts(schemaName []string) ([]map[string]string, error) {
 	// SUBPARTITIONING_TYPE <> 'NONE'  -> remove normal partition
 	querySQL := fmt.Sprintf(`SELECT 
-	OWNER,
-	SUBPARTITIONING_TYPE,
+	TEMP.OWNER,
+	TEMP.SUBPARTITIONING_TYPE,
 	COUNT(1) COUNTS
 FROM
-(SELECT
-	OWNER,
-	PARTITIONING_TYPE || '-' || SUBPARTITIONING_TYPE AS SUBPARTITIONING_TYPE
-FROM
-	DBA_PART_TABLES 
-WHERE
-	OWNER IN (%s)
-AND SUBPARTITIONING_TYPE <> 'NONE'
-)
-GROUP BY OWNER,SUBPARTITIONING_TYPE`, strings.Join(schemaName, ","))
+	(
+	SELECT
+		S.OWNER,
+		S.PARTITIONING_TYPE || '-' || S.SUBPARTITIONING_TYPE AS SUBPARTITIONING_TYPE
+	FROM
+		DBA_PART_TABLES S
+	WHERE
+		S.OWNER IN (%s)
+		AND S.SUBPARTITIONING_TYPE <> 'NONE'
+		AND NOT EXISTS (
+		SELECT
+			1
+		FROM
+			DBA_RECYCLEBIN B
+		WHERE
+			S.OWNER = B.OWNER
+			AND S.TABLE_NAME = B.OBJECT_NAME)
+) TEMP
+GROUP BY
+	TEMP.OWNER,
+	TEMP.SUBPARTITIONING_TYPE`, strings.Join(schemaName, ","))
 
 	_, res, err := d.GeneralQuery(querySQL)
 	if err != nil {
