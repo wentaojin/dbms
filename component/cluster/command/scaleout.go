@@ -41,7 +41,6 @@ type AppScaleOut struct {
 	*App
 	User           string // username to login to the SSH server
 	SkipCreateUser bool   // don't create the user
-	DisableFillOS  bool   // don't fill os
 	IdentityFile   string // path to the private key file
 	UsePassword    bool   // use password instead of identity file for ssh connection
 }
@@ -70,7 +69,6 @@ func (a *AppScaleOut) Cmd() *cobra.Command {
 	}
 	c.Flags().StringVarP(&a.User, "user", "u", cluster.CurrentUser(), "The user name to login via SSH. The user must has root (or sudo) privilege.")
 	c.Flags().BoolVarP(&a.SkipCreateUser, "skip-create-user", "", false, "(EXPERIMENTAL) Skip creating the user specified in topology.")
-	c.Flags().BoolVarP(&a.DisableFillOS, "disable-fill-os", "", false, "(EXPERIMENTAL) Skip fill os specified in topology.")
 	c.Flags().StringVarP(&a.IdentityFile, "identity-file", "i", a.IdentityFile, "The path of the SSH identity file. If specified, public key authentication c be used.")
 	c.Flags().BoolVarP(&a.UsePassword, "password", "p", false, "Use password of target hosts. If specified, password authentication will be used.")
 	return c
@@ -156,10 +154,8 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 
 	// fill
 	scaleOutTopo.GlobalOptions = metadata.GetTopology().GlobalOptions
-	if !a.DisableFillOS {
-		if err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, scaleOutTopo, gOpt, a.User, sudo); err != nil {
-			return err
-		}
+	if err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, scaleOutTopo, gOpt, a.User, sudo); err != nil {
+		return err
 	}
 
 	// patched
