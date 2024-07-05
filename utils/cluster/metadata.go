@@ -86,10 +86,6 @@ func (m *Metadata) GenMetadata() *Metadata {
 }
 
 func (m *Metadata) ScaleOutTopology(topo *Topology) {
-	m.Topology = &Topology{
-		GlobalOptions: m.Topology.GlobalOptions,
-		ServerConfigs: m.Topology.ServerConfigs,
-		MasterServers: append(m.Topology.MasterServers, topo.MasterServers...),
-		WorkerServers: append(m.Topology.WorkerServers, topo.WorkerServers...),
-	}
+	m.Topology.MasterServers = append(m.Topology.MasterServers, topo.MasterServers...)
+	m.Topology.WorkerServers = append(m.Topology.WorkerServers, topo.WorkerServers...)
 }

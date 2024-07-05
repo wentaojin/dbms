@@ -167,8 +167,9 @@ func (b *Builder) Shell(host, command, cmdID string, sudo bool) *Builder {
 }
 
 // EnvInit appends a EnvInit task to the current task collection
-func (b *Builder) EnvInit(host, deployUser string, userGroup string, skipCreateUser bool, sudo bool) *Builder {
+func (b *Builder) EnvInit(os, host, deployUser string, userGroup string, skipCreateUser bool, sudo bool) *Builder {
 	b.tasks = append(b.tasks, &EnvInit{
+		os:             os,
 		host:           host,
 		deployUser:     deployUser,
 		userGroup:      userGroup,

@@ -18,6 +18,24 @@ sh local_install.sh
 
 **Cluster Operation**
 
+部署用户 sudo 权限
+
+Note：
+1. Linux 平台部署集群节点所在服务器必需已提前创建部署用户且必需具备至少具备以下 sudo 权限，非 Linux 平台部署集群节点所在服务器必需已提前部署用户且具备 sudo all 权限（理论同样以下权限也可以，但未实际测试验证）
+    ```shell
+    {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c uname *
+    {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c id *
+    {deploy_user} ALL=(root) NOPASSWD: /usr/sbin/groupadd *
+    {deploy_user} ALL=(root) NOPASSWD: /usr/sbin/useradd *
+    {deploy_user} ALL=(root) NOPASSWD: /usr/bin/chown *
+    {deploy_user} ALL=(root) NOPASSWD: /usr/bin/echo *
+    {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c su - *
+    {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c mkdir -p *
+    {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c chmod *
+    {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c test *
+    ```
+2. Linux 平台参数配置文件拓扑 topology 运行用户会自动生成最小 sudo 权限，而非 Linux 平台参数配置文件 topology 运行用户统一自动生成 sudo all 权限运行
+
 集群部署参数配置[示例](../example/topology.yaml)  
 ```shell
 dbms-cluster deploy ${cluster_name} ${cluster_version} ${topology.yaml} --mirror-dir ${offline_package_path} -u ${deploy_user} 

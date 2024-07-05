@@ -117,6 +117,7 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 		status, err := ins.Status(ctx, nil, masterList...)
 		if err != nil {
 			c.Logger.Errorf("get instance %s status failed: %v", ins.InstanceName(), err)
+			masterStatus[ins.InstanceName()] = status
 			return
 		}
 		mu.Lock()
@@ -157,7 +158,6 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 			status, err = ins.Status(ctx, nil, masterActive...)
 			if err != nil {
 				c.Logger.Errorf("get instance %s status failed: %v", ins.InstanceName(), err)
-				return
 			}
 		}
 

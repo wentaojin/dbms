@@ -18,6 +18,8 @@ package module
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/stringutil"
+	"strings"
 
 	"github.com/wentaojin/dbms/utils/executor"
 )
@@ -39,6 +41,7 @@ const (
 
 // UserModuleConfig is the configuration used to initialize UserModule
 type UserModuleConfig struct {
+	OS     string // OS Version
 	Action string // Create, delete or change users
 	Name   string // username
 	Group  string // user group
@@ -97,11 +100,17 @@ func NewUserModule(config UserModuleConfig) *UserModule {
 
 		//Add user to sudoers list
 		if config.Sudoer {
-			sudoLine := fmt.Sprintf("%s ALL=(ALL) NOPASSWD:ALL",
-				config.Name)
-			cmd = fmt.Sprintf("%s && %s",
-				cmd,
-				fmt.Sprintf("echo '%s' > /etc/sudoers.d/%s", sudoLine, config.Name))
+			if strings.EqualFold(config.OS, "linux") {
+				cmd = fmt.Sprintf("%s && %s",
+					cmd,
+					fmt.Sprintf("cat > /etc/sudoers.d/%s << EOF\n%s\nEOF", config.Name, stringutil.StringJoin(stringutil.GetTopologyUserSudoPrivileges(config.Name), "\n")))
+			} else {
+				sudoLine := fmt.Sprintf("%s ALL=(ALL) NOPASSWD:ALL",
+					config.Name)
+				cmd = fmt.Sprintf("%s && %s",
+					cmd,
+					fmt.Sprintf("echo '%s' > /etc/sudoers.d/%s", sudoLine, config.Name))
+			}
 		}
 
 	case UserActionDel:

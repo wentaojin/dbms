@@ -38,6 +38,7 @@ var (
 // 1. Generate SSH key
 // 2. ssh-copy-id
 type EnvInit struct {
+	os             string
 	host           string
 	deployUser     string
 	userGroup      string
@@ -62,6 +63,7 @@ func (e *EnvInit) exec(ctx context.Context) error {
 
 	if !e.skipCreateUser {
 		um := module.NewUserModule(module.UserModuleConfig{
+			OS:     e.os,
 			Action: module.UserActionAdd,
 			Name:   e.deployUser,
 			Group:  e.userGroup,

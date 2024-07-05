@@ -233,10 +233,12 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 	}
 
 	// get unique host from old topology
-	uniqueHosts := make(map[string]int) // host -> ssh-port
+	uniqueHosts := make(map[string]int)     // host -> ssh-port
+	uniqueHostOS := make(map[string]string) // host -> os
 	oldTopo.IterInstance(func(inst cluster.Instance) {
 		if _, found := uniqueHosts[inst.InstanceHost()]; !found {
 			uniqueHosts[inst.InstanceHost()] = inst.InstanceSshPort()
+			uniqueHostOS[inst.InstanceHost()] = inst.OS()
 		}
 	})
 
@@ -281,7 +283,7 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 				executor.SSHType(globalOptions.SSHType),
 				a.User != "root" && systemdMode != cluster.UserMode,
 			).
-			EnvInit(inst.InstanceManageHost(), globalOptions.User, globalOptions.Group, a.SkipCreateUser || globalOptions.User == a.User, sudo).
+			EnvInit(uniqueHostOS[inst.InstanceHost()], inst.InstanceManageHost(), globalOptions.User, globalOptions.Group, a.SkipCreateUser || globalOptions.User == a.User, sudo).
 			Mkdir(globalOptions.User, inst.InstanceManageHost(), sudo, dirs...).
 			BuildAsStep(fmt.Sprintf("  - Initialized host %s ", inst.InstanceManageHost()))
 
@@ -346,29 +348,28 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 	})
 
 	// init scale out config
-	// generate config
-	scaleOutTopo.IterInstance(func(inst cluster.Instance) {
-		t := task.NewSimpleUerSSH(mg.Logger, inst.InstanceManageHost(), inst.InstanceSshPort(), globalOptions.User, gOpt, sshConnProps, sshType).
-			ScaleConfig(
-				clusterName,
-				newTopo,
-				inst,
-				globalOptions.User,
-				mg.Path(clusterName, cluster.CacheDirName),
-			).BuildAsStep(fmt.Sprintf("  - Generate scale-out config %s -> %s", inst.ComponentName(), inst.InstanceName()))
-		scaleConfigTasks = append(scaleConfigTasks, t)
-	})
-
-	// refresh config
+	// generate and refresh config
 	newTopo.IterInstance(func(inst cluster.Instance) {
 		// exclude scale-out node config
 		if _, ok := scaleOutNodes[inst.InstanceName()]; ok {
+			t := task.NewSimpleUerSSH(mg.Logger, inst.InstanceManageHost(), inst.InstanceSshPort(), globalOptions.User, gOpt, sshConnProps, sshType).
+				ScaleConfig(
+					clusterName,
+					newTopo,
+					inst,
+					globalOptions.User,
+					mg.Path(clusterName, cluster.CacheDirName),
+				).BuildAsStep(fmt.Sprintf("  - Generate scale-out config %s -> %s", inst.ComponentName(), inst.InstanceName()))
+			scaleConfigTasks = append(scaleConfigTasks, t)
 			return
 		}
 
 		compName := inst.ComponentName()
 		// Download and copy the latest component to remote if the cluster is imported from Ansible
-		tb := task.NewBuilder(logger).InitConfig(
+		tb := task.NewSimpleUerSSH(mg.Logger,
+			inst.InstanceManageHost(),
+			inst.InstanceSshPort(),
+			globalOptions.User, gOpt, sshConnProps, sshType).InitConfig(
 			clusterName,
 			inst,
 			globalOptions.User,

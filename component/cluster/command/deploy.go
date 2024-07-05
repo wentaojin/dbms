@@ -44,7 +44,6 @@ type AppDeploy struct {
 	*App
 	User           string // username to login to the SSH server
 	SkipCreateUser bool   // don't create the user
-	DisableFillOS  bool   // don't fill os
 	IdentityFile   string // path to the private key file
 	UsePassword    bool   // use password instead of identity file for ssh connection
 }
@@ -73,7 +72,6 @@ func (a *AppDeploy) Cmd() *cobra.Command {
 
 	c.Flags().StringVarP(&a.User, "user", "u", cluster.CurrentUser(), "The user name to login via SSH. The user must has root (or sudo) privilege.")
 	c.Flags().BoolVarP(&a.SkipCreateUser, "skip-create-user", "", false, "(EXPERIMENTAL) Skip creating the user specified in topology.")
-	c.Flags().BoolVarP(&a.DisableFillOS, "disable-fill-os", "", false, "(EXPERIMENTAL) Skip fill os specified in topology.")
 	c.Flags().StringVarP(&a.IdentityFile, "identity-file", "i", filepath.Join(cluster.UserHome(), ".ssh", ".id_rsa"), "The path of the SSH identity file. If specified, public key authentication will be used.")
 	c.Flags().BoolVarP(&a.UsePassword, "password", "p", false, "Use password of target hosts. If specified, password authentication will be used.")
 	return c
@@ -191,11 +189,9 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 		sudo = true
 	}
 
-	if !a.DisableFillOS {
-		err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, topo, gOpt, a.User, sudo)
-		if err != nil {
-			return err
-		}
+	err = mg.FillHostArchOrOS(sshConnProps, sshProxyProps, topo, gOpt, a.User, sudo)
+	if err != nil {
+		return err
 	}
 
 	mg.FillTopologyDir(topo)
@@ -226,10 +222,12 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 
 	globalOptions := topo.GlobalOptions
 
-	uniqueHosts := make(map[string]int) // host -> ssh-port
+	uniqueHosts := make(map[string]int)     // host -> ssh-port
+	uniqueHostOS := make(map[string]string) // host -> os
 	topo.IterInstance(func(inst cluster.Instance) {
 		if _, found := uniqueHosts[inst.InstanceHost()]; !found {
 			uniqueHosts[inst.InstanceHost()] = inst.InstanceSshPort()
+			uniqueHostOS[inst.InstanceHost()] = inst.OS()
 		}
 	})
 
@@ -294,7 +292,7 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 				executor.SSHType(topo.GlobalOptions.SSHType),
 				gOpt.SSHType,
 				sudo,
-			).EnvInit(host, globalOptions.User, globalOptions.Group, a.SkipCreateUser || globalOptions.User == a.User, sudo).
+			).EnvInit(uniqueHostOS[host], host, globalOptions.User, globalOptions.Group, a.SkipCreateUser || globalOptions.User == a.User, sudo).
 			Mkdir(globalOptions.User, host, sudo, dirs...).
 			BuildAsStep(fmt.Sprintf("  - Prepare %s:%d", host, sshPort))
 		envInitTasks = append(envInitTasks, t)

@@ -180,7 +180,6 @@ func (a *AppScaleIn) ScaleIn(clusterName string, gOpt *operator.Options) error {
 			return
 		}
 		compName := inst.ComponentName()
-		// Download and copy the latest component to remote if the cluster is imported from Ansible
 		tb := task.NewBuilder(logger).InitConfig(
 			clusterName,
 			inst,

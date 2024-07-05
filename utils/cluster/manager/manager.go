@@ -301,7 +301,7 @@ func (c *Controller) IsScaleOutLocked(clusterName string) (locked bool, err erro
 		return false, err
 	}
 
-	return true, nil
+	return true, fmt.Errorf("lock file %s", fname)
 }
 
 // NewScaleOutLock save the meta with specified cluster name.

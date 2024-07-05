@@ -202,14 +202,14 @@ func (m *MasterInstance) InstanceScaleConfig(ctx context.Context, e executor.Exe
 		return err
 	}
 
-	dst := filepath.Join(m.DeployDir, ScriptDirName, "run_dm-master.sh")
+	dst := filepath.Join(m.DeployDir, ScriptDirName, "run_dbms-master.sh")
 	if err := e.Transfer(ctx, fp, dst, false, 0); err != nil {
 		return err
 	}
 	if _, _, err := e.Execute(ctx, "chmod +x "+dst, false); err != nil {
 		return err
 	}
-	return m.MergeServerConfig(ctx, e, topo.ServerConfigs.Worker, m.GetInstanceConfig(), cacheDir)
+	return m.MergeServerConfig(ctx, e, topo.ServerConfigs.Master, m.GetInstanceConfig(), cacheDir)
 }
 
 // WorkerInstance represent the dbms-worker instance

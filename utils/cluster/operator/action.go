@@ -281,7 +281,7 @@ func StopComponent(ctx context.Context,
 func stopInstance(ctx context.Context, ins cluster.Instance, timeout uint64, systemdMode string) error {
 	e := ctxt.GetInner(ctx).Get(ins.InstanceManageHost())
 	logger := ctx.Value(printer.ContextKeyLogger).(*printer.Logger)
-	logger.Infof("\tStopping instance %s", ins.InstanceManageHost())
+	logger.Infof("\tStopping instance %s", ins.InstanceName())
 
 	if strings.EqualFold(ins.OS(), "darwin") {
 		if err := launchctl(ctx, e, ins.ServiceName(), "stop", timeout, systemdMode); err != nil {
