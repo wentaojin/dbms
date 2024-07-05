@@ -1,11 +1,12 @@
 .ONESHELL: build runMaster stopMaster runWorker stopWorker clean gotool
 
-MASTERCMD="./component/master/main.go"
-WORKERCMD="./component/worker/main.go"
-CTLCMD="./component/cli/main.go"
-CLUSTERCMD="./component/cluster/main.go"
-BINARYPATH="bin/"
-CONFIGPATH=./sample
+PWD:=$(shell pwd)
+MASTERCMD = $(PWD)/component/master/main.go
+WORKERCMD = $(PWD)/component/worker/main.go
+CTLCMD = $(PWD)/component/cli/main.go
+CLUSTERCMD = $(PWD)/component/cluster/main.go
+BINARYPATH = $(PWD)/bin
+CONFIGPATH = $(PWD)/sample
 
 MASTERCONFIG00TEMP = $(CONFIGPATH)/master_config00_temp.toml
 MASTERCONFIG01TEMP = $(CONFIGPATH)/master_config01_temp.toml
@@ -112,33 +113,33 @@ stopWorker: clean
 masterServer00:
 	@echo "Setting  masterServer00 script LIBRARY_DIR_VAR to: $$LIBRARY_PATH_VAR"
 	@echo "Starting masterServer00 script..."
-	@nohup $(MASTERSCRIPT00) > $(MASTERSCRIPTLOG00) 2>&1 &
+	@nohup sh $(MASTERSCRIPT00) > $(MASTERSCRIPTLOG00) 2>&1 &
 	@echo "Starting masterServer00 background has started..."
 masterServer01:
 	@echo "Setting  masterServer01 script LIBRARY_DIR_VAR to: $$LIBRARY_PATH_VAR"
 	@echo "Starting masterServer01 script..."
-	@nohup $(MASTERSCRIPT01) > $(MASTERSCRIPTLOG01) 2>&1 &
+	@nohup sh $(MASTERSCRIPT01) > $(MASTERSCRIPTLOG01) 2>&1 &
 	@echo "Starting masterServer01 background has started..."
 masterServer02:
 	@echo "Setting  masterServer02 script LIBRARY_DIR_VAR to: $$LIBRARY_PATH_VAR"
 	@echo "Starting masterServer02 script..."
-	@nohup $(MASTERSCRIPT02) > $(MASTERSCRIPTLOG02) 2>&1 &
+	@nohup sh $(MASTERSCRIPT02) > $(MASTERSCRIPTLOG02) 2>&1 &
 	@echo "Starting masterServer02 background has started..."
 
 workerServer00:
 	@echo "Setting  workerServer00 script LIBRARY_DIR_VAR to: $$LIBRARY_PATH_VAR"
 	@echo "Starting workerServer00 script..."
-	@nohup $(WORKERSCRIPT00) > $(WORKERSCRIPTLOG00) 2>&1 &
+	@nohup sh $(WORKERSCRIPT00) > $(WORKERSCRIPTLOG00) 2>&1 &
 	@echo "Starting workerServer00 background has started..."
 workerServer01:
 	@echo "Setting  workerServer01 script LIBRARY_DIR_VAR to: $$LIBRARY_PATH_VAR"
 	@echo "Starting workerServer01 script..."
-	@nohup $(WORKERSCRIPT01) > $(WORKERSCRIPTLOG01) 2>&1 &
+	@nohup sh $(WORKERSCRIPT01) > $(WORKERSCRIPTLOG01) 2>&1 &
 	@echo "Starting workerServer01 background has started..."
 workerServer02:
 	@echo "Setting  workerServer02 script LIBRARY_DIR_VAR to: $$LIBRARY_PATH_VAR"
 	@echo "Starting workerServer02 script..."
-	@nohup $(WORKERSCRIPT02) > $(WORKERSCRIPTLOG02) 2>&1 &
+	@nohup sh $(WORKERSCRIPT02) > $(WORKERSCRIPTLOG02) 2>&1 &
 	@echo "Starting workerServer01 background has started..."
 
 seedMaster:

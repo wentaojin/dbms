@@ -17,7 +17,6 @@ package taskflow
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/shopspring/decimal"
 	"maps"
@@ -795,7 +794,11 @@ func (r *DataCompareRow) CompareCRC32() error {
 	}
 
 	if len(delDetails) > 0 {
-		groupDelDetails := stringutil.StringSliceSplit(delDetails, r.BatchSize)
+		splitCounts := len(delDetails) / r.BatchSize
+		if splitCounts == 0 {
+			splitCounts = 1
+		}
+		groupDelDetails := stringutil.StringSliceSplit(delDetails, splitCounts)
 
 		gDel, gDelCtx := errgroup.WithContext(r.Ctx)
 		gDel.SetLimit(r.WriteThread)
@@ -828,13 +831,17 @@ func (r *DataCompareRow) CompareCRC32() error {
 				}
 			})
 		}
-		if err = gDel.Wait(); !errors.Is(err, context.Canceled) {
+		if err = gDel.Wait(); err != nil {
 			return err
 		}
 	}
 
 	if len(addDetails) > 0 {
-		groupAddDetails := stringutil.StringSliceSplit(addDetails, r.BatchSize)
+		splitCounts := len(delDetails) / r.BatchSize
+		if splitCounts == 0 {
+			splitCounts = 1
+		}
+		groupAddDetails := stringutil.StringSliceSplit(addDetails, splitCounts)
 
 		gAdd, gAddCtx := errgroup.WithContext(r.Ctx)
 		gAdd.SetLimit(r.WriteThread)
@@ -867,7 +874,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 				}
 			})
 		}
-		if err = gAdd.Wait(); !errors.Is(err, context.Canceled) {
+		if err = gAdd.Wait(); err != nil {
 			return err
 		}
 	}
@@ -1085,7 +1092,11 @@ func (r *DataCompareRow) compareMd5Row() error {
 	}
 
 	if len(delDetails) > 0 {
-		groupDelDetails := stringutil.StringSliceSplit(delDetails, r.BatchSize)
+		splitCounts := len(delDetails) / r.BatchSize
+		if splitCounts == 0 {
+			splitCounts = 1
+		}
+		groupDelDetails := stringutil.StringSliceSplit(delDetails, splitCounts)
 
 		gDel, gDelCtx := errgroup.WithContext(r.Ctx)
 		gDel.SetLimit(r.WriteThread)
@@ -1118,13 +1129,17 @@ func (r *DataCompareRow) compareMd5Row() error {
 				}
 			})
 		}
-		if err = gDel.Wait(); !errors.Is(err, context.Canceled) {
+		if err = gDel.Wait(); err != nil {
 			return err
 		}
 	}
 
 	if len(addDetails) > 0 {
-		groupAddDetails := stringutil.StringSliceSplit(addDetails, r.BatchSize)
+		splitCounts := len(delDetails) / r.BatchSize
+		if splitCounts == 0 {
+			splitCounts = 1
+		}
+		groupAddDetails := stringutil.StringSliceSplit(addDetails, splitCounts)
 
 		gAdd, gAddCtx := errgroup.WithContext(r.Ctx)
 		gAdd.SetLimit(r.WriteThread)
@@ -1157,7 +1172,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 				}
 			})
 		}
-		if err = gAdd.Wait(); !errors.Is(err, context.Canceled) {
+		if err = gAdd.Wait(); err != nil {
 			return err
 		}
 	}

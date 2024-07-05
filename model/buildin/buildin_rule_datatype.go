@@ -1290,3 +1290,27 @@ func InitT2OBuildinDatatypeRule() []*BuildinDatatypeRule {
 	})
 	return buildinDataTypeR
 }
+
+// DatatypeSliceSplit used for the according to splitCounts, split slice
+func DatatypeSliceSplit(items []*BuildinDatatypeRule, splitCounts int) [][]*BuildinDatatypeRule {
+	subArraySize := len(items) / splitCounts
+
+	result := make([][]*BuildinDatatypeRule, 0)
+
+	for i := 0; i < splitCounts; i++ {
+		start := i * subArraySize
+
+		end := start + subArraySize
+
+		if i == splitCounts-1 {
+			end = len(items)
+		}
+
+		subArray := items[start:end]
+		if len(subArray) > 0 {
+			result = append(result, subArray)
+		}
+	}
+
+	return result
+}

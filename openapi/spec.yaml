@@ -788,6 +788,9 @@ components:
         slowThreshold:
           type: integer
           format: uint64
+        initThread:
+          type: integer
+          format: uint64
     NewDatasource:
       type: object
       properties:

@@ -6,3 +6,5 @@ password = ""
 schema = "dbms"
 # slow threshold
 slow-threshold = 300
+# init thread
+init-thread = 8

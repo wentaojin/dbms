@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"strings"
 	"time"
 
@@ -50,6 +51,12 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
+
+// initDefaultBatchSize represent init the database batch size
+const initDefaultBatchSize = 10
+
+// initDefaultThread represent init the database init thread
+const initDefaultThread = 8
 
 var DefaultDB *database
 
@@ -100,6 +107,7 @@ type Database struct {
 	Password      string `toml:"password" json:"password"`
 	Schema        string `toml:"schema" json:"schema"`
 	SlowThreshold uint64 `toml:"slowThreshold" json:"slowThreshold"`
+	InitThread    uint64 `toml:"initThread" json:"initThread"`
 }
 
 // CreateDatabaseConnection create database connection
@@ -138,17 +146,20 @@ func CreateDatabaseConnection(cfg *Database, addRole, logLevel string) error {
 
 		startTime = time.Now()
 		logger.Info("database table init starting", zap.String("database", cfg.Schema), zap.String("startTime", startTime.String()))
-		err = DefaultDB.migrateTables()
 		ctx := context.Background()
-		err = DefaultDB.initDatatypeRule(ctx)
+
+		if cfg.InitThread == 0 {
+			cfg.InitThread = initDefaultThread
+		}
+		err = DefaultDB.initDatatypeRule(ctx, int(cfg.InitThread))
 		if err != nil {
 			return err
 		}
-		err = DefaultDB.initDefaultValueRule(ctx)
+		err = DefaultDB.initDefaultValueRule(ctx, int(cfg.InitThread))
 		if err != nil {
 			return err
 		}
-		err = DefaultDB.initCompatibleRule(ctx)
+		err = DefaultDB.initCompatibleRule(ctx, int(cfg.InitThread))
 		if err != nil {
 			return err
 		}
@@ -298,29 +309,40 @@ func (d *database) migrateTables() (err error) {
 	)
 }
 
-func (d *database) initDatatypeRule(ctx context.Context) error {
+func (d *database) initDatatypeRule(ctx context.Context, thread int) error {
 	err := Transaction(ctx, func(txnCtx context.Context) error {
 		record, err := GetBuildInRuleRecordRW().GetBuildInRuleRecord(ctx, constant.BuildInRuleNameColumnDatatype)
 		if err != nil {
 			return err
 		}
 		if !strings.EqualFold(record.RuleInit, constant.BuildInRuleInitSuccess) {
-			_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(ctx, buildin.InitO2MBuildinDatatypeRule())
-			if err != nil {
+			var slis []*buildin.BuildinDatatypeRule
+			slis = append(slis, buildin.InitO2MBuildinDatatypeRule()...)
+			slis = append(slis, buildin.InitO2TBuildinDatatypeRule()...)
+			slis = append(slis, buildin.InitM2OBuildinDatatypeRule()...)
+			slis = append(slis, buildin.InitT2OBuildinDatatypeRule()...)
+
+			splitCounts := len(slis) / initDefaultBatchSize
+			if splitCounts == 0 {
+				splitCounts = 1
+			}
+
+			g, gCtx := errgroup.WithContext(txnCtx)
+			g.SetLimit(thread)
+			for _, sli := range buildin.DatatypeSliceSplit(slis, splitCounts) {
+				s := sli
+				g.Go(func() error {
+					_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(gCtx, s)
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+			}
+			if err = g.Wait(); err != nil {
 				return err
 			}
-			_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(ctx, buildin.InitO2TBuildinDatatypeRule())
-			if err != nil {
-				return err
-			}
-			_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(ctx, buildin.InitM2OBuildinDatatypeRule())
-			if err != nil {
-				return err
-			}
-			_, err = GetIBuildInDatatypeRuleRW().CreateBuildInDatatypeRule(ctx, buildin.InitT2OBuildinDatatypeRule())
-			if err != nil {
-				return err
-			}
+
 			_, err = GetBuildInRuleRecordRW().CreateBuildInRuleRecord(ctx, &buildin.BuildinRuleRecord{
 				RuleName: constant.BuildInRuleNameColumnDatatype,
 				RuleInit: constant.BuildInRuleInitSuccess,
@@ -337,19 +359,35 @@ func (d *database) initDatatypeRule(ctx context.Context) error {
 	return nil
 }
 
-func (d *database) initDefaultValueRule(ctx context.Context) error {
+func (d *database) initDefaultValueRule(ctx context.Context, thread int) error {
 	err := Transaction(ctx, func(txnCtx context.Context) error {
 		record, err := GetBuildInRuleRecordRW().GetBuildInRuleRecord(ctx, constant.BuildInRuleNameColumnDefaultValue)
 		if err != nil {
 			return err
 		}
 		if !strings.EqualFold(record.RuleInit, constant.BuildInRuleInitSuccess) {
-			_, err = GetBuildInDefaultValueRuleRW().CreateBuildInDefaultValueRule(ctx, buildin.InitO2MTBuildinDefaultValue())
-			if err != nil {
-				return err
+			var slis []*buildin.BuildinDefaultvalRule
+			slis = append(slis, buildin.InitO2MTBuildinDefaultValue()...)
+			slis = append(slis, buildin.InitMT2OBuildinDefaultValue()...)
+
+			splitCounts := len(slis) / initDefaultBatchSize
+			if splitCounts == 0 {
+				splitCounts = 1
 			}
-			_, err = GetBuildInDefaultValueRuleRW().CreateBuildInDefaultValueRule(ctx, buildin.InitMT2OBuildinDefaultValue())
-			if err != nil {
+
+			g, gCtx := errgroup.WithContext(txnCtx)
+			g.SetLimit(thread)
+			for _, sli := range buildin.DefaultValueSliceSplit(slis, splitCounts) {
+				s := sli
+				g.Go(func() error {
+					_, err = GetBuildInDefaultValueRuleRW().CreateBuildInDefaultValueRule(gCtx, s)
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+			}
+			if err = g.Wait(); err != nil {
 				return err
 			}
 			_, err = GetBuildInRuleRecordRW().CreateBuildInRuleRecord(ctx, &buildin.BuildinRuleRecord{
@@ -368,19 +406,35 @@ func (d *database) initDefaultValueRule(ctx context.Context) error {
 	return nil
 }
 
-func (d *database) initCompatibleRule(ctx context.Context) error {
+func (d *database) initCompatibleRule(ctx context.Context, thread int) error {
 	err := Transaction(ctx, func(txnCtx context.Context) error {
 		record, err := GetBuildInRuleRecordRW().GetBuildInRuleRecord(ctx, constant.BuildInRuleNameObjectCompatible)
 		if err != nil {
 			return err
 		}
 		if !strings.EqualFold(record.RuleInit, constant.BuildInRuleInitSuccess) {
-			_, err = GetBuildInCompatibleRuleRW().CreateBuildInCompatibleRule(ctx, buildin.InitO2MBuildinCompatibleRule())
-			if err != nil {
-				return err
+			var slis []*buildin.BuildinCompatibleRule
+			slis = append(slis, buildin.InitO2MBuildinCompatibleRule()...)
+			slis = append(slis, buildin.InitO2TBuildinCompatibleRule()...)
+
+			splitCounts := len(slis) / initDefaultBatchSize
+			if splitCounts == 0 {
+				splitCounts = 1
 			}
-			_, err = GetBuildInCompatibleRuleRW().CreateBuildInCompatibleRule(ctx, buildin.InitO2TBuildinCompatibleRule())
-			if err != nil {
+
+			g, gCtx := errgroup.WithContext(txnCtx)
+			g.SetLimit(thread)
+			for _, sli := range buildin.CompatibleRuleSliceSplit(slis, splitCounts) {
+				s := sli
+				g.Go(func() error {
+					_, err = GetBuildInCompatibleRuleRW().CreateBuildInCompatibleRule(gCtx, s)
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+			}
+			if err = g.Wait(); err != nil {
 				return err
 			}
 			_, err = GetBuildInRuleRecordRW().CreateBuildInRuleRecord(ctx, &buildin.BuildinRuleRecord{

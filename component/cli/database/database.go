@@ -37,6 +37,7 @@ type Database struct {
 	Password      string `toml:"password" json:"password"`
 	Schema        string `toml:"schema" json:"schema"`
 	SlowThreshold int64  `toml:"slow-threshold" json:"slowThreshold"`
+	InitThread    uint64 `toml:"init-thread" json:"initThread"`
 }
 
 func (d *Database) String() string {

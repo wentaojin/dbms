@@ -34,6 +34,7 @@ func (s *Server) upsertDatabase(ctx context.Context, req openapi.APIPutDatabaseJ
 			Port:          *req.Port,
 			Schema:        *req.Schema,
 			SlowThreshold: *req.SlowThreshold,
+			InitThread:    *req.InitThread,
 		},
 	})
 	if err != nil {

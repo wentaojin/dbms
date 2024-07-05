@@ -37,35 +37,49 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 		return err
 	}
 
+	if strings.EqualFold(datasourceNameS, "") {
+		return fmt.Errorf("the datasource %s is empty, please check the datasource whether is exists", datasourceNameS)
+	}
+
 	// exclude table and include table is whether conflict
-	var sourceSchemas []string
+	var sourceSchemas string
 	if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
-		sourceSchemas = append(sourceSchemas, schemaRouteRule.SchemaNameS)
+		sourceSchemas = schemaRouteRule.SchemaNameS
 	}
 	if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
-		sourceSchemas = append(sourceSchemas, stringutil.StringUpper(schemaRouteRule.SchemaNameS))
+		sourceSchemas = stringutil.StringUpper(schemaRouteRule.SchemaNameS)
 	}
 	if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
-		sourceSchemas = append(sourceSchemas, stringutil.StringLower(schemaRouteRule.SchemaNameS))
+		sourceSchemas = stringutil.StringLower(schemaRouteRule.SchemaNameS)
 	}
 	interSection := stringutil.StringItemsFilterIntersection(schemaRouteRule.IncludeTableS, schemaRouteRule.ExcludeTableS)
 	if len(interSection) > 0 {
 		return fmt.Errorf("there is the same table within source include and exclude table, please check and remove")
 	}
 
-	databaseS, errN := database.NewDatabase(ctx, datasourceS, "")
-	if errN != nil {
-		return err
+	var databaseS database.IDatabase
+
+	switch {
+	case strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeOracle):
+		databaseS, err = database.NewDatabase(ctx, datasourceS, sourceSchemas)
+		if err != nil {
+			return err
+		}
+	case strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeTiDB) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeMySQL) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypePostgresql):
+		databaseS, err = database.NewDatabase(ctx, datasourceS, "")
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("the task [%s] datasource [%s] database type [%s] is not supported, please contact author or reselect", taskName, datasourceNameS, datasourceS.DbType)
 	}
-	defer databaseS.Close()
+
 	allOraSchemas, err := databaseS.GetDatabaseSchema()
 	if err != nil {
 		return err
 	}
-	for _, s := range sourceSchemas {
-		if !stringutil.IsContainedString(allOraSchemas, s) {
-			return fmt.Errorf("the schema isn't contained in the database with the case field rule, failed schemas: [%v]", s)
-		}
+	if !stringutil.IsContainedString(allOraSchemas, sourceSchemas) {
+		return fmt.Errorf("the schema isn't contained in the database with the case field rule, failed schemas: [%v]", sourceSchemas)
 	}
 
 	if !strings.EqualFold(schemaRouteRule.String(), "") {
@@ -321,6 +335,11 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 		if err != nil {
 			return err
 		}
+	}
+
+	err = databaseS.Close()
+	if err != nil {
+		return err
 	}
 	return nil
 }

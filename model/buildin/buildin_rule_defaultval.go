@@ -99,3 +99,27 @@ func InitMT2OBuildinDefaultValue() []*BuildinDefaultvalRule {
 
 	return buildinColumDefaultvals
 }
+
+// DefaultValueSliceSplit used for the according to splitCounts, split slice
+func DefaultValueSliceSplit(items []*BuildinDefaultvalRule, splitCounts int) [][]*BuildinDefaultvalRule {
+	subArraySize := len(items) / splitCounts
+
+	result := make([][]*BuildinDefaultvalRule, 0)
+
+	for i := 0; i < splitCounts; i++ {
+		start := i * subArraySize
+
+		end := start + subArraySize
+
+		if i == splitCounts-1 {
+			end = len(items)
+		}
+
+		subArray := items[start:end]
+		if len(subArray) > 0 {
+			result = append(result, subArray)
+		}
+	}
+
+	return result
+}

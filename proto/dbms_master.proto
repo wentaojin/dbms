@@ -500,6 +500,7 @@ message Database {
   uint64 port = 4;
   string schema = 5;
   uint64 slowThreshold = 6;
+  uint64 initThread = 7;
 }
 
 message Datasource {

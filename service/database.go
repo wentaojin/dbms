@@ -40,6 +40,7 @@ func UpsertDatabase(etcdClient *clientv3.Client, defaultDatabaseDBMSKey string, 
 		Password:      req.Database.Password,
 		Schema:        req.Database.Schema,
 		SlowThreshold: req.Database.SlowThreshold,
+		InitThread:    req.Database.InitThread,
 	}
 	jsonStr, err := stringutil.MarshalJSON(db)
 	if err != nil {
