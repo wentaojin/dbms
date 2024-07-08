@@ -279,7 +279,7 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 				executor.SSHType(globalOptions.SSHType),
 				a.User != "root" && systemdMode != cluster.UserMode,
 			).
-			EnvInit(uniqueHostOS[inst.InstanceHost()], inst.InstanceManageHost(), globalOptions.User, globalOptions.Group, a.SkipCreateUser || globalOptions.User == a.User, sudo).
+			EnvInit(uniqueHostOS[inst.InstanceHost()], inst.InstanceManageHost(), globalOptions.User, globalOptions.Group, a.SkipCreateUser, sudo).
 			Mkdir(globalOptions.User, inst.InstanceManageHost(), sudo, dirs...).
 			BuildAsStep(fmt.Sprintf("  - Initialized host %s ", inst.InstanceManageHost()))
 

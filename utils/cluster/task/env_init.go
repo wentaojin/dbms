@@ -53,7 +53,7 @@ func (e *EnvInit) Execute(ctx context.Context) error {
 
 func (e *EnvInit) exec(ctx context.Context) error {
 	wrapError := func(err error) *errorx.Error {
-		return ErrEnvInitFailed.Wrap(err, "Failed to initialize TiDB environment on remote host '%s'", e.host)
+		return ErrEnvInitFailed.Wrap(err, "Failed to initialize DBMS environment on remote host '%s'", e.host)
 	}
 
 	exec, found := ctxt.GetInner(ctx).GetExecutor(e.host)

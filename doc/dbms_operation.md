@@ -33,6 +33,7 @@ Note：
     {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c mkdir -p *
     {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c chmod *
     {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c test *
+    {deploy_user} ALL=(root) NOPASSWD: /bin/bash -c mv *
     ```
 2. Linux 平台参数配置文件拓扑 topology 运行用户会自动生成最小 sudo 权限，而非 Linux 平台参数配置文件 topology 运行用户统一自动生成 sudo all 权限运行
 

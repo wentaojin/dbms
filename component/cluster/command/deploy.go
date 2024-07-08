@@ -292,7 +292,7 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 				executor.SSHType(topo.GlobalOptions.SSHType),
 				gOpt.SSHType,
 				sudo,
-			).EnvInit(uniqueHostOS[host], host, globalOptions.User, globalOptions.Group, a.SkipCreateUser || globalOptions.User == a.User, sudo).
+			).EnvInit(uniqueHostOS[host], host, globalOptions.User, globalOptions.Group, a.SkipCreateUser, sudo).
 			Mkdir(globalOptions.User, host, sudo, dirs...).
 			BuildAsStep(fmt.Sprintf("  - Prepare %s:%d", host, sshPort))
 		envInitTasks = append(envInitTasks, t)
