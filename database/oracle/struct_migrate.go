@@ -1374,14 +1374,14 @@ ORDER BY
 	T.COLUMN_ID`,
 		schemaName,
 		tableName)
-	_, queryRes, err := d.GeneralQuery(queryStr)
+	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
-		return queryRes, fmt.Errorf("get database table column comment failed: %v", err)
+		return res, fmt.Errorf("get database table column comment failed: %v", err)
 	}
-	if len(queryRes) == 0 {
-		return queryRes, fmt.Errorf("database table [%s.%s] column info cann't be null", schemaName, tableName)
+	if len(res) == 0 {
+		return res, fmt.Errorf("database table [%s.%s] column comments cann't be null", schemaName, tableName)
 	}
-	return queryRes, nil
+	return res, nil
 }
 
 func (d *Database) GetDatabaseSchemaCollation(schemaName string) (string, error) {

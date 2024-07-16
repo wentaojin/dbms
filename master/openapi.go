@@ -568,6 +568,7 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 			EnableConsistentRead: *req.DataCompareParam.EnableConsistentRead,
 			ConsistentReadPointS: *req.DataCompareParam.ConsistentReadPointS,
 			ConsistentReadPointT: *req.DataCompareParam.ConsistentReadPointT,
+			DivideChunkReference: *req.DataCompareParam.DivideChunkReference,
 		},
 	})
 	if err != nil {

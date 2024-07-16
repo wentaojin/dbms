@@ -18,14 +18,13 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/divider"
 	"strconv"
 	"strings"
 
+	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/rule"
-	"github.com/wentaojin/dbms/utils/structure"
-
-	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"go.uber.org/zap"
@@ -90,9 +89,9 @@ func inspectMigrateTask(taskName, taskFlow, taskMode string, databaseS database.
 }
 
 func getDatabaseTableColumnBucket(ctx context.Context,
-	databaseS, databaseT database.IDatabase, taskName, taskFlow, schemaNameS, schemaNameT, tableNameS, tableNameT string, collationS bool, columnNameSlis []string, connCharsetS, connCharsetT string) ([]*structure.Range, error) {
+	databaseS, databaseT database.IDatabase, taskName, taskFlow, schemaNameS, schemaNameT, tableNameS, tableNameT string, collationS bool, columnNameSlis []string, connCharsetS, connCharsetT string) ([]*divider.Range, error) {
 	var (
-		bucketRanges   []*structure.Range
+		bucketRanges   []*divider.Range
 		randomValueSli [][]string
 		newColumnNameS []string
 	)
@@ -127,14 +126,14 @@ func getDatabaseTableColumnBucket(ctx context.Context,
 		} else {
 			columnT = columnUtf8S
 		}
-		attriS, err := databaseS.GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, column, collationS)
+		attriS, err := databaseS.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, column, collationS)
 		if err != nil {
 			return bucketRanges, err
 		}
 
 		var attriT []map[string]string
 		if databaseT != nil {
-			attriT, err = databaseT.GetDatabaseTableColumnAttribute(schemaNameT, tableNameT, columnT, collationS)
+			attriT, err = databaseT.GetDatabaseTableColumnProperties(schemaNameT, tableNameT, columnT, collationS)
 			if err != nil {
 				return bucketRanges, err
 			}
@@ -174,7 +173,7 @@ func getDatabaseTableColumnBucket(ctx context.Context,
 	if len(randomValueSli) > 0 {
 		randomValues, randomValuesLen := stringutil.StringSliceAlignLen(randomValueSli)
 		for i := 0; i <= randomValuesLen; i++ {
-			newChunk := structure.NewRange()
+			newChunk := divider.NewRange()
 
 			for j, columnS := range newColumnNameS {
 				if i == 0 {
@@ -287,16 +286,19 @@ func optimizerMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS string, 
 	if err != nil {
 		return "", "", fmt.Errorf("aujust oracle timestamp datatype scale [%s] strconv.Atoi failed: %v", dataScaleS, err)
 	}
+	nvlNullS := stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`)
+	nvlNullT := stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`)
+
 	switch strings.ToUpper(datatypeS) {
 	// numeric type
 	case constant.BuildInOracleDatatypeNumber, constant.BuildInOracleDatatypeDecimal, constant.BuildInOracleDatatypeDec, constant.BuildInOracleDatatypeNumeric:
 		if dataScaleV == 0 {
-			return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+			return nvlNullS, nvlNullT, nil
 		} else if dataScaleV > 0 {
 			// dataPrecisionV max value 38
 			if dataScaleV < dataPrecisionV {
 				inteNums := dataPrecisionV - dataScaleV
-				return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM`, stringutil.PaddingString(inteNums, "9", "0"), `.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(`, dataPrecisionS, `,`, dataScaleS, `)),0)`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'FM`, stringutil.PaddingString(inteNums, "9", "0"), `.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`CAST(`, nvlNullT, ` AS DECIMAL(`, dataPrecisionS, `,`, dataScaleS, `))`), nil
 			}
 
 			// TODO:
@@ -306,7 +308,7 @@ func optimizerMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS string, 
 			if dataScaleV == 127 && dataPrecisionV == 38 {
 				// number -> to_char(number(38,24))
 				// decimal(65,24)
-				return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM`, stringutil.PaddingString(dataPrecisionV, "9", "0"), `.`, stringutil.PaddingString(62-dataPrecisionV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,`, strconv.Itoa(62-dataPrecisionV), `)),0)`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'FM`, stringutil.PaddingString(dataPrecisionV, "9", "0"), `.`, stringutil.PaddingString(62-dataPrecisionV, "9", "0"), `')`), stringutil.StringBuilder(`CAST(`, nvlNullT, ` AS DECIMAL(65,`, strconv.Itoa(62-dataPrecisionV), `))`), nil
 			}
 
 			// oracle dataScale > dataPrecision, eg: number(2,6) indicates that decimals without integers are stored.
@@ -317,81 +319,81 @@ func optimizerMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS string, 
 			//3) When s(scale) is a negative number, Oracle rounds the s numbers to the left of the decimal point.
 			//4) When s > p, p represents the maximum number of digits to the left of the sth digit after the decimal point. If it is greater than p, Oracle will report an error, and the digits to the right of the sth digit after the decimal point will be rounded.
 			if dataScaleV == 30 {
-				return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM0.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,30)),0)`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'FM0.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`CAST(`, nvlNullT, ` AS DECIMAL(65,30))`), nil
 			}
 
 			// normal compare
 			if dataScaleV > 30 {
 				// max 30
-				return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM0.`, stringutil.PaddingString(30, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,30)),0)`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'FM0.`, stringutil.PaddingString(30, "9", "0"), `')`), stringutil.StringBuilder(`CAST(`, nvlNullT, ` AS DECIMAL(65,30))`), nil
 			}
 
-			return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM0.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(65,`, dataScaleS, `)),0)`), nil
+			return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'FM0.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`CAST(`, nvlNullT, ` AS DECIMAL(65,`, dataScaleS, `))`), nil
 		} else {
 			// 8--4
 			inteNums := dataPrecisionV - dataScaleV
-			return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'FM`, stringutil.PaddingString(inteNums, "9", "0")), stringutil.StringBuilder(`IFNULL(CAST(`, columnNameT, ` AS DECIMAL(`, strconv.Itoa(inteNums), `,0)),0)`), nil
+			return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'FM`, stringutil.PaddingString(inteNums, "9", "0")), stringutil.StringBuilder(`CAST(`, nvlNullT, ` AS DECIMAL(`, strconv.Itoa(inteNums), `,0))`), nil
 		}
 	case constant.BuildInOracleDatatypeInt, constant.BuildInOracleDatatypeInteger, constant.BuildInOracleDatatypeSmallint:
-		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		return nvlNullS, nvlNullT, nil
 
 	case constant.BuildInOracleDatatypeDoublePrecision, constant.BuildInOracleDatatypeBinaryDouble:
-		return stringutil.StringBuilder(`RPAD(TO_CHAR("`, columnNameS, `",'FM99999999999999999999999999999999999990.999999999999990'),16,0)`), stringutil.StringBuilder(`RPAD(CAST(`, columnNameT, ` AS DECIMAL(65,15))),16,0)`), nil
+		return stringutil.StringBuilder(`RPAD(TO_CHAR(`, nvlNullS, `,'FM99999999999999999999999999999999999990.999999999999990'),16,0)`), stringutil.StringBuilder(`RPAD(CAST(`, nvlNullT, ` AS DECIMAL(65,15))),16,0)`), nil
 
 	case constant.BuildInOracleDatatypeFloat, constant.BuildInOracleDatatypeReal, constant.BuildInOracleDatatypeBinaryFloat:
-		return stringutil.StringBuilder(`RPAD(TO_CHAR("`, columnNameS, `",'FM99999999999999999999999999999999999990.9999990'),8,0)`), stringutil.StringBuilder(`RPAD(CAST(`, columnNameT, ` AS DECIMAL(65,7)),8,0)`), nil
+		return stringutil.StringBuilder(`RPAD(TO_CHAR(`, nvlNullS, `,'FM99999999999999999999999999999999999990.9999990'),8,0)`), stringutil.StringBuilder(`RPAD(CAST(`, nvlNullT, ` AS DECIMAL(65,7)),8,0)`), nil
 
 	// character datatype
 	case constant.BuildInOracleDatatypeCharacter, constant.BuildInOracleDatatypeVarchar, constant.BuildInOracleDatatypeChar, constant.BuildInOracleDatatypeVarchar2:
 		// in order to save character length, cut more than varchar2. For character bytes smaller than 32, do not use HASH or destroy them in advance.
 		if dataLengthS <= int64(constant.DataCompareMethodCheckMD5ValueLength) {
-			return stringutil.StringBuilder(`NVL(CONVERT(TO_CLOB("`, columnNameS, `"),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),0)`), stringutil.StringBuilder(`IFNULL(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'),0)`), nil
+			return stringutil.StringBuilder(`CONVERT(TO_CLOB(`, nvlNullS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `')`), stringutil.StringBuilder(`CONVERT(`, nvlNullT, ` USING '`, dbCharsetTDest, `')`), nil
 		} else {
-			return stringutil.StringBuilder(`NVL(UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB("`, columnNameS, `"),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2)),0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'))),0)`), nil
+			return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(`, nvlNullS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullT, ` USING '`, dbCharsetTDest, `')))`), nil
 		}
 	case constant.BuildInOracleDatatypeNcharVarying, constant.BuildInOracleDatatypeNchar, constant.BuildInOracleDatatypeNvarchar2:
 		// in order to save character length, cut more than varchar2. For character bytes smaller than 32, do not use HASH or destroy them in advance.
 		if dataLengthS <= int64(constant.DataCompareMethodCheckMD5ValueLength) {
-			return stringutil.StringBuilder(`NVL(CONVERT(TO_CLOB("`, columnNameS, `"),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),0)`), stringutil.StringBuilder(`IFNULL(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'),0)`), nil
+			return stringutil.StringBuilder(`CONVERT(TO_CLOB(`, nvlNullS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `')`), stringutil.StringBuilder(`CONVERT(`, nvlNullT, ` USING '`, dbCharsetTDest, `')`), nil
 		} else {
-			return stringutil.StringBuilder(`NVL(UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB("`, columnNameS, `"),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2)),0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'))),0)`), nil
+			return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(`, nvlNullS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullT, ` USING '`, dbCharsetTDest, `')))`), nil
 		}
 	case constant.BuildInOracleDatatypeClob:
-		return stringutil.StringBuilder(`NVL(UPPER(DBMS_CRYPTO.HASH(CONVERT("`, columnNameS, `",'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2)),0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'))),0)`), nil
+		return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(CONVERT(`, nvlNullS, `,'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullT, ` USING '`, dbCharsetTDest, `')))`), nil
 	case constant.BuildInOracleDatatypeNclob:
-		return stringutil.StringBuilder(`NVL(UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB("`, columnNameS, `"),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2)),0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'))),0)`), nil
+		return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(`, nvlNullS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullT, ` USING '`, dbCharsetTDest, `')))`), nil
 	case constant.BuildInOracleDatatypeRowid, constant.BuildInOracleDatatypeUrowid:
-		return stringutil.StringBuilder(`NVL(ROWIDTOCHAR("`, columnNameS, `"), 0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		return stringutil.StringBuilder(`ROWIDTOCHAR(`, nvlNullS, `)`), nvlNullT, nil
 	// xmltype datatype
 	case constant.BuildInOracleDatatypeXmltype:
-		return stringutil.StringBuilder(`NVL(UPPER((DBMS_CRYPTO.HASH(CONVERT(XMLSERIALIZE(CONTENT "`, columnNameS, `" AS CLOB),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2))), 0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'))),0)`), nil
+		return stringutil.StringBuilder(`UPPER((DBMS_CRYPTO.HASH(CONVERT(XMLSERIALIZE(CONTENT `, nvlNullS, ` AS CLOB),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2)))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullT, ` USING '`, dbCharsetTDest, `')))`), nil
 	// binary datatype
 	case constant.BuildInOracleDatatypeBlob, constant.BuildInOracleDatatypeRaw:
-		return stringutil.StringBuilder(`NVL(UPPER(DBMS_CRYPTO.HASH("`, columnNameS, `",2)), 0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(`, columnNameT, `)),0)`), nil
+		return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(`, nvlNullS, `,2))`), stringutil.StringBuilder(`UPPER(MD5(`, nvlNullT, `))`), nil
 	case constant.BuildInOracleDatatypeLong, constant.BuildInOracleDatatypeLongRAW, constant.BuildInOracleDatatypeBfile:
 		// can't appear, if the column datatype appear long or long raw, it will be disabled checksum
-		return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		return nvlNullS, nvlNullT, nil
 	// TODO: BFILE COMPARE SUPPORT
 	// oracle bfile datatype -> mysql compatible database varchar, so if the data compare meet bfile, it will be disabled checksum
 	//case constant.BuildInOracleDatatypeBfile:
-	//	return stringutil.StringBuilder(`NVL(UPPER(DBMS_CRYPTO.HASH(TO_CLOB("`, columnNameS, `"),2)), 0)`), stringutil.StringBuilder(`IFNULL(UPPER(MD5(CONVERT(`, columnNameT, ` USING '`, dbCharsetTDest, `'))),0)`), nil
+	//	return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(TO_CLOB(`, nvlNullS, `),2))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullT, ` USING '`, dbCharsetTDest, `')))`), nil
 	// time datatype
 	case constant.BuildInOracleDatatypeDate:
-		return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD HH24:MI:SS'), 0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+		return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'YYYY-MM-DD HH24:MI:SS')`), nvlNullT, nil
 	// other datatype
 	default:
 		if strings.Contains(datatypeS, "INTERVAL") {
-			return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `"),0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+			return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `)`), nvlNullT, nil
 		} else if strings.Contains(datatypeS, "TIMESTAMP") {
 			if dataScaleV == 0 {
-				return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD HH24:MI:SS'), 0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'YYYY-MM-DD HH24:MI:SS')`), nvlNullT, nil
 			} else if dataScaleV > 0 && dataScaleV <= 6 {
-				return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD HH24:MI:SS.FF`, strconv.Itoa(dataScaleV), `'),0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'YYYY-MM-DD HH24:MI:SS.FF`, strconv.Itoa(dataScaleV), `')`), nvlNullT, nil
 			} else {
-				return stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD HH24:MI:SS.FF6'),0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullS, `,'YYYY-MM-DD HH24:MI:SS.FF6')`), nvlNullT, nil
 			}
 		} else {
-			return stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`), stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`), nil
+			return nvlNullS, nvlNullT, nil
 		}
 	}
 }

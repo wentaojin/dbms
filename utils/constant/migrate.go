@@ -526,6 +526,7 @@ const (
 	ParamNameDataCompareOnlyCompareRow       = "onlyCompareRow"
 	ParamNameDataCompareConsistentReadPointS = "consistentReadPointS"
 	ParamNameDataCompareConsistentReadPointT = "consistentReadPointT"
+	ParamNameDataCompareDivideChunkReference = "divideChunkReference"
 
 	// ParamValueDataCompareCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

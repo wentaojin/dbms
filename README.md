@@ -7,12 +7,15 @@
 </p>
 
 <div align="center">
-  <a href="https://github.com/wentaojin/dbms/actions">
-		<img src="https://img.shields.io/github/actions/workflow/status/wentaojin/dbms/release.yml"/>
-  </a>
-  <img src="https://img.shields.io/github/license/wentaojin/dbms"/>
+
+  [![Build Status](https://img.shields.io/github/actions/workflow/status/wentaojin/dbms/release.yml)](https://github.com/wentaojin/dbms/actions)
+  <img src="https://img.shields.io/badge/Language-Go-blue.svg"/>
+  <img src="https://goreportcard.com/badge/github.com/wentaojin/dbms"/>
+  [![LICENSE](https://img.shields.io/github/license/wentaojin/dbms)](https://github.com/wentaojin/dbms/blob/main/LICENSE)
+  <img src="https://img.shields.io/github/release-date/wentaojin/dbms.svg"/>
+  [![RELEASE](https://img.shields.io/github/tag/wentaojin/dbms.svg?label=release)](https://github.com/wentaojin/dbms/releases)
   <img src="https://img.shields.io/github/downloads/wentaojin/dbms/total">
-  <img src="https://img.shields.io/github/issues/wentaojin/dbms">
+  [![ISSUES](https://img.shields.io/github/issues/wentaojin/dbms)](https://github.com/wentaojin/dbms/issues) 
 </div>
 
 -------

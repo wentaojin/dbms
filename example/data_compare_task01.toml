@@ -66,3 +66,5 @@ enable-consistent-read = false
 consistent-read-point-s = ""
 # consistent-read-point-t 参数 mysql 数据库不支持指定配置，自动忽略配置，tidb 数据库支持
 consistent-read-point-t = ""
+# 划分 chunk 参照源，only configure source or target, default source
+divide-chunk-reference = "source"

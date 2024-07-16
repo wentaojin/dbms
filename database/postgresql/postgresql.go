@@ -19,7 +19,6 @@ import (
 	"context"
 	"database/sql"
 	_ "github.com/lib/pq"
-
 	"strings"
 
 	"fmt"

@@ -1128,6 +1128,8 @@ components:
           type: string
         consistentReadPointT:
           type: string
+        divideChunkReference:
+          type: string
     CsvMigrateParam:
       type: object
       properties:

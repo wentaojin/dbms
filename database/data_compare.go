@@ -17,15 +17,18 @@ package database
 
 import (
 	"fmt"
+	"github.com/wentaojin/dbms/utils/structure"
 
 	"github.com/wentaojin/dbms/utils/constant"
 )
 
 type IDatabaseDataCompare interface {
-	FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error)
-	GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error)
-	GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
+	GetDatabaseTableStatisticsBucket(schemeNameS, tableNameS string) (map[string][]structure.Bucket, error)
+	GetDatabaseTableStatisticsHistogram(schemeNameS, tableNameS string) (map[string][]structure.Histogram, error)
+	GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error)
 	GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error)
+	FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error)
+	GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
 }
 
 // IDataCompareRuleInitializer used for database table rule initializer

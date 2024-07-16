@@ -260,6 +260,7 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			OnlyCompareRow:       onlyCompareRow,
 			ConsistentReadPointS: paramMap[constant.ParamNameDataCompareConsistentReadPointS],
 			ConsistentReadPointT: paramMap[constant.ParamNameDataCompareConsistentReadPointT],
+			DivideChunkReference: paramMap[constant.ParamNameDataCompareDivideChunkReference],
 		}
 
 		schemaRouteRule, _, dataCompareRules, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -677,6 +678,9 @@ func getDataCompareTasKParams(ctx context.Context, taskName string) (*pb.DataCom
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareConsistentReadPointT) {
 			taskParam.ConsistentReadPointT = p.ParamValue
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareDivideChunkReference) {
+			taskParam.DivideChunkReference = p.ParamValue
 		}
 	}
 	return taskParam, nil

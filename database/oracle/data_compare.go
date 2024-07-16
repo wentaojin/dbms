@@ -18,6 +18,7 @@ package oracle
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/structure"
 	"hash/crc32"
 	"path/filepath"
 	"reflect"
@@ -32,6 +33,16 @@ import (
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
+
+func (d *Database) GetDatabaseTableStatisticsBucket(schemeNameS, tableNameS string) (map[string][]structure.Bucket, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableStatisticsHistogram(schemeNameS, tableNameS string) (map[string][]structure.Histogram, error) {
+	//TODO implement me
+	panic("implement me")
+}
 
 func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
 	var err error
@@ -306,7 +317,7 @@ func (d *Database) FilterDatabaseTableColumnDatatype(columnType string) bool {
 	return false
 }
 
-func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error) {
 	var sqlStr string
 
 	if collationS {
