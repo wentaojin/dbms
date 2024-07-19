@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/wentaojin/dbms/database/processor"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -78,14 +79,14 @@ func (cmt *CsvMigrateTask) Start() error {
 
 	logger.Info("csv migrate task inspect migrate task",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
-	dbVersion, _, dbCollationS, err := inspectMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
+	dbVersion, _, err := processor.InspectOracleMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
 
 	logger.Info("csv migrate task init task",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
-	err = cmt.InitCsvMigrateTask(databaseS, dbVersion, dbCollationS, schemaRoute)
+	err = cmt.InitCsvMigrateTask(databaseS, dbVersion, schemaRoute)
 	if err != nil {
 		return err
 	}
@@ -262,7 +263,7 @@ func (cmt *CsvMigrateTask) Start() error {
 						return errW
 					}
 
-					err = database.IDataMigrateProcess(&CsvMigrateRow{
+					err = database.IDataMigrateProcess(&processor.CsvMigrateRow{
 						Ctx:        cmt.Ctx,
 						TaskMode:   cmt.Task.TaskMode,
 						TaskFlow:   cmt.Task.TaskFlow,
@@ -461,7 +462,7 @@ func (cmt *CsvMigrateTask) Start() error {
 	return nil
 }
 
-func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVersion string, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVersion string, schemaRoute *rule.SchemaRouteRule) error {
 	// delete checkpoint
 	initFlags, err := model.GetITaskRW().GetTask(cmt.Ctx, &task.Task{TaskName: cmt.Task.TaskName})
 	if err != nil {
@@ -632,6 +633,9 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 
 	// database tables
 	// init database table
+	dbTypeSli := stringutil.StringSplit(cmt.Task.TaskFlow, constant.StringSeparatorAite)
+	dbTypeS := dbTypeSli[0]
+
 	logger.Info("csv migrate task init",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 
@@ -660,13 +664,12 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 					return err
 				}
 
-				dataRule := &DataMigrateRule{
+				dataRule := &processor.DataMigrateRule{
 					Ctx:            gCtx,
 					TaskMode:       cmt.Task.TaskMode,
 					TaskName:       cmt.Task.TaskName,
 					TaskFlow:       cmt.Task.TaskFlow,
 					DatabaseS:      databaseS,
-					DBCollationS:   dbCollationS,
 					SchemaNameS:    schemaRoute.SchemaNameS,
 					TableNameS:     sourceTable,
 					TableTypeS:     databaseTableTypeMap,
@@ -736,11 +739,22 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 				var whereRange string
 				// statistic
 				if !strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) || (strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) && stringutil.VersionOrdinal(dbVersion) < stringutil.VersionOrdinal(constant.OracleDatabaseTableMigrateRowidRequireVersion)) {
-					columnNameSlis, err := databaseS.FindDatabaseTableBestColumn(attsRule.SchemaNameS, attsRule.TableNameS, "")
+					upstreamConsIndexColumns, err := databaseS.GetDatabaseTableHighestSelectivityIndex(attsRule.SchemaNameS, attsRule.TableNameS, "", nil)
 					if err != nil {
 						return err
 					}
-					if len(columnNameSlis) == 0 {
+					// upstream bucket ranges
+					_, upstreamBuckets, err := processor.ProcessUpstreamDatabaseTableColumnStatisticsBucket(
+						dbTypeS,
+						stringutil.StringUpper(cmt.DatasourceS.ConnectCharset),
+						cmt.Task.CaseFieldRuleS, databaseS, attsRule.SchemaNameS,
+						attsRule.TableNameS,
+						upstreamConsIndexColumns,
+						int64(cmt.TaskParams.ChunkSize))
+					if err != nil {
+						return err
+					}
+					if len(upstreamBuckets) == 0 {
 						logger.Warn("csv migrate task table",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
@@ -808,10 +822,6 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 						return nil
 					}
 
-					bucketRanges, err := getDatabaseTableColumnBucket(cmt.Ctx, databaseS, nil, cmt.Task.TaskName, cmt.Task.TaskFlow, attsRule.SchemaNameS, attsRule.SchemaNameT, attsRule.TableNameS, attsRule.TableNameT, dbCollationS, columnNameSlis, cmt.DatasourceS.ConnectCharset, cmt.DatasourceT.ConnectCharset)
-					if err != nil {
-						return err
-					}
 					logger.Warn("csv migrate task table",
 						zap.String("task_name", cmt.Task.TaskName),
 						zap.String("task_mode", cmt.Task.TaskMode),
@@ -821,72 +831,14 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 						zap.String("database_version", dbVersion),
 						zap.String("database_role", dbRole),
 						zap.String("migrate_method", "statistic"))
-					if len(bucketRanges) == 0 {
-						switch {
-						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
-						default:
-							whereRange = `1 = 1`
-						}
-
-						encChunkS := snappy.Encode(nil, []byte(whereRange))
-
-						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
-						if err != nil {
-							return err
-						}
-
-						err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-							_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
-								TaskName:        cmt.Task.TaskName,
-								SchemaNameS:     attsRule.SchemaNameS,
-								TableNameS:      attsRule.TableNameS,
-								SchemaNameT:     attsRule.SchemaNameT,
-								TableNameT:      attsRule.TableNameT,
-								TableTypeS:      attsRule.TableTypeS,
-								SnapshotPointS:  globalScn,
-								ColumnDetailO:   attsRule.ColumnDetailO,
-								ColumnDetailS:   attsRule.ColumnDetailS,
-								ColumnDetailT:   attsRule.ColumnDetailT,
-								SqlHintS:        attsRule.SqlHintS,
-								ChunkDetailS:    encryptChunkS,
-								ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
-								TaskStatus:      constant.TaskDatabaseStatusWaiting,
-								CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
-									stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`)),
-							})
-							if err != nil {
-								return err
-							}
-							_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-								TaskName:       cmt.Task.TaskName,
-								SchemaNameS:    attsRule.SchemaNameS,
-								TableNameS:     attsRule.TableNameS,
-								SchemaNameT:    attsRule.SchemaNameT,
-								TableNameT:     attsRule.TableNameT,
-								SnapshotPointS: globalScn,
-								TableRowsS:     tableRows,
-								TableSizeS:     tableSize,
-								ChunkTotals:    1,
-							})
-							if err != nil {
-								return err
-							}
-							return nil
-						})
-						if err != nil {
-							return err
-						}
-						return nil
-					}
 
 					var metas []*task.DataMigrateTask
-					for idx, r := range bucketRanges {
+					for idx, r := range upstreamBuckets {
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(r.ToStringS(), ` AND `, attsRule.WhereRange)
+							whereRange = stringutil.StringBuilder(r.ToString(), ` AND `, attsRule.WhereRange)
 						default:
-							whereRange = r.ToStringS()
+							whereRange = r.ToString()
 						}
 
 						encChunkS := snappy.Encode(nil, []byte(whereRange))
@@ -929,7 +881,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 							SnapshotPointS: globalScn,
 							TableRowsS:     tableRows,
 							TableSizeS:     tableSize,
-							ChunkTotals:    uint64(len(bucketRanges)),
+							ChunkTotals:    uint64(len(upstreamBuckets)),
 						})
 						if err != nil {
 							return err
@@ -939,7 +891,6 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 					if err != nil {
 						return err
 					}
-
 					return nil
 				}
 

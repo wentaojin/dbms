@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/database/processor"
+	"github.com/wentaojin/dbms/database/taskflow"
 	"strconv"
 	"strings"
 	"time"
@@ -28,7 +30,6 @@ import (
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/wentaojin/dbms/database/oracle/taskflow"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/common"
@@ -229,6 +230,11 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			return err
 		}
 
+		chunkSize, err := strconv.ParseUint(paramMap[constant.ParamNameDataCompareChunkSize], 10, 64)
+		if err != nil {
+			return err
+		}
+
 		callTimeout, err := strconv.ParseUint(paramMap[constant.ParamNameDataCompareCallTimeout], 10, 64)
 		if err != nil {
 			return err
@@ -249,18 +255,19 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 		}
 
 		param = &pb.DataCompareParam{
-			TableThread:          tableThread,
-			BatchSize:            batchSize,
-			SqlThread:            sqlThread,
-			SqlHintS:             paramMap[constant.ParamNameDataCompareSqlHintS],
-			SqlHintT:             paramMap[constant.ParamNameDataCompareSqlHintT],
-			CallTimeout:          callTimeout,
-			EnableCheckpoint:     enableCheckpoint,
-			EnableConsistentRead: enableConsistentRead,
-			OnlyCompareRow:       onlyCompareRow,
-			ConsistentReadPointS: paramMap[constant.ParamNameDataCompareConsistentReadPointS],
-			ConsistentReadPointT: paramMap[constant.ParamNameDataCompareConsistentReadPointT],
-			DivideChunkReference: paramMap[constant.ParamNameDataCompareDivideChunkReference],
+			TableThread:           tableThread,
+			BatchSize:             batchSize,
+			SqlThread:             sqlThread,
+			SqlHintS:              paramMap[constant.ParamNameDataCompareSqlHintS],
+			SqlHintT:              paramMap[constant.ParamNameDataCompareSqlHintT],
+			CallTimeout:           callTimeout,
+			EnableCheckpoint:      enableCheckpoint,
+			EnableConsistentRead:  enableConsistentRead,
+			OnlyCompareRow:        onlyCompareRow,
+			ConsistentReadPointS:  paramMap[constant.ParamNameDataCompareConsistentReadPointS],
+			ConsistentReadPointT:  paramMap[constant.ParamNameDataCompareConsistentReadPointT],
+			ChunkSize:             chunkSize,
+			IgnoreConditionFields: stringutil.StringSplit(paramMap[constant.ParamNameDataCompareIgnoreConditionFields], constant.StringSeparatorComma),
 		}
 
 		schemaRouteRule, _, dataCompareRules, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -343,7 +350,7 @@ func StartDataCompareTask(ctx context.Context, taskName, workerAddr string) erro
 
 	logger.Info("data compare task get task params",
 		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	taskParams, err := getDataCompareTasKParams(ctx, taskInfo.TaskName)
+	taskParams, err := getDataCompareTasKParams(ctx, taskInfo.TaskName, taskInfo.CaseFieldRuleS)
 	if err != nil {
 		return err
 	}
@@ -367,26 +374,22 @@ func StartDataCompareTask(ctx context.Context, taskName, workerAddr string) erro
 		}
 	}
 
-	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
-		logger.Info("data compare task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-		taskTime := time.Now()
-		dataMigrate := &taskflow.DataCompareTask{
-			Ctx:         ctx,
-			Task:        taskInfo,
-			DatasourceS: sourceDatasource,
-			DatasourceT: targetDatasource,
-			TaskParams:  taskParams,
-		}
-		err = dataMigrate.Start()
-		if err != nil {
-			return err
-		}
-		logger.Info("data compare task process task",
-			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
-			zap.String("cost", time.Now().Sub(taskTime).String()))
-	} else {
-		return fmt.Errorf("current data compare task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
+	logger.Info("data compare task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
+	taskTime := time.Now()
+	dataMigrate := &taskflow.DataCompareTask{
+		Ctx:         ctx,
+		Task:        taskInfo,
+		DatasourceS: sourceDatasource,
+		DatasourceT: targetDatasource,
+		TaskParams:  taskParams,
 	}
+	err = dataMigrate.Start()
+	if err != nil {
+		return err
+	}
+	logger.Info("data compare task process task",
+		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
+		zap.String("cost", time.Now().Sub(taskTime).String()))
 
 	// status
 	var (
@@ -582,7 +585,7 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir str
 	}
 
 	var w database.IFileWriter
-	w = taskflow.NewDataCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, outputDir)
+	w = processor.NewDataCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, outputDir)
 	err = w.InitFile()
 	if err != nil {
 		return err
@@ -599,7 +602,7 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir str
 	return nil
 }
 
-func getDataCompareTasKParams(ctx context.Context, taskName string) (*pb.DataCompareParam, error) {
+func getDataCompareTasKParams(ctx context.Context, taskName string, caseFieldRuleS string) (*pb.DataCompareParam, error) {
 	taskParam := &pb.DataCompareParam{}
 
 	migrateParams, err := model.GetIParamsRW().QueryTaskCustomParam(ctx, &params.TaskCustomParam{
@@ -679,8 +682,27 @@ func getDataCompareTasKParams(ctx context.Context, taskName string) (*pb.DataCom
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareConsistentReadPointT) {
 			taskParam.ConsistentReadPointT = p.ParamValue
 		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareDivideChunkReference) {
-			taskParam.DivideChunkReference = p.ParamValue
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareChunkSize) {
+			chunkSize, err := strconv.ParseUint(p.ParamValue, 10, 64)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.ChunkSize = chunkSize
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareIgnoreConditionFields) {
+			var newFields []string
+			for _, s := range stringutil.StringSplit(p.ParamValue, constant.StringSeparatorComma) {
+				if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleOrigin) {
+					newFields = append(newFields, s)
+				}
+				if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleUpper) {
+					newFields = append(newFields, stringutil.StringUpper(s))
+				}
+				if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleLower) {
+					newFields = append(newFields, stringutil.StringLower(s))
+				}
+			}
+			taskParam.IgnoreConditionFields = newFields
 		}
 	}
 	return taskParam, nil

@@ -26,7 +26,7 @@ type IDatabaseDataMigrate interface {
 	GetDatabaseCharset() (string, error)
 	GetDatabaseConsistentPos() (uint64, error)
 	GetDatabaseTableType(schemaName string) (map[string]string, error)
-	GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error)
+	GetDatabaseTableColumnInfo(schemaName string, tableName string) ([]map[string]string, error)
 	GetDatabaseTableColumnNameTableDimensions(schemaName, tableName string) ([]string, error)
 	GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]string, map[string]string, map[string]string, error)
 	GetDatabaseTableRows(schemaName, tableName string) (uint64, error)
@@ -65,7 +65,7 @@ func IDataMigrateAttributesRule(i IDataMigrateRuleInitializer) (*DataMigrateAttr
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}
-	sourceColumnO, sourceColumnS, _, targetColumnT, err := i.GenSchemaTableColumnRule()
+	sourceColumnO, sourceColumnS, _, targetColumnT, err := i.GenSchemaTableColumnSelectRule()
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}

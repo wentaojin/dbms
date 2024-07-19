@@ -1,8 +1,15 @@
-#!/usr/bin/bash
+#!/bin/bash
 
-BINPATH="./bin"
-CONFIGPATH="./sample"
-MASTERCONFIG="${CONFIGPATH}/master_config02.toml"
+# Change to the directory of this script
+scriptDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+echo "Script masterServer02 current directory is: $scriptDir"
+
+parentDir="$( cd "$( dirname "$scriptDir" )" &> /dev/null && pwd )"
+echo "Script masterServer02 parent directory is: $parentDir"
+
+binPath="$parentDir/bin"
+configPath="$parentDir/sample"
+masterConfig="$configPath/master_config02.toml"
 
 # get os kernel name
 KERNEL=$(uname -s)
@@ -21,5 +28,5 @@ elif [ "$KERNEL" == "Darwin" ]; then
   echo "Setting  masterServer02 script DYLD_LIBRARY_PATH to: $LIBRARY_PATH_VAR"
 fi
 
-echo "Starting masterServer02 script Command [${BINPATH}/dbms-master --config ${MASTERCONFIG}]..."
-${BINPATH}/dbms-master --config ${MASTERCONFIG}
+echo "Starting masterServer02 script Command [$binPath/dbms-master --config $masterConfig]..."
+"$binPath"/dbms-master --config "$masterConfig"

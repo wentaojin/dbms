@@ -54,9 +54,16 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	//connString = fmt.Sprintf("oracle://@%s/%s?connectionClass=%s&%s",
 	//	common.StringsBuilder(datasource.Host, ":", strconv.Itoa(datasource.Port)),
 	//	datasource.ServiceName, "connClass", datasource.ConnectParams)
-	connString = fmt.Sprintf("oracle://@%s/%s?standaloneConnection=1&%s",
-		stringutil.StringBuilder(datasource.Host, ":", strconv.FormatUint(datasource.Port, 10)),
-		datasource.ServiceName, datasource.ConnectParams)
+	if strings.EqualFold(datasource.ConnectParams, "") {
+		connString = fmt.Sprintf("oracle://@%s/%s?standaloneConnection=1",
+			stringutil.StringBuilder(datasource.Host, ":", strconv.FormatUint(datasource.Port, 10)),
+			datasource.ServiceName)
+	} else {
+		connString = fmt.Sprintf("oracle://@%s/%s?standaloneConnection=1&%s",
+			stringutil.StringBuilder(datasource.Host, ":", strconv.FormatUint(datasource.Port, 10)),
+			datasource.ServiceName, datasource.ConnectParams)
+	}
+
 	oraDSN, err = godror.ParseDSN(connString)
 	if err != nil {
 		return nil, err
@@ -81,7 +88,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	}
 
 	if !strings.EqualFold(datasource.SessionParams, "") {
-		sessionParams = stringutil.StringSplit(datasource.SessionParams, constant.StringSeparatorComma)
+		sessionParams = append(sessionParams, stringutil.StringSplit(datasource.SessionParams, constant.StringSeparatorComma)...)
 	}
 
 	// close external auth
@@ -100,7 +107,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 
 	err = sqlDB.Ping()
 	if err != nil {
-		return nil, fmt.Errorf("error on ping oracle database connection:%v", err)
+		return nil, fmt.Errorf("connection string [%s] error on creating ping oracle database connection: %v", oraDSN.String(), err)
 	}
 	return &Database{Ctx: ctx, DBConn: sqlDB}, nil
 }
@@ -108,7 +115,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 func (d *Database) PingDatabaseConnection() error {
 	err := d.DBConn.Ping()
 	if err != nil {
-		return fmt.Errorf("error on ping oracle database connection:%v", err)
+		return fmt.Errorf("error on testing ping oracle database connection: %v", err)
 	}
 	return nil
 }

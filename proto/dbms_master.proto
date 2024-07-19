@@ -516,7 +516,9 @@ message Datasource {
 
   string serviceName = 10;
   string pdbName = 11;
-  string comment = 12;
+  string sessionParams = 12;
+  string dbName = 13;
+  string comment = 14;
 }
 
 message SchemaRouteRule{
@@ -655,9 +657,10 @@ message CsvMigrateParam{
 
 message DataCompareRule {
   string tableNameS = 1;
-  string compareField = 2;
-  string compareRange = 3;
-  repeated string ignoreFields = 4;
+  string compareConditionField = 2;
+  string compareConditionRange = 3;
+  repeated string ignoreSelectFields = 4;
+  repeated string ignoreConditionFields = 5;
 }
 
 message DataCompareParam{
@@ -673,7 +676,8 @@ message DataCompareParam{
   string consistentReadPointS = 10;
   string consistentReadPointT = 11;
   uint64 writeThread = 13;
-  string divideChunkReference = 14;
+  uint64 chunkSize = 14;
+  repeated string ignoreConditionFields = 15;
 }
 
 message SqlMigrateRule {

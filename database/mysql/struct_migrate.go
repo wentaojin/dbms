@@ -526,7 +526,7 @@ WHERE
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string) ([]map[string]string, error) {
 	sqlStr := fmt.Sprintf(`SELECT
 		COLUMN_NAME,
 		DATA_TYPE,

@@ -30,7 +30,7 @@ type IDatabaseStructMigrate interface {
 	GetDatabaseCompositeTypeTable(schemaName string) ([]string, error)
 	GetDatabaseExternalTable(schemaName string) ([]string, error)
 	GetDatabaseTableType(schemaName string) (map[string]string, error)
-	GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error)
+	GetDatabaseTableColumnInfo(schemaName string, tableName string) ([]map[string]string, error)
 	GetDatabaseTablePrimaryKey(schemaName string, tableName string) ([]map[string]string, error)
 	GetDatabaseTableUniqueKey(schemaName string, tableName string) ([]map[string]string, error)
 	GetDatabaseTableForeignKey(schemaName string, tableName string) ([]map[string]string, error)

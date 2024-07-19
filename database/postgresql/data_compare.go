@@ -17,17 +17,32 @@ package postgresql
 
 import "github.com/wentaojin/dbms/utils/structure"
 
-func (d *Database) GetDatabaseTableStatisticsBucket(schemeNameS, tableNameS string) (map[string][]structure.Bucket, error) {
+func (d *Database) GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS string) (map[string]string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableStatisticsHistogram(schemeNameS, tableNameS string) (map[string][]structure.Histogram, error) {
+func (d *Database) GetDatabaseTableStatisticsBucket(schemeNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableStatisticsHistogram(schemeNameS, tableNameS string, consColumns map[string]string) (map[string]structure.Histogram, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.HighestBucket, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS string, columnNameSli []string) ([]map[string]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, limit int, collations []string) ([][]string, error) {
 	//TODO implement me
 	panic("implement me")
 }

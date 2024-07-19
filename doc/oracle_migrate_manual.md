@@ -129,7 +129,7 @@ ORACLE MIGRATE MYSQL 兼容性数据库，提供以下功能实现：
 ------
 ### 数据校验
 
-数据校验任务配置[示例](../example/data_compare_task00.toml)
+数据校验任务配置[示例](../example/data_compare_task.toml)
 
 ORACLE MIGRATE MYSQL 兼容性数据库，以上游 ORACLE 数据库为基准，提供以下功能实现：
 - schema、表和列名称区分大小写

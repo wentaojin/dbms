@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/wentaojin/dbms/database/processor"
 	"strconv"
 	"strings"
 	"time"
@@ -80,14 +81,14 @@ func (stm *StmtMigrateTask) Start() error {
 	logger.Info("stmt migrate task inspect migrate task",
 		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
 
-	dbVersion, _, dbCollationS, err := inspectMigrateTask(stm.Task.TaskName, stm.Task.TaskFlow, stm.Task.TaskMode, databaseS, stringutil.StringUpper(stm.DatasourceS.ConnectCharset), stringutil.StringUpper(stm.DatasourceT.ConnectCharset))
+	dbVersion, _, err := processor.InspectOracleMigrateTask(stm.Task.TaskName, stm.Task.TaskFlow, stm.Task.TaskMode, databaseS, stringutil.StringUpper(stm.DatasourceS.ConnectCharset), stringutil.StringUpper(stm.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
 
 	logger.Info("stmt migrate task init task",
 		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
-	err = stm.initStmtMigrateTask(databaseS, databaseT, dbVersion, dbCollationS, schemaRoute)
+	err = stm.initStmtMigrateTask(databaseS, dbVersion, schemaRoute)
 	if err != nil {
 		return err
 	}
@@ -180,7 +181,7 @@ func (stm *StmtMigrateTask) Start() error {
 			if err != nil {
 				return err
 			}
-			sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, stm.TaskParams.SqlHintT, limitOne.ColumnDetailT, int(stm.TaskParams.BatchSize), true)
+			sqlStr := processor.GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, stm.TaskParams.SqlHintT, limitOne.ColumnDetailT, int(stm.TaskParams.BatchSize), true)
 			sqlTSmt, err = databaseT.PrepareContext(stm.Ctx, sqlStr)
 			if err != nil {
 				return err
@@ -230,7 +231,7 @@ func (stm *StmtMigrateTask) Start() error {
 						return errW
 					}
 
-					err = database.IDataMigrateProcess(&StmtMigrateRow{
+					err = database.IDataMigrateProcess(&processor.StmtMigrateRow{
 						Ctx:           stm.Ctx,
 						TaskMode:      stm.Task.TaskMode,
 						TaskFlow:      stm.Task.TaskFlow,
@@ -437,7 +438,7 @@ func (stm *StmtMigrateTask) Start() error {
 	return nil
 }
 
-func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.IDatabase, dbVersion string, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, dbVersion string, schemaRoute *rule.SchemaRouteRule) error {
 	// delete checkpoint
 	initFlags, err := model.GetITaskRW().GetTask(stm.Ctx, &task.Task{TaskName: stm.Task.TaskName})
 	if err != nil {
@@ -609,6 +610,9 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 
 	// database tables
 	// init database table
+	dbTypeSli := stringutil.StringSplit(stm.Task.TaskFlow, constant.StringSeparatorAite)
+	dbTypeS := dbTypeSli[0]
+
 	logger.Info("stmt migrate task init",
 		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
 
@@ -637,13 +641,12 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 					return err
 				}
 
-				dataRule := &DataMigrateRule{
+				dataRule := &processor.DataMigrateRule{
 					Ctx:            gCtx,
 					TaskMode:       stm.Task.TaskMode,
 					TaskName:       stm.Task.TaskName,
 					TaskFlow:       stm.Task.TaskFlow,
 					DatabaseS:      databaseS,
-					DBCollationS:   dbCollationS,
 					SchemaNameS:    schemaRoute.SchemaNameS,
 					TableNameS:     sourceTable,
 					TableTypeS:     databaseTableTypeMap,
@@ -713,11 +716,22 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 
 				// statistic
 				if !strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) || (strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) && stringutil.VersionOrdinal(dbVersion) < stringutil.VersionOrdinal(constant.OracleDatabaseTableMigrateRowidRequireVersion)) {
-					columnNameSlis, err := databaseS.FindDatabaseTableBestColumn(attsRule.SchemaNameS, attsRule.TableNameS, "")
+					upstreamConsIndexColumns, err := databaseS.GetDatabaseTableHighestSelectivityIndex(attsRule.SchemaNameS, attsRule.TableNameS, "", nil)
 					if err != nil {
 						return err
 					}
-					if len(columnNameSlis) == 0 {
+					// upstream bucket ranges
+					_, upstreamBuckets, err := processor.ProcessUpstreamDatabaseTableColumnStatisticsBucket(
+						dbTypeS,
+						stringutil.StringUpper(stm.DatasourceS.ConnectCharset),
+						stm.Task.CaseFieldRuleS, databaseS, attsRule.SchemaNameS,
+						attsRule.TableNameS,
+						upstreamConsIndexColumns,
+						int64(stm.TaskParams.ChunkSize))
+					if err != nil {
+						return err
+					}
+					if len(upstreamBuckets) == 0 {
 						logger.Warn("stmt migrate task table",
 							zap.String("task_name", stm.Task.TaskName),
 							zap.String("task_mode", stm.Task.TaskMode),
@@ -784,10 +798,6 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 						return nil
 					}
 
-					bucketRanges, err := getDatabaseTableColumnBucket(stm.Ctx, databaseS, databaseT, stm.Task.TaskName, stm.Task.TaskFlow, attsRule.SchemaNameS, attsRule.SchemaNameT, attsRule.TableNameS, attsRule.TableNameT, dbCollationS, columnNameSlis, stm.DatasourceS.ConnectCharset, stm.DatasourceT.ConnectCharset)
-					if err != nil {
-						return err
-					}
 					logger.Warn("stmt migrate task table",
 						zap.String("task_name", stm.Task.TaskName),
 						zap.String("task_mode", stm.Task.TaskMode),
@@ -797,71 +807,13 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 						zap.String("database_version", dbVersion),
 						zap.String("database_role", dbRole),
 						zap.String("migrate_method", "statistic"))
-					if len(bucketRanges) == 0 {
-						switch {
-						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(`1 = 1 AND `, attsRule.WhereRange)
-						default:
-							whereRange = `1 = 1`
-						}
-
-						encChunkS := snappy.Encode(nil, []byte(whereRange))
-
-						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
-						if err != nil {
-							return err
-						}
-
-						err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-							_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, &task.DataMigrateTask{
-								TaskName:        stm.Task.TaskName,
-								SchemaNameS:     attsRule.SchemaNameS,
-								TableNameS:      attsRule.TableNameS,
-								SchemaNameT:     attsRule.SchemaNameT,
-								TableNameT:      attsRule.TableNameT,
-								TableTypeS:      attsRule.TableTypeS,
-								SnapshotPointS:  globalScn,
-								ColumnDetailO:   attsRule.ColumnDetailO,
-								ColumnDetailS:   attsRule.ColumnDetailS,
-								ColumnDetailT:   attsRule.ColumnDetailT,
-								SqlHintS:        attsRule.SqlHintS,
-								SqlHintT:        stm.TaskParams.SqlHintT,
-								ChunkDetailS:    encryptChunkS,
-								ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
-								TaskStatus:      constant.TaskDatabaseStatusWaiting,
-							})
-							if err != nil {
-								return err
-							}
-							_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-								TaskName:       stm.Task.TaskName,
-								SchemaNameS:    attsRule.SchemaNameS,
-								TableNameS:     attsRule.TableNameS,
-								SchemaNameT:    attsRule.SchemaNameT,
-								TableNameT:     attsRule.TableNameT,
-								SnapshotPointS: globalScn,
-								TableRowsS:     tableRows,
-								TableSizeS:     tableSize,
-								ChunkTotals:    1,
-							})
-							if err != nil {
-								return err
-							}
-							return nil
-						})
-						if err != nil {
-							return err
-						}
-						return nil
-					}
-
 					var metas []*task.DataMigrateTask
-					for _, r := range bucketRanges {
+					for _, r := range upstreamBuckets {
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(r.ToStringS(), ` AND `, attsRule.WhereRange)
+							whereRange = stringutil.StringBuilder(r.ToString(), ` AND `, attsRule.WhereRange)
 						default:
-							whereRange = r.ToStringS()
+							whereRange = r.ToString()
 						}
 
 						encChunkS := snappy.Encode(nil, []byte(whereRange))
@@ -903,7 +855,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS, databaseT database.ID
 							SnapshotPointS: globalScn,
 							TableRowsS:     tableRows,
 							TableSizeS:     tableSize,
-							ChunkTotals:    uint64(len(bucketRanges)),
+							ChunkTotals:    uint64(len(upstreamBuckets)),
 						})
 						if err != nil {
 							return err

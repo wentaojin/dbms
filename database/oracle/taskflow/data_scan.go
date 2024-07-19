@@ -22,6 +22,7 @@ import (
 	"github.com/golang/snappy"
 	"github.com/google/uuid"
 	"github.com/wentaojin/dbms/database"
+	"github.com/wentaojin/dbms/database/processor"
 	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
@@ -72,14 +73,14 @@ func (dst *DataScanTask) Start() error {
 	logger.Info("data scan task inspect migrate task",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
 
-	dbVersion, _, dbCollationS, err := inspectMigrateTask(dst.Task.TaskName, dst.Task.TaskFlow, dst.Task.TaskMode, databaseS, stringutil.StringUpper(dst.DatasourceS.ConnectCharset), stringutil.StringUpper(dst.DatasourceT.ConnectCharset))
+	dbVersion, _, err := processor.InspectOracleMigrateTask(dst.Task.TaskName, dst.Task.TaskFlow, dst.Task.TaskMode, databaseS, stringutil.StringUpper(dst.DatasourceS.ConnectCharset), stringutil.StringUpper(dst.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
 
 	logger.Info("data scan task init task",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
-	err = dst.initDataScanTask(databaseS, dbVersion, dbCollationS, schemaNameS)
+	err = dst.initDataScanTask(databaseS, dbVersion, schemaNameS)
 	if err != nil {
 		return err
 	}
@@ -201,7 +202,7 @@ func (dst *DataScanTask) Start() error {
 						return errW
 					}
 
-					err = database.IDataScanProcess(&DataScanRow{
+					err = database.IDataScanProcess(&processor.DataScanRow{
 						Ctx:        dst.Ctx,
 						StartTime:  gTime,
 						TaskName:   dt.TaskName,
@@ -366,7 +367,7 @@ func (dst *DataScanTask) Start() error {
 	return nil
 }
 
-func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersion string, dbCollationS bool, schemaNameS string) error {
+func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersion string, schemaNameS string) error {
 	// delete checkpoint
 	initFlags, err := model.GetITaskRW().GetTask(dst.Ctx, &task.Task{TaskName: dst.Task.TaskName})
 	if err != nil {
@@ -538,6 +539,9 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 
 	// database tables
 	// init database table
+	dbTypeSli := stringutil.StringSplit(dst.Task.TaskFlow, constant.StringSeparatorAite)
+	dbTypeS := dbTypeSli[0]
+
 	logger.Info("data scan task start init",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
 
@@ -566,7 +570,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 					return err
 				}
 
-				dataRule := &DataScanRule{
+				dataRule := &processor.DataScanRule{
 					Ctx:               gCtx,
 					TaskName:          dst.Task.TaskName,
 					TaskMode:          dst.Task.TaskMode,
@@ -574,7 +578,6 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 					SchemaNameS:       schemaNameS,
 					TableNameS:        sourceTable,
 					TableTypeS:        databaseTableTypeMap,
-					DBCollationS:      dbCollationS,
 					DatabaseS:         databaseS,
 					DBCharsetS:        dst.DatasourceS.ConnectCharset,
 					GlobalSqlHintS:    dst.TaskParams.SqlHintS,
@@ -657,11 +660,22 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 
 				// statistic
 				if !strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) || (strings.EqualFold(dbRole, constant.OracleDatabasePrimaryRole) && stringutil.VersionOrdinal(dbVersion) < stringutil.VersionOrdinal(constant.OracleDatabaseTableMigrateRowidRequireVersion)) {
-					columnNameSlis, err := databaseS.FindDatabaseTableBestColumn(attsRule.SchemaNameS, attsRule.TableNameS, "")
+					upstreamConsIndexColumns, err := databaseS.GetDatabaseTableHighestSelectivityIndex(attsRule.SchemaNameS, attsRule.TableNameS, "", nil)
 					if err != nil {
 						return err
 					}
-					if len(columnNameSlis) == 0 {
+					// upstream bucket ranges
+					_, upstreamBuckets, err := processor.ProcessUpstreamDatabaseTableColumnStatisticsBucket(
+						dbTypeS,
+						stringutil.StringUpper(dst.DatasourceS.ConnectCharset),
+						dst.Task.CaseFieldRuleS, databaseS, attsRule.SchemaNameS,
+						attsRule.TableNameS,
+						upstreamConsIndexColumns,
+						int64(dst.TaskParams.ChunkSize))
+					if err != nil {
+						return err
+					}
+					if len(upstreamBuckets) == 0 {
 						logger.Warn("data scan task table",
 							zap.String("task_name", dst.Task.TaskName),
 							zap.String("task_mode", dst.Task.TaskMode),
@@ -719,10 +733,6 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 						return nil
 					}
 
-					bucketRanges, err := getDatabaseTableColumnBucket(dst.Ctx, databaseS, nil, dst.Task.TaskName, dst.Task.TaskFlow, attsRule.SchemaNameS, attsRule.SchemaNameS, attsRule.TableNameS, attsRule.TableNameS, dbCollationS, columnNameSlis, dst.DatasourceS.ConnectCharset, dst.DatasourceS.ConnectCharset)
-					if err != nil {
-						return err
-					}
 					logger.Warn("data scan task table",
 						zap.String("task_name", dst.Task.TaskName),
 						zap.String("task_mode", dst.Task.TaskMode),
@@ -732,58 +742,11 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 						zap.String("database_version", dbVersion),
 						zap.String("database_role", dbRole),
 						zap.String("migrate_method", "statistic"))
-					if len(bucketRanges) == 0 {
-						whereRange = `1 = 1`
-
-						encChunkS := snappy.Encode(nil, []byte(whereRange))
-
-						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
-						if err != nil {
-							return err
-						}
-
-						err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-							_, err = model.GetIDataScanTaskRW().CreateDataScanTask(txnCtx, &task.DataScanTask{
-								TaskName:        dst.Task.TaskName,
-								SchemaNameS:     attsRule.SchemaNameS,
-								TableNameS:      attsRule.TableNameS,
-								TableTypeS:      attsRule.TableTypeS,
-								SnapshotPointS:  globalScn,
-								ColumnDetailS:   attsRule.ColumnDetailS,
-								GroupColumnS:    attsRule.GroupColumnS,
-								SqlHintS:        attsRule.SqlHintS,
-								ChunkDetailS:    encryptChunkS,
-								Samplerate:      attsRule.TableSamplerateS,
-								ConsistentReadS: strconv.FormatBool(dst.TaskParams.EnableConsistentRead),
-								TaskStatus:      constant.TaskDatabaseStatusWaiting,
-							})
-							if err != nil {
-								return err
-							}
-							_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(txnCtx, &task.DataScanSummary{
-								TaskName:       dst.Task.TaskName,
-								SchemaNameS:    attsRule.SchemaNameS,
-								TableNameS:     attsRule.TableNameS,
-								SnapshotPointS: globalScn,
-								TableRowsS:     tableRows,
-								TableSizeS:     tableSize,
-								ChunkTotals:    1,
-							})
-							if err != nil {
-								return err
-							}
-							return nil
-						})
-						if err != nil {
-							return err
-						}
-						return nil
-					}
 
 					var metas []*task.DataScanTask
-					for _, r := range bucketRanges {
+					for _, r := range upstreamBuckets {
 
-						whereRange = r.ToStringS()
+						whereRange = r.ToString()
 
 						encChunkS := snappy.Encode(nil, []byte(whereRange))
 
@@ -819,7 +782,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							SnapshotPointS: globalScn,
 							TableRowsS:     tableRows,
 							TableSizeS:     tableSize,
-							ChunkTotals:    uint64(len(bucketRanges)),
+							ChunkTotals:    uint64(len(upstreamBuckets)),
 						})
 						if err != nil {
 							return err

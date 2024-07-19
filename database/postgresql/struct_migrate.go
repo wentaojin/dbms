@@ -337,7 +337,7 @@ WHERE
 	return tableTypeMap, nil
 }
 
-func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
 	col.table_schema,
 	col.table_name,

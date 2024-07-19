@@ -117,7 +117,7 @@ func GetDatabaseTableColumnBucketRange(schemaNameS, tableNameS string, databaseS
 	randomValues, randomValuesLen := SlicesLengthAlign(randomValues)
 
 	for i := 0; i <= randomValuesLen; i++ {
-		newChunk := NewRange()
+		newChunk := NewChunkRange()
 
 		for j, column := range newColumnNameS {
 			if i == 0 {
@@ -519,8 +519,8 @@ type Range struct {
 	BoundOffset map[string]int `json:"boundOffset"`
 }
 
-// NewRange return a Range.
-func NewRange() *Range {
+// NewChunkRange return a Range.
+func NewChunkRange() *Range {
 	return &Range{
 		Bounds:      make([]*Bound, 0, 2),
 		BoundOffset: make(map[string]int),
@@ -756,7 +756,7 @@ func (c *Range) update(column, lower, upper string, updateLower, updateUpper boo
 }
 
 func (c *Range) copy() *Range {
-	newChunk := NewRange()
+	newChunk := NewChunkRange()
 	for _, bound := range c.Bounds {
 		newChunk.addBound(&Bound{
 			Column:   bound.Column,

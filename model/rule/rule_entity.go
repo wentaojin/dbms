@@ -70,13 +70,14 @@ type DataMigrateRule struct {
 }
 
 type DataCompareRule struct {
-	ID           uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
-	SchemaNameS  string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
-	TableNameS   string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
-	CompareField string `gorm:"type:varchar(120);comment:compare filed" json:"compareField"`
-	CompareRange string `gorm:"type:varchar(120);comment:source sql query where" json:"compareRange"`
-	IgnoreFields string `gorm:"type:text;comment:ignore filed" json:"ignoreFields"`
+	ID                    uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName              string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
+	SchemaNameS           string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
+	TableNameS            string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
+	CompareConditionField string `gorm:"type:varchar(120);comment:compare filed" json:"compareConditionField"`
+	CompareConditionRange string `gorm:"type:varchar(120);comment:source sql query where" json:"compareConditionRange"`
+	IgnoreSelectFields    string `gorm:"type:text;comment:ignore select filed" json:"ignoreSelectFields"`
+	IgnoreConditionFields string `gorm:"type:text;comment:ignore condition filed" json:"ignoreConditionFields"`
 	*common.Entity
 }
 

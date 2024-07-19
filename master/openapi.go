@@ -86,6 +86,8 @@ func (s *Server) upsertDatasource(ctx context.Context, req openapi.APIPutDatasou
 			PdbName:        *r.PdbName,
 			Comment:        *r.Comment,
 			ConnectStatus:  *r.ConnectStatus,
+			SessionParams:  *r.SessionParams,
+			DbName:         *r.DbName,
 		}
 		pds = append(pds, ds)
 	}
@@ -530,10 +532,11 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 
 	for _, r := range *req.DataCompareRules {
 		compareRules = append(compareRules, &pb.DataCompareRule{
-			TableNameS:   *r.TableNameS,
-			CompareField: *r.CompareField,
-			CompareRange: *r.CompareRange,
-			IgnoreFields: *r.IgnoreFields,
+			TableNameS:            *r.TableNameS,
+			CompareConditionField: *r.CompareConditionField,
+			CompareConditionRange: *r.CompareConditionRange,
+			IgnoreConditionFields: *r.IgnoreConditionFields,
+			IgnoreSelectFields:    *r.IgnoreSelectFields,
 		})
 	}
 
@@ -557,18 +560,19 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 		SchemaRouteRule:  migrateSchemaRs,
 		DataCompareRules: compareRules,
 		DataCompareParam: &pb.DataCompareParam{
-			TableThread:          *req.DataCompareParam.TableThread,
-			BatchSize:            *req.DataCompareParam.BatchSize,
-			SqlThread:            *req.DataCompareParam.SqlThread,
-			WriteThread:          *req.DataCompareParam.WriteThread,
-			SqlHintS:             *req.DataCompareParam.SqlHintS,
-			SqlHintT:             *req.DataCompareParam.SqlHintT,
-			CallTimeout:          *req.DataCompareParam.CallTimeout,
-			EnableCheckpoint:     *req.DataCompareParam.EnableCheckpoint,
-			EnableConsistentRead: *req.DataCompareParam.EnableConsistentRead,
-			ConsistentReadPointS: *req.DataCompareParam.ConsistentReadPointS,
-			ConsistentReadPointT: *req.DataCompareParam.ConsistentReadPointT,
-			DivideChunkReference: *req.DataCompareParam.DivideChunkReference,
+			TableThread:           *req.DataCompareParam.TableThread,
+			BatchSize:             *req.DataCompareParam.BatchSize,
+			SqlThread:             *req.DataCompareParam.SqlThread,
+			WriteThread:           *req.DataCompareParam.WriteThread,
+			SqlHintS:              *req.DataCompareParam.SqlHintS,
+			SqlHintT:              *req.DataCompareParam.SqlHintT,
+			CallTimeout:           *req.DataCompareParam.CallTimeout,
+			EnableCheckpoint:      *req.DataCompareParam.EnableCheckpoint,
+			EnableConsistentRead:  *req.DataCompareParam.EnableConsistentRead,
+			ConsistentReadPointS:  *req.DataCompareParam.ConsistentReadPointS,
+			ConsistentReadPointT:  *req.DataCompareParam.ConsistentReadPointT,
+			ChunkSize:             *req.DataCompareParam.ChunkSize,
+			IgnoreConditionFields: *req.DataCompareParam.IgnoreConditionFields,
 		},
 	})
 	if err != nil {

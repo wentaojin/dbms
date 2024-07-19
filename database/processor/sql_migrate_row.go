@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package taskflow
+package processor
 
 import (
 	"context"
@@ -137,7 +137,7 @@ func (r *SqlMigrateRow) MigrateApply() error {
 						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)
 					}
 				default:
-					return fmt.Errorf("oracle current task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow)
+					return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow)
 				}
 
 			}

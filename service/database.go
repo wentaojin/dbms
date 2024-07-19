@@ -92,6 +92,8 @@ func UpsertDatasource(ctx context.Context, req *pb.UpsertDatasourceRequest) (str
 				ConnectStatus:  r.ConnectStatus,
 				ServiceName:    r.ServiceName,
 				PdbName:        r.PdbName,
+				SessionParams:  r.SessionParams,
+				DbName:         r.DbName,
 				Entity:         &common.Entity{Comment: r.Comment},
 			}
 			databaseI, err := database.NewDatabase(ctx, dataS, "")

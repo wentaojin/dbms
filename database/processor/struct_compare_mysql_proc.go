@@ -82,7 +82,7 @@ func (p *MySQLProcessor) GenDatabaseTableComment() (string, error) {
 }
 
 func (p *MySQLProcessor) GenDatabaseTableColumnDetail() (map[string]structure.NewColumn, map[string]map[string]structure.OldColumn, error) {
-	infos, err := p.Database.GetDatabaseTableColumnInfo(p.SchemaName, p.TableName, false)
+	infos, err := p.Database.GetDatabaseTableColumnInfo(p.SchemaName, p.TableName)
 	if err != nil {
 		return nil, nil, err
 	}

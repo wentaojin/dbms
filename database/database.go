@@ -53,7 +53,8 @@ type IDatabaseSchemaTableRule interface {
 	GenSchemaTableTypeRule() string
 	GenSchemaNameRule() (string, string, error)
 	GenSchemaTableNameRule() (string, string, error)
-	GenSchemaTableColumnRule() (string, string, string, string, error)
+	GetSchemaTableColumnNameRule() (map[string]string, error)
+	GenSchemaTableColumnSelectRule() (string, string, string, string, error)
 }
 
 func NewDatabase(ctx context.Context, datasource *datasource.Datasource, migrateOracleSchema string) (IDatabase, error) {

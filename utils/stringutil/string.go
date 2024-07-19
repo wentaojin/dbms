@@ -82,6 +82,17 @@ func StringUpperSlice(strs []string) []string {
 	return newStrs
 }
 
+// StringSliceRemoveElement used for string slice remove element
+func StringSliceRemoveElement(slice []string, elem string) []string {
+	var result []string
+	for _, v := range slice {
+		if v != elem {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
 // StringLowerSlice used for string slice lower, and returns lower string
 func StringLowerSlice(strs []string) []string {
 	var newStrs []string
@@ -476,6 +487,12 @@ func valueToString(value reflect.Value) string {
 		return fmt.Sprintf("%f", value.Float())
 	case reflect.Bool:
 		return fmt.Sprintf("%t", value.Bool())
+	case reflect.Slice, reflect.Array:
+		var strSlice []string
+		for i := 0; i < value.Len(); i++ {
+			strSlice = append(strSlice, valueToString(value.Index(i)))
+		}
+		return StringJoin(strSlice, constant.StringSeparatorComma)
 	default:
 		panic("Unsupported Type")
 	}

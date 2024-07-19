@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package taskflow
+package processor
 
 import (
 	"context"
@@ -43,11 +43,17 @@ type SqlMigrateRule struct {
 }
 
 func (r *SqlMigrateRule) GenSqlMigrateSchemaNameRule() (string, error) {
-	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameT), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-	if err != nil {
-		return "", fmt.Errorf("[GetSchemaNameRule] oracle schema [%s] charset convert failed, %v", r.SchemaNameT, err)
+	var schemaNameT string
+	switch {
+	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameT), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", fmt.Errorf("[GetSchemaNameRule] oracle schema [%s] charset convert failed, %v", r.SchemaNameT, err)
+		}
+		schemaNameT = stringutil.BytesToString(convertUtf8Raw)
+	default:
+		return "", fmt.Errorf("the task_name [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql schema rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
 	}
-	schemaNameT := stringutil.BytesToString(convertUtf8Raw)
 
 	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueSqlMigrateCaseFieldRuleLower) {
 		schemaNameT = strings.ToLower(schemaNameT)
@@ -60,11 +66,17 @@ func (r *SqlMigrateRule) GenSqlMigrateSchemaNameRule() (string, error) {
 }
 
 func (r *SqlMigrateRule) GenSqlMigrateTableNameRule() (string, error) {
-	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameT), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-	if err != nil {
-		return "", fmt.Errorf("[GetTableNameRule] oracle schema [%s] table [%v] charset convert failed, %v", r.SchemaNameT, r.TableNameT, err)
+	var tableNameT string
+	switch {
+	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameT), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", fmt.Errorf("[GetTableNameRule] oracle schema [%s] table [%v] charset convert failed, %v", r.SchemaNameT, r.TableNameT, err)
+		}
+		tableNameT = stringutil.BytesToString(convertUtf8Raw)
+	default:
+		return "", fmt.Errorf("the task_name [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql table rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
 	}
-	tableNameT := stringutil.BytesToString(convertUtf8Raw)
 
 	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueSqlMigrateCaseFieldRuleLower) {
 		tableNameT = strings.ToLower(tableNameT)
@@ -92,16 +104,21 @@ func (r *SqlMigrateRule) GenSqlMigrateTableColumnRule() (string, string, string,
 		columnNameSliT []string
 	)
 	for _, c := range columnNames {
-		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-		if err != nil {
-			return "", "", "", fmt.Errorf("[GenTableColumnRule] oracle sql migrate task sql column [%v] charset convert [UTFMB4] failed, error: %v", c, err)
+		var columnName string
+		switch {
+		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return "", "", "", fmt.Errorf("[GenTableColumnRule] oracle sql migrate task sql column [%v] charset convert [UTFMB4] failed, error: %v", c, err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		default:
+			return "", "", "", fmt.Errorf("the task_name [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
 		}
-
-		columnName := stringutil.BytesToString(columnNameUtf8Raw)
 
 		columnNameSliO = append(columnNameSliO, columnName)
 
-		columnNameS, err := optimizerDataMigrateColumnS(columnName, columnTypeMap[c], columnScaleMap[c])
+		columnNameS, err := OptimizerOracleDataMigrateColumnS(columnName, columnTypeMap[c], columnScaleMap[c])
 		if err != nil {
 			return "", "", "", err
 		}
@@ -132,10 +149,10 @@ func (r *SqlMigrateRule) GenSqlMigrateTableColumnRule() (string, string, string,
 			if strings.EqualFold(r.TaskMode, constant.TaskModeSqlMigrate) {
 				columnNameSliT = append(columnNameSliT, fmt.Sprintf("`%s`", columnNameTNew))
 			} else {
-				return "", "", "", fmt.Errorf("oracle current task [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
+				return "", "", "", fmt.Errorf("the task_name [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
 			}
 		default:
-			return "", "", "", fmt.Errorf("oracle current task [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
+			return "", "", "", fmt.Errorf("the task_name [%s] task_mode [%v] taskflow [%s] schema_name_t [%v] sql migrate sql column rule isn't support, please contact author", r.TaskName, r.TaskMode, r.TaskFlow, r.SchemaNameT)
 		}
 	}
 	return stringutil.StringJoin(columnNameSliO, constant.StringSeparatorComma), stringutil.StringJoin(columnNameSliS, constant.StringSeparatorComma), stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil

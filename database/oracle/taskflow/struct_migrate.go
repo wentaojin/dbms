@@ -18,6 +18,7 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/database/processor"
 	"github.com/wentaojin/dbms/model/rule"
 	"strings"
 	"time"
@@ -54,7 +55,7 @@ func (st *StructMigrateTask) Start() error {
 	schemaStartTime := time.Now()
 	logger.Info("struct migrate task inspect migrate task",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
-	_, nlsComp, dbCollationS, err := inspectMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, st.DatabaseS, st.DBCharsetS, st.DBCharsetT)
+	dbVersion, nlsComp, err := processor.InspectOracleMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, st.DatabaseS, st.DBCharsetS, st.DBCharsetT)
 	if err != nil {
 		return err
 	}
@@ -88,6 +89,13 @@ func (st *StructMigrateTask) Start() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT))
+
+	dbCollationS := false
+	if stringutil.VersionOrdinal(dbVersion) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+		dbCollationS = true
+	} else {
+		dbCollationS = false
+	}
 	switch {
 	case strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
 		if dbCollationS {
@@ -372,12 +380,11 @@ func (st *StructMigrateTask) structMigrateStart(
 	}
 
 	sourceTime := time.Now()
-	dataSource := &Datasource{
+	dataSource := &processor.Datasource{
 		DatabaseS:   databaseS,
 		SchemaNameS: smt.SchemaNameS,
 		TableNameS:  smt.TableNameS,
 		TableTypeS:  smt.TableTypeS,
-		CollationS:  dbCollationS,
 	}
 
 	attrs, err := database.IStructMigrateAttributes(dataSource)
@@ -394,7 +401,7 @@ func (st *StructMigrateTask) structMigrateStart(
 		zap.String("datasource", dataSource.String()),
 		zap.String("cost", time.Now().Sub(sourceTime).String()))
 	ruleTime := time.Now()
-	dataRule := &StructMigrateRule{
+	dataRule := &processor.StructMigrateRule{
 		Ctx:                      st.Ctx,
 		TaskName:                 smt.TaskName,
 		TaskFlow:                 st.Task.TaskFlow,
@@ -453,7 +460,7 @@ func (st *StructMigrateTask) structMigrateStart(
 
 	writerTime := time.Now()
 	var w database.IStructMigrateDatabaseWriter
-	w = NewStructMigrateDatabase(st.Ctx, smt.TaskName, st.Task.TaskFlow, databaseT, startTime, tableStruct)
+	w = processor.NewStructMigrateDatabase(st.Ctx, smt.TaskName, st.Task.TaskFlow, databaseT, startTime, tableStruct)
 
 	if st.TaskParams.EnableDirectCreate {
 		err = w.SyncStructDatabase()
@@ -531,7 +538,7 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 
 	writerTime := time.Now()
 	var w database.ISequenceMigrateDatabaseWriter
-	w = NewSequenceMigrateDatabase(st.Ctx, st.Task.TaskName, st.Task.TaskFlow, st.SchemaNameS, st.SchemaNameT, databaseT, startTime, seqCreates)
+	w = processor.NewSequenceMigrateDatabase(st.Ctx, st.Task.TaskName, st.Task.TaskFlow, st.SchemaNameS, st.SchemaNameT, databaseT, startTime, seqCreates)
 
 	if st.TaskParams.EnableDirectCreate {
 		err = w.SyncSequenceDatabase()

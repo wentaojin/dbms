@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/database/processor"
 	"strconv"
 	"strings"
 	"time"
@@ -644,7 +645,7 @@ func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir s
 
 	for schema, _ := range groupSchemas {
 		var w database.IStructMigrateFileWriter
-		w = taskflow.NewStructMigrateFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, schema, outputDir)
+		w = processor.NewStructMigrateFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, schema, outputDir)
 		err = w.InitOutputFile()
 		if err != nil {
 			return err

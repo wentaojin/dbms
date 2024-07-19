@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package taskflow
+package processor
 
 import (
 	"context"
@@ -37,7 +37,6 @@ type DataScanRule struct {
 	GlobalSamplerateS string             `json:"globalSamplerateS"`
 	GlobalSqlHintS    string             `json:"globalSqlHintS"`
 	TableTypeS        map[string]string  `json:"tableTypeS"`
-	DBCollationS      bool               `json:"DBCollationS"`
 	DatabaseS         database.IDatabase `json:"-"`
 	DBCharsetS        string             `json:"DBCharsetS"`
 }
@@ -48,21 +47,34 @@ func (r *DataScanRule) GenSchemaNameRule() (string, error) {
 	//if err != nil {
 	//	return "", err
 	//}
-	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-	if err != nil {
-		return "", fmt.Errorf("[GetSchemaNameRule] oracle schema [%s] charset convert failed, %v", r.SchemaNameS, err)
+
+	var schemaNameS string
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetSchemaNameRule] schema [%s] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, err)
+		}
+		schemaNameS = stringutil.BytesToString(convertUtf8Raw)
+	default:
+		return "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 	}
-	schemaNameS := stringutil.BytesToString(convertUtf8Raw)
 
 	return schemaNameS, nil
 }
 
 func (r *DataScanRule) GenTableNameRule() (string, error) {
-	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-	if err != nil {
-		return "", fmt.Errorf("[GetTableNameRule] oracle schema [%s] table [%v] charset convert failed, %v", r.SchemaNameS, r.TableNameS, err)
+	var tableNameS string
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableNameRule] schema [%s] table [%v] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, err)
+		}
+		tableNameS = stringutil.BytesToString(convertUtf8Raw)
+	default:
+		return "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 	}
-	tableNameS := stringutil.BytesToString(convertUtf8Raw)
 	return tableNameS, nil
 }
 
@@ -71,7 +83,7 @@ func (r *DataScanRule) GenTableColumnNameRule() (string, string, error) {
 		columnDetailSli, groupColumnSli []string
 	)
 
-	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS, r.DBCollationS)
+	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS)
 	if err != nil {
 		return "", "", err
 	}

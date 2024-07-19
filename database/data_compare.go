@@ -23,38 +23,41 @@ import (
 )
 
 type IDatabaseDataCompare interface {
-	GetDatabaseTableStatisticsBucket(schemeNameS, tableNameS string) (map[string][]structure.Bucket, error)
-	GetDatabaseTableStatisticsHistogram(schemeNameS, tableNameS string) (map[string][]structure.Histogram, error)
-	GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error)
+	GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS string) (map[string]string, error)
+	GetDatabaseTableStatisticsBucket(schemeNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, error)
+	GetDatabaseTableStatisticsHistogram(schemeNameS, tableNameS string, consColumns map[string]string) (map[string]structure.Histogram, error)
+	GetDatabaseTableColumnProperties(schemaNameS, tableNameS string, columnNameSli []string) ([]map[string]string, error)
+	GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.HighestBucket, error)
+	GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, limit int, collations []string) ([][]string, error)
 	GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error)
-	FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error)
-	GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error)
 }
 
 // IDataCompareRuleInitializer used for database table rule initializer
 type IDataCompareRuleInitializer interface {
 	GenSchemaTableCompareMethodRule() string
-	GenSchemaTableCustomRule() (string, string, error)
+	GenSchemaTableCustomRule() (string, string, []string, error)
 	IDatabaseSchemaTableRule
 }
 
 type DataCompareAttributesRule struct {
-	SchemaNameS    string `json:"schemaNameS"`
-	SchemaNameT    string `json:"schemaNameT"`
-	TableNameS     string `json:"tableNameS"`
-	TableTypeS     string `json:"tableTypeS"`
-	TableNameT     string `json:"tableNameT"`
-	ColumnDetailSO string `json:"columnDetailSO"`
-	ColumnDetailS  string `json:"columnDetailS"`
-	ColumnDetailT  string `json:"columnDetailT"`
-	ColumnDetailTO string `json:"columnDetailTO"`
-	CompareMethod  string `json:"compareMethod"`
-	ColumnFieldC   string `json:"columnFieldC"`
-	CompareRangeC  string `json:"compareRangeC"`
+	SchemaNameS            string            `json:"schemaNameS"`
+	SchemaNameT            string            `json:"schemaNameT"`
+	TableNameS             string            `json:"tableNameS"`
+	TableTypeS             string            `json:"tableTypeS"`
+	TableNameT             string            `json:"tableNameT"`
+	ColumnDetailSO         string            `json:"columnDetailSO"`
+	ColumnDetailS          string            `json:"columnDetailS"`
+	ColumnDetailT          string            `json:"columnDetailT"`
+	ColumnDetailTO         string            `json:"columnDetailTO"`
+	CompareMethod          string            `json:"compareMethod"`
+	ColumnNameRouteRule    map[string]string `json:"columnNameRouteRule"` // keep the column name upstream and downstream mapping, a -> b
+	CompareConditionFieldC string            `json:"compareConditionFieldC"`
+	CompareConditionRangeC string            `json:"compareConditionRangeC"`
+	IgnoreConditionFields  []string          `json:"ignoreConditionFields"`
 }
 
 func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttributesRule, error) {
-	columnFields, compareRange, err := i.GenSchemaTableCustomRule()
+	columnFields, compareRange, ignoreConditionFields, err := i.GenSchemaTableCustomRule()
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
@@ -66,23 +69,29 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
-	sourceColumnSO, sourceColumnS, targetColumnTO, targetColumnT, err := i.GenSchemaTableColumnRule()
+	sourceColumnSO, sourceColumnS, targetColumnTO, targetColumnT, err := i.GenSchemaTableColumnSelectRule()
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
+	columnRouteRule, err := i.GetSchemaTableColumnNameRule()
+	if err != nil {
+		return nil, err
+	}
 	return &DataCompareAttributesRule{
-		SchemaNameS:    sourceSchema,
-		SchemaNameT:    targetSchema,
-		TableNameS:     sourceTable,
-		TableNameT:     targetTable,
-		TableTypeS:     i.GenSchemaTableTypeRule(),
-		ColumnDetailSO: sourceColumnSO,
-		ColumnDetailS:  sourceColumnS,
-		ColumnDetailTO: targetColumnTO,
-		ColumnDetailT:  targetColumnT,
-		CompareMethod:  i.GenSchemaTableCompareMethodRule(),
-		ColumnFieldC:   columnFields,
-		CompareRangeC:  compareRange,
+		SchemaNameS:            sourceSchema,
+		SchemaNameT:            targetSchema,
+		TableNameS:             sourceTable,
+		TableNameT:             targetTable,
+		TableTypeS:             i.GenSchemaTableTypeRule(),
+		ColumnDetailSO:         sourceColumnSO,
+		ColumnDetailS:          sourceColumnS,
+		ColumnDetailTO:         targetColumnTO,
+		ColumnDetailT:          targetColumnT,
+		CompareMethod:          i.GenSchemaTableCompareMethodRule(),
+		CompareConditionFieldC: columnFields,
+		CompareConditionRangeC: compareRange,
+		IgnoreConditionFields:  ignoreConditionFields,
+		ColumnNameRouteRule:    columnRouteRule,
 	}, nil
 }
 

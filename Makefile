@@ -59,7 +59,6 @@ GOENV   := GO111MODULE=on CGO_ENABLED=1 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO      := $(GOENV) go
 GOBUILD := $(GO) build
 GORUN   := $(GO) run
-SHELL   := /usr/bin/env bash
 
 COMMIT  := $(shell git describe --always --no-match --tags --dirty="-dev")
 BUILDTS := $(shell date -u '+%Y-%m-%d %H:%M:%S')

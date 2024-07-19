@@ -191,35 +191,40 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 						targetTable string
 					)
 
-					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
-						sourceTable = st.TableNameS
-					}
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameOrigin) {
 						targetTable = st.TableNameT
 					}
 
-					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
-						sourceTable = stringutil.StringUpper(st.TableNameS)
-						for k, v := range st.ColumnRouteRules {
-							st.ColumnRouteRules[stringutil.StringUpper(k)] = v
-						}
-					}
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
 						targetTable = stringutil.StringUpper(st.TableNameT)
 						for k, v := range st.ColumnRouteRules {
-							st.ColumnRouteRules[k] = stringutil.StringUpper(v)
-						}
-					}
-					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
-						sourceTable = stringutil.StringLower(st.TableNameS)
-						for k, v := range st.ColumnRouteRules {
-							st.ColumnRouteRules[stringutil.StringLower(k)] = v
+							if _, ok := st.ColumnRouteRules[k]; ok {
+								st.ColumnRouteRules[k] = stringutil.StringUpper(v)
+							}
 						}
 					}
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameLower) {
 						targetTable = stringutil.StringLower(st.TableNameT)
 						for k, v := range st.ColumnRouteRules {
 							st.ColumnRouteRules[k] = stringutil.StringLower(v)
+						}
+					}
+
+					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
+						sourceTable = st.TableNameS
+					}
+					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
+						sourceTable = stringutil.StringUpper(st.TableNameS)
+						for k, v := range st.ColumnRouteRules {
+							st.ColumnRouteRules[stringutil.StringUpper(k)] = v
+							delete(st.ColumnRouteRules, k)
+						}
+					}
+					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
+						sourceTable = stringutil.StringLower(st.TableNameS)
+						for k, v := range st.ColumnRouteRules {
+							st.ColumnRouteRules[stringutil.StringLower(k)] = v
+							delete(st.ColumnRouteRules, k)
 						}
 					}
 
@@ -291,35 +296,48 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 			for _, st := range dataCompareRules {
 				if !strings.EqualFold(st.String(), "") {
 					var (
-						sourceTable  string
-						ignoreFields []string
+						sourceTable        string
+						compareFiled       string
+						ignoreSelectFields []string
+						ignoreCondFields   []string
 					)
 
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
 						sourceTable = st.TableNameS
-						ignoreFields = st.IgnoreFields
+						compareFiled = st.CompareConditionField
+						ignoreSelectFields = st.IgnoreSelectFields
+						ignoreCondFields = st.IgnoreConditionFields
 					}
 
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
 						sourceTable = stringutil.StringUpper(st.TableNameS)
-						for _, f := range st.IgnoreFields {
-							ignoreFields = append(ignoreFields, stringutil.StringUpper(f))
+						compareFiled = stringutil.StringUpper(st.CompareConditionField)
+						for _, f := range st.IgnoreSelectFields {
+							ignoreSelectFields = append(ignoreSelectFields, stringutil.StringUpper(f))
+						}
+						for _, f := range st.IgnoreConditionFields {
+							ignoreCondFields = append(ignoreCondFields, stringutil.StringUpper(f))
 						}
 					}
 					if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
 						sourceTable = stringutil.StringLower(st.TableNameS)
-						for _, f := range st.IgnoreFields {
-							ignoreFields = append(ignoreFields, stringutil.StringLower(f))
+						compareFiled = stringutil.StringLower(st.CompareConditionField)
+						for _, f := range st.IgnoreSelectFields {
+							ignoreSelectFields = append(ignoreSelectFields, stringutil.StringLower(f))
+						}
+						for _, f := range st.IgnoreConditionFields {
+							ignoreCondFields = append(ignoreCondFields, stringutil.StringLower(f))
 						}
 					}
 
 					tableCompareRules = append(tableCompareRules, &rule.DataCompareRule{
-						TaskName:     taskName,
-						SchemaNameS:  sourceSchema,
-						TableNameS:   sourceTable,
-						CompareField: st.CompareField,
-						CompareRange: st.CompareRange,
-						IgnoreFields: stringutil.StringJoin(ignoreFields, constant.StringSeparatorComma),
+						TaskName:              taskName,
+						SchemaNameS:           sourceSchema,
+						TableNameS:            sourceTable,
+						CompareConditionField: compareFiled,
+						CompareConditionRange: st.CompareConditionRange,
+						IgnoreSelectFields:    stringutil.StringJoin(ignoreSelectFields, constant.StringSeparatorComma),
+						IgnoreConditionFields: stringutil.StringJoin(ignoreCondFields, constant.StringSeparatorComma),
 					})
 				}
 			}
@@ -470,10 +488,11 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 		}
 		for _, st := range migrateCompareRules {
 			opCompareRules = append(opCompareRules, &pb.DataCompareRule{
-				TableNameS:   st.TableNameS,
-				CompareField: st.CompareField,
-				CompareRange: st.CompareRange,
-				IgnoreFields: stringutil.StringSplit(st.IgnoreFields, constant.StringSeparatorComma),
+				TableNameS:            st.TableNameS,
+				CompareConditionField: st.CompareConditionField,
+				CompareConditionRange: st.CompareConditionRange,
+				IgnoreSelectFields:    stringutil.StringSplit(st.IgnoreSelectFields, constant.StringSeparatorComma),
+				IgnoreConditionFields: stringutil.StringSplit(st.IgnoreConditionFields, constant.StringSeparatorComma),
 			})
 		}
 

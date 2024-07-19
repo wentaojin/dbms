@@ -838,6 +838,14 @@ components:
           type: string
           nullable: true
           format: string
+        sessionParams:
+          type: string
+          nullable: true
+          format: string
+        dbName:
+          type: string
+          nullable: true
+          format: string
         comment:
           type: string
           nullable: true
@@ -1086,11 +1094,15 @@ components:
       properties:
         tableNameS:
           type: string
-        compareField:
+        compareConditionField:
           type: string
-        compareRange:
+        compareConditionRange:
           type: string
-        ignoreFields:
+        ignoreSelectFields:
+          type: array
+          items:
+            type: string
+        ignoreConditionFields:
           type: array
           items:
             type: string
@@ -1128,8 +1140,13 @@ components:
           type: string
         consistentReadPointT:
           type: string
-        divideChunkReference:
-          type: string
+        chunkSize:
+          type: integer
+          format: uint64
+        ignoreConditionFields:
+          type: array
+          items:
+            type: string
     CsvMigrateParam:
       type: object
       properties:

@@ -22,6 +22,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/database/oracle/taskflow"
+	"github.com/wentaojin/dbms/database/processor"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/common"
@@ -777,7 +778,7 @@ func GenDataScanTask(ctx context.Context, serverAddr, taskName, outputDir string
 	}
 
 	var w database.IFileWriter
-	w = taskflow.NewDataScanFile(ctx, taskInfo.TaskName, taskInfo.TaskMode, taskInfo.TaskFlow, outputDir)
+	w = processor.NewDataScanFile(ctx, taskInfo.TaskName, taskInfo.TaskMode, taskInfo.TaskFlow, outputDir)
 	err = w.InitFile()
 	if err != nil {
 		return err

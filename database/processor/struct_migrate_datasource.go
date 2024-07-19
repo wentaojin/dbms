@@ -13,9 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package taskflow
+package processor
 
 import (
+	"github.com/wentaojin/dbms/utils/constant"
 	"strings"
 
 	"github.com/wentaojin/dbms/database"
@@ -27,7 +28,6 @@ type Datasource struct {
 	SchemaNameS string             `json:"schemaNameS"`
 	TableNameS  string             `json:"tableNameS"`
 	TableTypeS  string             `json:"tableTypeS"`
-	CollationS  bool               `json:"collationS"`
 }
 
 func (d *Datasource) GetTablePrimaryKey() ([]map[string]string, error) {
@@ -59,7 +59,7 @@ func (d *Datasource) GetTableComment() ([]map[string]string, error) {
 }
 
 func (d *Datasource) GetTableColumns() ([]map[string]string, error) {
-	return d.DatabaseS.GetDatabaseTableColumnInfo(d.SchemaNameS, d.TableNameS, d.CollationS)
+	return d.DatabaseS.GetDatabaseTableColumnInfo(d.SchemaNameS, d.TableNameS)
 }
 
 func (d *Datasource) GetTableColumnComment() ([]map[string]string, error) {
@@ -71,7 +71,19 @@ func (d *Datasource) GetTableCharsetCollation() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	if d.CollationS {
+
+	version, err := d.DatabaseS.GetDatabaseVersion()
+	if err != nil {
+		return "", "", err
+	}
+
+	collationS := false
+	if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+		collationS = true
+	} else {
+		collationS = false
+	}
+	if collationS {
 		tableCollation, err := d.DatabaseS.GetDatabaseTableCollation(d.SchemaNameS, d.TableNameS)
 		if err != nil {
 			return "", "", err

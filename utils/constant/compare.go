@@ -42,7 +42,6 @@ var (
 		BuildInOracleDatatypeDate,
 	}
 	DataCompareOracleDatabaseSupportTimestampSubtypes = []string{
-		BuildInOracleDatatypeDate,
 		BuildInOracleDatatypeTimestamp,
 		BuildInOracleDatatypeTimestamp0,
 		BuildInOracleDatatypeTimestamp1,
@@ -76,6 +75,15 @@ var (
 		BuildInOracleDatatypeTimestampWithLocalTimeZone9,
 	}
 
+	DataCompareORACLECompatibleDatabaseColumnDatatypeSupportCollation = []string{
+		BuildInOracleDatatypeChar,
+		BuildInOracleDatatypeNchar,
+		BuildInOracleDatatypeVarchar,
+		BuildInOracleDatatypeVarchar2,
+		BuildInOracleDatatypeNvarchar2,
+		BuildInOracleDatatypeCharacter,
+		BuildInOracleDatatypeNcharVarying}
+
 	DataCompareSymbolLt         = "<"
 	DataCompareSymbolLte        = "<="
 	DataCompareSymbolGt         = ">"
@@ -85,6 +93,25 @@ var (
 
 	DataCompareMethodCheckMD5ValueLength = 32
 
+	DataCompareMYSQLCompatibleDatabaseSupportDecimalSubtypes = []string{
+		BuildInMySQLDatatypeTinyint,
+		BuildInMySQLDatatypeSmallint,
+		BuildInMySQLDatatypeInt,
+		BuildInMySQLDatatypeInteger,
+		BuildInMySQLDatatypeMediumint,
+		BuildInMySQLDatatypeBigint,
+		BuildInMySQLDatatypeFloat,
+		BuildInMySQLDatatypeDecimal,
+		BuildInMySQLDatatypeDoublePrecision,
+		BuildInMySQLDatatypeNumeric,
+		BuildInMySQLDatatypeReal,
+		BuildInMySQLDatatypeDouble,
+	}
+	DataCompareMYSQLCompatibleDatabaseColumnTimeSubtypes = []string{
+		BuildInMySQLDatatypeDatetime,
+		BuildInMySQLDatatypeTimestamp,
+		BuildInMySQLDatatypeDate,
+	}
 	DataCompareMYSQLCompatibleDatabaseColumnDatatypeSupportCollation = []string{
 		BuildInMySQLDatatypeChar,
 		BuildInMySQLDatatypeVarchar,
@@ -92,15 +119,6 @@ var (
 		BuildInMySQLDatatypeTinyText,
 		BuildInMySQLDatatypeMediumText,
 		BuildInMySQLDatatypeLongText}
-
-	DataCompareORACLECompatibleDatabaseColumnDatatypeSupportCollation = []string{
-		BuildInOracleDatatypeChar,
-		BuildInOracleDatatypeNchar,
-		BuildInOracleDatatypeVarchar,
-		BuildInOracleDatatypeVarchar2,
-		BuildInOracleDatatypeNvarchar2,
-		BuildInOracleDatatypeCharacter,
-		BuildInOracleDatatypeNcharVarying}
 )
 
 const (

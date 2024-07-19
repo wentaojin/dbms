@@ -94,9 +94,9 @@ $ dbms-ctl csv upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${csv_m
 ```shell
 $ dbms-ctl sql upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${sql_migrate_task.toml}
 ```
-数据校验任务配置[示例](../example/data_compare_task00.toml)
+数据校验任务配置[示例](../example/data_compare_task.toml)
 ```shell
-$ dbms-ctl verify upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${data_compare_task00.toml}
+$ dbms-ctl verify upsert -s ${dbms-master-ip-leader}:${dbms-master-port} -c ${data_compare_task.toml}
 ```
 数据扫描任务配置[示例](../example/data_scan_task.toml)
 ```shell

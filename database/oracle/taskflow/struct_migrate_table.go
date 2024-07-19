@@ -17,6 +17,7 @@ package taskflow
 
 import (
 	"fmt"
+	"github.com/wentaojin/dbms/database/processor"
 	"regexp"
 	"strings"
 
@@ -29,7 +30,7 @@ import (
 type StructMigrateTable struct {
 	TaskName            string                                `json:"taskName"`
 	TaskFlow            string                                `json:"taskFlow"`
-	DatasourceS         *Datasource                           `json:"datasourceS"`
+	DatasourceS         *processor.Datasource                 `json:"datasourceS"`
 	TableAttributes     *database.StructMigrateAttributes     `json:"tableAttributes"`
 	TableAttributesRule *database.StructMigrateAttributesRule `json:"tableAttributesRule"`
 	DBCharsetT          string                                `json:"DBCharsetT"`

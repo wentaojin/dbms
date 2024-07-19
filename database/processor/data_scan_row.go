@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package taskflow
+package processor
 
 import (
 	"context"
@@ -77,44 +77,44 @@ func (r *DataScanRow) ScanRows() error {
 	chunkDetailS = stringutil.BytesToString(convertRaw)
 
 	// sample scan
-	if strings.EqualFold(chunkDetailS, "sample_scan") && !strings.EqualFold(r.Dst.Samplerate, "") {
-		switch {
-		case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `) AS OF SCN `, r.Dst.SnapshotPointS)
-		case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && !strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `) AS OF SCN `, r.Dst.SnapshotPointS)
-		case strings.EqualFold(r.Dst.ConsistentReadS, "NO") && !strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `)`)
-		default:
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `)`)
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+		if strings.EqualFold(chunkDetailS, "sample_scan") && !strings.EqualFold(r.Dst.Samplerate, "") {
+			switch {
+			case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && strings.EqualFold(r.Dst.SqlHintS, ""):
+				execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `) AS OF SCN `, r.Dst.SnapshotPointS)
+			case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && !strings.EqualFold(r.Dst.SqlHintS, ""):
+				execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `) AS OF SCN `, r.Dst.SnapshotPointS)
+			case strings.EqualFold(r.Dst.ConsistentReadS, "NO") && !strings.EqualFold(r.Dst.SqlHintS, ""):
+				execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `)`)
+			default:
+				execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" SAMPLE(`, r.Dst.Samplerate, `)`)
+			}
+		} else {
+			switch {
+			case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && strings.EqualFold(r.Dst.SqlHintS, ""):
+				execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" AS OF SCN `, r.Dst.SnapshotPointS, ` WHERE `, chunkDetailS)
+			case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && !strings.EqualFold(r.Dst.SqlHintS, ""):
+				execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" AS OF SCN `, r.Dst.SnapshotPointS, ` WHERE `, chunkDetailS)
+			case strings.EqualFold(r.Dst.ConsistentReadS, "NO") && !strings.EqualFold(r.Dst.SqlHintS, ""):
+				execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" WHERE `, chunkDetailS)
+			default:
+				execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" WHERE `, chunkDetailS)
+			}
 		}
-	} else {
-		switch {
-		case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" AS OF SCN `, r.Dst.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case strings.EqualFold(r.Dst.ConsistentReadS, "YES") && !strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" AS OF SCN `, r.Dst.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case strings.EqualFold(r.Dst.ConsistentReadS, "NO") && !strings.EqualFold(r.Dst.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dst.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" WHERE `, chunkDetailS)
-		default:
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dst.SchemaNameS, `"."`, r.Dst.TableNameS, `" WHERE `, chunkDetailS)
+		var (
+			groupColumnSli []string
+			groupingSetSli []string
+			sumColumnSli   []string
+		)
+		groupColumns := stringutil.StringSplit(r.Dst.GroupColumnS, constant.StringSeparatorComma)
+		for _, c := range groupColumns {
+			groupingSetSli = append(groupingSetSli, fmt.Sprintf("(%s)", c))
+			groupColumnSli = append(groupColumnSli, c)
+			columnCategorySli := stringutil.StringSplit(c, constant.StringSeparatorUnderline)
+			sumColumnSli = append(sumColumnSli, fmt.Sprintf("SUM(CASE WHEN %s IS NULL THEN 0 ELSE COUNTS END) AS %s", c, columnCategorySli[0]))
 		}
-	}
-
-	var (
-		groupColumnSli []string
-		groupingSetSli []string
-		sumColumnSli   []string
-	)
-	groupColumns := stringutil.StringSplit(r.Dst.GroupColumnS, constant.StringSeparatorComma)
-	for _, c := range groupColumns {
-		groupingSetSli = append(groupingSetSli, fmt.Sprintf("(%s)", c))
-		groupColumnSli = append(groupColumnSli, c)
-		columnCategorySli := stringutil.StringSplit(c, constant.StringSeparatorUnderline)
-		sumColumnSli = append(sumColumnSli, fmt.Sprintf("SUM(CASE WHEN %s IS NULL THEN 0 ELSE COUNTS END) AS %s", c, columnCategorySli[0]))
-	}
-
-	execQueryS = fmt.Sprintf(`WITH CV AS (
+		execQueryS = fmt.Sprintf(`WITH CV AS (
 %v
 )
 SELECT 
@@ -128,16 +128,19 @@ FROM
 		CV
 	GROUP BY
 		GROUPING SETS(%s)) V GROUP BY %s`, execQueryS, stringutil.StringJoin(groupColumnSli, constant.StringSplicingSymbol), stringutil.StringJoin(sumColumnSli, constant.StringSeparatorComma),
-		stringutil.StringJoin(groupColumnSli, constant.StringSeparatorComma), stringutil.StringJoin(groupingSetSli, constant.StringSeparatorComma), stringutil.StringJoin(groupColumnSli, constant.StringSplicingSymbol))
+			stringutil.StringJoin(groupColumnSli, constant.StringSeparatorComma), stringutil.StringJoin(groupingSetSli, constant.StringSeparatorComma), stringutil.StringJoin(groupColumnSli, constant.StringSplicingSymbol))
 
-	logger.Info("data scan task chunk rows scan starting",
-		zap.String("task_name", r.Dst.TaskName),
-		zap.String("task_mode", r.TaskMode),
-		zap.String("task_flow", r.TaskFlow),
-		zap.String("schema_name_s", r.Dst.SchemaNameS),
-		zap.String("table_name_s", r.Dst.TableNameS),
-		zap.String("chunk_detail_s", desChunkDetailS),
-		zap.String("startTime", startTime.String()))
+		logger.Info("data scan task chunk rows scan starting",
+			zap.String("task_name", r.Dst.TaskName),
+			zap.String("task_mode", r.TaskMode),
+			zap.String("task_flow", r.TaskFlow),
+			zap.String("schema_name_s", r.Dst.SchemaNameS),
+			zap.String("table_name_s", r.Dst.TableNameS),
+			zap.String("chunk_detail_s", desChunkDetailS),
+			zap.String("startTime", startTime.String()))
+	default:
+		return fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
+	}
 
 	cols, resultS, err := r.DatabaseS.GeneralQuery(execQueryS)
 	if err != nil {

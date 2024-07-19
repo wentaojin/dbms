@@ -18,6 +18,7 @@ package oracle
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/errors"
 	"github.com/wentaojin/dbms/utils/structure"
 	"hash/crc32"
 	"path/filepath"
@@ -34,291 +35,319 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func (d *Database) GetDatabaseTableStatisticsBucket(schemeNameS, tableNameS string) (map[string][]structure.Bucket, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) GetDatabaseTableStatisticsHistogram(schemeNameS, tableNameS string) (map[string][]structure.Histogram, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
-	var err error
-
-	//sqlStr := fmt.Sprintf(`SELECT
-	//	OWNER,
-	//	TABLE_NAME,
-	//	COLUMN_NAME,
-	//	DATA_TYPE,
-	//	NUM_DISTINCT,
-	//	CASE
-	//		-- IF IT IS TIMESTAMP WITH TIMEZONE, CONVERT FROM UTC TO LOCAL TIME
-	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%WITH TIME ZONE' THEN
-	//			TO_CHAR(
-	//			FROM_TZ(
-	//				TO_TIMESTAMP(LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(LOW_VALUE, 1, 2), 'XX')
-	//+ TO_NUMBER(SUBSTR(LOW_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
-	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
-	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
-	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
-	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
-	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
-	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
-	//				, 'UTC' ) AT LOCAL
-	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
-	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%' THEN
-	//			TO_CHAR(
-	//			TO_TIMESTAMP( LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(LOW_VALUE, 1, 2), 'XX')
-	//+ TO_NUMBER(SUBSTR(LOW_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
-	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
-	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
-	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
-	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
-	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
-	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
-	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
-	//		WHEN DATA_TYPE = 'NUMBER' THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_NUMBER(LOW_VALUE))
-	//		WHEN DATA_TYPE IN ('VARCHAR2', 'CHAR') THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_VARCHAR2(LOW_VALUE))
-	//		WHEN DATA_TYPE = 'NVARCHAR2' THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_NVARCHAR2(LOW_VALUE))
-	//		WHEN DATA_TYPE = 'BINARY_DOUBLE' THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_DOUBLE(LOW_VALUE))
-	//		WHEN DATA_TYPE = 'BINARY_FLOAT' THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_FLOAT(LOW_VALUE))
-	//		WHEN DATA_TYPE = 'DATE' THEN
-	//			TO_CHAR(DBMS_STATS.CONVERT_RAW_TO_DATE(LOW_VALUE), 'YYYY-MM-DD HH24:MI:SS')
-	//		ELSE
-	//			'UNKNOWN DATA_TYPE'
-	//	END LOW_VALUE,
-	//	CASE
-	//		-- IF IT IS TIMESTAMP WITH TIMEZONE, CONVERT FROM UTC TO LOCAL TIME
-	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%WITH TIME ZONE' THEN
-	//			TO_CHAR(
-	//			FROM_TZ(
-	//				TO_TIMESTAMP(LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(HIGH_VALUE, 1, 2), 'XX')
-	//+ TO_NUMBER(SUBSTR(HIGH_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
-	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
-	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
-	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
-	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
-	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
-	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
-	//				, 'UTC' ) AT LOCAL
-	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
-	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%' THEN
-	//			TO_CHAR(
-	//			TO_TIMESTAMP( LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(HIGH_VALUE, 1, 2), 'XX')
-	//+ TO_NUMBER(SUBSTR(HIGH_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
-	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
-	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
-	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
-	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
-	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
-	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
-	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
-	//		WHEN DATA_TYPE = 'NUMBER' THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_NUMBER(HIGH_VALUE))
-	//		WHEN DATA_TYPE IN ('VARCHAR2', 'CHAR') THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_VARCHAR2(HIGH_VALUE))
-	//		WHEN DATA_TYPE = 'NVARCHAR2' THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_NVARCHAR2(HIGH_VALUE))
-	//		WHEN DATA_TYPE = 'BINARY_DOUBLE' THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_DOUBLE(HIGH_VALUE))
-	//		WHEN DATA_TYPE = 'BINARY_FLOAT' THEN
-	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_FLOAT(HIGH_VALUE))
-	//		WHEN DATA_TYPE = 'DATE' THEN
-	//			TO_CHAR(DBMS_STATS.CONVERT_RAW_TO_DATE(HIGH_VALUE), 'YYYY-MM-DD HH24:MI:SS')
-	//		ELSE
-	//			'UNKNOWN DATA_TYPE'
-	//	END HIGH_VALUE
-	//FROM
-	//	DBA_TAB_COLUMNS
-	//WHERE
-	//	OWNER = '%s'
-	//	AND TABLE_NAME = '%s'`, schemaNameS, tableNameS)
-
-	sqlStr := fmt.Sprintf(`SELECT
-		OWNER,
-		TABLE_NAME,
-		COLUMN_NAME,
-		DATA_TYPE 
-	FROM
-		DBA_TAB_COLUMNS
-	WHERE
-		OWNER = '%s' 
-		AND TABLE_NAME = '%s'`, schemaNameS, tableNameS)
-	_, results, err := d.GeneralQuery(sqlStr)
+func (d *Database) GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS string) (map[string]string, error) {
+	ci := make(map[string]string)
+	pkRes, err := d.GetDatabaseTablePrimaryKey(schemaNameS, tableNameS)
 	if err != nil {
 		return nil, err
 	}
-
-	var columnNameSli []string
-	columnDatatypeMap := make(map[string]string)
-	for _, res := range results {
-		columnDatatypeMap[res["COLUMN_NAME"]] = res["DATA_TYPE"]
-		columnNameSli = append(columnNameSli, res["COLUMN_NAME"])
+	if len(pkRes) > 1 {
+		return nil, fmt.Errorf("the database schema [%s] table [%s] has more than one primary key", schemaNameS, tableNameS)
 	}
-
-	if !strings.EqualFold(columnNameS, "") && d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[columnNameS]) {
-		return []string{columnNameS}, nil
+	if len(pkRes) == 1 {
+		ci[pkRes[0]["CONSTRAINT_NAME"]] = pkRes[0]["COLUMN_LIST"]
 	}
-
-	pkSlis, err := d.GetDatabaseTablePrimaryKey(schemaNameS, tableNameS)
+	ukRes, err := d.GetDatabaseTableUniqueKey(schemaNameS, tableNameS)
 	if err != nil {
 		return nil, err
 	}
-	if len(pkSlis) == 1 {
-		var pkColumns []string
-		pkArrs := stringutil.StringSplit(pkSlis[0]["COLUMN_LIST"], ",")
-		for _, s := range pkArrs {
-			brackets := stringutil.StringExtractorWithinBrackets(s)
-			if len(brackets) == 0 {
-				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+	for _, uk := range ukRes {
+		ci[uk["CONSTRAINT_NAME"]] = uk["COLUMN_LIST"]
+	}
+	normalRes, err := d.GetDatabaseTableNormalIndex(schemaNameS, tableNameS)
+	if err != nil {
+		return nil, err
+	}
+	for _, nr := range normalRes {
+		ci[nr["INDEX_NAME"]] = nr["COLUMN_LIST"]
+	}
+	uniqueRes, err := d.GetDatabaseTableUniqueIndex(schemaNameS, tableNameS)
+	if err != nil {
+		return nil, err
+	}
+	for _, ur := range uniqueRes {
+		ci[ur["INDEX_NAME"]] = ur["COLUMN_LIST"]
+	}
+	return ci, nil
+}
+
+func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	INDEX_NAME,
+	DISTINCT_KEYS,
+	NUM_ROWS
+FROM DBA_IND_STATISTICS
+WHERE TABLE_OWNER = '%s' 
+  AND TABLE_NAME = '%s' 
+  AND OBJECT_TYPE = 'INDEX'`, schemaNameS, tableNameS))
+	if err != nil {
+		return nil, err
+	}
+	// estimate avg rows per key
+	bsEstimiateCounts := make(map[string]int64)
+	for _, r := range res {
+		disCount, err := strconv.ParseInt(r["DISTINCT_KEYS"], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing integer: %v", err)
+		}
+		numRows, err := strconv.ParseInt(r["NUM_ROWS"], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing integer: %v", err)
+		}
+		rows := numRows / disCount
+		if rows == 0 {
+			rows = 1
+		}
+		bsEstimiateCounts[r["INDEX_NAME"]] = rows
+	}
+
+	buckets := make(map[string][]structure.Bucket)
+	for k, v := range consColumns {
+		columns := stringutil.StringSplit(v, constant.StringSeparatorComma)
+
+		columnProps := make(map[string]string)
+		props, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columns)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range props {
+			columnProps[p["COLUMN_NAME"]] = p["DATA_TYPE"]
+		}
+
+		var columnBuckets [][]string
+		for i, c := range columns {
+			bts, err := d.getDatabaseTableColumnStatisticsBucket(schemaNameS, tableNameS, c, columnProps[c])
+			if err != nil {
+				return nil, err
+			}
+
+			// prefix column index need exist or match support datatype, otherwise break, continue next index
+			if i == 0 && len(bts) == 0 {
+				if !d.filterDatabaseTableColumnBucketSupportDatatype(columnProps[c]) {
 					break
 				} else {
-					pkColumns = append(pkColumns, s)
+					columnBuckets = append(columnBuckets, bts)
 				}
+			} else if i > 0 && len(bts) == 0 {
+				continue
 			} else {
-				marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
-				for _, m := range marks {
-					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
-						break
-					} else {
-						pkColumns = append(pkColumns, m)
-					}
+				if d.filterDatabaseTableColumnBucketSupportDatatype(columnProps[c]) {
+					columnBuckets = append(columnBuckets, bts)
 				}
 			}
 		}
-		if len(pkColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(pkSlis[0]["COLUMN_LIST"], columnNameSli...)) {
-			return pkColumns, nil
+
+		// skip
+		if columnBuckets == nil {
+			continue
 		}
-	} else if len(pkSlis) > 1 {
-		return nil, fmt.Errorf("schema table primary key aren't exist mutiple")
+
+		// order merge, return (a,b)  (a,c)
+		columnValues, columnValuesLen := stringutil.StringSliceAlignLen(columnBuckets)
+
+		var newColumnsBs []string
+		for j := 0; j < columnValuesLen; j++ {
+			var bs []string
+			for i := 0; i < len(columnValues); i++ {
+				bs = append(bs, columnValues[i][j])
+			}
+			newColumnsBs = append(newColumnsBs, stringutil.StringJoin(bs, constant.StringSeparatorComma))
+		}
+
+		buckets[k] = structure.StringSliceCreateBuckets(newColumnsBs, bsEstimiateCounts[k])
 	}
 
-	ukSlis, err := d.GetDatabaseTableUniqueKey(schemaNameS, tableNameS)
-	if err != nil {
-		return nil, err
-	}
-	if len(ukSlis) > 0 {
-		for _, uk := range ukSlis {
-			var ukColumns []string
-			ukArrs := stringutil.StringSplit(uk["COLUMN_LIST"], ",")
-			for _, s := range ukArrs {
-				brackets := stringutil.StringExtractorWithinBrackets(s)
-				if len(brackets) == 0 {
-					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
-						break
-					} else {
-						ukColumns = append(ukColumns, s)
-					}
-				} else {
-					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
-					for _, m := range marks {
-						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
-							break
-						} else {
-							ukColumns = append(ukColumns, m)
-						}
-					}
-				}
-			}
-			if len(ukColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(uk["COLUMN_LIST"], columnNameSli...)) {
-				return ukColumns, nil
-			}
-		}
-	}
-
-	uiSlis, err := d.GetDatabaseTableUniqueIndex(schemaNameS, tableNameS)
-	if err != nil {
-		return nil, err
-	}
-	if len(uiSlis) > 0 {
-		for _, ui := range uiSlis {
-			var uiColumns []string
-			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], "|+|")
-			for _, s := range uiArrs {
-				brackets := stringutil.StringExtractorWithinBrackets(s)
-				if len(brackets) == 0 {
-					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
-						break
-					} else {
-						uiColumns = append(uiColumns, s)
-					}
-				} else {
-					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
-					for _, m := range marks {
-						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
-							break
-						} else {
-							uiColumns = append(uiColumns, m)
-						}
-					}
-				}
-			}
-			if len(uiColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(ui["COLUMN_LIST"], columnNameSli...)) {
-				return uiColumns, nil
-			}
-		}
-	}
-
-	niSlis, err := d.GetDatabaseTableNormalIndex(schemaNameS, tableNameS)
-	if err != nil {
-		return nil, err
-	}
-	if len(niSlis) > 0 {
-		for _, ni := range niSlis {
-			var niColumns []string
-			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], "|+|")
-			for _, s := range niArrs {
-				brackets := stringutil.StringExtractorWithinBrackets(s)
-				if len(brackets) == 0 {
-					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
-						break
-					} else {
-						niColumns = append(niColumns, s)
-					}
-				} else {
-					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
-					for _, m := range marks {
-						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
-							break
-						} else {
-							niColumns = append(niColumns, m)
-						}
-					}
-				}
-			}
-			if len(niColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(ni["COLUMN_LIST"], columnNameSli...)) {
-				return niColumns, nil
-			}
-		}
-	}
-	return nil, nil
+	return buckets, nil
 }
 
-func (d *Database) FilterDatabaseTableColumnDatatype(columnType string) bool {
-	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportNumberSubtypes, columnType) {
-		return true
+func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS string, consColumns map[string]string) (map[string]structure.Histogram, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	INDEX_NAME,
+	DISTINCT_KEYS
+FROM DBA_IND_STATISTICS
+WHERE TABLE_OWNER = '%s' 
+  AND TABLE_NAME = '%s' 
+  AND OBJECT_TYPE = 'INDEX'`, schemaNameS, tableNameS))
+	if err != nil {
+		return nil, err
 	}
-	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportVarcharSubtypes, columnType) {
-		return true
+	hist := make(map[string]structure.Histogram)
+	for _, r := range res {
+		disCount, err := strconv.ParseInt(r["DISTINCT_KEYS"], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing integer: %v", err)
+		}
+		hist[r["INDEX_NAME"]] = structure.Histogram{
+			DistinctCount: disCount,
+		}
 	}
-	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, columnType) {
-		return true
-	}
-	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, columnType) {
-		return true
-	}
-	return false
+	return hist, nil
 }
 
-func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error) {
-	var sqlStr string
+func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.HighestBucket, error) {
+	consColumns, err := d.GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS)
+	if err != nil {
+		return nil, err
+	}
+	// query := fmt.Sprintf("SELECT COUNT(DISTINCT %s)/COUNT(1) as SEL FROM %s.%s", columns, schemaNameS,tableNameS)
+	histograms, err := d.GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS, consColumns)
+	if err != nil {
+		return nil, err
+	}
+
+	maxHists := make(map[string]structure.Histogram)
+
+	var newIgnoreFields []string
+	if len(ignoreCondFields) > 0 && stringutil.IsContainedString(ignoreCondFields, compareCondField) {
+		newIgnoreFields = stringutil.StringSliceRemoveElement(ignoreCondFields, compareCondField)
+	} else {
+		newIgnoreFields = ignoreCondFields
+	}
+
+	if !strings.EqualFold(compareCondField, "") || len(newIgnoreFields) > 0 {
+		matchIndexes := structure.FindColumnMatchConstraintIndexNames(consColumns, compareCondField, newIgnoreFields)
+		if len(matchIndexes) == 0 {
+			// not found, the custom column not match index
+			return nil, nil
+		}
+		maxHists = structure.FindMaxDistinctCountHistogram(structure.ExtractColumnMatchHistogram(matchIndexes, histograms), consColumns)
+	} else {
+		maxHists = structure.FindMaxDistinctCountHistogram(histograms, consColumns)
+	}
+
+	// find max histogram indexName -> columnName
+	buckets, err := d.GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS, consColumns)
+	if err != nil {
+		return nil, err
+	}
+
+	highestIndex, highestBuckets, highestConColumns := structure.FindMaxDistinctCountBucket(maxHists, buckets, consColumns)
+
+	columns := stringutil.StringSplit(highestConColumns, constant.StringSeparatorComma)
+
+	properties, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columns)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		columnProps       []string
+		columnCollations  []string
+		datetimePrecision []string
+	)
+	for _, c := range columns {
+		for _, p := range properties {
+			if strings.EqualFold(p["COLUMN_NAME"], c) {
+				columnProps = append(columnProps, p["DATA_TYPE"])
+				if stringutil.IsContainedStringIgnoreCase(append([]string{},
+					append(constant.DataCompareOracleDatabaseSupportDateSubtypes,
+						constant.DataCompareOracleDatabaseSupportTimestampSubtypes...)...), p["DATA_TYPE"]) {
+					datetimePrecision = append(datetimePrecision, p["DATA_SCALE"])
+				} else {
+					// the column datatype isn't supported, fill ""
+					columnCollations = append(columnCollations, "")
+				}
+				if stringutil.IsContainedStringIgnoreCase(constant.DataCompareORACLECompatibleDatabaseColumnDatatypeSupportCollation, p["DATA_TYPE"]) {
+					columnCollations = append(columnCollations, p["COLLATION"])
+				} else {
+					// the column datatype isn't supported, fill ""
+					columnCollations = append(columnCollations, "")
+				}
+			}
+		}
+	}
+
+	return &structure.HighestBucket{
+		IndexName:         highestIndex,
+		IndexColumn:       columns,
+		ColumnDatatype:    columnProps,
+		ColumnCollation:   columnCollations,
+		DatetimePrecision: datetimePrecision,
+		Buckets:           highestBuckets,
+	}, nil
+}
+
+func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, limit int, collations []string) ([][]string, error) {
+	if conditions == "" {
+		conditions = "TRUE"
+	}
+
+	columnNames := make([]string, 0, len(columns))
+	columnOrders := make([]string, 0, len(collations))
+	for i, col := range columns {
+		columnNames = append(columnNames, fmt.Sprintf(`"%s""`, col))
+		if !strings.EqualFold(collations[i], "") {
+			columnOrders = append(columnOrders, fmt.Sprintf(`NLSSORT("%s", 'NLS_SORT = %s')`, col, collations))
+		}
+	}
+
+	query := fmt.Sprintf(`WITH RandomizedRows AS (
+  SELECT %[1]s,
+         DBMS_RANDOM.VALUE AS random_value
+  FROM %[2]s
+  WHERE %[3]s ORDER BY %[4]s
+)
+SELECT %[1]s
+FROM (
+  SELECT rr.*,
+         ROW_NUMBER() OVER (ORDER BY random_value) AS rn
+  FROM RandomizedRows rr
+)
+WHERE rn <= %[5]d`, stringutil.StringJoin(columnNames, constant.StringSeparatorComma), fmt.Sprintf(`"%s"."%s"`, schemaNameS, tableNameS), conditions, stringutil.StringJoin(columnOrders, constant.StringSeparatorComma), limit)
+
+	rows, err := d.DBConn.QueryContext(d.Ctx, query)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	defer rows.Close()
+
+	randomValues := make([][]string, 0, limit)
+NEXTROW:
+	for rows.Next() {
+		colVals := make([][]byte, len(columns))
+		colValsI := make([]interface{}, len(colVals))
+		for i := range colValsI {
+			colValsI[i] = &colVals[i]
+		}
+		err = rows.Scan(colValsI...)
+		if err != nil {
+			return nil, err
+		}
+
+		randomValue := make([]string, len(columns))
+
+		for i, col := range colVals {
+			if col == nil {
+				continue NEXTROW
+			}
+			randomValue[i] = string(col)
+		}
+		randomValues = append(randomValues, randomValue)
+	}
+
+	return randomValues, err
+
+}
+
+func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS string, columnNameSli []string) ([]map[string]string, error) {
+	var (
+		sqlStr  string
+		columns []string
+	)
+	for _, c := range columnNameSli {
+		columns = append(columns, fmt.Sprintf("'%s'", c))
+	}
+
+	version, err := d.GetDatabaseVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	collationS := false
+	if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+		collationS = true
+	} else {
+		collationS = false
+	}
 
 	if collationS {
 		sqlStr = fmt.Sprintf(`SELECT 
@@ -337,9 +366,9 @@ FROM
 WHERE
     T.OWNER = '%s'
 	AND T.TABLE_NAME = '%s'
-	AND T.COLUMN_NAME = '%s'
+	AND T.COLUMN_NAME IN (%s)
 ORDER BY
-	T.COLUMN_ID`, schemaNameS, tableNameS, columnNameS)
+	T.COLUMN_ID`, schemaNameS, tableNameS, stringutil.StringJoin(columns, constant.StringSeparatorComma))
 	} else {
 		sqlStr = fmt.Sprintf(`SELECT 
 		T.OWNER,
@@ -357,79 +386,15 @@ FROM
 WHERE
     T.OWNER = '%s'
 	AND T.TABLE_NAME = '%s'
-	AND T.COLUMN_NAME = '%s'
+	AND T.COLUMN_NAME IN (%s)
 ORDER BY
-	T.COLUMN_ID`, schemaNameS, tableNameS, columnNameS)
+	T.COLUMN_ID`, schemaNameS, tableNameS, stringutil.StringJoin(columns, constant.StringSeparatorComma))
 	}
 	_, res, err := d.GeneralQuery(sqlStr)
 	if err != nil {
 		return res, err
 	}
 	return res, nil
-}
-
-func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
-	var (
-		sqlStr string
-		vals   []string
-	)
-	/*
-	 * Statistical information query
-	 * ONLY SUPPORT NUMBER and NUMBER subdata types, DATE, TIMESTAMP and Subtypes, VARCHAR character data types
-	 * 	1, frequency histogram, TOP frequency histogram, mixed histogram endpoint_numbers represents the cumulative frequency of all values ​​contained in the current and previous buckets, endpoint_value/endpoint_actual_value represents the current data (the data type depends on which field is used)
-	 * 	2, Contour histogram endpoint_numbers represents the bucket number, endpoint_value represents the maximum value within the value range of the bucket
-	 */
-	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportNumberSubtypes, datatypeS) {
-		sqlStr = fmt.Sprintf(`SELECT
-	ENDPOINT_VALUE
-	--h.ENDPOINT_NUMBER AS CUMMULATIVE_FREQUENCY,
-	--h.ENDPOINT_NUMBER - LAG(h.ENDPOINT_NUMBER, 1, 0) OVER (ORDER BY h.ENDPOINT_NUMBER) AS FREQUENCY,
-	--h.ENDPOINT_REPEAT_COUNT
-FROM
-	DBA_HISTOGRAMS
-WHERE
- 	OWNER = '%s'
-	AND TABLE_NAME = '%s'
-	AND COLUMN_NAME = '%s'
-ORDER BY ENDPOINT_VALUE ASC`, schemaNameS, tableNameS, columnNameS)
-	}
-	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportVarcharSubtypes, datatypeS) {
-		sqlStr = fmt.Sprintf(`SELECT
-	ENDPOINT_ACTUAL_VALUE AS ENDPOINT_VALUE	
-	--h.ENDPOINT_NUMBER AS CUMMULATIVE_FREQUENCY,
-	--h.ENDPOINT_NUMBER - LAG(h.ENDPOINT_NUMBER, 1, 0) OVER (ORDER BY h.ENDPOINT_NUMBER) AS FREQUENCY,
-	--h.ENDPOINT_REPEAT_COUNT
-FROM
-	DBA_HISTOGRAMS
-WHERE
- 	OWNER = '%s'
-	AND TABLE_NAME = '%s'
-	AND COLUMN_NAME = '%s'
-ORDER BY ENDPOINT_VALUE ASC`, schemaNameS, tableNameS, columnNameS)
-	}
-	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, datatypeS) || stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, datatypeS) {
-		sqlStr = fmt.Sprintf(`SELECT
-		TO_CHAR(TO_DATE(TRUNC(TO_CHAR(ENDPOINT_VALUE)),'J'),'YYYY-MM-DD')||' '||TO_CHAR(TRUNC(SYSDATE)+TO_NUMBER(SUBSTR(TO_CHAR(ENDPOINT_VALUE),INSTR(TO_CHAR(ENDPOINT_VALUE),'.'))),'HH24:MI:SS') AS ENDPOINT_VALUE	
-	--h.ENDPOINT_NUMBER AS CUMMULATIVE_FREQUENCY,
-	--h.ENDPOINT_NUMBER - LAG(h.ENDPOINT_NUMBER, 1, 0) OVER (ORDER BY h.ENDPOINT_NUMBER) AS FREQUENCY,
-	--h.ENDPOINT_REPEAT_COUNT
-FROM
-	DBA_HISTOGRAMS
-WHERE
-	OWNER = '%s'
-	AND TABLE_NAME = '%s'
-	AND COLUMN_NAME = '%s'
-ORDER BY ENDPOINT_VALUE ASC`, schemaNameS, tableNameS, columnNameS)
-	}
-	_, res, err := d.GeneralQuery(sqlStr)
-	if err != nil {
-		return vals, err
-	}
-
-	for _, r := range res {
-		vals = append(vals, r["ENDPOINT_VALUE"])
-	}
-	return vals, nil
 }
 
 func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error) {
@@ -603,3 +568,340 @@ func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int,
 
 	return columnNames, crc32Sum, batchRowsM, nil
 }
+
+func (d *Database) getDatabaseTableColumnStatisticsBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
+	var (
+		sqlStr string
+		vals   []string
+	)
+	/*
+	 * Statistical information query
+	 * ONLY SUPPORT NUMBER and NUMBER subdata types, DATE, TIMESTAMP and Subtypes, VARCHAR character data types
+	 * 	1, frequency histogram, TOP frequency histogram, mixed histogram endpoint_numbers represents the cumulative frequency of all values ​​contained in the current and previous buckets, endpoint_value/endpoint_actual_value represents the current data (the data type depends on which field is used)
+	 * 	2, Contour histogram endpoint_numbers represents the bucket number, endpoint_value represents the maximum value within the value range of the bucket
+	 */
+	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportNumberSubtypes, datatypeS) {
+		sqlStr = fmt.Sprintf(`SELECT
+	ENDPOINT_VALUE
+	--h.ENDPOINT_NUMBER AS CUMMULATIVE_FREQUENCY,
+	--h.ENDPOINT_NUMBER - LAG(h.ENDPOINT_NUMBER, 1, 0) OVER (ORDER BY h.ENDPOINT_NUMBER) AS FREQUENCY,
+	--h.ENDPOINT_REPEAT_COUNT
+FROM
+	DBA_HISTOGRAMS
+WHERE
+ 	OWNER = '%s'
+	AND TABLE_NAME = '%s'
+	AND COLUMN_NAME = '%s'
+ORDER BY ENDPOINT_VALUE`, schemaNameS, tableNameS, columnNameS)
+	}
+	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportVarcharSubtypes, datatypeS) {
+		sqlStr = fmt.Sprintf(`SELECT
+	ENDPOINT_ACTUAL_VALUE AS ENDPOINT_VALUE	
+	--h.ENDPOINT_NUMBER AS CUMMULATIVE_FREQUENCY,
+	--h.ENDPOINT_NUMBER - LAG(h.ENDPOINT_NUMBER, 1, 0) OVER (ORDER BY h.ENDPOINT_NUMBER) AS FREQUENCY,
+	--h.ENDPOINT_REPEAT_COUNT
+FROM
+	DBA_HISTOGRAMS
+WHERE
+ 	OWNER = '%s'
+	AND TABLE_NAME = '%s'
+	AND COLUMN_NAME = '%s'
+ORDER BY ENDPOINT_VALUE`, schemaNameS, tableNameS, columnNameS)
+	}
+	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, datatypeS) || stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, datatypeS) {
+		sqlStr = fmt.Sprintf(`SELECT
+		TO_CHAR(TO_DATE(TRUNC(TO_CHAR(ENDPOINT_VALUE)),'J'),'YYYY-MM-DD')||' '||TO_CHAR(TRUNC(SYSDATE)+TO_NUMBER(SUBSTR(TO_CHAR(ENDPOINT_VALUE),INSTR(TO_CHAR(ENDPOINT_VALUE),'.'))),'HH24:MI:SS') AS ENDPOINT_VALUE	
+	--h.ENDPOINT_NUMBER AS CUMMULATIVE_FREQUENCY,
+	--h.ENDPOINT_NUMBER - LAG(h.ENDPOINT_NUMBER, 1, 0) OVER (ORDER BY h.ENDPOINT_NUMBER) AS FREQUENCY,
+	--h.ENDPOINT_REPEAT_COUNT
+FROM
+	DBA_HISTOGRAMS
+WHERE
+	OWNER = '%s'
+	AND TABLE_NAME = '%s'
+	AND COLUMN_NAME = '%s'
+ORDER BY ENDPOINT_VALUE`, schemaNameS, tableNameS, columnNameS)
+	}
+	_, res, err := d.GeneralQuery(sqlStr)
+	if err != nil {
+		return vals, err
+	}
+
+	for _, r := range res {
+		vals = append(vals, r["ENDPOINT_VALUE"])
+	}
+	return vals, nil
+}
+
+func (d *Database) filterDatabaseTableColumnBucketSupportDatatype(columnType string) bool {
+	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportNumberSubtypes, columnType) {
+		return true
+	}
+	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportVarcharSubtypes, columnType) {
+		return true
+	}
+	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, columnType) {
+		return true
+	}
+	if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, columnType) {
+		return true
+	}
+	return false
+}
+
+//func (d *Database) findDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
+//	var err error
+//
+//	//sqlStr := fmt.Sprintf(`SELECT
+//	//	OWNER,
+//	//	TABLE_NAME,
+//	//	COLUMN_NAME,
+//	//	DATA_TYPE,
+//	//	NUM_DISTINCT,
+//	//	CASE
+//	//		-- IF IT IS TIMESTAMP WITH TIMEZONE, CONVERT FROM UTC TO LOCAL TIME
+//	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%WITH TIME ZONE' THEN
+//	//			TO_CHAR(
+//	//			FROM_TZ(
+//	//				TO_TIMESTAMP(LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(LOW_VALUE, 1, 2), 'XX')
+//	//+ TO_NUMBER(SUBSTR(LOW_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
+//	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
+//	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
+//	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
+//	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
+//	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
+//	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
+//	//				, 'UTC' ) AT LOCAL
+//	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
+//	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%' THEN
+//	//			TO_CHAR(
+//	//			TO_TIMESTAMP( LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(LOW_VALUE, 1, 2), 'XX')
+//	//+ TO_NUMBER(SUBSTR(LOW_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
+//	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
+//	//|| LPAD( TO_NUMBER(SUBSTR(LOW_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
+//	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
+//	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
+//	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
+//	//|| LPAD((TO_NUMBER(SUBSTR(LOW_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
+//	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
+//	//		WHEN DATA_TYPE = 'NUMBER' THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_NUMBER(LOW_VALUE))
+//	//		WHEN DATA_TYPE IN ('VARCHAR2', 'CHAR') THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_VARCHAR2(LOW_VALUE))
+//	//		WHEN DATA_TYPE = 'NVARCHAR2' THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_NVARCHAR2(LOW_VALUE))
+//	//		WHEN DATA_TYPE = 'BINARY_DOUBLE' THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_DOUBLE(LOW_VALUE))
+//	//		WHEN DATA_TYPE = 'BINARY_FLOAT' THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_FLOAT(LOW_VALUE))
+//	//		WHEN DATA_TYPE = 'DATE' THEN
+//	//			TO_CHAR(DBMS_STATS.CONVERT_RAW_TO_DATE(LOW_VALUE), 'YYYY-MM-DD HH24:MI:SS')
+//	//		ELSE
+//	//			'UNKNOWN DATA_TYPE'
+//	//	END LOW_VALUE,
+//	//	CASE
+//	//		-- IF IT IS TIMESTAMP WITH TIMEZONE, CONVERT FROM UTC TO LOCAL TIME
+//	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%WITH TIME ZONE' THEN
+//	//			TO_CHAR(
+//	//			FROM_TZ(
+//	//				TO_TIMESTAMP(LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(HIGH_VALUE, 1, 2), 'XX')
+//	//+ TO_NUMBER(SUBSTR(HIGH_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
+//	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
+//	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
+//	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
+//	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
+//	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
+//	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
+//	//				, 'UTC' ) AT LOCAL
+//	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
+//	//		WHEN DATA_TYPE LIKE 'TIMESTAMP%%' THEN
+//	//			TO_CHAR(
+//	//			TO_TIMESTAMP( LPAD(TO_CHAR(100 * TO_NUMBER(SUBSTR(HIGH_VALUE, 1, 2), 'XX')
+//	//+ TO_NUMBER(SUBSTR(HIGH_VALUE, 3, 2), 'XX')) - 10100, 4, '0') || '-'
+//	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 5, 2), 'XX'), 2, '0')|| '-'
+//	//|| LPAD( TO_NUMBER(SUBSTR(HIGH_VALUE, 7, 2), 'XX'), 2, '0')|| ' '
+//	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 9, 2), 'XX')-1), 2, '0')|| ':'
+//	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 11, 2), 'XX')-1), 2, '0')|| ':'
+//	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 13, 2), 'XX')-1), 2, '0')|| '.'
+//	//|| LPAD((TO_NUMBER(SUBSTR(HIGH_VALUE, 15, 8), 'XXXXXXXX')-1), 8, '0'), 'YYYY-MM-DD HH24:MI:SS.FF9')
+//	//			, 'YYYY-MM-DD HH24:MI:SS.FF'||DATA_SCALE)
+//	//		WHEN DATA_TYPE = 'NUMBER' THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_NUMBER(HIGH_VALUE))
+//	//		WHEN DATA_TYPE IN ('VARCHAR2', 'CHAR') THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_VARCHAR2(HIGH_VALUE))
+//	//		WHEN DATA_TYPE = 'NVARCHAR2' THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_NVARCHAR2(HIGH_VALUE))
+//	//		WHEN DATA_TYPE = 'BINARY_DOUBLE' THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_DOUBLE(HIGH_VALUE))
+//	//		WHEN DATA_TYPE = 'BINARY_FLOAT' THEN
+//	//			TO_CHAR(UTL_RAW.CAST_TO_BINARY_FLOAT(HIGH_VALUE))
+//	//		WHEN DATA_TYPE = 'DATE' THEN
+//	//			TO_CHAR(DBMS_STATS.CONVERT_RAW_TO_DATE(HIGH_VALUE), 'YYYY-MM-DD HH24:MI:SS')
+//	//		ELSE
+//	//			'UNKNOWN DATA_TYPE'
+//	//	END HIGH_VALUE
+//	//FROM
+//	//	DBA_TAB_COLUMNS
+//	//WHERE
+//	//	OWNER = '%s'
+//	//	AND TABLE_NAME = '%s'`, schemaNameS, tableNameS)
+//
+//	sqlStr := fmt.Sprintf(`SELECT
+//		OWNER,
+//		TABLE_NAME,
+//		COLUMN_NAME,
+//		DATA_TYPE
+//	FROM
+//		DBA_TAB_COLUMNS
+//	WHERE
+//		OWNER = '%s'
+//		AND TABLE_NAME = '%s'`, schemaNameS, tableNameS)
+//	_, results, err := d.GeneralQuery(sqlStr)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	var columnNameSli []string
+//	columnDatatypeMap := make(map[string]string)
+//	for _, res := range results {
+//		columnDatatypeMap[res["COLUMN_NAME"]] = res["DATA_TYPE"]
+//		columnNameSli = append(columnNameSli, res["COLUMN_NAME"])
+//	}
+//
+//	if !strings.EqualFold(columnNameS, "") && d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[columnNameS]) {
+//		return []string{columnNameS}, nil
+//	}
+//
+//	pkSlis, err := d.GetDatabaseTablePrimaryKey(schemaNameS, tableNameS)
+//	if err != nil {
+//		return nil, err
+//	}
+//	if len(pkSlis) == 1 {
+//		var pkColumns []string
+//		pkArrs := stringutil.StringSplit(pkSlis[0]["COLUMN_LIST"], ",")
+//		for _, s := range pkArrs {
+//			brackets := stringutil.StringExtractorWithinBrackets(s)
+//			if len(brackets) == 0 {
+//				if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+//					break
+//				} else {
+//					pkColumns = append(pkColumns, s)
+//				}
+//			} else {
+//				marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+//				for _, m := range marks {
+//					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
+//						break
+//					} else {
+//						pkColumns = append(pkColumns, m)
+//					}
+//				}
+//			}
+//		}
+//		if len(pkColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(pkSlis[0]["COLUMN_LIST"], columnNameSli...)) {
+//			return pkColumns, nil
+//		}
+//	} else if len(pkSlis) > 1 {
+//		return nil, fmt.Errorf("schema table primary key aren't exist mutiple")
+//	}
+//
+//	ukSlis, err := d.GetDatabaseTableUniqueKey(schemaNameS, tableNameS)
+//	if err != nil {
+//		return nil, err
+//	}
+//	if len(ukSlis) > 0 {
+//		for _, uk := range ukSlis {
+//			var ukColumns []string
+//			ukArrs := stringutil.StringSplit(uk["COLUMN_LIST"], ",")
+//			for _, s := range ukArrs {
+//				brackets := stringutil.StringExtractorWithinBrackets(s)
+//				if len(brackets) == 0 {
+//					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+//						break
+//					} else {
+//						ukColumns = append(ukColumns, s)
+//					}
+//				} else {
+//					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+//					for _, m := range marks {
+//						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
+//							break
+//						} else {
+//							ukColumns = append(ukColumns, m)
+//						}
+//					}
+//				}
+//			}
+//			if len(ukColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(uk["COLUMN_LIST"], columnNameSli...)) {
+//				return ukColumns, nil
+//			}
+//		}
+//	}
+//
+//	uiSlis, err := d.GetDatabaseTableUniqueIndex(schemaNameS, tableNameS)
+//	if err != nil {
+//		return nil, err
+//	}
+//	if len(uiSlis) > 0 {
+//		for _, ui := range uiSlis {
+//			var uiColumns []string
+//			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], "|+|")
+//			for _, s := range uiArrs {
+//				brackets := stringutil.StringExtractorWithinBrackets(s)
+//				if len(brackets) == 0 {
+//					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+//						break
+//					} else {
+//						uiColumns = append(uiColumns, s)
+//					}
+//				} else {
+//					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+//					for _, m := range marks {
+//						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
+//							break
+//						} else {
+//							uiColumns = append(uiColumns, m)
+//						}
+//					}
+//				}
+//			}
+//			if len(uiColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(ui["COLUMN_LIST"], columnNameSli...)) {
+//				return uiColumns, nil
+//			}
+//		}
+//	}
+//
+//	niSlis, err := d.GetDatabaseTableNormalIndex(schemaNameS, tableNameS)
+//	if err != nil {
+//		return nil, err
+//	}
+//	if len(niSlis) > 0 {
+//		for _, ni := range niSlis {
+//			var niColumns []string
+//			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], "|+|")
+//			for _, s := range niArrs {
+//				brackets := stringutil.StringExtractorWithinBrackets(s)
+//				if len(brackets) == 0 {
+//					if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[s]) {
+//						break
+//					} else {
+//						niColumns = append(niColumns, s)
+//					}
+//				} else {
+//					marks := stringutil.StringExtractorWithinQuotationMarks(s, columnNameSli...)
+//					for _, m := range marks {
+//						if !d.FilterDatabaseTableColumnDatatype(columnDatatypeMap[m]) {
+//							break
+//						} else {
+//							niColumns = append(niColumns, m)
+//						}
+//					}
+//				}
+//			}
+//			if len(niColumns) == len(stringutil.StringExtractorWithoutQuotationMarks(ni["COLUMN_LIST"], columnNameSli...)) {
+//				return niColumns, nil
+//			}
+//		}
+//	}
+//	return nil, nil
+//}

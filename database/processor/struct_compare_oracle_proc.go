@@ -42,7 +42,6 @@ type OracleProcessor struct {
 	SchemaName               string                           `json:"schemaName"`
 	TableName                string                           `json:"tableName"`
 	DBCharset                string                           `json:"dbCharset"`
-	DBCollation              bool                             `json:"dbCollation"`
 	Database                 database.IDatabase               `json:"-"`
 	BuildinDatatypeRules     []*buildin.BuildinDatatypeRule   `json:"-"`
 	BuildinDefaultValueRules []*buildin.BuildinDefaultvalRule `json:"-"`
@@ -51,6 +50,7 @@ type OracleProcessor struct {
 	TableCollation           string                           `json:"tableCollation"`
 	SchemaCollation          string                           `json:"schemaCollation"`
 	NLSComp                  string                           `json:"NLSComp"`
+	DBCollation              bool                             `json:"DBCollation"`
 }
 
 func (p *OracleProcessor) GenDatabaseSchemaTable() (string, string) {
@@ -58,6 +58,15 @@ func (p *OracleProcessor) GenDatabaseSchemaTable() (string, string) {
 }
 
 func (p *OracleProcessor) GenDatabaseTableCollation() (string, error) {
+	dbVersion, err := p.Database.GetDatabaseVersion()
+	if err != nil {
+		return "", err
+	}
+	p.DBCollation = false
+	if stringutil.VersionOrdinal(dbVersion) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+		p.DBCollation = true
+	}
+
 	if p.DBCollation {
 		tableCollation, err := p.Database.GetDatabaseTableCollation(p.SchemaName, p.TableName)
 		if err != nil {
@@ -104,7 +113,7 @@ func (p *OracleProcessor) GenDatabaseTableComment() (string, error) {
 }
 
 func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.NewColumn, map[string]map[string]structure.OldColumn, error) {
-	infos, err := p.Database.GetDatabaseTableColumnInfo(p.SchemaName, p.TableName, p.DBCollation)
+	infos, err := p.Database.GetDatabaseTableColumnInfo(p.SchemaName, p.TableName)
 	if err != nil {
 		return nil, nil, err
 	}

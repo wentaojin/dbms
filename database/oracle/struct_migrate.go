@@ -351,7 +351,7 @@ WHERE
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string, collation bool) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string) ([]map[string]string, error) {
 	var queryStr string
 	/*
 			1、dataPrecision Accuracy range ORA-01727: numeric precision specifier is out of range (1 to 38)
@@ -370,7 +370,19 @@ func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName strin
 			- number(5) -> number(5,0)
 			- number(x,y) -> number(x,y)
 	*/
-	if collation {
+	version, err := d.GetDatabaseVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	collationS := false
+	if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+		collationS = true
+	} else {
+		collationS = false
+	}
+
+	if collationS {
 		queryStr = fmt.Sprintf(`SELECT 
 		T.COLUMN_NAME,
 	    T.DATA_TYPE,

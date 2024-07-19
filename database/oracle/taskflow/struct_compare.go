@@ -93,7 +93,7 @@ func (dmt *StructCompareTask) Start() error {
 
 	logger.Info("struct compare task inspect migrate task",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
-	_, _, dbCollationS, err := inspectMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
+	_, _, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,6 @@ func (dmt *StructCompareTask) Start() error {
 						SchemaName:               dt.SchemaNameS,
 						TableName:                dt.TableNameS,
 						DBCharset:                stringutil.StringUpper(dmt.DatasourceS.ConnectCharset),
-						DBCollation:              dbCollationS,
 						Database:                 databaseS,
 						BuildinDatatypeRules:     buildInDatatypeRulesS,
 						BuildinDefaultValueRules: buildInDefaultValueRulesS,

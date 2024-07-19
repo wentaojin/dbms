@@ -18,6 +18,7 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/database/processor"
 	"strconv"
 	"strings"
 	"time"
@@ -66,7 +67,7 @@ func (smt *SqlMigrateTask) Start() error {
 		zap.String("task_name", smt.Task.TaskName),
 		zap.String("task_mode", smt.Task.TaskMode),
 		zap.String("task_flow", smt.Task.TaskFlow))
-	_, _, _, err = inspectMigrateTask(smt.Task.TaskName, smt.Task.TaskFlow, smt.Task.TaskMode, databaseS, stringutil.StringUpper(smt.DatasourceS.ConnectCharset), stringutil.StringUpper(smt.DatasourceT.ConnectCharset))
+	_, _, err = processor.InspectOracleMigrateTask(smt.Task.TaskName, smt.Task.TaskFlow, smt.Task.TaskMode, databaseS, stringutil.StringUpper(smt.DatasourceS.ConnectCharset), stringutil.StringUpper(smt.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
@@ -166,7 +167,7 @@ func (smt *SqlMigrateTask) Start() error {
 						return errW
 					}
 
-					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(dt.SchemaNameT, dt.TableNameT, smt.TaskParams.SqlHintT, dt.ColumnDetailT, int(smt.TaskParams.BatchSize), true)
+					sqlStr := processor.GenMYSQLCompatibleDatabasePrepareStmt(dt.SchemaNameT, dt.TableNameT, smt.TaskParams.SqlHintT, dt.ColumnDetailT, int(smt.TaskParams.BatchSize), true)
 
 					stmt, err := databaseT.PrepareContext(smt.Ctx, sqlStr)
 					if err != nil {
@@ -174,7 +175,7 @@ func (smt *SqlMigrateTask) Start() error {
 					}
 					defer stmt.Close()
 
-					err = database.IDataMigrateProcess(&SqlMigrateRow{
+					err = database.IDataMigrateProcess(&processor.SqlMigrateRow{
 						Ctx:           smt.Ctx,
 						TaskMode:      smt.Task.TaskMode,
 						TaskFlow:      smt.Task.TaskFlow,
@@ -360,7 +361,7 @@ func (smt *SqlMigrateTask) InitSqlMigrateTask(databaseS database.IDatabase) erro
 		if err != nil {
 			return err
 		}
-		dataRule := &SqlMigrateRule{
+		dataRule := &processor.SqlMigrateRule{
 			Ctx:             smt.Ctx,
 			TaskName:        smt.Task.TaskName,
 			TaskMode:        smt.Task.TaskMode,

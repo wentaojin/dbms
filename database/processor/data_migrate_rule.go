@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package taskflow
+package processor
 
 import (
 	"context"
@@ -40,7 +40,6 @@ type DataMigrateRule struct {
 	TableTypeS     map[string]string  `json:"tableTypeS"`
 	DatabaseS      database.IDatabase `json:"databaseS"`
 	DBCharsetS     string             `json:"DBCharsetS"`
-	DBCollationS   bool               `json:"DBCollationS"`
 	CaseFieldRuleS string             `json:"caseFieldRuleS"`
 	CaseFieldRuleT string             `json:"caseFieldRuleT"`
 }
@@ -51,11 +50,18 @@ func (r *DataMigrateRule) GenSchemaNameRule() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-	if err != nil {
-		return "", "", fmt.Errorf("[GetSchemaNameRule] oracle schema [%s] charset convert failed, %v", r.SchemaNameS, err)
+
+	var schemaNameS string
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetSchemaNameRule] schema [%s] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, err)
+		}
+		schemaNameS = stringutil.BytesToString(convertUtf8Raw)
+	default:
+		return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 	}
-	schemaNameS := stringutil.BytesToString(convertUtf8Raw)
 
 	var schemaNameTNew string
 
@@ -82,11 +88,17 @@ func (r *DataMigrateRule) GenSchemaTableNameRule() (string, string, error) {
 		return "", "", err
 	}
 
-	convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-	if err != nil {
-		return "", "", fmt.Errorf("[GetTableNameRule] oracle schema [%s] table [%v] charset convert failed, %v", r.SchemaNameS, r.TableNameS, err)
+	var tableNameS string
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableNameRule] schema [%s] table [%v] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, err)
+		}
+		tableNameS = stringutil.BytesToString(convertUtf8Raw)
+	default:
+		return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 	}
-	tableNameS := stringutil.BytesToString(convertUtf8Raw)
 
 	var tableNameTNew string
 	if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataMigrateCaseFieldRuleLower) {
@@ -105,7 +117,12 @@ func (r *DataMigrateRule) GenSchemaTableNameRule() (string, string, error) {
 	return tableNameS, tableNameTNew, nil
 }
 
-func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, string, error) {
+func (r *DataMigrateRule) GetSchemaTableColumnNameRule() (map[string]string, error) {
+	// ignore, only GenSchemaTableColumnSelectRule
+	return nil, nil
+}
+
+func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, string, string, error) {
 	columnRules := make(map[string]string)
 
 	columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(r.Ctx, &rule.ColumnRouteRule{
@@ -123,12 +140,17 @@ func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, st
 	}
 
 	for _, c := range sourceColumnNameS {
-		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-		if err != nil {
-			return "", "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, c, err)
+		var columnName string
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		default:
+			return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 		}
-
-		columnName := stringutil.BytesToString(columnNameUtf8Raw)
 
 		// column name caseFieldRule
 		var (
@@ -168,7 +190,7 @@ func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, st
 		columnNameSilS, columnNameSliT []string
 	)
 
-	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS, r.DBCollationS)
+	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS)
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -176,17 +198,22 @@ func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, st
 	for _, rowCol := range sourceColumnInfos {
 		columnName := rowCol["COLUMN_NAME"]
 
-		columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnName), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
-		if err != nil {
-			return "", "", "", "", fmt.Errorf("[GenTableQueryColumnRule] oracle schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, columnName, err)
-		}
-		columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnName), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenTableQueryColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName, err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 
-		columnNameS, err := optimizerDataMigrateColumnS(columnName, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
-		if err != nil {
-			return "", "", "", "", err
+			columnNameS, err := OptimizerOracleDataMigrateColumnS(columnName, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
+			if err != nil {
+				return "", "", "", "", err
+			}
+			columnNameSilS = append(columnNameSilS, columnNameS)
+		default:
+			return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 		}
-		columnNameSilS = append(columnNameSilS, columnNameS)
 
 		var (
 			columnNameSNew string
@@ -213,10 +240,10 @@ func (r *DataMigrateRule) GenSchemaTableColumnRule() (string, string, string, st
 					columnNameT = val
 				}
 			default:
-				return "", "", "", "", fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
+				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TaskFlow)
 			}
 		} else {
-			return "", "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.SchemaNameS, r.TableNameS, columnName)
+			return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName)
 		}
 		columnNameSliT = append(columnNameSliT, columnNameT)
 	}

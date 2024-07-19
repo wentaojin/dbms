@@ -41,6 +41,8 @@ type Datasource struct {
 	ConnectStatus  string `toml:"connect-status" json:"connectStatus"`
 	ServiceName    string `toml:"service-name" json:"serviceName"`
 	PdbName        string `toml:"pdb-name" json:"pdbName"`
+	SessionParams  string `toml:"session-params" json:"sessionParams"`
+	DbName         string `toml:"db-name" json:"dbName"`
 	Comment        string `toml:"comment" json:"comment"`
 }
 

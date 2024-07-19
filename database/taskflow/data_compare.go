@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/wentaojin/dbms/database/processor"
 	"strconv"
 	"strings"
 	"time"
@@ -74,18 +75,20 @@ func (dmt *DataCompareTask) Start() error {
 	}
 	defer databaseT.Close()
 
-	logger.Info("data compare task inspect migrate task",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
-
-	_, _, dbCollationS, err := inspectMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
-	if err != nil {
-		return err
+	switch dmt.Task.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+		logger.Info("data compare task inspect migrate task",
+			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		_, _, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
 	}
 
 	logger.Info("data compare task init task",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 
-	err = dmt.InitDataCompareTask(databaseS, databaseT, dbCollationS, schemaRoute)
+	err = dmt.InitDataCompareTask(databaseS, databaseT, schemaRoute)
 	if err != nil {
 		return err
 	}
@@ -217,14 +220,19 @@ func (dmt *DataCompareTask) Start() error {
 						return errW
 					}
 
-					var dbCharsetT string
+					var dbCharsetS, dbCharsetT string
 					switch {
 					case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
+						dbCharsetS = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)]
 						dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceT.ConnectCharset)]
+					case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowTiDBToOracle) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowMySQLToOracle):
+						dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)]
+						dbCharsetT = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceT.ConnectCharset)]
 					default:
-						return fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", dmt.Task.TaskName, dt.SchemaNameS, dmt.Task.TaskFlow)
+						return fmt.Errorf("the task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", dmt.Task.TaskName, dt.SchemaNameS, dmt.Task.TaskFlow)
 					}
-					err = database.IDataCompareProcess(&DataCompareRow{
+
+					err = database.IDataCompareProcess(&processor.DataCompareRow{
 						Ctx:         dmt.Ctx,
 						TaskMode:    dmt.Task.TaskMode,
 						TaskFlow:    dmt.Task.TaskFlow,
@@ -235,7 +243,7 @@ func (dmt *DataCompareTask) Start() error {
 						BatchSize:   int(dmt.TaskParams.BatchSize),
 						WriteThread: int(dmt.TaskParams.WriteThread),
 						CallTimeout: int(dmt.TaskParams.CallTimeout),
-						DBCharsetS:  constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)],
+						DBCharsetS:  dbCharsetS,
 						DBCharsetT:  dbCharsetT,
 					})
 					if err != nil {
@@ -402,7 +410,7 @@ func (dmt *DataCompareTask) Start() error {
 	return nil
 }
 
-func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.IDatabase, dbCollationS bool, schemaRoute *rule.SchemaRouteRule) error {
+func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.IDatabase, schemaRoute *rule.SchemaRouteRule) error {
 	// delete checkpoint
 	initFlags, err := model.GetITaskRW().GetTask(dmt.Ctx, &task.Task{TaskName: dmt.Task.TaskName})
 	if err != nil {
@@ -584,6 +592,10 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 
 	// database tables
 	// init database table
+	dbTypeSli := stringutil.StringSplit(dmt.Task.TaskFlow, constant.StringSeparatorAite)
+	dbTypeS := dbTypeSli[0]
+	dbTypeT := dbTypeSli[1]
+
 	logger.Info("data compare task init",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 
@@ -611,22 +623,22 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					return err
 				}
 
-				dataRule := &DataCompareRule{
-					Ctx:            gCtx,
-					TaskMode:       dmt.Task.TaskMode,
-					TaskName:       dmt.Task.TaskName,
-					TaskFlow:       dmt.Task.TaskFlow,
-					DatabaseS:      databaseS,
-					DBCollationS:   dbCollationS,
-					SchemaNameS:    schemaRoute.SchemaNameS,
-					TableNameS:     sourceTable,
-					TableTypeS:     databaseTableTypeMap,
-					OnlyCompareRow: dmt.TaskParams.OnlyCompareRow,
-					DBCharsetS:     dmt.DatasourceS.ConnectCharset,
-					DBCharsetT:     dmt.DatasourceT.ConnectCharset,
-					CaseFieldRuleS: dmt.Task.CaseFieldRuleS,
-					CaseFieldRuleT: dmt.Task.CaseFieldRuleT,
-					GlobalSqlHintS: dmt.TaskParams.SqlHintS,
+				dataRule := &processor.DataCompareRule{
+					Ctx:                         gCtx,
+					TaskMode:                    dmt.Task.TaskMode,
+					TaskName:                    dmt.Task.TaskName,
+					TaskFlow:                    dmt.Task.TaskFlow,
+					DatabaseS:                   databaseS,
+					SchemaNameS:                 schemaRoute.SchemaNameS,
+					TableNameS:                  sourceTable,
+					TableTypeS:                  databaseTableTypeMap,
+					OnlyCompareRow:              dmt.TaskParams.OnlyCompareRow,
+					DBCharsetS:                  dmt.DatasourceS.ConnectCharset,
+					DBCharsetT:                  dmt.DatasourceT.ConnectCharset,
+					CaseFieldRuleS:              dmt.Task.CaseFieldRuleS,
+					CaseFieldRuleT:              dmt.Task.CaseFieldRuleT,
+					GlobalSqlHintS:              dmt.TaskParams.SqlHintS,
+					GlobalIgnoreConditionFields: dmt.TaskParams.IgnoreConditionFields,
 				}
 
 				attsRule, err := database.IDataCompareAttributesRule(dataRule)
@@ -635,8 +647,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 				}
 
 				// optimizer
-				if !strings.EqualFold(attsRule.CompareRangeC, "") {
-					encChunk := snappy.Encode(nil, []byte(attsRule.CompareRangeC))
+				if !strings.EqualFold(attsRule.CompareConditionRangeC, "") {
+					encChunk := snappy.Encode(nil, []byte(attsRule.CompareConditionRangeC))
 					encryptChunk, err := stringutil.Encrypt(stringutil.BytesToString(encChunk), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {
 						return err
@@ -689,21 +701,23 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					return nil
 				}
 
-				var customColumnS string
-				if !strings.EqualFold(attsRule.ColumnFieldC, "") {
-					convertCharsetColumnS, err := stringutil.CharsetConvert([]byte(attsRule.ColumnFieldC), constant.CharsetUTF8MB4, constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DatasourceS.ConnectCharset)])
-					if err != nil {
-						return err
-					}
-					customColumnS = stringutil.BytesToString(convertCharsetColumnS)
-				}
-
-				columnNameSlis, err := databaseS.FindDatabaseTableBestColumn(attsRule.SchemaNameS, attsRule.TableNameS, customColumnS)
+				upstreamConsIndexColumns, err := databaseS.GetDatabaseTableHighestSelectivityIndex(attsRule.SchemaNameS, attsRule.TableNameS, attsRule.CompareConditionFieldC, attsRule.IgnoreConditionFields)
 				if err != nil {
 					return err
 				}
 
-				if len(columnNameSlis) == 0 {
+				// upstream bucket ranges
+				upstreamConsIndexColumnsNew, upstreamBuckets, err := processor.ProcessUpstreamDatabaseTableColumnStatisticsBucket(
+					dbTypeS,
+					stringutil.StringUpper(dmt.DatasourceS.ConnectCharset),
+					dmt.Task.CaseFieldRuleS, databaseS, attsRule.SchemaNameS,
+					attsRule.TableNameS,
+					upstreamConsIndexColumns,
+					int64(dmt.TaskParams.ChunkSize))
+				if err != nil {
+					return err
+				}
+				if len(upstreamBuckets) == 0 {
 					encChunk := snappy.Encode(nil, []byte("1 = 1"))
 					encryptChunk, err := stringutil.Encrypt(stringutil.BytesToString(encChunk), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {
@@ -757,70 +771,26 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					return nil
 				}
 
-				// bucket ranges
-				bucketRanges, err := getDatabaseTableColumnBucket(dmt.Ctx, databaseS, databaseT, dmt.Task.TaskName, dmt.Task.TaskFlow, attsRule.SchemaNameS, attsRule.SchemaNameT, attsRule.TableNameS, attsRule.TableNameT, dbCollationS, columnNameSlis, dmt.DatasourceS.ConnectCharset, dmt.DatasourceT.ConnectCharset)
+				columnDatatypeSliT, err := processor.GetDownstreamDatabaseTableColumnDatatype(attsRule.SchemaNameT, attsRule.TableNameT, databaseT, upstreamConsIndexColumnsNew.IndexColumn, attsRule.ColumnNameRouteRule)
 				if err != nil {
 					return err
 				}
-				if len(bucketRanges) == 0 {
-					encChunk := snappy.Encode(nil, []byte("1 = 1"))
-					encryptChunk, err := stringutil.Encrypt(stringutil.BytesToString(encChunk), []byte(constant.DefaultDataEncryptDecryptKey))
-					if err != nil {
-						return err
-					}
-					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-						_, err = model.GetIDataCompareTaskRW().CreateDataCompareTask(txnCtx, &task.DataCompareTask{
-							TaskName:        dmt.Task.TaskName,
-							SchemaNameS:     attsRule.SchemaNameS,
-							TableNameS:      attsRule.TableNameS,
-							SchemaNameT:     attsRule.SchemaNameT,
-							TableNameT:      attsRule.TableNameT,
-							TableTypeS:      attsRule.TableTypeS,
-							SnapshotPointS:  globalScnS,
-							SnapshotPointT:  globalScnT,
-							CompareMethod:   attsRule.CompareMethod,
-							ColumnDetailSO:  attsRule.ColumnDetailSO,
-							ColumnDetailS:   attsRule.ColumnDetailS,
-							ColumnDetailTO:  attsRule.ColumnDetailTO,
-							ColumnDetailT:   attsRule.ColumnDetailT,
-							SqlHintS:        dmt.TaskParams.SqlHintS,
-							SqlHintT:        dmt.TaskParams.SqlHintT,
-							ChunkDetailS:    encryptChunk,
-							ChunkDetailT:    encryptChunk,
-							ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
-							TaskStatus:      constant.TaskDatabaseStatusWaiting,
-						})
-						if err != nil {
-							return err
-						}
-						_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(txnCtx, &task.DataCompareSummary{
-							TaskName:       dmt.Task.TaskName,
-							SchemaNameS:    attsRule.SchemaNameS,
-							TableNameS:     attsRule.TableNameS,
-							SchemaNameT:    attsRule.SchemaNameT,
-							TableNameT:     attsRule.TableNameT,
-							SnapshotPointS: globalScnS,
-							SnapshotPointT: globalScnT,
-							TableRowsS:     tableRows,
-							TableSizeS:     tableSize,
-							ChunkTotals:    1,
-						})
-						if err != nil {
-							return err
-						}
-						return nil
-					})
-					if err != nil {
-						return err
-					}
-					return nil
+
+				downstreamConsIndexColumnsRule, err := processor.ReverseUpstreamHighestBucketDownstreamRule(dmt.Task.TaskFlow, dbTypeT, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), columnDatatypeSliT, upstreamConsIndexColumnsNew, attsRule.ColumnNameRouteRule)
+				if err != nil {
+					return err
 				}
 
-				// column route rule
+				// downstream bucket ranges
+				downstreamBuckets, err := processor.ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT, upstreamBuckets, downstreamConsIndexColumnsRule)
+				if err != nil {
+					return err
+				}
+
 				var metas []*task.DataCompareTask
-				for _, r := range bucketRanges {
-					encChunkS := snappy.Encode(nil, []byte(r.ToStringS()))
-					encChunkT := snappy.Encode(nil, []byte(r.ToStringT()))
+				for i, r := range upstreamBuckets {
+					encChunkS := snappy.Encode(nil, []byte(r.ToString()))
+					encChunkT := snappy.Encode(nil, []byte(downstreamBuckets[i].ToString()))
 
 					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {
@@ -868,7 +838,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 						SnapshotPointT: globalScnT,
 						TableRowsS:     tableRows,
 						TableSizeS:     tableSize,
-						ChunkTotals:    uint64(len(bucketRanges)),
+						ChunkTotals:    uint64(len(upstreamBuckets)),
 					})
 					if err != nil {
 						return err

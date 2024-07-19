@@ -1,8 +1,15 @@
-#!/usr/bin/bash
+#!/bin/bash
 
-BINPATH="./bin"
-CONFIGPATH="./sample"
-WORKERCONFIG="${CONFIGPATH}/worker_config00.toml"
+# Change to the directory of this script
+scriptDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+echo "Script workerServer00 current directory is: $scriptDir"
+
+parentDir="$( cd "$( dirname "$scriptDir" )" &> /dev/null && pwd )"
+echo "Script workerServer00 parent directory is: $parentDir"
+
+binPath="$parentDir/bin"
+configPath="$parentDir/sample"
+workerConfig="$configPath/workerServer00.toml"
 
 # get os kernel name
 KERNEL=$(uname -s)
@@ -21,5 +28,5 @@ elif [ "$KERNEL" == "Darwin" ]; then
   echo "Setting  workerServer00 script DYLD_LIBRARY_PATH to: $LIBRARY_PATH_VAR"
 fi
 
-echo "Starting workerServer00 script Command [${BINPATH}/dbms-worker --config ${WORKERCONFIG}]..."
-${BINPATH}/dbms-worker --config ${WORKERCONFIG}
+echo "Starting workerServer00 script Command [$binPath/dbms-worker --config $workerConfig]..."
+"$binPath"/dbms-worker --config "$workerConfig"

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/database/processor"
 	"strconv"
 	"strings"
 	"time"
@@ -554,7 +555,7 @@ func GenStructCompareTask(ctx context.Context, serverAddr, taskName, outputDir s
 	}
 
 	var w database.IFileWriter
-	w = taskflow.NewStructCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, outputDir)
+	w = processor.NewStructCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, outputDir)
 	err = w.InitFile()
 	if err != nil {
 		return err

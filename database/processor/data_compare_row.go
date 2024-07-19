@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package taskflow
+package processor
 
 import (
 	"context"
@@ -371,18 +371,19 @@ func (r *DataCompareRow) CompareMD5() error {
 	chunkDetailT = stringutil.BytesToString(convertRaw)
 
 	switch {
-	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-	case strings.EqualFold(r.Dmt.SnapshotPointS, "NO") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-	default:
-		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-	}
-
-	switch {
 	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+
+		switch {
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case strings.EqualFold(r.Dmt.SnapshotPointS, "NO") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		default:
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
+
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
@@ -392,25 +393,15 @@ func (r *DataCompareRow) CompareMD5() error {
 		} else {
 			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		}
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-		if !strings.EqualFold(r.Dmt.SqlHintT, "") {
-			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
-		} else {
-			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
-		}
-	default:
-		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow)
-	}
-
-	if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
-		execQueryS = fmt.Sprintf(`SELECT
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+			execQueryS = fmt.Sprintf(`SELECT
 	TO_CHAR(NVL(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'xxxxxxxx')+
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'xxxxxxxx')+ 
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'xxxxxxxx'))),0)) AS ROWSCHECKSUM
 FROM
 	(%v) subq`, execQueryS)
-		execQueryT = fmt.Sprintf(`
+			execQueryT = fmt.Sprintf(`
 SELECT
 	 CAST(IFNULL(SUM(CONV(SUBSTRING(subq.ROWSCHECKSUM, 1, 8),16,10)+ 
 	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 9, 8),16,10)+
@@ -418,6 +409,44 @@ SELECT
 	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 25, 8),16,10)),0) AS CHAR) AS ROWSCHECKSUM
 FROM
 	(%v) subq`, execQueryT)
+		}
+	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+
+		switch {
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case strings.EqualFold(r.Dmt.SnapshotPointS, "NO") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		default:
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
+
+		if !strings.EqualFold(r.Dmt.SqlHintT, "") {
+			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
+		} else {
+			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
+		}
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+			execQueryS = fmt.Sprintf(`SELECT
+	TO_CHAR(NVL(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'xxxxxxxx')+
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'xxxxxxxx')+ 
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'xxxxxxxx'))),0)) AS ROWSCHECKSUM
+FROM
+	(%v) subq`, execQueryS)
+			execQueryT = fmt.Sprintf(`
+SELECT
+	 CAST(IFNULL(SUM(CONV(SUBSTRING(subq.ROWSCHECKSUM, 1, 8),16,10)+ 
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 9, 8),16,10)+
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 17, 8),16,10)+
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 25, 8),16,10)),0) AS CHAR) AS ROWSCHECKSUM
+FROM
+	(%v) subq`, execQueryT)
+		}
+	default:
+		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow)
 	}
 
 	logger.Info("data compare task chunk md5 compare starting",
@@ -606,18 +635,18 @@ func (r *DataCompareRow) CompareCRC32() error {
 	chunkDetailT = stringutil.BytesToString(convertRaw)
 
 	switch {
-	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-	case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-	default:
-		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-	}
-
-	switch {
 	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+		switch {
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		default:
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
+
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
@@ -628,6 +657,17 @@ func (r *DataCompareRow) CompareCRC32() error {
 			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		}
 	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+		switch {
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		default:
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
+
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else {
@@ -976,18 +1016,17 @@ func (r *DataCompareRow) compareMd5Row() error {
 	chunkDetailT = stringutil.BytesToString(convertRaw)
 
 	switch {
-	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-	case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-	default:
-		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-	}
-
-	switch {
 	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+		switch {
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		default:
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
@@ -998,6 +1037,16 @@ func (r *DataCompareRow) compareMd5Row() error {
 			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		}
 	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+		switch {
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+		case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		default:
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else {
