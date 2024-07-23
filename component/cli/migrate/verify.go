@@ -62,6 +62,7 @@ type DataCompareParam struct {
 	ConsistentReadPointS  string   `toml:"consistent-read-point-s" json:"consistentReadPointS"`
 	ConsistentReadPointT  string   `toml:"consistent-read-point-t" json:"consistentReadPointT"`
 	IgnoreConditionFields []string `toml:"ignore-condition-fields" json:"ignoreConditionFields"`
+	RepairStmtFlow        string   `toml:"repair-stmt-flow" json:"repairStmtFlow"`
 }
 
 func (d *CompareConfig) String() string {
