@@ -67,10 +67,10 @@ func (rg *Range) addBound(bound *Bound) {
 
 func (rg *Range) ToString() string {
 	/* for example:
-	there is a bucket, the lowerbound and upperbound are (v1, v3), (v2, v4), and the columns are `a` and `b`,
-	this bucket's data range is (a > v1 or (a == v1 and b > v3)) and (a < v2 or (a == v2 and b <= v4))
+	there is a bucket , and the lowerbound and upperbound are (A, B1, C1), (A, B2, C2), and the columns are `a`, `b` and `c`,
+	this bucket's data range is (a = A) AND (b > B1 or (b == B1 and c > C1)) AND (b < B2 or (b == B2 and c <= C2))
 	*/
-
+	sameCondition := make([]string, 0, 1)
 	lowerCondition := make([]string, 0, 1)
 	upperCondition := make([]string, 0, 1)
 
@@ -79,7 +79,42 @@ func (rg *Range) ToString() string {
 	preConditionArgsForLower := make([]string, 0, 1)
 	preConditionArgsForUpper := make([]string, 0, 1)
 
-	for i, bound := range rg.Bounds {
+	i := 0
+	for ; i < len(rg.Bounds); i++ {
+		bound := rg.Bounds[i]
+		if !(bound.HasLower && bound.HasUpper) {
+			break
+		}
+
+		if bound.Lower != bound.Upper {
+			break
+		}
+
+		if strings.EqualFold(rg.DBType, constant.DatabaseTypeOracle) {
+			if strings.EqualFold(bound.Collation, "") {
+				sameCondition = append(sameCondition, fmt.Sprintf("%s = %s", stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.Lower))
+			} else {
+				sameCondition = append(sameCondition, fmt.Sprintf("%s = %s", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")")))
+			}
+		}
+
+		if strings.EqualFold(rg.DBType, constant.DatabaseTypeMySQL) || strings.EqualFold(rg.DBType, constant.DatabaseTypeTiDB) {
+			if strings.EqualFold(bound.Collation, "") {
+				sameCondition = append(sameCondition, fmt.Sprintf("%s = %s", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Lower))
+			} else {
+				sameCondition = append(sameCondition, fmt.Sprintf("%s %s = %s", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, bound.Lower))
+			}
+		}
+	}
+
+	if i == len(rg.Bounds) && i > 0 {
+		// All the columns are equal in bounds, should return FALSE!
+		return "FALSE"
+	}
+
+	for ; i < len(rg.Bounds); i++ {
+		bound := rg.Bounds[i]
+
 		lowerSymbol := constant.DataCompareSymbolGt
 		upperSymbol := constant.DataCompareSymbolLt
 		if i == len(rg.Bounds)-1 {
@@ -98,12 +133,12 @@ func (rg *Range) ToString() string {
 					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
 				} else {
 					if len(preConditionForLower) > 0 {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s %s)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\"", bound.Collation, ")"), lowerSymbol, stringutil.StringBuilder("NLSSORT('", bound.Lower, "',", bound.Collation, ")")))
+						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s %s)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), lowerSymbol, stringutil.StringBuilder("NLSSORT(", bound.Lower, ",", bound.Collation, ")")))
 					} else {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s%s %s %s)", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, lowerSymbol, bound.Lower))
+						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s %s)", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), lowerSymbol, stringutil.StringBuilder("NLSSORT(", bound.Lower, ",", bound.Collation, ")")))
 					}
-					preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = %s", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\"", bound.Collation, ")"), stringutil.StringBuilder("NLSSORT('", bound.Lower, "',", bound.Collation, ")")))
-					preConditionArgsForLower = append(preConditionArgsForLower, stringutil.StringBuilder("NLSSORT('", bound.Lower, "',", bound.Collation, ")"))
+					preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = %s", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), stringutil.StringBuilder("NLSSORT(", bound.Lower, ",", bound.Collation, ")")))
+					preConditionArgsForLower = append(preConditionArgsForLower, stringutil.StringBuilder("NLSSORT(", bound.Lower, ",", bound.Collation, ")"))
 				}
 			}
 
@@ -118,11 +153,11 @@ func (rg *Range) ToString() string {
 					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
 				} else {
 					if len(preConditionForLower) > 0 {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s%s %s %s)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, lowerSymbol, bound.Lower))
+						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s %s %s)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, lowerSymbol, bound.Lower))
 					} else {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s%s %s %s)", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, lowerSymbol, bound.Lower))
+						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s %s %s)", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, lowerSymbol, bound.Lower))
 					}
-					preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = %s", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Lower))
+					preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s %s = %s", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, bound.Lower))
 					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
 				}
 			}
@@ -140,12 +175,12 @@ func (rg *Range) ToString() string {
 					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
 				} else {
 					if len(preConditionForUpper) > 0 {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\"", bound.Collation, ")"), upperSymbol, stringutil.StringBuilder("NLSSORT('", bound.Upper, "',", bound.Collation, ")")))
+						upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), upperSymbol, stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")")))
 					} else {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s)", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\"", bound.Collation, ")"), upperSymbol, stringutil.StringBuilder("NLSSORT('", bound.Upper, "',", bound.Collation, ")")))
+						upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s)", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), upperSymbol, stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")")))
 					}
-					preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = %s", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\"", bound.Collation, ")"), stringutil.StringBuilder("NLSSORT('", bound.Upper, "',", bound.Collation, ")")))
-					preConditionArgsForUpper = append(preConditionArgsForUpper, stringutil.StringBuilder("NLSSORT('", bound.Upper, "',", bound.Collation, ")"))
+					preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = %s", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")")))
+					preConditionArgsForUpper = append(preConditionArgsForUpper, stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")"))
 				}
 			}
 
@@ -160,29 +195,46 @@ func (rg *Range) ToString() string {
 					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
 				} else {
 					if len(preConditionForUpper) > 0 {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s%s %s %s)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, upperSymbol, bound.Upper))
+						upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s %s)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, upperSymbol, bound.Upper))
 					} else {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s%s %s %s)", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, upperSymbol, bound.Upper))
+						upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s %s)", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, upperSymbol, bound.Upper))
 					}
-					preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = %s", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Upper))
+					preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s %s = %s", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, bound.Upper))
 					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
 				}
 			}
 		}
 	}
 
-	if len(upperCondition) == 0 && len(lowerCondition) == 0 {
-		return "1 = 1"
-	}
+	if len(sameCondition) == 0 {
+		if len(upperCondition) == 0 && len(lowerCondition) == 0 {
+			return "TRUE"
+		}
 
-	if len(upperCondition) == 0 {
-		return stringutil.StringJoin(lowerCondition, " OR ")
-	}
-	if len(lowerCondition) == 0 {
-		return stringutil.StringJoin(upperCondition, " OR ")
-	}
+		if len(upperCondition) == 0 {
+			return strings.Join(lowerCondition, " OR ")
+		}
 
-	return fmt.Sprintf("(%s) AND (%s)", stringutil.StringJoin(lowerCondition, " OR "), stringutil.StringJoin(upperCondition, " OR "))
+		if len(lowerCondition) == 0 {
+			return strings.Join(upperCondition, " OR ")
+		}
+
+		return fmt.Sprintf("(%s) AND (%s)", strings.Join(lowerCondition, " OR "), strings.Join(upperCondition, " OR "))
+	} else {
+		if len(upperCondition) == 0 && len(lowerCondition) == 0 {
+			return strings.Join(sameCondition, " AND ")
+		}
+
+		if len(upperCondition) == 0 {
+			return fmt.Sprintf("(%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(lowerCondition, " OR "))
+		}
+
+		if len(lowerCondition) == 0 {
+			return fmt.Sprintf("(%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(upperCondition, " OR "))
+		}
+
+		return fmt.Sprintf("(%s) AND (%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(lowerCondition, " OR "), strings.Join(upperCondition, " OR "))
+	}
 }
 
 func (rg *Range) Update(dbType, dbCharset, columnName, collation, datatype string, datetimePrecision string, lower, upper string, updateLower, updateUpper bool) error {
@@ -190,6 +242,8 @@ func (rg *Range) Update(dbType, dbCharset, columnName, collation, datatype strin
 		lowerS string
 		upperS string
 	)
+
+	rg.DBType = dbType
 
 	switch stringutil.StringUpper(dbType) {
 	case constant.DatabaseTypeOracle:
@@ -218,6 +272,9 @@ func (rg *Range) Update(dbType, dbCharset, columnName, collation, datatype strin
 			lowerS = stringutil.StringBuilder(`'`, lowerUtf8, `'`)
 			upperS = stringutil.StringBuilder(`'`, upperUtf8, `'`)
 		}
+		if collation != "" {
+			collation = fmt.Sprintf("'NLS_SORT = %s'", collation)
+		}
 	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 		convertUtf8Raws, err := stringutil.CharsetConvert([]byte(lower), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharset)], constant.CharsetUTF8MB4)
 		if err != nil {
@@ -236,6 +293,9 @@ func (rg *Range) Update(dbType, dbCharset, columnName, collation, datatype strin
 		} else {
 			lowerS = stringutil.StringBuilder(`'`, lowerUtf8, `'`)
 			upperS = stringutil.StringBuilder(`'`, upperUtf8, `'`)
+		}
+		if collation != "" {
+			collation = fmt.Sprintf("COLLATE '%s'", collation)
 		}
 	default:
 		return fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", dbType)

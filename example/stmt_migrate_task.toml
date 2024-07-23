@@ -1,6 +1,6 @@
 task-name = "dmt_33to45"
-datasource-name-s = "oracle33"
-datasource-name-t = "tidb145"
+datasource-name-s = "oracle10g"
+datasource-name-t = "tidb186"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -19,7 +19,7 @@ case-field-rule-t = "0"
 schema-name-s = "MARVIN"
 schema-name-t = "STEVEN"
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["MARVIN_COLUMN_T"]
+include-table-s = ["T1"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
 

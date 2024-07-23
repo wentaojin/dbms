@@ -125,4 +125,7 @@ const (
 	DataCompareFixStmtTypeDelete = "D"
 	DataCompareFixStmtTypeInsert = "I"
 	DataCompareFixStmtTypeRows   = "R" // row counts compare
+
+	DataCompareRepairStmtFlowUpstream   = "UPSTREAM"
+	DataCompareRepairStmtFlowDownstream = "DOWNSTREAM"
 )

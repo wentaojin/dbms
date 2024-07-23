@@ -44,9 +44,9 @@ const (
 	MYSQLDatabaseCheckConstraintSupportVersion = "8.0.15"
 	TIDBDatabaseCheckConstraintSupportVersion  = "7.2.0"
 
-	MYSQLDatabaseTableColumnDefaultValueWithStringNull = ""
-	MYSQLDatabaseTableColumnDefaultValueWithNULLSTRING = "NULLSTRING"
-	MYSQLDatabaseTableColumnDefaultValueWithNULL       = "NULL"
+	MYSQLDatabaseTableColumnDefaultValueWithEmptyString = ""
+	MYSQLDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
+	MYSQLDatabaseTableColumnDefaultValueWithNULL        = "NULL"
 
 	MYSQLCompatibleDatabaseVersionDelimiter = "-"
 
@@ -528,6 +528,7 @@ const (
 	ParamNameDataCompareConsistentReadPointT  = "consistentReadPointT"
 	ParamNameDataCompareChunkSize             = "chunkSize"
 	ParamNameDataCompareIgnoreConditionFields = "ignoreConditionFields"
+	ParamNameDataCompareRepairStmtFlow        = "repairStmtFlow"
 
 	// ParamValueDataCompareCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

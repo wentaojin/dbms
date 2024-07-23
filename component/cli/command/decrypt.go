@@ -16,13 +16,14 @@ limitations under the License.
 package command
 
 import (
+	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/service"
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
 
-	"github.com/golang/snappy"
 	"github.com/spf13/cobra"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -30,8 +31,11 @@ import (
 
 type AppDecrypt struct {
 	*App
-	data     string
-	category string
+	task    string
+	schema  string
+	table   string
+	chunk   string
+	decrypt string
 }
 
 func (a *App) AppDecrypt() component.Cmder {
@@ -47,9 +51,11 @@ func (a *AppDecrypt) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-
-	cmd.Flags().StringVarP(&a.data, "data", "d", "", "data string")
-	cmd.Flags().StringVarP(&a.category, "category", "g", "chunk", "data category")
+	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the task name")
+	cmd.Flags().StringVarP(&a.schema, "schema", "D", "", "the upstream schema name")
+	cmd.Flags().StringVarP(&a.table, "table", "T", "", "the upstream table name")
+	cmd.Flags().StringVarP(&a.chunk, "chunk", "c", "", "the upstream table chunk string")
+	cmd.Flags().StringVarP(&a.decrypt, "decrypt", "e", "", "the decrypt string")
 	return cmd
 }
 
@@ -57,34 +63,36 @@ func (a *AppDecrypt) RunE(cmd *cobra.Command, args []string) error {
 	cyan := color.New(color.FgCyan, color.Bold)
 	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
 	fmt.Printf("Command:      %s\n", cyan.Sprint("decrypt"))
-	fmt.Printf("Category:     %s\n", cyan.Sprint(a.category))
-	fmt.Printf("Data:         %s\n", cyan.Sprint(a.data))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("decrypt"))
 
-	if strings.EqualFold(a.category, "chunk") {
-		desChunkDetailS, err := stringutil.Decrypt(a.data, []byte(constant.DefaultDataEncryptDecryptKey))
+	if !strings.EqualFold(a.decrypt, "") {
+		decString, err := stringutil.Decrypt(a.decrypt, []byte(constant.DefaultDataEncryptDecryptKey))
 		if err != nil {
 			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 			fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
 			return nil
 		}
-		decChunkDetailS, err := snappy.Decode(nil, []byte(desChunkDetailS))
-		if err != nil {
-			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-			fmt.Printf("Response:     %s\n", color.RedString("error decode failed: %v", err))
-			return nil
-		}
-		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.GreenString("the database table chunk decrypt: %v\n", stringutil.BytesToString(decChunkDetailS)))
+		fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+		fmt.Printf("Response:     %s\n", color.GreenString("the database table decrypt: %v\n", decString))
 		return nil
 	} else {
-		decString, err := stringutil.Decrypt(a.data, []byte(constant.DefaultDataEncryptDecryptKey))
+		decrypts, err := service.Decrypt(context.TODO(), a.Server, a.task, a.schema, a.table, a.chunk)
 		if err != nil {
 			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 			fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
 			return nil
 		}
-		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.GreenString("the database table decrypt: %v\n", decString))
+		if len(decrypts) == 0 {
+			fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+			fmt.Printf("Response:     %s\n", color.RedString("the database table chunk aren't exist, decrypt no record"))
+			return nil
+		}
+
+		fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+		fmt.Printf("Response:     %s\n\n", fmt.Sprintf("the database table chunk decrypt records"))
+
+		stringutil.PrintTable(decrypts, true)
 		return nil
 	}
 }

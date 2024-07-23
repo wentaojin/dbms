@@ -9,7 +9,7 @@ echo "Script workerServer01 parent directory is: $parentDir"
 
 binPath="$parentDir/bin"
 configPath="$parentDir/sample"
-workerConfig="$configPath/workerServer01.toml"
+workerConfig="$configPath/worker_config01.toml"
 
 # get os kernel name
 KERNEL=$(uname -s)

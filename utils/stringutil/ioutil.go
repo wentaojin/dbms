@@ -328,7 +328,7 @@ func PrintTable(rows [][]string, header bool) {
 	}
 
 	t.SetStyle(table.Style{
-		Name: "tiup",
+		Name: "dbms-cluster",
 		Box: table.BoxStyle{
 			BottomLeft:       "",
 			BottomRight:      "",

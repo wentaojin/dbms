@@ -179,8 +179,39 @@ func (d *Database) GetDatabaseExternalTable(schemaName string) ([]string, error)
 }
 
 func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
+	tableTypeMap := make(map[string]string)
+	sqlStr := fmt.Sprintf(`SELECT
+    t.TABLE_NAME,
+    IF(p.PARTITION_NAME IS NULL,
+    CASE
+        WHEN UPPER(t.TABLE_TYPE) = 'BASE TABLE' THEN 'HEAP'
+        WHEN UPPER(t.TABLE_TYPE) = 'SYSTEM VIEW' THEN 'SYSTEM VIEW'
+        ELSE 'UNKNOWN'
+    END,
+    'PARTITION') AS TABLE_TYPE
+FROM 
+    INFORMATION_SCHEMA.TABLES t
+LEFT JOIN 
+    INFORMATION_SCHEMA.PARTITIONS p ON t.TABLE_SCHEMA = p.TABLE_SCHEMA 
+    AND t.TABLE_NAME = p.TABLE_NAME 
+WHERE
+    t.TABLE_SCHEMA = '%s'`, schemaName)
+	_, res, err := d.GeneralQuery(sqlStr)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return tableTypeMap, fmt.Errorf("mysql compatible schema [%s] get table type result null, but can't be null", schemaName)
+	}
+
+	for _, r := range res {
+		if len(r) > 2 || len(r) == 0 || len(r) == 1 {
+			return tableTypeMap, fmt.Errorf("mysql compatible schema [%s] table type values should be 2, result: %v", schemaName, r)
+		}
+		tableTypeMap[r["TABLE_NAME"]] = r["TABLE_TYPE"]
+	}
+
+	return tableTypeMap, nil
 }
 
 func (d *Database) GetDatabaseTablePrimaryKey(schemaName string, tableName string) ([]map[string]string, error) {
@@ -194,7 +225,7 @@ func (d *Database) GetDatabaseTablePrimaryKey(schemaName string, tableName strin
 		'UK'
 		ELSE 'UKNOWN'
 	END AS CONSTRAINT_TYPE,
-	GROUP_CONCAT(KU.COLUMN_NAME ORDER BY KU.ORDINAL_POSITION SEPARATOR ',') COLUMN_LIST
+	GROUP_CONCAT(KU.COLUMN_NAME ORDER BY KU.ORDINAL_POSITION SEPARATOR '|+|') COLUMN_LIST
 FROM
 	INFORMATION_SCHEMA.TABLE_CONSTRAINTS TC,
 	INFORMATION_SCHEMA.KEY_COLUMN_USAGE KU
@@ -228,7 +259,7 @@ func (d *Database) GetDatabaseTableUniqueKey(schemaName string, tableName string
 		'UK'
 		ELSE 'UKNOWN'
 	END AS CONSTRAINT_TYPE,
-	GROUP_CONCAT(KU.COLUMN_NAME ORDER BY KU.ORDINAL_POSITION SEPARATOR ',') COLUMN_LIST
+	GROUP_CONCAT(KU.COLUMN_NAME ORDER BY KU.ORDINAL_POSITION SEPARATOR '|+|') COLUMN_LIST
 FROM
 	INFORMATION_SCHEMA.TABLE_CONSTRAINTS TC,
 	INFORMATION_SCHEMA.KEY_COLUMN_USAGE KU

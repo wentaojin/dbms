@@ -396,7 +396,7 @@ ORDER BY
 func (d *Database) GetDatabaseTablePrimaryKey(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
     conname AS constraint_name,
-    string_agg(a.attname, ',') AS column_list
+    string_agg(a.attname, '|+|') AS column_list
 FROM 
     pg_constraint cons
 JOIN 
@@ -420,7 +420,7 @@ GROUP BY
 func (d *Database) GetDatabaseTableUniqueKey(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
     conname AS constraint_name,
-    string_agg(a.attname, ',') AS column_list
+    string_agg(a.attname, '|+|') AS column_list
 FROM 
     pg_constraint cons
 JOIN 
@@ -444,8 +444,8 @@ GROUP BY
 func (d *Database) GetDatabaseTableForeignKey(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
     conname AS constraint_name,
-    string_agg(a.attname, ',') AS column_list,
-    string_agg(b.attname, ',') AS rcolumn_list,
+    string_agg(a.attname, '|+|') AS column_list,
+    string_agg(b.attname, '|+|') AS rcolumn_list,
     split_part(confrelid::regclass::text, '.', 1) AS rowner,
     split_part(confrelid::regclass::text, '.', 2) AS rtable_name,
     case confupdtype when 'a' then 'NO ACTION' when 'r' then 'RESTRICT' when 'c' then 'CASCADE' when 'n' then 'SET NULL' when 'd' then 'SET DEFAULT' else 'UNKNOWN' end AS update_rule,
@@ -476,7 +476,7 @@ func (d *Database) GetDatabaseTableCheckKey(schemaName string, tableName string)
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
     conname AS constraint_name,
     pg_get_constraintdef(cons.oid) AS definition,
-    string_agg(att.attname, ', ') AS involved_columns
+    string_agg(att.attname, '|+|') AS involved_columns
 FROM 
     pg_constraint cons
 JOIN 
@@ -529,7 +529,7 @@ regular_columns AS (
         idxd.table_oid,
         idxd.index_oid,
         idxd.indisunique,
-    	string_agg(quote_ident(att.attname), ',') AS column_lists
+    	string_agg(quote_ident(att.attname), '|+|') AS column_lists
     FROM 
         index_details idxd
     JOIN 
@@ -547,7 +547,7 @@ expr_columns AS (
         idxd.table_oid,
         idxd.index_oid,
         idxd.indisunique,
-        pg_get_expr(idxd.indexprs, idxd.table_oid) AS column_lists
+        replace(pg_get_expr(idxd.indexprs, idxd.table_oid),',','|+|') AS column_lists
     FROM 
         index_details idxd
     WHERE 
@@ -622,7 +622,7 @@ regular_columns AS (
         idxd.table_oid,
         idxd.index_oid,
         idxd.indisunique,
-    	string_agg(quote_ident(att.attname), ',') AS column_lists
+    	string_agg(quote_ident(att.attname), '|+|') AS column_lists
     FROM 
         index_details idxd
     JOIN 
@@ -640,7 +640,7 @@ expr_columns AS (
         idxd.table_oid,
         idxd.index_oid,
         idxd.indisunique,
-        pg_get_expr(idxd.indexprs, idxd.table_oid) AS column_lists
+        replace(pg_get_expr(idxd.indexprs, idxd.table_oid),',','|+|') AS column_lists
     FROM 
         index_details idxd
     WHERE 

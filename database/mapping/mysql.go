@@ -589,7 +589,7 @@ func mysqlHandleColumnDefaultValueCharset(columnName, datatype, defaultVal, sour
 		// 'K'
 		dataDefault = "'" + stringutil.BytesToString(convertTargetRaw) + "'"
 	} else {
-		if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.MYSQLDatabaseTableColumnDefaultValueWithStringNull) {
+		if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.MYSQLDatabaseTableColumnDefaultValueWithEmptyString) {
 			dataDefault = "'" + stringutil.BytesToString(convertTargetRaw) + "'"
 		} else if strings.EqualFold(stringutil.BytesToString(convertTargetRaw), constant.MYSQLDatabaseTableColumnDefaultValueWithNULLSTRING) {
 			dataDefault = constant.MYSQLDatabaseTableColumnDefaultValueWithNULL

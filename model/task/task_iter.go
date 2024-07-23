@@ -106,6 +106,7 @@ type IDataMigrateTask interface {
 	BatchUpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
 	GetDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error)
 	FindDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
+	QueryDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
 	FindDataMigrateTaskBySchemaTableChunkStatus(ctx context.Context, task *DataMigrateTask) ([]*DataGroupTaskStatusResult, error)
 	FindDataMigrateTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error)
 	FindDataMigrateTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataGroupTaskStatusResult, error)
@@ -130,6 +131,7 @@ type IDataCompareTask interface {
 	UpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
 	BatchUpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
 	FindDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
+	QueryDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
 	FindDataCompareTaskBySchemaTableChunkStatus(ctx context.Context, task *DataCompareTask) ([]*DataGroupTaskStatusResult, error)
 	FindDataCompareTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error)
 	FindDataCompareTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataGroupTaskStatusResult, error)
@@ -185,6 +187,7 @@ type IDataScanTask interface {
 	DeleteDataScanTask(ctx context.Context, task *DataScanTask) error
 	DeleteDataScanTaskName(ctx context.Context, taskName []string) error
 	FindDataScanTask(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error)
+	QueryDataScanTask(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error)
 	FindDataScanTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataGroupStatusResult, error)
 	FindDataScanTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error)
 	FindDataScanTaskBySchemaTableChunkStatus(ctx context.Context, task *DataScanTask) ([]*DataGroupTaskStatusResult, error)

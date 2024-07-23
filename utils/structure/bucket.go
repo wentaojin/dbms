@@ -16,6 +16,7 @@ limitations under the License.
 package structure
 
 import (
+	"fmt"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"sort"
@@ -30,6 +31,11 @@ type HighestBucket struct {
 	ColumnCollation   []string
 	DatetimePrecision []string
 	Buckets           []Bucket
+}
+
+func (h *HighestBucket) String() string {
+	jsonStr, _ := stringutil.MarshalJSON(h)
+	return jsonStr
 }
 
 // Bucket store the index statistics bucket
@@ -56,7 +62,7 @@ type Rule struct {
 // StringSliceCreateBuckets creates buckets from a sorted slice of strings.
 // Each bucket's lower bound is the value of one element, and the upper bound is the next element's value.
 // The last bucket will have the same upper bound as the previous bucket if there are no more elements.
-func StringSliceCreateBuckets(newColumnsBs []string, estimateCounts int64) []Bucket {
+func StringSliceCreateBuckets(newColumnsBs []string, numRows int64) []Bucket {
 	// Sort the string slice
 	sort.Strings(newColumnsBs)
 
@@ -65,55 +71,35 @@ func StringSliceCreateBuckets(newColumnsBs []string, estimateCounts int64) []Buc
 	for i := 0; i < len(newColumnsBs); i++ {
 		if i == len(newColumnsBs)-1 {
 			// For the last element, use the previous element as the upper bound
-			buckets[i] = Bucket{Count: estimateCounts, LowerBound: newColumnsBs[i], UpperBound: newColumnsBs[i-1]}
+			buckets[i] = Bucket{LowerBound: newColumnsBs[i], UpperBound: newColumnsBs[i-1]}
 		} else {
-			buckets[i] = Bucket{Count: estimateCounts, LowerBound: newColumnsBs[i], UpperBound: newColumnsBs[i+1]}
+			buckets[i] = Bucket{LowerBound: newColumnsBs[i], UpperBound: newColumnsBs[i+1]}
 		}
 	}
 
 	// Remove the last bucket which was created with incorrect upper bound
 	if len(buckets) > 0 {
 		buckets = buckets[:len(buckets)-1]
+
+		// divide buckets equally by number of the database table data rows, and the number of rows in the current bucket is obtained by subtracting the buckets.
+		counts := numRows / int64(len(buckets))
+
+		for i, _ := range buckets {
+			if i == 0 {
+				buckets[i].Count = counts
+				continue
+			}
+			buckets[i].Count = buckets[i-1].Count + counts
+		}
 	}
 
 	return buckets
 }
 
-func FindMaxDistinctCountHistogram(histogramMap map[string]Histogram, consColumns map[string]string) map[string]Histogram {
-	if len(histogramMap) == 0 {
-		return nil
-	}
-	maxHist := make(map[string]Histogram)
-	bestHist := make(map[string]Histogram)
-	maxDistinctCount := int64(0)
-
-	for k, h := range histogramMap {
-		// record distinct count equal
-		if h.DistinctCount >= maxDistinctCount {
-			maxDistinctCount = h.DistinctCount
-			maxHist[k] = h
-		}
-	}
-
-	var bestKey string
-	minColumnLen := int64(0)
-	for k, _ := range maxHist {
-		columns := stringutil.StringSplit(consColumns[k], constant.StringSeparatorComma)
-		if int64(len(columns)) <= minColumnLen {
-			minColumnLen = int64(len(columns))
-			// if the columns length equal, return the last
-			bestKey = k
-		}
-	}
-
-	bestHist[bestKey] = maxHist[bestKey]
-	return bestHist
-}
-
 func FindColumnMatchConstraintIndexNames(consColumns map[string]string, compareField string, ignoreFields []string) []string {
 	var conSlis []string
 	for cons, column := range consColumns {
-		columns := stringutil.StringSplit(column, constant.StringSeparatorComma)
+		columns := stringutil.StringSplit(column, constant.StringSeparatorComplexSymbol)
 		// match prefix index
 		// column a, index a,b,c and b,c,a ,only match a,b,c
 		if !strings.EqualFold(compareField, "") {
@@ -140,26 +126,43 @@ func ExtractColumnMatchHistogram(matchIndexes []string, histogramMap map[string]
 	return matchHists
 }
 
-func FindMaxDistinctCountBucket(maxHists map[string]Histogram, bucketMap map[string][]Bucket, consColumns map[string]string) (string, []Bucket, string) {
+func SortDistinctCountHistogram(histogramMap map[string]Histogram, consColumns map[string]string) SortHistograms {
+	if len(histogramMap) == 0 {
+		return nil
+	}
+	var hists SortHistograms
+	for k, v := range histogramMap {
+		hists = append(hists, SortHistogram{
+			Key:      k,
+			Value:    v,
+			OrderKey: consColumns[k],
+		})
+	}
+
+	sort.Sort(hists)
+	return hists
+}
+
+func FindMatchDistinctCountBucket(sortHists SortHistograms, bucketMap map[string][]Bucket, consColumns map[string]string) (*HighestBucket, error) {
 	var (
-		highestConKey     string
-		highestConColumns string
+		sortBuckets []*HighestBucket
 	)
-
-	maxBuckets := make(map[string][]Bucket)
-	for k, _ := range maxHists {
-		if val, ok := bucketMap[k]; ok {
-			maxBuckets[k] = val
-			highestConKey = k
-			break
+	for _, hist := range sortHists {
+		if val, ok := bucketMap[hist.Key]; ok {
+			sortBuckets = append(sortBuckets, &HighestBucket{
+				IndexName:         hist.Key,
+				IndexColumn:       stringutil.StringSplit(consColumns[hist.Key], constant.StringSeparatorComplexSymbol),
+				ColumnDatatype:    nil,
+				ColumnCollation:   nil,
+				DatetimePrecision: nil,
+				Buckets:           val,
+			})
 		}
 	}
 
-	for k, _ := range maxBuckets {
-		if val, ok := consColumns[k]; ok {
-			highestConColumns = val
-			break
-		}
+	// the found more key, and return first key
+	if len(sortBuckets) >= 1 {
+		return sortBuckets[0], nil
 	}
-	return highestConKey, maxBuckets[highestConKey], highestConColumns
+	return &HighestBucket{}, fmt.Errorf("the database table index name is empty, please contact author or analyze table statistics and historgam rerunning")
 }

@@ -27,15 +27,17 @@ const (
 const DefaultRecordCreateBatchSize = 50
 
 const (
-	StringSeparatorComma      = ","
-	StringSeparatorDot        = "."
-	StringSeparatorBacktick   = "`"
-	StringSeparatorSlash      = "/"
-	StringSeparatorAite       = "@"
-	StringSplicingSymbol      = "||"
-	StringSeparatorSemicolon  = ";"
-	StringSeparatorUnderline  = "_"
-	StringSeparatorCenterLine = "-"
+	StringSeparatorComma         = ","
+	StringSeparatorDot           = "."
+	StringSeparatorBacktick      = "`"
+	StringSeparatorSlash         = "/"
+	StringSeparatorAite          = "@"
+	StringSplicingSymbol         = "||"
+	StringSeparatorSemicolon     = ";"
+	StringSeparatorUnderline     = "_"
+	StringSeparatorCenterLine    = "-"
+	StringSeparatorComplexSymbol = "|+|"
+	StringSeparatorDoubleQuotes  = "\""
 )
 
 const (

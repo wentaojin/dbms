@@ -41,18 +41,19 @@ import (
 )
 
 type DataCompareRow struct {
-	Ctx         context.Context
-	StartTime   time.Time
-	TaskMode    string
-	TaskFlow    string
-	Dmt         *task.DataCompareTask
-	DatabaseS   database.IDatabase
-	DatabaseT   database.IDatabase
-	BatchSize   int
-	WriteThread int
-	CallTimeout int
-	DBCharsetS  string
-	DBCharsetT  string
+	Ctx            context.Context
+	StartTime      time.Time
+	TaskMode       string
+	TaskFlow       string
+	Dmt            *task.DataCompareTask
+	DatabaseS      database.IDatabase
+	DatabaseT      database.IDatabase
+	BatchSize      int
+	WriteThread    int
+	CallTimeout    int
+	DBCharsetS     string
+	DBCharsetT     string
+	RepairStmtFlow string
 }
 
 func (r *DataCompareRow) CompareMethod() string {
@@ -121,8 +122,8 @@ func (r *DataCompareRow) CompareRows() error {
 		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
 	}
 
-	switch {
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowTiDBToOracle:
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
@@ -132,7 +133,7 @@ func (r *DataCompareRow) CompareRows() error {
 		} else {
 			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		}
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+	case constant.TaskFlowOracleToMySQL:
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else {
@@ -371,19 +372,18 @@ func (r *DataCompareRow) CompareMD5() error {
 	chunkDetailT = stringutil.BytesToString(convertRaw)
 
 	switch {
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+	case strings.EqualFold(r.Dmt.SnapshotPointS, "NO") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+	default:
+		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+	}
 
-		switch {
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case strings.EqualFold(r.Dmt.SnapshotPointS, "NO") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		default:
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		}
-
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToTiDB:
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
@@ -410,19 +410,7 @@ SELECT
 FROM
 	(%v) subq`, execQueryT)
 		}
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-
-		switch {
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case strings.EqualFold(r.Dmt.SnapshotPointS, "NO") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		default:
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		}
-
+	case constant.TaskFlowOracleToMySQL:
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else {
@@ -444,6 +432,33 @@ SELECT
 	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 25, 8),16,10)),0) AS CHAR) AS ROWSCHECKSUM
 FROM
 	(%v) subq`, execQueryT)
+		}
+	case constant.TaskFlowTiDBToOracle:
+		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
+		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` AS OF TIMESTAMP `, r.Dmt.SnapshotPointT, ` WHERE `, chunkDetailT)
+		} else if strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` AS OF TIMESTAMP `, r.Dmt.SnapshotPointT, ` WHERE `, chunkDetailT)
+		} else {
+			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
+		}
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+			execQueryS = fmt.Sprintf(`
+SELECT
+	 CAST(IFNULL(SUM(CONV(SUBSTRING(subq.ROWSCHECKSUM, 1, 8),16,10)+ 
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 9, 8),16,10)+
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 17, 8),16,10)+
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 25, 8),16,10)),0) AS CHAR) AS ROWSCHECKSUM
+FROM
+	(%v) subq`, execQueryT)
+			execQueryT = fmt.Sprintf(`SELECT
+	TO_CHAR(NVL(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'xxxxxxxx')+
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'xxxxxxxx')+ 
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'xxxxxxxx'))),0)) AS ROWSCHECKSUM
+FROM
+	(%v) subq`, execQueryS)
 		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow)
@@ -635,18 +650,18 @@ func (r *DataCompareRow) CompareCRC32() error {
 	chunkDetailT = stringutil.BytesToString(convertRaw)
 
 	switch {
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-		switch {
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		default:
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		}
+	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+	case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+	default:
+		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+	}
 
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowTiDBToOracle:
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
@@ -656,18 +671,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 		} else {
 			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		}
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-		switch {
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		default:
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		}
-
+	case constant.TaskFlowOracleToMySQL:
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else {
@@ -693,6 +697,8 @@ func (r *DataCompareRow) CompareCRC32() error {
 	columnDataSMC := make(chan map[string]int64, 1)
 	columnDataTMC := make(chan map[string]int64, 1)
 	columnNameTC := make(chan []string, 1)
+	columnNameSC := make(chan []string, 1)
+
 	crc32ValTC := make(chan uint32, 1)
 
 	g, ctx := errgroup.WithContext(r.Ctx)
@@ -702,10 +708,11 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			_, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4)
+			columnS, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] comparing failed: [%v]", execQueryS, err)
 			}
+			columnNameSC <- columnS
 			crc32ValSC <- crc32ValS
 			columnDataSMC <- columnDataS
 			return nil
@@ -734,6 +741,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 
 	columnDataSM := <-columnDataSMC
 	crc32VS := <-crc32ValSC
+	columnNameS := <-columnNameSC
 
 	columnDataTM := <-columnDataTMC
 	crc32VT := <-crc32ValTC
@@ -813,20 +821,54 @@ func (r *DataCompareRow) CompareCRC32() error {
 		delDetails []string
 	)
 	for dk, dv := range addDestSets {
-		switch {
-		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-			addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-				r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				delDetails = append(delDetails, GenOracleCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowTiDBToOracle:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
 		default:
 			return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
 		}
 
 	}
 	for dk, dv := range delDestSets {
-		switch {
-		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-			delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
-				r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, dk, int(dv), false))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowTiDBToOracle:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				delDetails = append(delDetails, GenOracleCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, dk, int(dv), false))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
 		default:
 			return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
 		}
@@ -1016,17 +1058,18 @@ func (r *DataCompareRow) compareMd5Row() error {
 	chunkDetailT = stringutil.BytesToString(convertRaw)
 
 	switch {
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-		switch {
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		default:
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		}
+	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+	case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
+	case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
+		execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+	default:
+		execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+	}
+
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowTiDBToOracle:
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
@@ -1036,17 +1079,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 		} else {
 			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		}
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-		switch {
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" AS OF SCN `, r.Dmt.SnapshotPointS, ` WHERE `, chunkDetailS)
-		case strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, ""):
-			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		default:
-			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
-		}
+	case constant.TaskFlowOracleToMySQL:
 		if !strings.EqualFold(r.Dmt.SqlHintT, "") {
 			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM `, r.Dmt.SchemaNameT, `.`, r.Dmt.TableNameT, ` WHERE `, chunkDetailT)
 		} else {
@@ -1069,6 +1102,8 @@ func (r *DataCompareRow) compareMd5Row() error {
 		zap.String("startTime", startTime.String()))
 
 	columnDataSMC := make(chan map[string]int64, 1)
+	columnNameSC := make(chan []string, 1)
+
 	columnDataTMC := make(chan map[string]int64, 1)
 	columnNameTC := make(chan []string, 1)
 
@@ -1079,10 +1114,11 @@ func (r *DataCompareRow) compareMd5Row() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			_, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4)
+			columnS, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] comparing failed: [%v]", execQueryS, err)
 			}
+			columnNameSC <- columnS
 			columnDataSMC <- columnDataS
 			return nil
 		}
@@ -1108,6 +1144,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 	}
 
 	columnDataSM := <-columnDataSMC
+	columnNameS := <-columnNameSC
 
 	columnDataTM := <-columnDataTMC
 	columnNameT := <-columnNameTC
@@ -1119,10 +1156,27 @@ func (r *DataCompareRow) compareMd5Row() error {
 		delDetails []string
 	)
 	for dk, dv := range addDestSets {
-		switch {
-		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-			addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-				r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				delDetails = append(delDetails, GenOracleCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowTiDBToOracle:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, dk, int(dv), false))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
 		default:
 			return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
 		}
@@ -1130,10 +1184,27 @@ func (r *DataCompareRow) compareMd5Row() error {
 	}
 
 	for dk, dv := range delDestSets {
-		switch {
-		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
-			delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
-				r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, dk, int(dv), false))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowTiDBToOracle:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				delDetails = append(delDetails, GenOracleCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, constant.StringSeparatorComma), int(dv)))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, dk, int(dv), false))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
 		default:
 			return fmt.Errorf("the data compare task [%s] task_flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow)
 		}

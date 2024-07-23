@@ -573,6 +573,7 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 			ConsistentReadPointT:  *req.DataCompareParam.ConsistentReadPointT,
 			ChunkSize:             *req.DataCompareParam.ChunkSize,
 			IgnoreConditionFields: *req.DataCompareParam.IgnoreConditionFields,
+			RepairStmtFlow:        *req.DataCompareParam.RepairStmtFlow,
 		},
 	})
 	if err != nil {

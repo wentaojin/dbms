@@ -343,7 +343,7 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 	}
 	if len(pkSlis) == 1 {
 		var pkColumns []string
-		pkArrs := stringutil.StringSplit(pkSlis[0]["COLUMN_LIST"], ",")
+		pkArrs := stringutil.StringSplit(pkSlis[0]["COLUMN_LIST"], constant.StringSeparatorComplexSymbol)
 		for _, s := range pkArrs {
 			brackets := stringutil.StringExtractorWithinBrackets(s)
 			if len(brackets) == 0 {
@@ -377,7 +377,7 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 	if len(ukSlis) > 0 {
 		for _, uk := range ukSlis {
 			var ukColumns []string
-			ukArrs := stringutil.StringSplit(uk["COLUMN_LIST"], ",")
+			ukArrs := stringutil.StringSplit(uk["COLUMN_LIST"], constant.StringSeparatorComplexSymbol)
 			for _, s := range ukArrs {
 				brackets := stringutil.StringExtractorWithinBrackets(s)
 				if len(brackets) == 0 {
@@ -410,7 +410,7 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 	if len(uiSlis) > 0 {
 		for _, ui := range uiSlis {
 			var uiColumns []string
-			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], "|+|")
+			uiArrs := stringutil.StringSplit(ui["COLUMN_LIST"], constant.StringSeparatorComplexSymbol)
 			for _, s := range uiArrs {
 				brackets := stringutil.StringExtractorWithinBrackets(s)
 				if len(brackets) == 0 {
@@ -443,7 +443,7 @@ func FindDatabaseTableColumnName(schemaNameS, tableNameS string, databaseS datab
 	if len(niSlis) > 0 {
 		for _, ni := range niSlis {
 			var niColumns []string
-			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], "|+|")
+			niArrs := stringutil.StringSplit(ni["COLUMN_LIST"], constant.StringSeparatorComplexSymbol)
 			for _, s := range niArrs {
 				brackets := stringutil.StringExtractorWithinBrackets(s)
 				if len(brackets) == 0 {

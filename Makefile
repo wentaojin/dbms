@@ -78,7 +78,7 @@ OS := $(shell uname -s)
 LIBRARY_DIR ?=
 
 # LIBRARY_PATH_VAR the default value
-LIBRARY_PATH_VAR ?= /Users/marvin/storehouse/oracle/instantclient_19_16
+LIBRARY_PATH_VAR ?= /Users/marvin/storehouse/oracle/instantclient_19_8
 
 ifeq ($(strip $(LIBRARY_DIR)),)
     # If LIBRARY_DIR is empty, print a warning message

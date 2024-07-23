@@ -728,6 +728,15 @@ func (rw *RWDataMigrateTask) GetDataMigrateTask(ctx context.Context, task *DataM
 	return dataS, nil
 }
 
+func (rw *RWDataMigrateTask) QueryDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error) {
+	var dataS []*DataMigrateTask
+	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? ", task.TaskName, task.SchemaNameS, task.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 func (rw *RWDataMigrateTask) FindDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error) {
 	var dataS []*DataMigrateTask
 	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.TaskStatus).Find(&dataS).Error
@@ -1153,6 +1162,15 @@ func (rw *RWDataCompareTask) DeleteDataCompareTaskName(ctx context.Context, task
 	return nil
 }
 
+func (rw *RWDataCompareTask) QueryDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error) {
+	var dataS []*DataCompareTask
+	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 type RWDataCompareResult struct {
 	common.GormDB
 }
@@ -1353,6 +1371,15 @@ func (rw *RWDataScanTask) FindDataScanTask(ctx context.Context, task *DataScanTa
 	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.TaskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanTask) QueryDataScanTask(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error) {
+	var dataS []*DataScanTask
+	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }

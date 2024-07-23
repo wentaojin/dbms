@@ -18,11 +18,12 @@ package mysql
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/errors"
 	"github.com/shopspring/decimal"
+	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"github.com/wentaojin/dbms/utils/structure"
+	"go.uber.org/zap"
 	"hash/crc32"
 	"strconv"
 	"strings"
@@ -73,7 +74,7 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 	}
 
 	buckets := make(map[string][]structure.Bucket)
-	if strings.Contains(res[0]["VERSION"], constant.DatabaseTypeTiDB) {
+	if strings.Contains(stringutil.StringUpper(res[0]["VERSION"]), constant.DatabaseTypeTiDB) {
 		/*
 			example in tidb:
 			mysql> SHOW STATS_BUCKETS WHERE db_name= "test" AND table_name="testa";
@@ -91,14 +92,14 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 
 		var pkIntegerColumnName string
 		if pkValus, ok := consColumns["PRIMARY"]; ok {
-			pkSlis := stringutil.StringSplit(pkValus, constant.StringSeparatorComma)
+			pkSlis := stringutil.StringSplit(pkValus, constant.StringSeparatorComplexSymbol)
 			if len(pkSlis) == 1 {
 				columnInfo, err := d.GetDatabaseTableColumnInfo(schemaNameS, tableNameS)
 				if err != nil {
 					return nil, err
 				}
 				for _, column := range columnInfo {
-					if strings.EqualFold(pkSlis[0], column["COLUMN_NAME"]) && stringutil.IsContainedString(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(column["DATA_TYPE"])) {
+					if strings.EqualFold(pkSlis[0], column["Column_name"]) && stringutil.IsContainedString(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(column["DATA_TYPE"])) {
 						pkIntegerColumnName = pkSlis[0]
 						break
 					}
@@ -107,32 +108,32 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 		}
 
 		for _, r := range res {
-			if _, ok := buckets[r["COLUMN_NAME"]]; !ok {
-				buckets[r["COLUMN_NAME"]] = []structure.Bucket{}
+			if _, ok := buckets[r["Column_name"]]; !ok {
+				buckets[r["Column_name"]] = []structure.Bucket{}
 			}
 			count, err := strconv.ParseInt(r["Count"], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("the database [%s] table [%s] statistics bucket error parsing integer: %v", schemaNameS, tableNameS, err)
 			}
 			// filter index column
-			if strings.EqualFold(r["IS_INDEX"], "1") {
+			if strings.EqualFold(r["Is_index"], "1") {
 				// transform index name to index column
-				columnNames, ok := consColumns[r["COLUMN_NAME"]]
+				columnNames, ok := consColumns[r["Column_name"]]
 				if !ok {
-					return nil, fmt.Errorf("the database [%s] table [%s] statistics bucket index name [%s] is existed, but the index system view query record not found", schemaNameS, tableNameS, r["COLUMN_NAME"])
+					return nil, fmt.Errorf("the database [%s] table [%s] statistics bucket index name [%s] is existed, but the index system view query record not found", schemaNameS, tableNameS, r["Column_name"])
 				}
 				buckets[columnNames] = append(buckets[columnNames], structure.Bucket{
 					Count:      count,
-					LowerBound: r["LOWER_BOUND"],
-					UpperBound: r["UPPER_BOUND"],
+					LowerBound: r["Lower_Bound"],
+					UpperBound: r["Upper_Bound"],
 				})
 			}
 			// when primary key is int type, the columnName will be column's name, not `PRIMARY`, check and transform here.
-			if !strings.EqualFold(pkIntegerColumnName, "") && strings.EqualFold(r["COLUMN_NAME"], pkIntegerColumnName) {
-				buckets[r["COLUMN_NAME"]] = append(buckets[r["COLUMN_NAME"]], structure.Bucket{
+			if !strings.EqualFold(pkIntegerColumnName, "") && strings.EqualFold(r["Column_name"], pkIntegerColumnName) {
+				buckets[r["Column_name"]] = append(buckets[r["Column_name"]], structure.Bucket{
 					Count:      count,
-					LowerBound: r["LOWER_BOUND"],
-					UpperBound: r["UPPER_BOUND"],
+					LowerBound: r["Lower_Bound"],
+					UpperBound: r["Upper_Bound"],
 				})
 			}
 		}
@@ -148,21 +149,21 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS s
 	}
 
 	hists := make(map[string]structure.Histogram)
-	if strings.Contains(res[0]["VERSION"], constant.DatabaseTypeTiDB) {
+	if strings.Contains(stringutil.StringUpper(res[0]["VERSION"]), constant.DatabaseTypeTiDB) {
 		_, res, err = d.GeneralQuery(fmt.Sprintf(`SHOW STATS_HISTOGRAMS WHERE db_name='%s' AND table_name='%s'`, schemaNameS, tableNameS))
 		if err != nil {
 			return nil, err
 		}
 		var pkIntegerColumnName string
 		if pkValus, ok := consColumns["PRIMARY"]; ok {
-			pkSlis := stringutil.StringSplit(pkValus, constant.StringSeparatorComma)
+			pkSlis := stringutil.StringSplit(pkValus, constant.StringSeparatorComplexSymbol)
 			if len(pkSlis) == 1 {
 				columnInfo, err := d.GetDatabaseTableColumnInfo(schemaNameS, tableNameS)
 				if err != nil {
 					return nil, err
 				}
 				for _, column := range columnInfo {
-					if strings.EqualFold(pkSlis[0], column["COLUMN_NAME"]) && stringutil.IsContainedString(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(column["DATA_TYPE"])) {
+					if strings.EqualFold(pkSlis[0], column["Column_name"]) && stringutil.IsContainedString(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(column["DATA_TYPE"])) {
 						pkIntegerColumnName = pkSlis[0]
 						break
 					}
@@ -170,20 +171,20 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS s
 			}
 		}
 		for _, r := range res {
-			disCount, err := strconv.ParseInt(r["DISTINCT_COUNT"], 10, 64)
+			disCount, err := strconv.ParseInt(r["Distinct_count"], 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing integer: %v", err)
+				return nil, fmt.Errorf("error parsing distinct_count [%s] integer: %v", r["Distinct_count"], err)
 			}
-			nullCount, err := strconv.ParseInt(r["NULL_COUNT"], 10, 64)
+			nullCount, err := strconv.ParseInt(r["Null_count"], 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing integer: %v", err)
+				return nil, fmt.Errorf("error parsing null_count [%s] integer: %v", r["Null_count"], err)
 			}
 			// filter index column
-			if strings.EqualFold(r["IS_INDEX"], "1") {
+			if strings.EqualFold(r["Is_index"], "1") {
 				// transform index name to index column
-				columnNames, ok := consColumns[r["COLUMN_NAME"]]
+				columnNames, ok := consColumns[r["Column_name"]]
 				if !ok {
-					return nil, fmt.Errorf("the database [%s] table [%s] statistics histogram index name [%s] is existed, but the index system view query record not found", schemaNameS, tableNameS, r["COLUMN_NAME"])
+					return nil, fmt.Errorf("the database [%s] table [%s] statistics histogram index name [%s] is existed, but the index system view query record not found", schemaNameS, tableNameS, r["Column_name"])
 				}
 				hists[columnNames] = structure.Histogram{
 					DistinctCount: disCount,
@@ -191,8 +192,8 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS s
 				}
 			}
 			// when primary key is int type, the columnName will be column's name, not `PRIMARY`, check and transform here.
-			if !strings.EqualFold(pkIntegerColumnName, "") && strings.EqualFold(r["COLUMN_NAME"], pkIntegerColumnName) {
-				hists[r["COLUMN_NAME"]] = structure.Histogram{
+			if !strings.EqualFold(pkIntegerColumnName, "") && strings.EqualFold(r["Column_name"], pkIntegerColumnName) {
+				hists[r["Column_name"]] = structure.Histogram{
 					DistinctCount: disCount,
 					NullCount:     nullCount,
 				}
@@ -213,8 +214,12 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 	if err != nil {
 		return nil, err
 	}
+	// the database table histogram not found
+	if len(histograms) == 0 {
+		return nil, nil
+	}
 
-	maxHists := make(map[string]structure.Histogram)
+	var sortHists structure.SortHistograms
 
 	var newIgnoreFields []string
 	if len(ignoreCondFields) > 0 && stringutil.IsContainedString(ignoreCondFields, compareCondField) {
@@ -225,25 +230,34 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 
 	if !strings.EqualFold(compareCondField, "") || len(newIgnoreFields) > 0 {
 		matchIndexes := structure.FindColumnMatchConstraintIndexNames(consColumns, compareCondField, newIgnoreFields)
-		if len(matchIndexes) == 0 {
-			// not found, the custom column not match index
+		matchIndexHists := structure.ExtractColumnMatchHistogram(matchIndexes, histograms)
+
+		if len(matchIndexes) == 0 || len(matchIndexHists) == 0 {
+			// not found, the custom column not match index or not match histogram
 			return nil, nil
 		}
-		maxHists = structure.FindMaxDistinctCountHistogram(structure.ExtractColumnMatchHistogram(matchIndexes, histograms), consColumns)
+		sortHists = structure.SortDistinctCountHistogram(matchIndexHists, consColumns)
 	} else {
-		maxHists = structure.FindMaxDistinctCountHistogram(histograms, consColumns)
+		sortHists = structure.SortDistinctCountHistogram(histograms, consColumns)
 	}
 
+	// find max histogram indexName -> columnName
 	buckets, err := d.GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS, consColumns)
 	if err != nil {
 		return nil, err
 	}
 
-	highestIndex, highestBuckets, highestConColumns := structure.FindMaxDistinctCountBucket(maxHists, buckets, consColumns)
+	if len(buckets) == 0 {
+		// not found bucket
+		return nil, fmt.Errorf("the schema [%s] table [%s] not found buckets, please contact author or reselect", schemaNameS, tableNameS)
+	}
 
-	columns := stringutil.StringSplit(highestConColumns, constant.StringSeparatorComma)
+	highestBucket, err := structure.FindMatchDistinctCountBucket(sortHists, buckets, consColumns)
+	if err != nil {
+		return nil, err
+	}
 
-	properties, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columns)
+	properties, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, highestBucket.IndexColumn)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +266,7 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		columnCollations  []string
 		datetimePrecision []string
 	)
-	for _, c := range columns {
+	for _, c := range highestBucket.IndexColumn {
 		for _, p := range properties {
 			if strings.EqualFold(p["COLUMN_NAME"], c) {
 				columnProps = append(columnProps, p["DATA_TYPE"])
@@ -260,7 +274,7 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 					datetimePrecision = append(datetimePrecision, p["DATETIME_PRECISION"])
 				} else {
 					// the column datatype isn't supported, fill ""
-					columnCollations = append(columnCollations, "")
+					datetimePrecision = append(datetimePrecision, "")
 				}
 				if stringutil.IsContainedStringIgnoreCase(constant.DataCompareMYSQLCompatibleDatabaseColumnDatatypeSupportCollation, p["DATA_TYPE"]) {
 					columnCollations = append(columnCollations, p["COLLATION"])
@@ -268,18 +282,15 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 					// the column datatype isn't supported, fill ""
 					columnCollations = append(columnCollations, "")
 				}
+
 			}
 		}
 	}
 
-	return &structure.HighestBucket{
-		IndexName:         highestIndex,
-		IndexColumn:       columns,
-		ColumnDatatype:    columnProps,
-		ColumnCollation:   columnCollations,
-		DatetimePrecision: datetimePrecision,
-		Buckets:           highestBuckets,
-	}, nil
+	highestBucket.ColumnDatatype = columnProps
+	highestBucket.ColumnCollation = columnCollations
+	highestBucket.DatetimePrecision = datetimePrecision
+	return highestBucket, nil
 }
 
 func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, limit int, collations []string) ([][]string, error) {
@@ -303,16 +314,18 @@ func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, 
 	for i, col := range columns {
 		columnNames = append(columnNames, fmt.Sprintf("`%s`", col))
 		if !strings.EqualFold(collations[i], "") {
-			columnOrders = append(columnOrders, fmt.Sprintf("`%s` COLLATE '%s'", col, collations))
+			columnOrders = append(columnOrders, fmt.Sprintf("`%s` COLLATE '%s'", col, collations[i]))
 		}
 	}
 
 	query := fmt.Sprintf("SELECT %[1]s FROM (SELECT %[1]s, rand() rand_value FROM %[2]s WHERE %[3]s ORDER BY rand_value LIMIT %[4]d)rand_tmp ORDER BY %[5]s",
 		strings.Join(columnNames, ", "), fmt.Sprintf("`%s`.`%s`", schemaNameS, tableNameS), conditions, limit, strings.Join(columnOrders, ", "))
 
+	logger.Debug("divide database bucket value by query", zap.Strings("chunk", collations), zap.String("query", query))
+
 	rows, err := d.DBConn.QueryContext(d.Ctx, query)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, fmt.Errorf("the database table random values query [%v] failed: %w", query, err)
 	}
 	defer rows.Close()
 

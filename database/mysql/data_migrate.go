@@ -16,6 +16,8 @@ limitations under the License.
 package mysql
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/wentaojin/dbms/utils/constant"
@@ -53,8 +55,17 @@ func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
 }
 
 func (d *Database) GetDatabaseTableColumnNameTableDimensions(schemaName, tableName string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+	rows, err := d.QueryContext(d.Ctx, fmt.Sprintf("SELECT * FROM `%s`.`%s` LIMIT 1", schemaName, tableName))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return columns, err
+	}
+	return columns, nil
 }
 
 func (d *Database) GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]string, map[string]string, map[string]string, error) {
@@ -63,13 +74,49 @@ func (d *Database) GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]str
 }
 
 func (d *Database) GetDatabaseTableRows(schemaName, tableName string) (uint64, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+    IFNULL(TABLE_ROWS,0) AS NUM_ROWS
+FROM 
+    INFORMATION_SCHEMA.TABLES
+WHERE 
+    TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s'`, schemaName, tableName))
+	if err != nil {
+		return 0, err
+	}
+	if len(res) != 1 {
+		return 0, fmt.Errorf("get mysql compatible schema table [%v] rows by statistics falied, results: [%v]",
+			fmt.Sprintf("%s.%s", schemaName, tableName), res)
+	}
+	numRows, err := strconv.ParseUint(res[0]["NUM_ROWS"], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("get mysql compatible schema table [%v] rows [%s] by statistics strconv.Atoi falied: %v",
+			fmt.Sprintf("%s.%s", schemaName, tableName), res[0]["NUM_ROWS"], err)
+	}
+	return numRows, nil
 }
 
 func (d *Database) GetDatabaseTableSize(schemaName, tableName string) (float64, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+	ROUND(SUM((DATA_LENGTH+INDEX_LENGTH)/1024/1024),2) AS SIZE_MB
+  FROM INFORMATION_SCHEMA.TABLES
+WHERE 
+    TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s'`, schemaName, tableName))
+	if err != nil {
+		return 0, err
+	}
+	if len(res) == 0 {
+		return 0, nil
+	}
+	if len(res) != 1 {
+		return 0, fmt.Errorf("get mysql compatible schema table [%v] size by segment falied, results: [%v]",
+			fmt.Sprintf("%s.%s", schemaName, tableName), res)
+	}
+	sizeMB, err := strconv.ParseFloat(res[0]["SIZE_MB"], 64)
+	if err != nil {
+		return 0, fmt.Errorf("get mysql compatible schema table [%v] size(MB) [%s] by segment strconv.Atoi falied: %v",
+			fmt.Sprintf("%s.%s", schemaName, tableName), res[0]["SIZE_MB"], err)
+	}
+	return sizeMB, nil
 }
 
 func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) ([]map[string]string, error) {

@@ -38,6 +38,8 @@ type DataCompareRule struct {
 	TaskFlow                    string             `json:"taskFlow"`
 	SchemaNameS                 string             `json:"schemaNameS"`
 	TableNameS                  string             `json:"tableNameS"`
+	SchemaNameT                 string             `json:"schemNameT"`
+	TableNameT                  string             `json:"tableNameT"`
 	GlobalSqlHintS              string             `json:"globalSqlHintS"`
 	TableTypeS                  map[string]string  `json:"tableTypeS"`
 	ColumnNameSliS              []string           `json:"columnNameSliS"`
@@ -45,7 +47,8 @@ type DataCompareRule struct {
 	GlobalIgnoreConditionFields []string           `json:"globalIgnoreConditionFields"`
 	OnlyCompareRow              bool               `json:"onlyCompareRow"`
 	OnlyCompareCRC              bool               `json:"onlyCompareCRC"`
-	DatabaseS                   database.IDatabase `json:"databaseS"`
+	DatabaseS                   database.IDatabase `json:"-"`
+	DatabaseT                   database.IDatabase `json:"-"`
 	DBCharsetS                  string             `json:"DBCharsetS"`
 	DBCharsetT                  string             `json:"DBCharsetT"`
 	CaseFieldRuleS              string             `json:"caseFieldRuleS"`
@@ -63,6 +66,12 @@ func (r *DataCompareRule) GenSchemaNameRule() (string, string, error) {
 	switch r.TaskFlow {
 	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetSchemaNameRule] schema [%s] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, err)
+		}
+		schemaNameS = stringutil.BytesToString(convertUtf8Raw)
+	case constant.TaskFlowTiDBToOracle:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameS), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetSchemaNameRule] schema [%s] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, err)
 		}
@@ -86,6 +95,8 @@ func (r *DataCompareRule) GenSchemaNameRule() (string, string, error) {
 		schemaNameTNew = strings.ToUpper(schemaNameTNew)
 	}
 
+	// grant
+	r.SchemaNameT = schemaNameTNew
 	return schemaNameS, schemaNameTNew, nil
 }
 
@@ -100,6 +111,12 @@ func (r *DataCompareRule) GenSchemaTableNameRule() (string, string, error) {
 	switch r.TaskFlow {
 	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableNameRule] schema [%s] table [%v] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, err)
+		}
+		tableNameS = stringutil.BytesToString(convertUtf8Raw)
+	case constant.TaskFlowTiDBToOracle:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableNameRule] schema [%s] table [%v] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, err)
 		}
@@ -122,6 +139,9 @@ func (r *DataCompareRule) GenSchemaTableNameRule() (string, string, error) {
 	if !strings.EqualFold(routeRule.TableNameT, "") {
 		tableNameTNew = routeRule.TableNameT
 	}
+
+	// grant
+	r.TableNameT = tableNameTNew
 	return tableNameS, tableNameTNew, nil
 }
 
@@ -148,6 +168,12 @@ func (r *DataCompareRule) GetSchemaTableColumnNameRule() (map[string]string, err
 				return nil, fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
 			}
 			columnNameS = stringutil.BytesToString(columnNameUtf8Raw)
+		case constant.TaskFlowTiDBToOracle:
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return nil, fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
+			}
+			columnNameS = stringutil.BytesToString(columnNameUtf8Raw)
 		default:
 			return nil, fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 		}
@@ -163,10 +189,21 @@ func (r *DataCompareRule) GetSchemaTableColumnNameRule() (map[string]string, err
 			columnName = columnNameS
 		}
 
+		var columnNameT string
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataCompareCaseFieldRuleLower) {
+			columnNameT = strings.ToLower(columnNameS)
+		}
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataCompareCaseFieldRuleUpper) {
+			columnNameT = strings.ToUpper(columnNameS)
+		}
+		if strings.EqualFold(r.CaseFieldRuleT, constant.ParamValueDataCompareCaseFieldRuleOrigin) {
+			columnNameT = columnNameS
+		}
+
 		if val, ok := columnRouteRules[columnName]; ok {
 			columnRouteRules[columnName] = val
 		} else {
-			columnRouteRules[columnNameS] = columnNameS
+			columnRouteRules[columnName] = columnNameT
 		}
 	}
 	return columnRouteRules, nil
@@ -197,6 +234,12 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		switch r.TaskFlow {
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenSchemaTableColumnSelectRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		case constant.TaskFlowTiDBToOracle:
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenSchemaTableColumnSelectRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
 			}
@@ -243,6 +286,20 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		columnNameSilSC, columnNameSilSO, columnNameSliTC, columnNameSliTO, ignoreTypes []string
 	)
 
+	// find the oracle long/ long raw / bfile datatype, rollback to crc32
+	downstreamOracleDatatypeRollback := make(map[string]string)
+	if strings.EqualFold(r.TaskFlow, constant.TaskFlowTiDBToOracle) || strings.EqualFold(r.TaskFlow, constant.TaskFlowMySQLToOracle) {
+		targetColumnInfos, err := r.DatabaseT.GetDatabaseTableColumnInfo(r.SchemaNameT, r.TableNameT)
+		if err != nil {
+			return "", "", "", "", err
+		}
+		for _, c := range targetColumnInfos {
+			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeLong) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeLongRAW) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeBfile) {
+				downstreamOracleDatatypeRollback[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+			}
+		}
+	}
+
 	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS)
 	if err != nil {
 		return "", "", "", "", err
@@ -253,13 +310,8 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		datatypeS := rowCol["DATA_TYPE"]
 		dataPrecisionS := rowCol["DATA_PRECISION"]
 		dataScaleS := rowCol["DATA_SCALE"]
-		charLen := rowCol["CHAR_LENGTH"]
 		dataLen := rowCol["DATA_LENGTH"]
 
-		charLenC, err := strconv.ParseInt(charLen, 10, 64)
-		if err != nil {
-			return "", "", "", "", err
-		}
 		dataLenC, err := strconv.ParseInt(dataLen, 10, 64)
 		if err != nil {
 			return "", "", "", "", err
@@ -268,6 +320,12 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		switch r.TaskFlow {
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenTableQueryColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnNameS, err)
+			}
+			columnNameS = stringutil.BytesToString(columnNameUtf8Raw)
+		case constant.TaskFlowTiDBToOracle:
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnNameS), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenTableQueryColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnNameS, err)
 			}
@@ -281,9 +339,15 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			continue
 		}
 
-		switch {
-		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			columnNameSO, err := OptimizerOracleDataMigrateColumnS(columnNameS, datatypeS, dataScaleS)
+			if err != nil {
+				return "", "", "", "", err
+			}
+			columnNameSilSO = append(columnNameSilSO, columnNameSO)
+		case constant.TaskFlowTiDBToOracle:
+			columnNameSO, err := OptimizerMYSQLCompatibleDataMigrateColumnS(columnNameS, datatypeS, dataScaleS)
 			if err != nil {
 				return "", "", "", "", err
 			}
@@ -293,8 +357,9 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		}
 
 		var (
-			columnNameSNew string
-			columnNameT    string
+			columnNameSNew   string
+			columnNameT      string
+			isRollbackOracle bool
 		)
 		if strings.EqualFold(r.CaseFieldRuleS, constant.ParamValueDataMigrateCaseFieldRuleLower) {
 			columnNameSNew = strings.ToLower(columnNameS)
@@ -307,20 +372,31 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		}
 
 		if val, ok := columnRules[columnNameSNew]; ok {
-			switch {
-			case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+			switch r.TaskFlow {
+			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
 				columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorBacktick, val, constant.StringSeparatorBacktick)
+			case constant.TaskFlowTiDBToOracle:
+				if _, rollback := downstreamOracleDatatypeRollback[val]; rollback {
+					isRollbackOracle = true
+				}
+				columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
 			default:
-				return "", "", "", "", fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
+				return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
 			}
 		} else {
-			return "", "", "", "", fmt.Errorf("[GetTableColumnRule] oracle schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.SchemaNameS, r.TableNameS, columnNameS)
+			return "", "", "", "", fmt.Errorf("[GetTableColumnRule] get schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.SchemaNameS, r.TableNameS, columnNameS)
 		}
 
 		columnNameSliTO = append(columnNameSliTO, columnNameT)
 
-		switch {
-		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB):
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			charLen := rowCol["CHAR_LENGTH"]
+
+			charLenC, err := strconv.ParseInt(charLen, 10, 64)
+			if err != nil {
+				return "", "", "", "", err
+			}
 			columnNameSC, columnNameTC, err := OptimizerOracleMigrateMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS, stringutil.Min(charLenC, dataLenC), dataPrecisionS, dataScaleS, stringutil.StringUpper(r.DBCharsetS), constant.BuildInOracleCharsetAL32UTF8, columnNameT, constant.BuildInMYSQLCharsetUTF8MB4)
 			if err != nil {
 				return "", "", "", "", err
@@ -330,6 +406,32 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 
 			if strings.EqualFold(datatypeS, constant.BuildInOracleDatatypeLong) || strings.EqualFold(datatypeS, constant.BuildInOracleDatatypeLongRAW) || strings.EqualFold(datatypeS, constant.BuildInOracleDatatypeBfile) {
 				ignoreTypes = append(ignoreTypes, columnNameS)
+			}
+		case constant.TaskFlowTiDBToOracle:
+			datetimePrecision := rowCol["DATETIME_PRECISION"]
+
+			datetimePrecisionS, err := strconv.ParseInt(datetimePrecision, 10, 64)
+			if err != nil {
+				return "", "", "", "", err
+			}
+			columnNameSC, columnNameTC, err := OptimizerMYSQLCompatibleMigrateOracleDataCompareColumnST(columnNameS, datatypeS, datetimePrecisionS, dataLenC, dataPrecisionS, dataScaleS, constant.BuildInMYSQLCharsetUTF8MB4, columnNameT, stringutil.StringUpper(r.DBCharsetT), constant.BuildInOracleCharsetAL32UTF8)
+			if err != nil {
+				return "", "", "", "", err
+			}
+			columnNameSilSC = append(columnNameSilSC, columnNameSC)
+			columnNameSliTC = append(columnNameSliTC, columnNameTC)
+
+			// rollback
+			if isRollbackOracle {
+				ignoreTypes = append(ignoreTypes, columnNameS)
+				logger.Warn("data compare task column datatype rollback tips",
+					zap.String("task_name", r.TaskName),
+					zap.String("task_mode", r.TaskMode),
+					zap.String("task_flow", r.TaskFlow),
+					zap.String("schema_name_s", r.SchemaNameS),
+					zap.String("table_name_s", r.TableNameS),
+					zap.Strings("column_name_s", ignoreTypes),
+					zap.String("rollback tips", "the downstream oracle column have long、long raw and bfile datatype, rollback compare_crc32"))
 			}
 		default:
 			return "", "", "", "", fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect", r.TaskFlow)

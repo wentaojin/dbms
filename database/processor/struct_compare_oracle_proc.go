@@ -390,7 +390,7 @@ func (p *OracleProcessor) GenDatabaseTableIndexDetail() (map[string]structure.In
 		}
 
 		// column route
-		indexColumns := strings.Split(columnList, "|+|")
+		indexColumns := strings.Split(columnList, constant.StringSeparatorComplexSymbol)
 		// Function Index: SUBSTR("NAME8",1,8)|+|NAME9
 		for i, s := range indexColumns {
 			// SUBSTR("NAME8",1,8) OR NAME9
@@ -414,7 +414,7 @@ func (p *OracleProcessor) GenDatabaseTableIndexDetail() (map[string]structure.In
 		indexes[indexName] = structure.Index{
 			IndexType:        c["INDEX_TYPE"],
 			Uniqueness:       c["UNIQUENESS"],
-			IndexColumn:      stringutil.StringJoin(indexColumns, ","),
+			IndexColumn:      stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol),
 			DomainIndexOwner: c["ITYP_OWNER"],
 			DomainIndexName:  itypName,
 			DomainParameters: parameters,
@@ -468,7 +468,7 @@ func (p *OracleProcessor) GenDatabaseTableIndexDetail() (map[string]structure.In
 		}
 
 		// column route
-		indexColumns := strings.Split(columnList, "|+|")
+		indexColumns := strings.Split(columnList, constant.StringSeparatorComplexSymbol)
 		// Function Index: SUBSTR("NAME8",1,8)|+|NAME9
 		for i, s := range indexColumns {
 			// SUBSTR("NAME8",1,8) OR NAME9
@@ -492,7 +492,7 @@ func (p *OracleProcessor) GenDatabaseTableIndexDetail() (map[string]structure.In
 		indexes[indexName] = structure.Index{
 			IndexType:        c["INDEX_TYPE"],
 			Uniqueness:       c["UNIQUENESS"],
-			IndexColumn:      stringutil.StringJoin(indexColumns, ","),
+			IndexColumn:      stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol),
 			DomainIndexOwner: c["ITYP_OWNER"],
 			DomainIndexName:  itypName,
 			DomainParameters: parameters,
@@ -523,7 +523,7 @@ func (p *OracleProcessor) GenDatabaseTablePrimaryConstraintDetail() (map[string]
 
 		// column route
 		var indexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
+		for _, col := range stringutil.StringSplit(columnList, constant.StringSeparatorComplexSymbol) {
 			if val, ok := p.ColumnRouteRules[col]; ok {
 				indexColumns = append(indexColumns, val)
 			} else {
@@ -531,7 +531,7 @@ func (p *OracleProcessor) GenDatabaseTablePrimaryConstraintDetail() (map[string]
 			}
 		}
 
-		primaryCons[constraintName] = structure.ConstraintPrimary{ConstraintColumn: stringutil.StringJoin(indexColumns, ",")}
+		primaryCons[constraintName] = structure.ConstraintPrimary{ConstraintColumn: stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol)}
 	}
 
 	return primaryCons, nil
@@ -559,7 +559,7 @@ func (p *OracleProcessor) GenDatabaseTableUniqueConstraintDetail() (map[string]s
 
 		// column route
 		var indexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
+		for _, col := range stringutil.StringSplit(columnList, constant.StringSeparatorComplexSymbol) {
 			if val, ok := p.ColumnRouteRules[col]; ok {
 				indexColumns = append(indexColumns, val)
 			} else {
@@ -567,7 +567,7 @@ func (p *OracleProcessor) GenDatabaseTableUniqueConstraintDetail() (map[string]s
 			}
 		}
 
-		uniqueCons[constraintName] = structure.ConstraintUnique{ConstraintColumn: stringutil.StringJoin(indexColumns, ",")}
+		uniqueCons[constraintName] = structure.ConstraintUnique{ConstraintColumn: stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol)}
 	}
 
 	return uniqueCons, nil
@@ -601,14 +601,14 @@ func (p *OracleProcessor) GenDatabaseTableForeignConstraintDetail() (map[string]
 
 		// column route
 		var indexColumns, rIndexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
+		for _, col := range stringutil.StringSplit(columnList, constant.StringSeparatorComplexSymbol) {
 			if val, ok := p.ColumnRouteRules[col]; ok {
 				indexColumns = append(indexColumns, val)
 			} else {
 				indexColumns = append(indexColumns, col)
 			}
 		}
-		for _, col := range stringutil.StringSplit(rColumnList, ",") {
+		for _, col := range stringutil.StringSplit(rColumnList, constant.StringSeparatorComplexSymbol) {
 			if val, ok := p.ColumnRouteRules[col]; ok {
 				rIndexColumns = append(rIndexColumns, val)
 			} else {
@@ -617,10 +617,10 @@ func (p *OracleProcessor) GenDatabaseTableForeignConstraintDetail() (map[string]
 		}
 
 		foreignCons[constraintName] = structure.ConstraintForeign{
-			ConstraintColumn:      stringutil.StringJoin(indexColumns, ","),
+			ConstraintColumn:      stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol),
 			ReferencedTableSchema: c["R_OWNER"],
 			ReferencedTableName:   c["RTABLE_NAME"],
-			ReferencedColumnName:  stringutil.StringJoin(rIndexColumns, ","),
+			ReferencedColumnName:  stringutil.StringJoin(rIndexColumns, constant.StringSeparatorComplexSymbol),
 			DeleteRule:            c["DELETE_RULE"],
 			UpdateRule:            "", // database oracle isn't supported update rule
 		}

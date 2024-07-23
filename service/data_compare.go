@@ -267,6 +267,7 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			ConsistentReadPointS:  paramMap[constant.ParamNameDataCompareConsistentReadPointS],
 			ConsistentReadPointT:  paramMap[constant.ParamNameDataCompareConsistentReadPointT],
 			ChunkSize:             chunkSize,
+			RepairStmtFlow:        paramMap[constant.ParamNameDataCompareRepairStmtFlow],
 			IgnoreConditionFields: stringutil.StringSplit(paramMap[constant.ParamNameDataCompareIgnoreConditionFields], constant.StringSeparatorComma),
 		}
 
@@ -375,21 +376,26 @@ func StartDataCompareTask(ctx context.Context, taskName, workerAddr string) erro
 	}
 
 	logger.Info("data compare task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	taskTime := time.Now()
-	dataMigrate := &taskflow.DataCompareTask{
-		Ctx:         ctx,
-		Task:        taskInfo,
-		DatasourceS: sourceDatasource,
-		DatasourceT: targetDatasource,
-		TaskParams:  taskParams,
+	switch taskInfo.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowTiDBToOracle:
+		taskTime := time.Now()
+		dataMigrate := &taskflow.DataCompareTask{
+			Ctx:         ctx,
+			Task:        taskInfo,
+			DatasourceS: sourceDatasource,
+			DatasourceT: targetDatasource,
+			TaskParams:  taskParams,
+		}
+		err = dataMigrate.Start()
+		if err != nil {
+			return err
+		}
+		logger.Info("data compare task process task",
+			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
+			zap.String("cost", time.Now().Sub(taskTime).String()))
+	default:
+		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] is not support, please contact author or reselect", taskInfo.TaskName, taskInfo.TaskMode, taskInfo.TaskFlow)
 	}
-	err = dataMigrate.Start()
-	if err != nil {
-		return err
-	}
-	logger.Info("data compare task process task",
-		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
-		zap.String("cost", time.Now().Sub(taskTime).String()))
 
 	// status
 	var (
@@ -688,6 +694,9 @@ func getDataCompareTasKParams(ctx context.Context, taskName string, caseFieldRul
 				return taskParam, err
 			}
 			taskParam.ChunkSize = chunkSize
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareRepairStmtFlow) {
+			taskParam.RepairStmtFlow = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareIgnoreConditionFields) {
 			var newFields []string

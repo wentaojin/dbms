@@ -133,11 +133,11 @@ func OptimizerOracleDataMigrateColumnS(columnName, datatype, dataScale string) (
 func OptimizerOracleMigrateMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS string, dataLengthS int64, dataPrecisionS, dataScaleS, dbCharsetSFrom, dbCharsetSDest, columnNameT, dbCharsetTDest string) (string, string, error) {
 	dataPrecisionV, err := strconv.Atoi(dataPrecisionS)
 	if err != nil {
-		return "", "", fmt.Errorf("aujust oracle timestamp datatype precision [%s] strconv.Atoi failed: %v", dataPrecisionS, err)
+		return "", "", fmt.Errorf("aujust oracle table column [%s] datatype precision [%s] strconv.Atoi failed: %v", columnNameS, dataPrecisionS, err)
 	}
 	dataScaleV, err := strconv.Atoi(dataScaleS)
 	if err != nil {
-		return "", "", fmt.Errorf("aujust oracle timestamp datatype scale [%s] strconv.Atoi failed: %v", dataScaleS, err)
+		return "", "", fmt.Errorf("aujust oracle table column [%s] datatype scale [%s] strconv.Atoi failed: %v", columnNameS, dataScaleS, err)
 	}
 	nvlNullDecimalS := stringutil.StringBuilder(`NVL("`, columnNameS, `",0)`)
 	nvlNullDecimalT := stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`)

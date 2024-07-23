@@ -678,6 +678,7 @@ message DataCompareParam{
   uint64 writeThread = 13;
   uint64 chunkSize = 14;
   repeated string ignoreConditionFields = 15;
+  string repairStmtFlow = 16;
 }
 
 message SqlMigrateRule {

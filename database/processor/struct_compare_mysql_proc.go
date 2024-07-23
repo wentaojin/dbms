@@ -304,7 +304,7 @@ func (p *MySQLProcessor) GenDatabaseTableIndexDetail() (map[string]structure.Ind
 		}
 		indexName := stringutil.BytesToString(utf8Raw)
 
-		indexColumns := strings.Split(columnList, "|+|")
+		indexColumns := strings.Split(columnList, constant.StringSeparatorComplexSymbol)
 		// Function Index: SUBSTR(NAME8,1,8)|+|NAME9
 		for i, s := range indexColumns {
 			// SUBSTR(NAME8,1,8) OR NAME9
@@ -327,7 +327,7 @@ func (p *MySQLProcessor) GenDatabaseTableIndexDetail() (map[string]structure.Ind
 		indexes[indexName] = structure.Index{
 			IndexType:   c["INDEX_TYPE"],
 			Uniqueness:  c["UNIQUENESS"],
-			IndexColumn: stringutil.StringJoin(indexColumns, ","),
+			IndexColumn: stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol),
 			// only oracle compatible database
 			DomainIndexOwner: "",
 			DomainIndexName:  "",
@@ -353,7 +353,7 @@ func (p *MySQLProcessor) GenDatabaseTableIndexDetail() (map[string]structure.Ind
 		}
 		indexName := stringutil.BytesToString(utf8Raw)
 
-		indexColumns := strings.Split(columnList, "|+|")
+		indexColumns := strings.Split(columnList, constant.StringSeparatorComplexSymbol)
 		// Function Index: SUBSTR(NAME8,1,8)|+|NAME9
 		for i, s := range indexColumns {
 			// SUBSTR(NAME8,1,8) OR NAME9
@@ -377,7 +377,7 @@ func (p *MySQLProcessor) GenDatabaseTableIndexDetail() (map[string]structure.Ind
 		indexes[indexName] = structure.Index{
 			IndexType:   c["INDEX_TYPE"],
 			Uniqueness:  c["UNIQUENESS"],
-			IndexColumn: stringutil.StringJoin(indexColumns, ","),
+			IndexColumn: stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol),
 			// only oracle compatible database
 			DomainIndexOwner: "",
 			DomainIndexName:  "",
@@ -407,14 +407,14 @@ func (p *MySQLProcessor) GenDatabaseTablePrimaryConstraintDetail() (map[string]s
 		}
 		columnList := stringutil.BytesToString(utf8Raw)
 		var indexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
+		for _, col := range stringutil.StringSplit(columnList, constant.StringSeparatorComplexSymbol) {
 			if val, ok := p.ColumnRouteRules[col]; ok {
 				indexColumns = append(indexColumns, val)
 			} else {
 				indexColumns = append(indexColumns, col)
 			}
 		}
-		primaryCons[constraintName] = structure.ConstraintPrimary{ConstraintColumn: stringutil.StringJoin(indexColumns, ",")}
+		primaryCons[constraintName] = structure.ConstraintPrimary{ConstraintColumn: stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol)}
 	}
 
 	return primaryCons, nil
@@ -441,14 +441,14 @@ func (p *MySQLProcessor) GenDatabaseTableUniqueConstraintDetail() (map[string]st
 		columnList := stringutil.BytesToString(utf8Raw)
 
 		var indexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
+		for _, col := range stringutil.StringSplit(columnList, constant.StringSeparatorComplexSymbol) {
 			if val, ok := p.ColumnRouteRules[col]; ok {
 				indexColumns = append(indexColumns, val)
 			} else {
 				indexColumns = append(indexColumns, col)
 			}
 		}
-		uniqueCons[constraintName] = structure.ConstraintUnique{ConstraintColumn: stringutil.StringJoin(indexColumns, ",")}
+		uniqueCons[constraintName] = structure.ConstraintUnique{ConstraintColumn: stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol)}
 	}
 
 	return uniqueCons, nil
@@ -481,14 +481,14 @@ func (p *MySQLProcessor) GenDatabaseTableForeignConstraintDetail() (map[string]s
 		rColumnList := stringutil.BytesToString(utf8Raw)
 
 		var indexColumns, rIndexColumns []string
-		for _, col := range stringutil.StringSplit(columnList, ",") {
+		for _, col := range stringutil.StringSplit(columnList, constant.StringSeparatorComplexSymbol) {
 			if val, ok := p.ColumnRouteRules[col]; ok {
 				indexColumns = append(indexColumns, val)
 			} else {
 				indexColumns = append(indexColumns, col)
 			}
 		}
-		for _, col := range stringutil.StringSplit(rColumnList, ",") {
+		for _, col := range stringutil.StringSplit(rColumnList, constant.StringSeparatorComplexSymbol) {
 			if val, ok := p.ColumnRouteRules[col]; ok {
 				rIndexColumns = append(rIndexColumns, val)
 			} else {
@@ -496,10 +496,10 @@ func (p *MySQLProcessor) GenDatabaseTableForeignConstraintDetail() (map[string]s
 			}
 		}
 		foreignCons[constraintName] = structure.ConstraintForeign{
-			ConstraintColumn:      stringutil.StringJoin(indexColumns, ","),
+			ConstraintColumn:      stringutil.StringJoin(indexColumns, constant.StringSeparatorComplexSymbol),
 			ReferencedTableSchema: c["R_OWNER"],
 			ReferencedTableName:   c["RTABLE_NAME"],
-			ReferencedColumnName:  stringutil.StringJoin(rIndexColumns, ","),
+			ReferencedColumnName:  stringutil.StringJoin(rIndexColumns, constant.StringSeparatorComplexSymbol),
 			DeleteRule:            c["DELETE_RULE"],
 			UpdateRule:            c["UPDATE_RULE"], // database oracle isn'p.supported update rule
 		}

@@ -18,8 +18,9 @@ package oracle
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/errors"
+	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/utils/structure"
+	"go.uber.org/zap"
 	"hash/crc32"
 	"path/filepath"
 	"reflect"
@@ -84,26 +85,18 @@ WHERE TABLE_OWNER = '%s'
 		return nil, err
 	}
 	// estimate avg rows per key
-	bsEstimiateCounts := make(map[string]int64)
+	bsEstimateCounts := make(map[string]int64)
 	for _, r := range res {
-		disCount, err := strconv.ParseInt(r["DISTINCT_KEYS"], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing integer: %v", err)
-		}
 		numRows, err := strconv.ParseInt(r["NUM_ROWS"], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing integer: %v", err)
+			return nil, fmt.Errorf("error parsing null_rows [%s] integer: %v", r["NUM_ROWS"], err)
 		}
-		rows := numRows / disCount
-		if rows == 0 {
-			rows = 1
-		}
-		bsEstimiateCounts[r["INDEX_NAME"]] = rows
+		bsEstimateCounts[r["INDEX_NAME"]] = numRows
 	}
 
 	buckets := make(map[string][]structure.Bucket)
 	for k, v := range consColumns {
-		columns := stringutil.StringSplit(v, constant.StringSeparatorComma)
+		columns := stringutil.StringSplit(v, constant.StringSeparatorComplexSymbol)
 
 		columnProps := make(map[string]string)
 		props, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columns)
@@ -151,10 +144,10 @@ WHERE TABLE_OWNER = '%s'
 			for i := 0; i < len(columnValues); i++ {
 				bs = append(bs, columnValues[i][j])
 			}
-			newColumnsBs = append(newColumnsBs, stringutil.StringJoin(bs, constant.StringSeparatorComma))
+			newColumnsBs = append(newColumnsBs, stringutil.StringJoin(bs, constant.StringSeparatorComplexSymbol))
 		}
 
-		buckets[k] = structure.StringSliceCreateBuckets(newColumnsBs, bsEstimiateCounts[k])
+		buckets[k] = structure.StringSliceCreateBuckets(newColumnsBs, bsEstimateCounts[k])
 	}
 
 	return buckets, nil
@@ -175,7 +168,7 @@ WHERE TABLE_OWNER = '%s'
 	for _, r := range res {
 		disCount, err := strconv.ParseInt(r["DISTINCT_KEYS"], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing integer: %v", err)
+			return nil, fmt.Errorf("error parsing distinct_keys [%s] integer: %v", r["DISTINCT_KEYS"], err)
 		}
 		hist[r["INDEX_NAME"]] = structure.Histogram{
 			DistinctCount: disCount,
@@ -194,8 +187,12 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 	if err != nil {
 		return nil, err
 	}
+	// the database table histogram not found
+	if len(histograms) == 0 {
+		return nil, nil
+	}
 
-	maxHists := make(map[string]structure.Histogram)
+	var sortHists structure.SortHistograms
 
 	var newIgnoreFields []string
 	if len(ignoreCondFields) > 0 && stringutil.IsContainedString(ignoreCondFields, compareCondField) {
@@ -206,13 +203,15 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 
 	if !strings.EqualFold(compareCondField, "") || len(newIgnoreFields) > 0 {
 		matchIndexes := structure.FindColumnMatchConstraintIndexNames(consColumns, compareCondField, newIgnoreFields)
-		if len(matchIndexes) == 0 {
-			// not found, the custom column not match index
+		matchIndexHists := structure.ExtractColumnMatchHistogram(matchIndexes, histograms)
+
+		if len(matchIndexes) == 0 || len(matchIndexHists) == 0 {
+			// not found, the custom column not match index or not match histogram
 			return nil, nil
 		}
-		maxHists = structure.FindMaxDistinctCountHistogram(structure.ExtractColumnMatchHistogram(matchIndexes, histograms), consColumns)
+		sortHists = structure.SortDistinctCountHistogram(matchIndexHists, consColumns)
 	} else {
-		maxHists = structure.FindMaxDistinctCountHistogram(histograms, consColumns)
+		sortHists = structure.SortDistinctCountHistogram(histograms, consColumns)
 	}
 
 	// find max histogram indexName -> columnName
@@ -221,11 +220,17 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		return nil, err
 	}
 
-	highestIndex, highestBuckets, highestConColumns := structure.FindMaxDistinctCountBucket(maxHists, buckets, consColumns)
+	if len(buckets) == 0 {
+		// not found bucket
+		return nil, fmt.Errorf("the schema [%s] table [%s] not found buckets, please contact author or reselect", schemaNameS, tableNameS)
+	}
 
-	columns := stringutil.StringSplit(highestConColumns, constant.StringSeparatorComma)
+	highestBucket, err := structure.FindMatchDistinctCountBucket(sortHists, buckets, consColumns)
+	if err != nil {
+		return nil, err
+	}
 
-	properties, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columns)
+	properties, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, highestBucket.IndexColumn)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +239,7 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		columnCollations  []string
 		datetimePrecision []string
 	)
-	for _, c := range columns {
+	for _, c := range highestBucket.IndexColumn {
 		for _, p := range properties {
 			if strings.EqualFold(p["COLUMN_NAME"], c) {
 				columnProps = append(columnProps, p["DATA_TYPE"])
@@ -244,7 +249,7 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 					datetimePrecision = append(datetimePrecision, p["DATA_SCALE"])
 				} else {
 					// the column datatype isn't supported, fill ""
-					columnCollations = append(columnCollations, "")
+					datetimePrecision = append(datetimePrecision, "")
 				}
 				if stringutil.IsContainedStringIgnoreCase(constant.DataCompareORACLECompatibleDatabaseColumnDatatypeSupportCollation, p["DATA_TYPE"]) {
 					columnCollations = append(columnCollations, p["COLLATION"])
@@ -256,14 +261,10 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		}
 	}
 
-	return &structure.HighestBucket{
-		IndexName:         highestIndex,
-		IndexColumn:       columns,
-		ColumnDatatype:    columnProps,
-		ColumnCollation:   columnCollations,
-		DatetimePrecision: datetimePrecision,
-		Buckets:           highestBuckets,
-	}, nil
+	highestBucket.ColumnDatatype = columnProps
+	highestBucket.ColumnCollation = columnCollations
+	highestBucket.DatetimePrecision = datetimePrecision
+	return highestBucket, nil
 }
 
 func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, limit int, collations []string) ([][]string, error) {
@@ -274,9 +275,11 @@ func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, 
 	columnNames := make([]string, 0, len(columns))
 	columnOrders := make([]string, 0, len(collations))
 	for i, col := range columns {
-		columnNames = append(columnNames, fmt.Sprintf(`"%s""`, col))
+		columnNames = append(columnNames, fmt.Sprintf(`"%s"`, col))
 		if !strings.EqualFold(collations[i], "") {
-			columnOrders = append(columnOrders, fmt.Sprintf(`NLSSORT("%s", 'NLS_SORT = %s')`, col, collations))
+			columnOrders = append(columnOrders, fmt.Sprintf(`NLSSORT("%s", 'NLS_SORT = %s')`, col, collations[i]))
+		} else {
+			columnOrders = append(columnOrders, fmt.Sprintf(`"%s"`, col))
 		}
 	}
 
@@ -294,9 +297,11 @@ FROM (
 )
 WHERE rn <= %[5]d`, stringutil.StringJoin(columnNames, constant.StringSeparatorComma), fmt.Sprintf(`"%s"."%s"`, schemaNameS, tableNameS), conditions, stringutil.StringJoin(columnOrders, constant.StringSeparatorComma), limit)
 
+	logger.Debug("divide database bucket value by query", zap.Strings("chunk", collations), zap.String("query", query))
+
 	rows, err := d.DBConn.QueryContext(d.Ctx, query)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, fmt.Errorf("the database table random values query [%v] failed: %w", query, err)
 	}
 	defer rows.Close()
 
