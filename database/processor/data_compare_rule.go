@@ -457,12 +457,25 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma), "", stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma), "", nil
 	}
 
-	return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
-		fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(UTL_I18N.STRING_TO_RAW(%s,'%s'), 2)) AS ROWSCHECKSUM`,
-			stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8),
-		stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
-		fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
-			stringutil.StringJoin(columnNameSliTC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4), nil
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
+			fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(UTL_I18N.STRING_TO_RAW(%s,'%s'), 2)) AS ROWSCHECKSUM`,
+				stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8),
+			stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
+			fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+				stringutil.StringJoin(columnNameSliTC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4), nil
+	case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
+		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
+			fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+				stringutil.StringJoin(columnNameSilSC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4),
+			stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
+			fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(UTL_I18N.STRING_TO_RAW(%s,'%s'), 2)) AS ROWSCHECKSUM`,
+				stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8), nil
+	default:
+		return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] return isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
+	}
+
 }
 
 func (r *DataCompareRule) GenSchemaTableTypeRule() string {

@@ -195,7 +195,10 @@ func ReverseUpstreamHighestBucketDownstreamRule(taskFlow, dbTypeT, dbCharsetS st
 	case constant.DatabaseTypeOracle:
 		for _, c := range cons.ColumnCollation {
 			if !strings.EqualFold(c, "") {
-				columnCollationDownStreams = append(columnCollationDownStreams, constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]])
+				collationTStr := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]]
+				collationTSli := stringutil.StringSplit(collationTStr, constant.StringSeparatorSlash)
+				// get first collation
+				columnCollationDownStreams = append(columnCollationDownStreams, collationTSli[0])
 			} else {
 				columnCollationDownStreams = append(columnCollationDownStreams, c)
 			}
@@ -203,7 +206,10 @@ func ReverseUpstreamHighestBucketDownstreamRule(taskFlow, dbTypeT, dbCharsetS st
 	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 		for _, c := range cons.ColumnCollation {
 			if !strings.EqualFold(c, "") {
-				columnCollationDownStreams = append(columnCollationDownStreams, constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]])
+				collationTStr := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]]
+				collationTSli := stringutil.StringSplit(collationTStr, constant.StringSeparatorSlash)
+				// get first collation
+				columnCollationDownStreams = append(columnCollationDownStreams, collationTSli[0])
 			} else {
 				columnCollationDownStreams = append(columnCollationDownStreams, c)
 			}
@@ -262,7 +268,14 @@ func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT string, bs []*
 				return nil, fmt.Errorf("the database type [%s] upstream range column [%s] not found map index column rule [%v]", dbTypeT, s.ColumnName, r.IndexColumnRule)
 			}
 			if val, ok := r.ColumnCollationRule[s.ColumnName]; ok {
-				bd.Collation = val
+				switch dbTypeT {
+				case constant.DatabaseTypeOracle:
+					bd.Collation = fmt.Sprintf("'NLS_SORT = %s'", val)
+				case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+					bd.Collation = fmt.Sprintf("COLLATE '%s'", val)
+				default:
+					return nil, fmt.Errorf("the downstream column collation database type [%s] isn't support, please contact author or reselect", dbTypeT)
+				}
 			} else {
 				return nil, fmt.Errorf("the database type [%s] upstream range column [%s] collation not found map index column collation rule [%v]", dbTypeT, s.ColumnName, r.ColumnCollationRule)
 			}

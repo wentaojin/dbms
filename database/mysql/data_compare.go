@@ -306,7 +306,7 @@ func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, 
 		+------+------+------+
 	*/
 	if conditions == "" {
-		conditions = "TRUE"
+		conditions = "1 = 1"
 	}
 
 	columnNames := make([]string, 0, len(columns))

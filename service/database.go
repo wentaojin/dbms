@@ -17,7 +17,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/constant"
 	"strings"
 
 	"github.com/wentaojin/dbms/database"
@@ -31,6 +33,35 @@ import (
 	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
+
+func PromptDatabase(ctx context.Context, serverAddr string) error {
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
+	if err != nil {
+		return err
+	}
+	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		if err = stringutil.PromptForAnswerOrAbortError(
+			"Yes, I know my configuration file will be overwrite.",
+			fmt.Sprintf("This operation will overwrite the database configuration file\n.")+"\nAre you sure to continue?",
+		); err != nil {
+			return err
+		}
+		return nil
+	case len(keyResp.Kvs) == 0:
+		// not exist record
+		return nil
+	default:
+		return fmt.Errorf("get key [%v] values has panic record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	}
+}
 
 func UpsertDatabase(etcdClient *clientv3.Client, defaultDatabaseDBMSKey string, req *pb.UpsertDatabaseRequest) (string, error) {
 	db := &model.Database{
@@ -73,6 +104,60 @@ func ShowDatabase(etcdClient *clientv3.Client, defaultDatabaseDBMSKey string) (s
 		return stringutil.BytesToString(kvResp.Kvs[0].Value), err
 	}
 	return stringutil.BytesToString(kvResp.Kvs[0].Value), nil
+}
+
+func PromptDatasource(ctx context.Context, serverAddr string, datasources []string) error {
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
+	if err != nil {
+		return err
+	}
+	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		// open database conn
+		var dbCfg *model.Database
+		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+		if err != nil {
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+		}
+		err = model.CreateDatabaseReadWrite(dbCfg)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	}
+
+	var isRecords []string
+	for _, d := range datasources {
+		ds, err := model.GetIDatasourceRW().GetDatasource(ctx, d)
+		if err != nil {
+			return err
+		}
+		if !strings.EqualFold(ds.DatasourceName, "") {
+			isRecords = append(isRecords, ds.DatasourceName)
+		}
+	}
+	if len(isRecords) > 0 {
+		if err = stringutil.PromptForAnswerOrAbortError(
+			"Yes, I know my configuration file will be overwrite.",
+			fmt.Sprintf("This operation will overwrite the datasourcees configuration file\n.")+"\nAre you sure to continue?",
+		); err != nil {
+			return err
+		}
+
+		err = model.GetIDatasourceRW().DeleteDatasource(ctx, datasources)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func UpsertDatasource(ctx context.Context, req *pb.UpsertDatasourceRequest) (string, error) {

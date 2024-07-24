@@ -109,7 +109,7 @@ func (rg *Range) ToString() string {
 
 	if i == len(rg.Bounds) && i > 0 {
 		// All the columns are equal in bounds, should return FALSE!
-		return "FALSE"
+		return "1 = 0"
 	}
 
 	for ; i < len(rg.Bounds); i++ {
@@ -208,7 +208,7 @@ func (rg *Range) ToString() string {
 
 	if len(sameCondition) == 0 {
 		if len(upperCondition) == 0 && len(lowerCondition) == 0 {
-			return "TRUE"
+			return "1 = 1"
 		}
 
 		if len(upperCondition) == 0 {

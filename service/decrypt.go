@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
 	"github.com/golang/snappy"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/task"
@@ -27,41 +26,41 @@ import (
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"strconv"
+	"os"
 	"strings"
 )
 
-func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table string, chunk string) ([][]string, error) {
+func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table string, chunk string, file *os.File) error {
 	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	switch {
 	case len(keyResp.Kvs) > 1:
-		return nil, fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
 	case len(keyResp.Kvs) == 1:
 		// open database conn
 		var dbCfg *model.Database
 		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
 		if err != nil {
-			return nil, fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
 		}
 		err = model.CreateDatabaseReadWrite(dbCfg)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	default:
-		return nil, fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+		return fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
 	}
 
 	taskinfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	switch taskinfo.TaskMode {
@@ -72,58 +71,76 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			TableNameS:  table,
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		var clusterTable [][]string
-		rowHead := []string{"ID", "TableNameS", "ChunkDetailS", "TableNameT", "ChunkDetailT", "TaskStatus"}
-		clusterTable = append(clusterTable, rowHead)
+		type CompareDecrypt struct {
+			ID           int
+			SchemaNameS  string
+			TableNameS   string
+			SchemaNameT  string
+			TableNameT   string
+			ChunkDetailS string
+			ChunkDetailT string
+			TaskStatus   string
+		}
+		var clusterTable []CompareDecrypt
 
 		for i, v := range compareTasks {
 			desChunkDetailS, err := stringutil.Decrypt(v.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
-				return nil, fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
+				return fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
 			}
 			decChunkDetailS, err := snappy.Decode(nil, []byte(desChunkDetailS))
 			if err != nil {
-				return nil, fmt.Errorf("error decode chunk_detail_s failed: %v", err)
+				return fmt.Errorf("error decode chunk_detail_s failed: %v", err)
 			}
 
 			desChunkDetailT, err := stringutil.Decrypt(v.ChunkDetailT, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
-				return nil, fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
+				return fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
 			}
 			decChunkDetailT, err := snappy.Decode(nil, []byte(desChunkDetailT))
 			if err != nil {
-				return nil, fmt.Errorf("error decode chunk_detail_s failed: %v", err)
+				return fmt.Errorf("error decode chunk_detail_s failed: %v", err)
 			}
 
 			if !strings.EqualFold(chunk, "") {
 				if strings.EqualFold(v.ChunkDetailS, chunk) {
-					row := []string{
-						color.CyanString(strconv.Itoa(i)),
-						fmt.Sprintf("%s.%s", v.SchemaNameS, v.TableNameS),
-						stringutil.BytesToString(decChunkDetailS),
-						fmt.Sprintf("%s.%s", v.SchemaNameT, v.TableNameT),
-						stringutil.BytesToString(decChunkDetailT),
-						v.TaskStatus,
-					}
-					clusterTable = append(clusterTable, row)
+					clusterTable = append(clusterTable, CompareDecrypt{
+						ID:           i,
+						SchemaNameS:  v.SchemaNameS,
+						TableNameS:   v.TableNameS,
+						SchemaNameT:  v.SchemaNameT,
+						TableNameT:   v.TableNameT,
+						ChunkDetailS: stringutil.BytesToString(decChunkDetailS),
+						ChunkDetailT: stringutil.BytesToString(decChunkDetailT),
+						TaskStatus:   v.TaskStatus,
+					})
 				}
 			} else {
-				row := []string{
-					color.CyanString(strconv.Itoa(i)),
-					fmt.Sprintf("%s.%s", v.SchemaNameS, v.TableNameS),
-					stringutil.BytesToString(decChunkDetailS),
-					fmt.Sprintf("%s.%s", v.SchemaNameT, v.TableNameT),
-					stringutil.BytesToString(decChunkDetailT),
-					v.TaskStatus,
-				}
-				clusterTable = append(clusterTable, row)
+				clusterTable = append(clusterTable, CompareDecrypt{
+					ID:           i,
+					SchemaNameS:  v.SchemaNameS,
+					TableNameS:   v.TableNameS,
+					SchemaNameT:  v.SchemaNameT,
+					TableNameT:   v.TableNameT,
+					ChunkDetailS: stringutil.BytesToString(decChunkDetailS),
+					ChunkDetailT: stringutil.BytesToString(decChunkDetailT),
+					TaskStatus:   v.TaskStatus,
+				})
 			}
 		}
-		return clusterTable, nil
+		indentJSON, err := stringutil.MarshalIndentJSON(clusterTable)
+		if err != nil {
+			return err
+		}
 
+		_, err = file.WriteString(indentJSON)
+		if err != nil {
+			return err
+		}
+		return nil
 	case constant.TaskModeStmtMigrate, constant.TaskModeCSVMigrate:
 		migrateTasks, err := model.GetIDataMigrateTaskRW().QueryDataMigrateTask(ctx, &task.DataMigrateTask{
 			TaskName:    taskName,
@@ -131,51 +148,71 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			TableNameS:  table,
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		var clusterTable [][]string
-		rowHead := []string{"ID", "TableNameS", "ColumnDetailS", "ChunkDetailS", "TableNameT", "ColumnDetailT", "TaskStatus"}
-		clusterTable = append(clusterTable, rowHead)
+		type MigrateDecrypt struct {
+			ID            int
+			SchemaNameS   string
+			TableNameS    string
+			SchemaNameT   string
+			TableNameT    string
+			ChunkDetailS  string
+			ColumnDetailS string
+			ColumnDetailT string
+			TaskStatus    string
+		}
+
+		var clusterTable []MigrateDecrypt
 
 		for i, v := range migrateTasks {
 			desChunkDetailS, err := stringutil.Decrypt(v.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
-				return nil, fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
+				return fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
 			}
 			decChunkDetailS, err := snappy.Decode(nil, []byte(desChunkDetailS))
 			if err != nil {
-				return nil, fmt.Errorf("error decode chunk_detail_s failed: %v", err)
+				return fmt.Errorf("error decode chunk_detail_s failed: %v", err)
 			}
 
 			if !strings.EqualFold(chunk, "") {
 				if strings.EqualFold(v.ChunkDetailS, chunk) {
-					row := []string{
-						color.CyanString(strconv.Itoa(i)),
-						fmt.Sprintf("%s.%s", v.SchemaNameS, v.TableNameS),
-						v.ColumnDetailS,
-						stringutil.BytesToString(decChunkDetailS),
-						fmt.Sprintf("%s.%s", v.SchemaNameT, v.TableNameT),
-						v.ColumnDetailT,
-						v.TaskStatus,
-					}
-					clusterTable = append(clusterTable, row)
+					clusterTable = append(clusterTable, MigrateDecrypt{
+						ID:            i,
+						SchemaNameS:   v.SchemaNameS,
+						TableNameS:    v.TableNameS,
+						SchemaNameT:   v.SchemaNameT,
+						TableNameT:    v.TableNameT,
+						ChunkDetailS:  stringutil.BytesToString(decChunkDetailS),
+						ColumnDetailS: v.ColumnDetailS,
+						ColumnDetailT: v.ColumnDetailT,
+						TaskStatus:    v.TaskStatus,
+					})
 				}
 			} else {
-				row := []string{
-					color.CyanString(strconv.Itoa(i)),
-					fmt.Sprintf("%s.%s", v.SchemaNameS, v.TableNameS),
-					v.ColumnDetailS,
-					stringutil.BytesToString(decChunkDetailS),
-					fmt.Sprintf("%s.%s", v.SchemaNameT, v.TableNameT),
-					v.ColumnDetailT,
-					v.TaskStatus,
-				}
-				clusterTable = append(clusterTable, row)
+				clusterTable = append(clusterTable, MigrateDecrypt{
+					ID:            i,
+					SchemaNameS:   v.SchemaNameS,
+					TableNameS:    v.TableNameS,
+					SchemaNameT:   v.SchemaNameT,
+					TableNameT:    v.TableNameT,
+					ChunkDetailS:  stringutil.BytesToString(decChunkDetailS),
+					ColumnDetailS: v.ColumnDetailS,
+					ColumnDetailT: v.ColumnDetailT,
+					TaskStatus:    v.TaskStatus,
+				})
 			}
 		}
-		return clusterTable, nil
+		indentJSON, err := stringutil.MarshalIndentJSON(clusterTable)
+		if err != nil {
+			return err
+		}
 
+		_, err = file.WriteString(indentJSON)
+		if err != nil {
+			return err
+		}
+		return nil
 	case constant.TaskModeDataScan:
 		compareTasks, err := model.GetIDataScanTaskRW().QueryDataScanTask(ctx, &task.DataScanTask{
 			TaskName:    taskName,
@@ -183,47 +220,65 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			TableNameS:  table,
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		var clusterTable [][]string
-		rowHead := []string{"ID", "TableNameS", "ChunkDetailS", "Samplerate", "TaskStatus"}
-		clusterTable = append(clusterTable, rowHead)
+		type ScanDecrypt struct {
+			ID            int
+			SchemaNameS   string
+			TableNameS    string
+			ColumnDetailS string
+			ChunkDetailS  string
+			Samplerate    string
+			TaskStatus    string
+		}
+		var clusterTable []ScanDecrypt
 
 		for i, v := range compareTasks {
 			desChunkDetailS, err := stringutil.Decrypt(v.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
-				return nil, fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
+				return fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
 			}
 			decChunkDetailS, err := snappy.Decode(nil, []byte(desChunkDetailS))
 			if err != nil {
-				return nil, fmt.Errorf("error decode chunk_detail_s failed: %v", err)
+				return fmt.Errorf("error decode chunk_detail_s failed: %v", err)
 			}
 
 			if !strings.EqualFold(chunk, "") {
 				if strings.EqualFold(v.ChunkDetailS, chunk) {
-					row := []string{
-						color.CyanString(strconv.Itoa(i)),
-						fmt.Sprintf("%s.%s", v.SchemaNameS, v.TableNameS),
-						stringutil.BytesToString(decChunkDetailS),
-						v.Samplerate,
-						v.TaskStatus,
-					}
-					clusterTable = append(clusterTable, row)
+					clusterTable = append(clusterTable, ScanDecrypt{
+						ID:            i,
+						SchemaNameS:   v.SchemaNameS,
+						TableNameS:    v.TableNameS,
+						ColumnDetailS: v.ColumnDetailS,
+						ChunkDetailS:  stringutil.BytesToString(decChunkDetailS),
+						Samplerate:    v.Samplerate,
+						TaskStatus:    v.TaskStatus,
+					})
 				}
 			} else {
-				row := []string{
-					color.CyanString(strconv.Itoa(i)),
-					fmt.Sprintf("%s.%s", v.SchemaNameS, v.TableNameS),
-					stringutil.BytesToString(decChunkDetailS),
-					v.Samplerate,
-					v.TaskStatus,
-				}
-				clusterTable = append(clusterTable, row)
+				clusterTable = append(clusterTable, ScanDecrypt{
+					ID:            i,
+					SchemaNameS:   v.SchemaNameS,
+					TableNameS:    v.TableNameS,
+					ColumnDetailS: v.ColumnDetailS,
+					ChunkDetailS:  stringutil.BytesToString(decChunkDetailS),
+					Samplerate:    v.Samplerate,
+					TaskStatus:    v.TaskStatus,
+				})
 			}
 		}
-		return clusterTable, nil
+		indentJSON, err := stringutil.MarshalIndentJSON(clusterTable)
+		if err != nil {
+			return err
+		}
+
+		_, err = file.WriteString(indentJSON)
+		if err != nil {
+			return err
+		}
+		return nil
 	default:
-		return nil, fmt.Errorf("the invalid task mode [%s], not support decrypt", taskName)
+		return fmt.Errorf("the invalid task mode [%s], not support decrypt", taskName)
 	}
 }

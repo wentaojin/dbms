@@ -17,8 +17,10 @@ package datasource
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/service"
 
 	"github.com/BurntSushi/toml"
 	"github.com/wentaojin/dbms/openapi"
@@ -63,6 +65,17 @@ func Upsert(serverAddr string, file string) error {
 	if _, err := toml.DecodeFile(file, cfg); err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("failed decode toml config file %s: %v", file, err))
+		return nil
+	}
+
+	var datasources []string
+	for _, d := range cfg.Datasource {
+		datasources = append(datasources, d.DatasourceName)
+	}
+	err := service.PromptDatasource(context.TODO(), serverAddr, datasources)
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("failed prompt datasource file %s: %v", file, err))
 		return nil
 	}
 

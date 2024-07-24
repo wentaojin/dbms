@@ -839,7 +839,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					return err
 				}
 
-				logger.Info("data compare task init table chunk",
+				logger.Debug("data compare task init table chunk",
 					zap.String("task_name", dmt.Task.TaskName),
 					zap.String("task_mode", dmt.Task.TaskMode),
 					zap.String("task_flow", dmt.Task.TaskFlow),
@@ -848,12 +848,13 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					zap.Any("upstream bucket new", upstreamConsNew),
 					zap.Any("downstream route rule", attsRule.ColumnNameRouteRule),
 					zap.Any("downstream column datatype", columnDatatypeSliT))
+
 				downstreamConsRule, err := processor.ReverseUpstreamHighestBucketDownstreamRule(dmt.Task.TaskFlow, dbTypeT, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), columnDatatypeSliT, upstreamConsNew, attsRule.ColumnNameRouteRule)
 				if err != nil {
 					return err
 				}
 
-				logger.Info("data compare task init table chunk",
+				logger.Debug("data compare task init table chunk",
 					zap.String("task_name", dmt.Task.TaskName),
 					zap.String("task_mode", dmt.Task.TaskMode),
 					zap.String("task_flow", dmt.Task.TaskFlow),
@@ -867,7 +868,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					return err
 				}
 
-				logger.Info("data compare task init table chunk",
+				logger.Debug("data compare task init table chunk",
 					zap.String("task_name", dmt.Task.TaskName),
 					zap.String("task_mode", dmt.Task.TaskMode),
 					zap.String("task_flow", dmt.Task.TaskFlow),

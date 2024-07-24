@@ -80,7 +80,7 @@ func (rw *RWDatasource) ListDatasource(ctx context.Context, page uint64, pageSiz
 }
 
 func (rw *RWDatasource) DeleteDatasource(ctx context.Context, datasourceNames []string) error {
-	err := rw.DB(ctx).Delete(&Datasource{}, datasourceNames).Error
+	err := rw.DB(ctx).Where("datasource_name in (?)", datasourceNames).Delete(&Datasource{}).Error
 	if err != nil {
 		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

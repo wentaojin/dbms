@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/service"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/wentaojin/dbms/component"
@@ -31,11 +33,12 @@ import (
 
 type AppDecrypt struct {
 	*App
-	task    string
-	schema  string
-	table   string
-	chunk   string
-	decrypt string
+	task      string
+	schema    string
+	table     string
+	chunk     string
+	decrypt   string
+	outputDir string
 }
 
 func (a *App) AppDecrypt() component.Cmder {
@@ -55,6 +58,7 @@ func (a *AppDecrypt) Cmd() *cobra.Command {
 	cmd.Flags().StringVarP(&a.schema, "schema", "D", "", "the upstream schema name")
 	cmd.Flags().StringVarP(&a.table, "table", "T", "", "the upstream table name")
 	cmd.Flags().StringVarP(&a.chunk, "chunk", "c", "", "the upstream table chunk string")
+	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the upstream table chunk decrypt output file dir, only chunk null and decrypt null take effect")
 	cmd.Flags().StringVarP(&a.decrypt, "decrypt", "e", "", "the decrypt string")
 	return cmd
 }
@@ -77,22 +81,44 @@ func (a *AppDecrypt) RunE(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Response:     %s\n", color.GreenString("the database table decrypt: %v\n", decString))
 		return nil
 	} else {
-		decrypts, err := service.Decrypt(context.TODO(), a.Server, a.task, a.schema, a.table, a.chunk)
+		if strings.EqualFold(a.Server, "") {
+			return fmt.Errorf("flag parameter [server] is requirement, can not null")
+		}
+
+		if filepath.IsAbs(a.outputDir) {
+			abs, err := filepath.Abs(a.outputDir)
+			if err != nil {
+				return err
+			}
+			err = stringutil.PathNotExistOrCreate(abs)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := stringutil.PathNotExistOrCreate(a.outputDir)
+			if err != nil {
+				return err
+			}
+		}
+
+		fileName := fmt.Sprintf("%s/%s-%s.txt", a.outputDir, "decrypt", a.task)
+
+		file, err := os.OpenFile(filepath.Join(a.outputDir, fmt.Sprintf("decrypt-%s.txt", a.task)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+		if err != nil {
+			fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+			fmt.Printf("Response:     %s\n", color.RedString("the database table chunk output file failed: %v", err))
+			return nil
+		}
+		defer file.Close()
+
+		err = service.Decrypt(context.TODO(), a.Server, a.task, a.schema, a.table, a.chunk, file)
 		if err != nil {
 			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 			fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
 			return nil
 		}
-		if len(decrypts) == 0 {
-			fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
-			fmt.Printf("Response:     %s\n", color.RedString("the database table chunk aren't exist, decrypt no record"))
-			return nil
-		}
-
 		fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
-		fmt.Printf("Response:     %s\n\n", fmt.Sprintf("the database table chunk decrypt records"))
-
-		stringutil.PrintTable(decrypts, true)
+		fmt.Printf("Response:     %s\n", color.GreenString(fmt.Sprintf("the database table chunk decrypt records, plesase forward to %s", fileName)))
 		return nil
 	}
 }

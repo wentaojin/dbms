@@ -16,8 +16,10 @@ limitations under the License.
 package database
 
 import (
+	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/service"
 
 	"github.com/wentaojin/dbms/openapi"
 
@@ -57,6 +59,13 @@ func Upsert(serverAddr string, file string) error {
 	if _, err := toml.DecodeFile(file, cfg); err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("failed decode toml config file %s: %v", file, err))
+		return nil
+	}
+
+	err := service.PromptDatabase(context.TODO(), serverAddr)
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("failed prompt database file %s: %v", file, err))
 		return nil
 	}
 
