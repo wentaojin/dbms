@@ -120,7 +120,6 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 					})
 				}
 			} else {
-				fmt.Printf("SELECT COUNT(1) FROM %s.%s WHERE %s;\n", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS))
 				clusterTable = append(clusterTable, CompareDecrypt{
 					ID:           i,
 					SchemaNameS:  v.SchemaNameS,

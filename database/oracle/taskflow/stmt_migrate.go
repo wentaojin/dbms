@@ -727,7 +727,8 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 						stm.Task.CaseFieldRuleS, databaseS, attsRule.SchemaNameS,
 						attsRule.TableNameS,
 						upstreamConsIndexColumns,
-						int64(stm.TaskParams.ChunkSize))
+						int64(stm.TaskParams.ChunkSize),
+						false)
 					if err != nil {
 						return err
 					}

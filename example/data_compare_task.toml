@@ -55,7 +55,7 @@ chunk-size = 5000
 # 禁止条件查询选择字段
 ignore-condition-fields = []
 # 指定分片 chunk sql 查询 hint
-sql-hint-s = "/*+ PARALLEL(8) */"
+sql-hint-s = ""
 # 指定分片 chunk sql 查询 Hint
 sql-hint-t = ""
 only-compare-row = false

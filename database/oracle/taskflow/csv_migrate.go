@@ -750,7 +750,8 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 						cmt.Task.CaseFieldRuleS, databaseS, attsRule.SchemaNameS,
 						attsRule.TableNameS,
 						upstreamConsIndexColumns,
-						int64(cmt.TaskParams.ChunkSize))
+						int64(cmt.TaskParams.ChunkSize),
+						false)
 					if err != nil {
 						return err
 					}

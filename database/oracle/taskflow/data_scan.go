@@ -671,7 +671,8 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 						dst.Task.CaseFieldRuleS, databaseS, attsRule.SchemaNameS,
 						attsRule.TableNameS,
 						upstreamConsIndexColumns,
-						int64(dst.TaskParams.ChunkSize))
+						int64(dst.TaskParams.ChunkSize),
+						false)
 					if err != nil {
 						return err
 					}
