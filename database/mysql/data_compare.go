@@ -108,9 +108,6 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 		}
 
 		for _, r := range res {
-			if _, ok := buckets[r["Column_name"]]; !ok {
-				buckets[r["Column_name"]] = []structure.Bucket{}
-			}
 			count, err := strconv.ParseInt(r["Count"], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("the database [%s] table [%s] statistics bucket error parsing integer: %v", schemaNameS, tableNameS, err)
@@ -118,19 +115,26 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 			// filter index column
 			if strings.EqualFold(r["Is_index"], "1") {
 				// transform index name to index column
-				columnNames, ok := consColumns[r["Column_name"]]
-				if !ok {
-					return nil, fmt.Errorf("the database [%s] table [%s] statistics bucket index name [%s] is existed, but the index system view query record not found", schemaNameS, tableNameS, r["Column_name"])
+				// nonclustered index
+				if strings.EqualFold(r["Column_name"], "PRIMARY") {
+					buckets["PRIMARY"] = append(buckets["PRIMARY"], structure.Bucket{
+						Count:      count,
+						LowerBound: r["Lower_Bound"],
+						UpperBound: r["Upper_Bound"],
+					})
+				} else {
+					if _, ok := consColumns[r["Column_name"]]; ok {
+						buckets[r["Column_name"]] = append(buckets[r["Column_name"]], structure.Bucket{
+							Count:      count,
+							LowerBound: r["Lower_Bound"],
+							UpperBound: r["Upper_Bound"],
+						})
+					}
 				}
-				buckets[columnNames] = append(buckets[columnNames], structure.Bucket{
-					Count:      count,
-					LowerBound: r["Lower_Bound"],
-					UpperBound: r["Upper_Bound"],
-				})
 			}
 			// when primary key is int type, the columnName will be column's name, not `PRIMARY`, check and transform here.
 			if !strings.EqualFold(pkIntegerColumnName, "") && strings.EqualFold(r["Column_name"], pkIntegerColumnName) {
-				buckets[r["Column_name"]] = append(buckets[r["Column_name"]], structure.Bucket{
+				buckets["PRIMARY"] = append(buckets["PRIMARY"], structure.Bucket{
 					Count:      count,
 					LowerBound: r["Lower_Bound"],
 					UpperBound: r["Upper_Bound"],
@@ -182,18 +186,25 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS s
 			// filter index column
 			if strings.EqualFold(r["Is_index"], "1") {
 				// transform index name to index column
-				columnNames, ok := consColumns[r["Column_name"]]
-				if !ok {
-					return nil, fmt.Errorf("the database [%s] table [%s] statistics histogram index name [%s] is existed, but the index system view query record not found", schemaNameS, tableNameS, r["Column_name"])
-				}
-				hists[columnNames] = structure.Histogram{
-					DistinctCount: disCount,
-					NullCount:     nullCount,
+				// nonclustered index
+				if strings.EqualFold(r["Column_name"], "PRIMARY") {
+					hists["PRIMARY"] = structure.Histogram{
+						DistinctCount: disCount,
+						NullCount:     nullCount,
+					}
+				} else {
+					if _, ok := consColumns[r["Column_name"]]; ok {
+						hists[r["Column_name"]] = structure.Histogram{
+							DistinctCount: disCount,
+							NullCount:     nullCount,
+						}
+					}
 				}
 			}
+			// int clustered
 			// when primary key is int type, the columnName will be column's name, not `PRIMARY`, check and transform here.
 			if !strings.EqualFold(pkIntegerColumnName, "") && strings.EqualFold(r["Column_name"], pkIntegerColumnName) {
-				hists[r["Column_name"]] = structure.Histogram{
+				hists["PRIMARY"] = structure.Histogram{
 					DistinctCount: disCount,
 					NullCount:     nullCount,
 				}

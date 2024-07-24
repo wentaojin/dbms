@@ -104,12 +104,15 @@ func OptimizerMYSQLCompatibleMigrateOracleDataCompareColumnST(columnNameS, datat
 		if dataScaleV == 0 {
 			return nvlNullDecimalS, nvlNullDecimalT, nil
 		} else if dataScaleV > 0 {
-			// max decimal(65,38)
-			// decimal(65,30) -> number, oracle database to_char max 62 digits , translate to_char(27 position,35 position) -> decimal(65,35)
+			// max decimal(65,30)
+			// decimal(65,30) -> number, oracle database to_char max 62 digits , translate to_char(35 position,27 position) -> decimal(65,30)
 			toCharMax := 62
-			toCharPaddingLeft := dataPrecisionV - dataScaleV
-			toCharPaddingRight := toCharMax - toCharPaddingLeft
-			return stringutil.StringBuilder(`CAST(`, nvlNullDecimalS, ` AS DECIMAL(`, strconv.Itoa(toCharMax), `,`, strconv.Itoa(toCharPaddingRight), `))`), stringutil.StringBuilder(`TO_CHAR(`, nvlNullDecimalT, `,'FM`, stringutil.PaddingString(toCharPaddingLeft, "9", "0"), `.`, stringutil.PaddingString(toCharPaddingRight, "9", "0"), `')`), nil
+			if dataPrecisionV > toCharMax {
+				return stringutil.StringBuilder(`CAST(`, nvlNullDecimalS, ` AS DECIMAL(62,27))`), stringutil.StringBuilder(`TO_CHAR(`, nvlNullDecimalT, `,'FM`, stringutil.PaddingString(35, "9", "0"), `.`, stringutil.PaddingString(27, "9", "0"), `')`), nil
+			} else {
+				toCharPaddingInteger := dataPrecisionV - dataScaleV
+				return stringutil.StringBuilder(`CAST(`, nvlNullDecimalS, ` AS DECIMAL(`, strconv.Itoa(dataPrecisionV), `,`, strconv.Itoa(dataScaleV), `))`), stringutil.StringBuilder(`TO_CHAR(`, nvlNullDecimalT, `,'FM`, stringutil.PaddingString(toCharPaddingInteger, "9", "0"), `.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), nil
+			}
 		} else {
 			return "", "", fmt.Errorf("the mysql compatible database table column [%s] datatype [%s] data_scale value [%s] cannot less zero, please contact author or reselect", columnNameS, datatypeS, dataScaleV)
 		}

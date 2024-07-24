@@ -344,7 +344,7 @@ func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString s
 		vStr := strings.Trim(valueString, "()")
 		values := strings.Split(vStr, ", ")
 		if len(values) != len(columnNames) {
-			return nil, fmt.Errorf("extract database type [%s] value %s failed", divideDbType, valueString)
+			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)
 		}
 		var newValues []string
 		for i, value := range values {
@@ -358,7 +358,7 @@ func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString s
 	case constant.DatabaseTypeOracle:
 		values := strings.Split(valueString, constant.StringSeparatorComma)
 		if len(values) != len(columnNames) {
-			return nil, fmt.Errorf("extract database type [%s] value %s failed", divideDbType, valueString)
+			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)
 		}
 		var newValues []string
 		for i, value := range values {

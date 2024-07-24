@@ -16,6 +16,7 @@ limitations under the License.
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -75,14 +76,14 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 		}
 
 		type CompareDecrypt struct {
-			ID           int
-			SchemaNameS  string
-			TableNameS   string
-			SchemaNameT  string
-			TableNameT   string
-			ChunkDetailS string
-			ChunkDetailT string
-			TaskStatus   string
+			ID           int    `json:"id"`
+			SchemaNameS  string `json:"schemaNameS"`
+			TableNameS   string `json:"tableNameS"`
+			SchemaNameT  string `json:"schemaNameT"`
+			TableNameT   string `json:"tableNameT"`
+			ChunkDetailS string `json:"chunkDetailS"`
+			ChunkDetailT string `json:"chunkDetailT"`
+			TaskStatus   string `json:"taskStatus"`
 		}
 		var clusterTable []CompareDecrypt
 
@@ -119,6 +120,7 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 					})
 				}
 			} else {
+				fmt.Printf("SELECT COUNT(1) FROM %s.%s WHERE %s;\n", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS))
 				clusterTable = append(clusterTable, CompareDecrypt{
 					ID:           i,
 					SchemaNameS:  v.SchemaNameS,
@@ -131,12 +133,16 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 				})
 			}
 		}
-		indentJSON, err := stringutil.MarshalIndentJSON(clusterTable)
+
+		bf := bytes.NewBuffer([]byte{})
+		jsonEncoder := json.NewEncoder(bf)
+		jsonEncoder.SetEscapeHTML(false)
+		jsonEncoder.SetIndent("", "    ")
+		err = jsonEncoder.Encode(clusterTable)
 		if err != nil {
 			return err
 		}
-
-		_, err = file.WriteString(indentJSON)
+		_, err = file.WriteString(bf.String())
 		if err != nil {
 			return err
 		}
@@ -152,15 +158,15 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 		}
 
 		type MigrateDecrypt struct {
-			ID            int
-			SchemaNameS   string
-			TableNameS    string
-			SchemaNameT   string
-			TableNameT    string
-			ChunkDetailS  string
-			ColumnDetailS string
-			ColumnDetailT string
-			TaskStatus    string
+			ID            int    `json:"id"`
+			SchemaNameS   string `json:"schemaNameS"`
+			TableNameS    string `json:"tableNameS"`
+			SchemaNameT   string `json:"schemaNameT"'`
+			TableNameT    string `json:"tableNameT"`
+			ChunkDetailS  string `json:"chunkDetailS"`
+			ColumnDetailS string `json:"columnDetailS"`
+			ColumnDetailT string `json:"columnDetailT"`
+			TaskStatus    string `json:"taskStatus"`
 		}
 
 		var clusterTable []MigrateDecrypt
@@ -203,12 +209,15 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 				})
 			}
 		}
-		indentJSON, err := stringutil.MarshalIndentJSON(clusterTable)
+		bf := bytes.NewBuffer([]byte{})
+		jsonEncoder := json.NewEncoder(bf)
+		jsonEncoder.SetEscapeHTML(false)
+		jsonEncoder.SetIndent("", "    ")
+		err = jsonEncoder.Encode(clusterTable)
 		if err != nil {
 			return err
 		}
-
-		_, err = file.WriteString(indentJSON)
+		_, err = file.WriteString(bf.String())
 		if err != nil {
 			return err
 		}
@@ -224,13 +233,13 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 		}
 
 		type ScanDecrypt struct {
-			ID            int
-			SchemaNameS   string
-			TableNameS    string
-			ColumnDetailS string
-			ChunkDetailS  string
-			Samplerate    string
-			TaskStatus    string
+			ID            int    `json:"id"`
+			SchemaNameS   string `json:"schemaNameS"`
+			TableNameS    string `json:"tableNameS"`
+			ColumnDetailS string `json:"columnDetailS"`
+			ChunkDetailS  string `json:"chunkDetailS"`
+			Samplerate    string `json:"samplerate"`
+			TaskStatus    string `json:"taskStatus"`
 		}
 		var clusterTable []ScanDecrypt
 
@@ -268,12 +277,15 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 				})
 			}
 		}
-		indentJSON, err := stringutil.MarshalIndentJSON(clusterTable)
+		bf := bytes.NewBuffer([]byte{})
+		jsonEncoder := json.NewEncoder(bf)
+		jsonEncoder.SetEscapeHTML(false)
+		jsonEncoder.SetIndent("", "    ")
+		err = jsonEncoder.Encode(clusterTable)
 		if err != nil {
 			return err
 		}
-
-		_, err = file.WriteString(indentJSON)
+		_, err = file.WriteString(bf.String())
 		if err != nil {
 			return err
 		}
