@@ -128,4 +128,7 @@ const (
 
 	DataCompareRepairStmtFlowUpstream   = "UPSTREAM"
 	DataCompareRepairStmtFlowDownstream = "DOWNSTREAM"
+
+	// DataCompareDisabledCollationSettingFillEmptyString represent disabled collation setting and the column name is not support collation setting
+	DataCompareDisabledCollationSettingFillEmptyString = ""
 )

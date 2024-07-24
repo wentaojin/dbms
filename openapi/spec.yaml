@@ -1150,6 +1150,8 @@ components:
         repairStmtFlow:
           type: string
           format: string
+        enableCollationSetting:
+          type: boolean
     CsvMigrateParam:
       type: object
       properties:

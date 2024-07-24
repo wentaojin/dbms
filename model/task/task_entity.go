@@ -23,7 +23,7 @@ import (
 
 type Task struct {
 	ID              uint64     `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName        string     `gorm:"type:varchar(100);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
+	TaskName        string     `gorm:"type:varchar(30);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
 	TaskMode        string     `gorm:"type:varchar(100);not null;comment:task mode" json:"taskMode"`
 	TaskFlow        string     `gorm:"type:varchar(100);not null;comment:task flow" json:"taskFlow"`
 	DatasourceNameS string     `gorm:"type:varchar(300);not null;comment:source datasource of task" json:"datasourceNameS"`
@@ -40,7 +40,7 @@ type Task struct {
 
 type Log struct {
 	ID          uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName    string `gorm:"type:varchar(100);not null;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName    string `gorm:"type:varchar(30);not null;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS string `gorm:"type:varchar(60);index:schema_table_name;comment:source schema name" json:"schemaNameS"`
 	TableNameS  string `gorm:"type:varchar(60);index:schema_table_name;comment:source table name" json:"tableNameS"`
 	LogDetail   string `gorm:"type:longtext;comment:task running log" json:"logDetail"`
@@ -49,7 +49,7 @@ type Log struct {
 
 type AssessMigrateTask struct {
 	ID           uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
+	TaskName     string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_task_name;comment:task name" json:"taskName"`
 	SchemaNameS  string  `gorm:"type:varchar(60);not null;comment:source schema name" json:"schemaNameS"`
 	TaskStatus   string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
 	AssessDetail string  `gorm:"type:longtext;comment:assess detail" json:"assessDetail"`
@@ -62,7 +62,7 @@ type AssessMigrateTask struct {
 
 type StructMigrateSummary struct {
 	ID           uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName     string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS  string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableTotals  uint64  `gorm:"type:int;comment:source table table totals" json:"tableTotals"`
 	TableSuccess uint64  `gorm:"type:int;comment:source table table success" json:"tableSuccess"`
@@ -76,7 +76,7 @@ type StructMigrateSummary struct {
 
 type StructMigrateTask struct {
 	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName        string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
 	TableNameS      string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
 	TableTypeS      string  `gorm:"type:varchar(60);comment:source table type" json:"tableTypeS"`
@@ -95,7 +95,7 @@ type StructMigrateTask struct {
 
 type StructCompareSummary struct {
 	ID             uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName       string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName       string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS    string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableTotals    uint64  `gorm:"type:int;comment:source table table totals" json:"tableTotals"`
 	TableEquals    uint64  `gorm:"type:int;comment:source table table equals" json:"TableEquals"`
@@ -110,7 +110,7 @@ type StructCompareSummary struct {
 
 type StructCompareTask struct {
 	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName        string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
 	TableNameS      string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
 	TableTypeS      string  `gorm:"type:varchar(60);comment:source table type" json:"tableTypeS"`
@@ -127,7 +127,7 @@ type StructCompareTask struct {
 
 type DataMigrateSummary struct {
 	ID             uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName       string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName       string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS    string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableNameS     string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	SchemaNameT    string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
@@ -148,7 +148,7 @@ type DataMigrateSummary struct {
 
 type DataMigrateTask struct {
 	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName        string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableNameS      string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	SchemaNameT     string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
@@ -171,7 +171,7 @@ type DataMigrateTask struct {
 
 type SqlMigrateSummary struct {
 	ID         uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName   string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_complex;comment:task name" json:"taskName"`
+	TaskName   string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_complex;comment:task name" json:"taskName"`
 	SqlTotals  uint64  `gorm:"type:int;comment:source table sql totals" json:"sqlTotals"`
 	SqlSuccess uint64  `gorm:"type:int;comment:source table sql success" json:"sqlSuccess"`
 	SqlFails   uint64  `gorm:"type:int;comment:source table sql fails" json:"sqlFails"`
@@ -184,7 +184,7 @@ type SqlMigrateSummary struct {
 
 type SqlMigrateTask struct {
 	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName        string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;" json:"taskName"`
+	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;" json:"taskName"`
 	SchemaNameT     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:target schema name" json:"schemaNameT"`
 	TableNameT      string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:target table name" json:"tableNameT"`
 	SnapshotPointS  string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
@@ -202,7 +202,7 @@ type SqlMigrateTask struct {
 
 type DataCompareSummary struct {
 	ID             uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName       string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName       string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS    string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableNameS     string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	SchemaNameT    string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
@@ -224,7 +224,7 @@ type DataCompareSummary struct {
 
 type DataCompareTask struct {
 	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName        string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableNameS      string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	SchemaNameT     string  `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
@@ -239,8 +239,8 @@ type DataCompareTask struct {
 	ColumnDetailT   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailT"`
 	SqlHintS        string  `gorm:"type:varchar(300);comment:source sql hint" json:"sqlHintS"`
 	SqlHintT        string  `gorm:"type:varchar(300);comment:target sql hint" json:"sqlHintT"`
-	ChunkDetailS    string  `gorm:"type:varchar(500);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
-	ChunkDetailT    string  `gorm:"type:varchar(500);not null;comment:target table chunk detail" json:"chunkDetailT"`
+	ChunkDetailS    string  `gorm:"type:varchar(618);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
+	ChunkDetailT    string  `gorm:"type:varchar(618);not null;comment:target table chunk detail" json:"chunkDetailT"`
 	ConsistentReadS string  `gorm:"type:varchar(10);comment:source sql consistent read" json:"consistentReadS"`
 	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
 	ErrorDetail     string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
@@ -250,7 +250,7 @@ type DataCompareTask struct {
 
 type DataCompareResult struct {
 	ID           uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName     string `gorm:"type:varchar(100);not null;index:idx_schema_table_name_complex;comment:task name" json:"taskName"`
+	TaskName     string `gorm:"type:varchar(30);not null;index:idx_schema_table_name_complex;comment:task name" json:"taskName"`
 	SchemaNameS  string `gorm:"type:varchar(60);not null;index:idx_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableNameS   string `gorm:"type:varchar(60);not null;index:idx_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	SchemaNameT  string `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
@@ -262,7 +262,7 @@ type DataCompareResult struct {
 
 type DataScanSummary struct {
 	ID             uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName       string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName       string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS    string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableNameS     string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	SnapshotPointS string  `gorm:"type:varchar(120);comment:source snapshot point" json:"snapshotPointS"`
@@ -280,7 +280,7 @@ type DataScanSummary struct {
 
 type DataScanTask struct {
 	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName        string  `gorm:"type:varchar(100);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
 	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source schema name" json:"schemaNameS"`
 	TableNameS      string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	TableTypeS      string  `gorm:"type:varchar(60);comment:source table type" json:"tableTypeS"`

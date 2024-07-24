@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/golang/snappy"
 	"github.com/wentaojin/dbms/service"
 	"os"
 	"path/filepath"
@@ -57,7 +58,7 @@ func (a *AppDecrypt) Cmd() *cobra.Command {
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the task name")
 	cmd.Flags().StringVarP(&a.schema, "schema", "D", "", "the upstream schema name")
 	cmd.Flags().StringVarP(&a.table, "table", "T", "", "the upstream table name")
-	cmd.Flags().StringVarP(&a.chunk, "chunk", "c", "", "the upstream table chunk string")
+	cmd.Flags().StringVarP(&a.chunk, "chunk", "c", "", "the database table chunk string")
 	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the upstream table chunk decrypt output file dir, only chunk null and decrypt null take effect")
 	cmd.Flags().StringVarP(&a.decrypt, "decrypt", "e", "", "the decrypt string")
 	return cmd
@@ -74,11 +75,27 @@ func (a *AppDecrypt) RunE(cmd *cobra.Command, args []string) error {
 		decString, err := stringutil.Decrypt(a.decrypt, []byte(constant.DefaultDataEncryptDecryptKey))
 		if err != nil {
 			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-			fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
+			fmt.Printf("Response:     %s\n", color.RedString("error decrypt non-decode data failed: %v", err))
 			return nil
 		}
 		fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
 		fmt.Printf("Response:     %s\n", color.GreenString("the database table decrypt: %v\n", decString))
+		return nil
+	} else if !strings.EqualFold(a.chunk, "") {
+		desChunkDetailS, err := stringutil.Decrypt(a.chunk, []byte(constant.DefaultDataEncryptDecryptKey))
+		if err != nil {
+			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+			fmt.Printf("Response:     %s\n", color.RedString("error decrypt chunk failed: %v", err))
+			return nil
+		}
+		decChunkDetailS, err := snappy.Decode(nil, []byte(desChunkDetailS))
+		if err != nil {
+			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+			fmt.Printf("Response:     %s\n", color.RedString("error decode chunk failed: %v", err))
+			return nil
+		}
+		fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+		fmt.Printf("Response:     %s\n", color.GreenString("the database table chunk decrypt decode: %v\n", stringutil.BytesToString(decChunkDetailS)))
 		return nil
 	} else {
 		if strings.EqualFold(a.Server, "") {

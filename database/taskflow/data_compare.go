@@ -758,7 +758,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					attsRule.SchemaNameS,
 					attsRule.TableNameS,
 					upstreamCons,
-					int64(dmt.TaskParams.ChunkSize))
+					int64(dmt.TaskParams.ChunkSize),
+					dmt.TaskParams.EnableCollationSetting)
 				if err != nil {
 					return err
 				}

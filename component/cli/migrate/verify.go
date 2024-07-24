@@ -48,21 +48,22 @@ type DataCompareRule struct {
 }
 
 type DataCompareParam struct {
-	TableThread           uint64   `toml:"table-thread" json:"tableThread"`
-	BatchSize             uint64   `toml:"batch-size" json:"batchSize"`
-	SqlThread             uint64   `toml:"sql-thread" json:"sqlThread"`
-	ChunkSize             uint64   `toml:"chunk-size" json:"chunkSize"`
-	WriteThread           uint64   `toml:"write-thread" json:"writeThread"`
-	SqlHintS              string   `toml:"sql-hint-s" json:"sqlHintS"`
-	SqlHintT              string   `toml:"sql-hint-t" json:"sqlHintT"`
-	CallTimeout           uint64   `toml:"call-timeout" json:"callTimeout"`
-	EnableCheckpoint      bool     `toml:"enable-checkpoint" json:"enableCheckpoint"`
-	EnableConsistentRead  bool     `toml:"enable-consistent-read" json:"enableConsistentRead"`
-	OnlyCompareRow        bool     `toml:"only-compare-row" json:"onlyCompareRow"`
-	ConsistentReadPointS  string   `toml:"consistent-read-point-s" json:"consistentReadPointS"`
-	ConsistentReadPointT  string   `toml:"consistent-read-point-t" json:"consistentReadPointT"`
-	IgnoreConditionFields []string `toml:"ignore-condition-fields" json:"ignoreConditionFields"`
-	RepairStmtFlow        string   `toml:"repair-stmt-flow" json:"repairStmtFlow"`
+	TableThread            uint64   `toml:"table-thread" json:"tableThread"`
+	BatchSize              uint64   `toml:"batch-size" json:"batchSize"`
+	SqlThread              uint64   `toml:"sql-thread" json:"sqlThread"`
+	ChunkSize              uint64   `toml:"chunk-size" json:"chunkSize"`
+	WriteThread            uint64   `toml:"write-thread" json:"writeThread"`
+	SqlHintS               string   `toml:"sql-hint-s" json:"sqlHintS"`
+	SqlHintT               string   `toml:"sql-hint-t" json:"sqlHintT"`
+	CallTimeout            uint64   `toml:"call-timeout" json:"callTimeout"`
+	EnableCheckpoint       bool     `toml:"enable-checkpoint" json:"enableCheckpoint"`
+	EnableConsistentRead   bool     `toml:"enable-consistent-read" json:"enableConsistentRead"`
+	OnlyCompareRow         bool     `toml:"only-compare-row" json:"onlyCompareRow"`
+	ConsistentReadPointS   string   `toml:"consistent-read-point-s" json:"consistentReadPointS"`
+	ConsistentReadPointT   string   `toml:"consistent-read-point-t" json:"consistentReadPointT"`
+	IgnoreConditionFields  []string `toml:"ignore-condition-fields" json:"ignoreConditionFields"`
+	RepairStmtFlow         string   `toml:"repair-stmt-flow" json:"repairStmtFlow"`
+	EnableCollationSetting bool     `toml:"enable-collation-setting" json:"enableCollationSetting"`
 }
 
 func (d *CompareConfig) String() string {

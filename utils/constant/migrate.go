@@ -514,21 +514,22 @@ const (
 
 // data compare parameters
 const (
-	ParamNameDataCompareTableThread           = "tableThread"
-	ParamNameDataCompareBatchSize             = "batchSize"
-	ParamNameDataCompareSqlThread             = "sqlThread"
-	ParamNameDataCompareWriteThread           = "writeThread"
-	ParamNameDataCompareSqlHintS              = "sqlHintS"
-	ParamNameDataCompareSqlHintT              = "sqlHintT"
-	ParamNameDataCompareCallTimeout           = "callTimeout"
-	ParamNameDataCompareEnableCheckpoint      = "enableCheckpoint"
-	ParamNameDataCompareEnableConsistentRead  = "enableConsistentRead"
-	ParamNameDataCompareOnlyCompareRow        = "onlyCompareRow"
-	ParamNameDataCompareConsistentReadPointS  = "consistentReadPointS"
-	ParamNameDataCompareConsistentReadPointT  = "consistentReadPointT"
-	ParamNameDataCompareChunkSize             = "chunkSize"
-	ParamNameDataCompareIgnoreConditionFields = "ignoreConditionFields"
-	ParamNameDataCompareRepairStmtFlow        = "repairStmtFlow"
+	ParamNameDataCompareTableThread            = "tableThread"
+	ParamNameDataCompareBatchSize              = "batchSize"
+	ParamNameDataCompareSqlThread              = "sqlThread"
+	ParamNameDataCompareWriteThread            = "writeThread"
+	ParamNameDataCompareSqlHintS               = "sqlHintS"
+	ParamNameDataCompareSqlHintT               = "sqlHintT"
+	ParamNameDataCompareCallTimeout            = "callTimeout"
+	ParamNameDataCompareEnableCheckpoint       = "enableCheckpoint"
+	ParamNameDataCompareEnableConsistentRead   = "enableConsistentRead"
+	ParamNameDataCompareOnlyCompareRow         = "onlyCompareRow"
+	ParamNameDataCompareConsistentReadPointS   = "consistentReadPointS"
+	ParamNameDataCompareConsistentReadPointT   = "consistentReadPointT"
+	ParamNameDataCompareChunkSize              = "chunkSize"
+	ParamNameDataCompareIgnoreConditionFields  = "ignoreConditionFields"
+	ParamNameDataCompareRepairStmtFlow         = "repairStmtFlow"
+	ParamNameDataCompareEnableCollationSetting = "enableCollationSetting"
 
 	// ParamValueDataCompareCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

@@ -67,7 +67,7 @@ func OptimizerMYSQLCompatibleDataMigrateColumnS(columnName, datatype, datetimePr
 			return "", fmt.Errorf("aujust mysql compatible timestamp datatype scale [%s] strconv.Atoi failed: %v", datetimePrecision, err)
 		}
 		if datetimeP == 0 {
-			return stringutil.StringBuilder("DATE_FORMAT(`%s`, '%Y-%m-%d %H:%i:%s') AS %s", columnName, columnName), nil
+			return fmt.Sprintf("DATE_FORMAT(`%s`, '%%Y-%%m-%%d %%H:%%i:%%s') AS %s", columnName, columnName), nil
 		} else {
 			return fmt.Sprintf("CONCAT(DATE_FORMAT(%s, '%%Y-%%m-%%d %%T:'),LPAD(SUBSTRING(TIME_FORMAT(%s, '%%f'), 1, %s), %s, '0'))", columnName, columnName, datetimePrecision, datetimePrecision), nil
 		}

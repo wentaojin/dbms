@@ -254,21 +254,27 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			return err
 		}
 
+		enableCollationSetting, err := strconv.ParseBool(paramMap[constant.ParamNameDataCompareEnableCollationSetting])
+		if err != nil {
+			return err
+		}
+
 		param = &pb.DataCompareParam{
-			TableThread:           tableThread,
-			BatchSize:             batchSize,
-			SqlThread:             sqlThread,
-			SqlHintS:              paramMap[constant.ParamNameDataCompareSqlHintS],
-			SqlHintT:              paramMap[constant.ParamNameDataCompareSqlHintT],
-			CallTimeout:           callTimeout,
-			EnableCheckpoint:      enableCheckpoint,
-			EnableConsistentRead:  enableConsistentRead,
-			OnlyCompareRow:        onlyCompareRow,
-			ConsistentReadPointS:  paramMap[constant.ParamNameDataCompareConsistentReadPointS],
-			ConsistentReadPointT:  paramMap[constant.ParamNameDataCompareConsistentReadPointT],
-			ChunkSize:             chunkSize,
-			RepairStmtFlow:        paramMap[constant.ParamNameDataCompareRepairStmtFlow],
-			IgnoreConditionFields: stringutil.StringSplit(paramMap[constant.ParamNameDataCompareIgnoreConditionFields], constant.StringSeparatorComma),
+			TableThread:            tableThread,
+			BatchSize:              batchSize,
+			SqlThread:              sqlThread,
+			SqlHintS:               paramMap[constant.ParamNameDataCompareSqlHintS],
+			SqlHintT:               paramMap[constant.ParamNameDataCompareSqlHintT],
+			CallTimeout:            callTimeout,
+			EnableCheckpoint:       enableCheckpoint,
+			EnableConsistentRead:   enableConsistentRead,
+			OnlyCompareRow:         onlyCompareRow,
+			ConsistentReadPointS:   paramMap[constant.ParamNameDataCompareConsistentReadPointS],
+			ConsistentReadPointT:   paramMap[constant.ParamNameDataCompareConsistentReadPointT],
+			ChunkSize:              chunkSize,
+			RepairStmtFlow:         paramMap[constant.ParamNameDataCompareRepairStmtFlow],
+			IgnoreConditionFields:  stringutil.StringSplit(paramMap[constant.ParamNameDataCompareIgnoreConditionFields], constant.StringSeparatorComma),
+			EnableCollationSetting: enableCollationSetting,
 		}
 
 		schemaRouteRule, _, dataCompareRules, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -697,6 +703,13 @@ func getDataCompareTasKParams(ctx context.Context, taskName string, caseFieldRul
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareRepairStmtFlow) {
 			taskParam.RepairStmtFlow = p.ParamValue
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareEnableCollationSetting) {
+			enableCollationSetting, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.EnableCollationSetting = enableCollationSetting
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareIgnoreConditionFields) {
 			var newFields []string

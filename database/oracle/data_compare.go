@@ -249,13 +249,13 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 					datetimePrecision = append(datetimePrecision, p["DATA_SCALE"])
 				} else {
 					// the column datatype isn't supported, fill ""
-					datetimePrecision = append(datetimePrecision, "")
+					datetimePrecision = append(datetimePrecision, constant.DataCompareDisabledCollationSettingFillEmptyString)
 				}
 				if stringutil.IsContainedStringIgnoreCase(constant.DataCompareORACLECompatibleDatabaseColumnDatatypeSupportCollation, p["DATA_TYPE"]) {
 					columnCollations = append(columnCollations, p["COLLATION"])
 				} else {
 					// the column datatype isn't supported, fill ""
-					columnCollations = append(columnCollations, "")
+					columnCollations = append(columnCollations, constant.DataCompareDisabledCollationSettingFillEmptyString)
 				}
 			}
 		}

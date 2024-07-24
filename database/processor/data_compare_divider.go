@@ -27,7 +27,7 @@ import (
 )
 
 func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCharset string, caseFieldRule string,
-	database database.IDatabase, schemaName, tableName string, cons *structure.HighestBucket, chunkSize int64) (*structure.HighestBucket, []*structure.Range, error) {
+	database database.IDatabase, schemaName, tableName string, cons *structure.HighestBucket, chunkSize int64, enableCollation bool) (*structure.HighestBucket, []*structure.Range, error) {
 	if cons == nil {
 		return nil, nil, nil
 	}
@@ -103,6 +103,14 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 			b.UpperBound = stringutil.BytesToString(convertUtf8Raws)
 		default:
 			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", divideDbType)
+		}
+	}
+
+	// collation enable setting
+	for i, _ := range cons.ColumnCollation {
+		if !enableCollation {
+			// ignore collation setting, fill ""
+			cons.ColumnCollation[i] = constant.DataCompareDisabledCollationSettingFillEmptyString
 		}
 	}
 
@@ -194,7 +202,7 @@ func ReverseUpstreamHighestBucketDownstreamRule(taskFlow, dbTypeT, dbCharsetS st
 	switch stringutil.StringUpper(dbTypeT) {
 	case constant.DatabaseTypeOracle:
 		for _, c := range cons.ColumnCollation {
-			if !strings.EqualFold(c, "") {
+			if !strings.EqualFold(c, constant.DataCompareDisabledCollationSettingFillEmptyString) {
 				collationTStr := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]]
 				collationTSli := stringutil.StringSplit(collationTStr, constant.StringSeparatorSlash)
 				// get first collation
@@ -205,7 +213,7 @@ func ReverseUpstreamHighestBucketDownstreamRule(taskFlow, dbTypeT, dbCharsetS st
 		}
 	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 		for _, c := range cons.ColumnCollation {
-			if !strings.EqualFold(c, "") {
+			if !strings.EqualFold(c, constant.DataCompareDisabledCollationSettingFillEmptyString) {
 				collationTStr := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]]
 				collationTSli := stringutil.StringSplit(collationTStr, constant.StringSeparatorSlash)
 				// get first collation
@@ -270,9 +278,17 @@ func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT string, bs []*
 			if val, ok := r.ColumnCollationRule[s.ColumnName]; ok {
 				switch dbTypeT {
 				case constant.DatabaseTypeOracle:
-					bd.Collation = fmt.Sprintf("'NLS_SORT = %s'", val)
+					if !strings.EqualFold(val, constant.DataCompareDisabledCollationSettingFillEmptyString) {
+						bd.Collation = fmt.Sprintf("'NLS_SORT = %s'", val)
+					} else {
+						bd.Collation = val
+					}
 				case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-					bd.Collation = fmt.Sprintf("COLLATE '%s'", val)
+					if !strings.EqualFold(val, constant.DataCompareDisabledCollationSettingFillEmptyString) {
+						bd.Collation = fmt.Sprintf("COLLATE '%s'", val)
+					} else {
+						bd.Collation = val
+					}
 				default:
 					return nil, fmt.Errorf("the downstream column collation database type [%s] isn't support, please contact author or reselect", dbTypeT)
 				}

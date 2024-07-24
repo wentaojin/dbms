@@ -679,6 +679,7 @@ message DataCompareParam{
   uint64 chunkSize = 14;
   repeated string ignoreConditionFields = 15;
   string repairStmtFlow = 16;
+  bool enableCollationSetting = 17;
 }
 
 message SqlMigrateRule {

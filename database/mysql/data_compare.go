@@ -116,14 +116,14 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 			if strings.EqualFold(r["Is_index"], "1") {
 				// transform index name to index column
 				// nonclustered index
-				if strings.EqualFold(r["Column_name"], "PRIMARY") {
-					buckets["PRIMARY"] = append(buckets["PRIMARY"], structure.Bucket{
-						Count:      count,
-						LowerBound: r["Lower_Bound"],
-						UpperBound: r["Upper_Bound"],
-					})
-				} else {
-					if _, ok := consColumns[r["Column_name"]]; ok {
+				if _, ok := consColumns[r["Column_name"]]; ok {
+					if strings.EqualFold(r["Column_name"], "PRIMARY") {
+						buckets["PRIMARY"] = append(buckets["PRIMARY"], structure.Bucket{
+							Count:      count,
+							LowerBound: r["Lower_Bound"],
+							UpperBound: r["Upper_Bound"],
+						})
+					} else {
 						buckets[r["Column_name"]] = append(buckets[r["Column_name"]], structure.Bucket{
 							Count:      count,
 							LowerBound: r["Lower_Bound"],
@@ -187,13 +187,13 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS s
 			if strings.EqualFold(r["Is_index"], "1") {
 				// transform index name to index column
 				// nonclustered index
-				if strings.EqualFold(r["Column_name"], "PRIMARY") {
-					hists["PRIMARY"] = structure.Histogram{
-						DistinctCount: disCount,
-						NullCount:     nullCount,
-					}
-				} else {
-					if _, ok := consColumns[r["Column_name"]]; ok {
+				if _, ok := consColumns[r["Column_name"]]; ok {
+					if strings.EqualFold(r["Column_name"], "PRIMARY") {
+						hists["PRIMARY"] = structure.Histogram{
+							DistinctCount: disCount,
+							NullCount:     nullCount,
+						}
+					} else {
 						hists[r["Column_name"]] = structure.Histogram{
 							DistinctCount: disCount,
 							NullCount:     nullCount,
@@ -285,13 +285,13 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 					datetimePrecision = append(datetimePrecision, p["DATETIME_PRECISION"])
 				} else {
 					// the column datatype isn't supported, fill ""
-					datetimePrecision = append(datetimePrecision, "")
+					datetimePrecision = append(datetimePrecision, constant.DataCompareDisabledCollationSettingFillEmptyString)
 				}
 				if stringutil.IsContainedStringIgnoreCase(constant.DataCompareMYSQLCompatibleDatabaseColumnDatatypeSupportCollation, p["DATA_TYPE"]) {
 					columnCollations = append(columnCollations, p["COLLATION"])
 				} else {
 					// the column datatype isn't supported, fill ""
-					columnCollations = append(columnCollations, "")
+					columnCollations = append(columnCollations, constant.DataCompareDisabledCollationSettingFillEmptyString)
 				}
 
 			}
