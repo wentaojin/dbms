@@ -131,7 +131,7 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 			continue
 		}
 
-		upperValues, err = ExtractDatabaseTableStatisticsValuesFromBuckets(dbTypeS, cons.Buckets[i].UpperBound, cons.IndexColumn, cons.ColumnDatatype, cons.DatetimePrecision)
+		upperValues, err = ExtractDatabaseTableStatisticsValuesFromBuckets(dbTypeS, cons.Buckets[i].UpperBound, cons.IndexColumn)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -392,7 +392,7 @@ func GetDownstreamDatabaseTableColumnDatatype(schemaNameT, tableNameT string, da
 
 // ExtractDatabaseTableStatisticsValuesFromBuckets analyze upperBound or lowerBound to string for each column.
 // upperBound and lowerBound are looks like '(123, abc)' for multiple fields, or '123' for one field.
-func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString string, columnNames []string, columnDatatypes []string, datetimePrecisions []string) ([]string, error) {
+func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString string, columnNames []string) ([]string, error) {
 	switch stringutil.StringUpper(divideDbType) {
 	case constant.DatabaseTypeTiDB:
 		// FIXME: maybe some values contains '(', ')' or ', '
@@ -401,31 +401,11 @@ func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString s
 		if len(values) != len(columnNames) {
 			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)
 		}
-		var newValues []string
-		for i, value := range values {
-			if !stringutil.IsContainedString(constant.DataCompareMYSQLCompatibleDatabaseSupportDecimalSubtypes, columnDatatypes[i]) {
-				newValues = append(newValues, stringutil.StringBuilder("'", value, "'"))
-			} else {
-				newValues = append(newValues, value)
-			}
-		}
-		return newValues, nil
+		return values, nil
 	case constant.DatabaseTypeOracle:
 		values := strings.Split(valueString, constant.StringSeparatorComma)
 		if len(values) != len(columnNames) {
 			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)
-		}
-		var newValues []string
-		for i, value := range values {
-			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportNumberSubtypes, columnDatatypes[i]) {
-				newValues = append(newValues, value)
-			} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, columnDatatypes[i]) {
-				newValues = append(newValues, stringutil.StringBuilder(`TO_DATE('`, value, `','YYYY-MM-DD HH24:MI:SS')`))
-			} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, columnDatatypes[i]) {
-				newValues = append(newValues, stringutil.StringBuilder(`TO_TIMESTAMP('`, value, `','YYYY-MM-DD HH24:MI:SS.FF`, datetimePrecisions[i], `')`))
-			} else {
-				newValues = append(newValues, stringutil.StringBuilder("'", value, "'"))
-			}
 		}
 		return values, nil
 	default:
