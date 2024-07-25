@@ -879,8 +879,16 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 
 				var metas []*task.DataCompareTask
 				for i, r := range upstreamBuckets {
-					encChunkS := snappy.Encode(nil, []byte(r.ToString()))
-					encChunkT := snappy.Encode(nil, []byte(downstreamBuckets[i].ToString()))
+					toStringS, err := r.ToString()
+					if err != nil {
+						return err
+					}
+					toStringT, err := downstreamBuckets[i].ToString()
+					if err != nil {
+						return err
+					}
+					encChunkS := snappy.Encode(nil, []byte(toStringS))
+					encChunkT := snappy.Encode(nil, []byte(toStringT))
 
 					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {

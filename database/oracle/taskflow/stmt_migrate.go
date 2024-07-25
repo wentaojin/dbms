@@ -810,11 +810,15 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 						zap.String("migrate_method", "statistic"))
 					var metas []*task.DataMigrateTask
 					for _, r := range upstreamBuckets {
+						toStringS, err := r.ToString()
+						if err != nil {
+							return err
+						}
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(r.ToString(), ` AND `, attsRule.WhereRange)
+							whereRange = stringutil.StringBuilder(toStringS, ` AND `, attsRule.WhereRange)
 						default:
-							whereRange = r.ToString()
+							whereRange = toStringS
 						}
 
 						encChunkS := snappy.Encode(nil, []byte(whereRange))

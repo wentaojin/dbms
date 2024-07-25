@@ -746,8 +746,10 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 
 					var metas []*task.DataScanTask
 					for _, r := range upstreamBuckets {
-
-						whereRange = r.ToString()
+						whereRange, err = r.ToString()
+						if err != nil {
+							return err
+						}
 
 						encChunkS := snappy.Encode(nil, []byte(whereRange))
 

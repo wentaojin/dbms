@@ -835,11 +835,15 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 
 					var metas []*task.DataMigrateTask
 					for idx, r := range upstreamBuckets {
+						toStringS, err := r.ToString()
+						if err != nil {
+							return err
+						}
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(r.ToString(), ` AND `, attsRule.WhereRange)
+							whereRange = stringutil.StringBuilder(toStringS, ` AND `, attsRule.WhereRange)
 						default:
-							whereRange = r.ToString()
+							whereRange = toStringS
 						}
 
 						encChunkS := snappy.Encode(nil, []byte(whereRange))
