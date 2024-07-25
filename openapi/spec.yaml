@@ -1056,6 +1056,9 @@ components:
           type: string
         schemaNameS:
           type: string
+        callTimeout:
+          type: integer
+          format: uint64
     StatementMigrateParam:
       type: object
       properties:
@@ -1315,6 +1318,9 @@ components:
           type: boolean
         enableCheckpoint:
           type: boolean
+        callTimeout:
+          type: integer
+          format: uint64
     StructCompareParam:
       type: object
       properties:
@@ -1323,6 +1329,9 @@ components:
           format: uint64
         enableCheckpoint:
           type: boolean
+        callTimeout:
+          type: integer
+          format: uint64
     CaseFieldRule:
       type: object
       properties:

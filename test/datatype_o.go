@@ -42,7 +42,7 @@ func main() {
 		Port:           1521,
 		ConnectCharset: "zhs16gbk",
 		ServiceName:    "gbk",
-	}, "MARVIN")
+	}, "MARVIN", 600)
 	if err != nil {
 		panic(err)
 	}

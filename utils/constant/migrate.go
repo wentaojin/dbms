@@ -425,6 +425,7 @@ const (
 	ParamNameStructMigrateCreateIfNotExist   = "createIfNotExist"
 	ParamNameStructMigrateEnableDirectCreate = "enableDirectCreate"
 	ParamNameStructMigrateEnableCheckpoint   = "enableCheckpoint"
+	ParamNameStructMigrateCallTimeout        = "callTimeout"
 
 	// ParamValueStructMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin
@@ -439,6 +440,7 @@ const (
 const (
 	ParamNameStructCompareCompareThread    = "compareThread"
 	ParamNameStructCompareEnableCheckpoint = "enableCheckpoint"
+	ParamNameStructCompareCallTimeout      = "callTimeout"
 
 	// ParamValueStructCompareCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin
@@ -544,6 +546,7 @@ const (
 const (
 	ParamNameAssessMigrateCaseFieldRuleS = "caseFieldRuleS"
 	ParamNameAssessMigrateSchemaNameS    = "schemaNameS"
+	ParamNameAssessMigrateCallTimeout    = "callTimeout"
 
 	// ParamValueAssessMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

@@ -51,13 +51,13 @@ func (smt *SqlMigrateTask) Start() error {
 		zap.String("task_name", smt.Task.TaskName),
 		zap.String("task_mode", smt.Task.TaskMode),
 		zap.String("task_flow", smt.Task.TaskFlow))
-	databaseS, err := database.NewDatabase(smt.Ctx, smt.DatasourceS, "")
+	databaseS, err := database.NewDatabase(smt.Ctx, smt.DatasourceS, "", int64(smt.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}
 	defer databaseS.Close()
 
-	databaseT, err := database.NewDatabase(smt.Ctx, smt.DatasourceT, "")
+	databaseT, err := database.NewDatabase(smt.Ctx, smt.DatasourceT, "", int64(smt.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}

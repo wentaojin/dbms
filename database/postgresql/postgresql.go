@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"strings"
+	"time"
 
 	"fmt"
 	"github.com/wentaojin/dbms/model/datasource"
@@ -27,11 +28,12 @@ import (
 )
 
 type Database struct {
-	Ctx    context.Context
-	DBConn *sql.DB
+	Ctx         context.Context
+	DBConn      *sql.DB
+	CallTimeout int64 // unit: seconds, sql execute timeout
 }
 
-func NewDatabase(ctx context.Context, datasource *datasource.Datasource) (*Database, error) {
+func NewDatabase(ctx context.Context, datasource *datasource.Datasource, callTimeout int64) (*Database, error) {
 	var (
 		connString string
 		err        error
@@ -56,7 +58,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource) (*Datab
 	if err = db.Ping(); err != nil {
 		return nil, fmt.Errorf("error on ping postgresql database connection: %v", err)
 	}
-	return &Database{Ctx: ctx, DBConn: db}, nil
+	return &Database{Ctx: ctx, DBConn: db, CallTimeout: callTimeout}, nil
 }
 
 func (d *Database) PingDatabaseConnection() error {
@@ -84,7 +86,13 @@ func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, er
 		columns []string
 		results []map[string]string
 	)
-	rows, err := d.QueryContext(d.Ctx, query)
+
+	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}

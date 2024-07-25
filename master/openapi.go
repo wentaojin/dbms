@@ -136,6 +136,7 @@ func (s *Server) upsertAssessMigrateTask(ctx context.Context, req openapi.APIPut
 		AssessMigrateParam: &pb.AssessMigrateParam{
 			CaseFieldRuleS: *req.AssessMigrateParam.CaseFieldRuleS,
 			SchemaNameS:    *req.AssessMigrateParam.SchemaNameS,
+			CallTimeout:    *req.AssessMigrateParam.CallTimeout,
 		},
 	})
 	if err != nil {
@@ -260,6 +261,7 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 			CreateIfNotExist:   *req.StructMigrateParam.CreateIfNotExist,
 			EnableDirectCreate: *req.StructMigrateParam.EnableDirectCreate,
 			EnableCheckpoint:   *req.StructMigrateParam.EnableCheckpoint,
+			CallTimeout:        *req.StructMigrateParam.CallTimeout,
 		},
 		StructMigrateRule: &pb.StructMigrateRule{
 			TaskStructRules:   taskLevelRules,
@@ -382,6 +384,7 @@ func (s *Server) upsertStructCompareTask(ctx context.Context, req openapi.APIPut
 		StructCompareParam: &pb.StructCompareParam{
 			CompareThread:    *req.StructCompareParam.CompareThread,
 			EnableCheckpoint: *req.StructCompareParam.EnableCheckpoint,
+			CallTimeout:      *req.StructCompareParam.CallTimeout,
 		},
 		StructCompareRule: &pb.StructCompareRule{
 			TaskStructRules:   taskLevelRules,

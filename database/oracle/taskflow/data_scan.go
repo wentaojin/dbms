@@ -64,7 +64,7 @@ func (dst *DataScanTask) Start() error {
 	if err != nil {
 		return err
 	}
-	databaseS, err := database.NewDatabase(dst.Ctx, datasourceS, schemaNameS)
+	databaseS, err := database.NewDatabase(dst.Ctx, datasourceS, schemaNameS, int64(dst.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}

@@ -70,3 +70,6 @@ const (
 	TaskInitStatusFinished    = "Y"
 	TaskInitStatusNotFinished = "N"
 )
+
+// ServiceDatabaseSqlQueryCallTimeout represent package service database request sql query timeout, uint: seconds
+const ServiceDatabaseSqlQueryCallTimeout = 300

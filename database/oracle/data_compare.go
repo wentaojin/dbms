@@ -299,7 +299,12 @@ WHERE rn <= %[5]d`, stringutil.StringJoin(columnNames, constant.StringSeparatorC
 
 	logger.Debug("divide database bucket value by query", zap.Strings("chunk", collations), zap.String("query", query))
 
-	rows, err := d.DBConn.QueryContext(d.Ctx, query)
+	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.DBConn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("the database table random values query [%v] failed: %w", query, err)
 	}

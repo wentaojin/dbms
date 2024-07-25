@@ -67,12 +67,12 @@ func (stm *StmtMigrateTask) Start() error {
 	if err != nil {
 		return err
 	}
-	databaseS, err := database.NewDatabase(stm.Ctx, sourceDatasource, schemaRoute.SchemaNameS)
+	databaseS, err := database.NewDatabase(stm.Ctx, sourceDatasource, schemaRoute.SchemaNameS, int64(stm.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}
 	defer databaseS.Close()
-	databaseT, err := database.NewDatabase(stm.Ctx, stm.DatasourceT, "")
+	databaseT, err := database.NewDatabase(stm.Ctx, stm.DatasourceT, "", int64(stm.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}

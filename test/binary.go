@@ -39,7 +39,7 @@ func main() {
 		Port:           1521,
 		ConnectCharset: "zhs16gbk",
 		ServiceName:    "gbk",
-	}, "finddpt")
+	}, "finddpt", 600)
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +64,7 @@ func main() {
 		Password: "",
 		Host:     "120.92.77.145",
 		Port:     4000,
-	}, "")
+	}, "", 600)
 	if err != nil {
 		panic(err)
 	}

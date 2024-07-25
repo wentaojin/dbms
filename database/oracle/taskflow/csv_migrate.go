@@ -66,12 +66,12 @@ func (cmt *CsvMigrateTask) Start() error {
 	if err != nil {
 		return err
 	}
-	databaseS, err := database.NewDatabase(cmt.Ctx, sourceDatasource, schemaRoute.SchemaNameS)
+	databaseS, err := database.NewDatabase(cmt.Ctx, sourceDatasource, schemaRoute.SchemaNameS, int64(cmt.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}
 	defer databaseS.Close()
-	databaseT, err := database.NewDatabase(cmt.Ctx, cmt.DatasourceT, "")
+	databaseT, err := database.NewDatabase(cmt.Ctx, cmt.DatasourceT, "", int64(cmt.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}

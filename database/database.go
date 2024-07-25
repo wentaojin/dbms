@@ -57,24 +57,24 @@ type IDatabaseSchemaTableRule interface {
 	GenSchemaTableColumnSelectRule() (string, string, string, string, error)
 }
 
-func NewDatabase(ctx context.Context, datasource *datasource.Datasource, migrateOracleSchema string) (IDatabase, error) {
+func NewDatabase(ctx context.Context, datasource *datasource.Datasource, migrateOracleSchema string, callTimeout int64) (IDatabase, error) {
 	var (
 		database IDatabase
 		err      error
 	)
 	switch {
 	case strings.EqualFold(datasource.DbType, constant.DatabaseTypeOracle):
-		database, err = oracle.NewDatabase(ctx, datasource, migrateOracleSchema)
+		database, err = oracle.NewDatabase(ctx, datasource, migrateOracleSchema, callTimeout)
 		if err != nil {
 			return database, err
 		}
 	case strings.EqualFold(datasource.DbType, constant.DatabaseTypeTiDB) || strings.EqualFold(datasource.DbType, constant.DatabaseTypeMySQL):
-		database, err = mysql.NewDatabase(ctx, datasource)
+		database, err = mysql.NewDatabase(ctx, datasource, callTimeout)
 		if err != nil {
 			return database, err
 		}
 	case strings.EqualFold(datasource.DbType, constant.DatabaseTypePostgresql):
-		database, err = postgresql.NewDatabase(ctx, datasource)
+		database, err = postgresql.NewDatabase(ctx, datasource, callTimeout)
 		if err != nil {
 			return database, err
 		}

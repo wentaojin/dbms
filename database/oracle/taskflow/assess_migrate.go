@@ -53,7 +53,7 @@ func (amt *AssessMigrateTask) Start() error {
 	if err != nil {
 		return err
 	}
-	databaseS, err := database.NewDatabase(amt.Ctx, sourceDatasource, amt.TaskParams.SchemaNameS)
+	databaseS, err := database.NewDatabase(amt.Ctx, sourceDatasource, amt.TaskParams.SchemaNameS, int64(amt.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}

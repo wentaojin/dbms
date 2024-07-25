@@ -544,6 +544,7 @@ message TableRouteRule {
 message AssessMigrateParam {
   string caseFieldRuleS = 1;
   string schemaNameS = 2;
+  uint64 callTimeout = 3;
 }
 
 message StructMigrateParam {
@@ -551,6 +552,7 @@ message StructMigrateParam {
   bool createIfNotExist = 2;
   bool enableDirectCreate = 3;
   bool enableCheckpoint = 4;
+  uint64 callTimeout = 5;
 }
 
 message StructMigrateRule {
@@ -564,6 +566,7 @@ message StructMigrateRule {
 message StructCompareParam {
   uint64 compareThread = 1;
   bool enableCheckpoint = 2;
+  uint64 callTimeout = 3;
 }
 
 message StructCompareRule {

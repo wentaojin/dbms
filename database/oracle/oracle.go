@@ -23,6 +23,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/wentaojin/dbms/model/datasource"
 
@@ -31,11 +32,12 @@ import (
 )
 
 type Database struct {
-	Ctx    context.Context
-	DBConn *sql.DB
+	Ctx         context.Context
+	DBConn      *sql.DB
+	CallTimeout int64 // unit: seconds, sql execute timeout
 }
 
-func NewDatabase(ctx context.Context, datasource *datasource.Datasource, currentSchema string) (*Database, error) {
+func NewDatabase(ctx context.Context, datasource *datasource.Datasource, currentSchema string, callTimeout int64) (*Database, error) {
 	// https://pkg.go.dev/github.com/godror/godror
 	// https://github.com/godror/godror/blob/db9cd12d89cdc1c60758aa3f36ece36cf5a61814/doc/connection.md
 	// https://godror.github.io/godror/doc/connection.html
@@ -109,7 +111,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	if err != nil {
 		return nil, fmt.Errorf("connection string [%s] error on creating ping oracle database connection: %v", oraDSN.String(), err)
 	}
-	return &Database{Ctx: ctx, DBConn: sqlDB}, nil
+	return &Database{Ctx: ctx, DBConn: sqlDB, CallTimeout: callTimeout}, nil
 }
 
 func (d *Database) PingDatabaseConnection() error {
@@ -137,7 +139,13 @@ func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, er
 		columns []string
 		results []map[string]string
 	)
-	rows, err := d.QueryContext(d.Ctx, query)
+
+	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}

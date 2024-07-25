@@ -181,7 +181,7 @@ func UpsertDatasource(ctx context.Context, req *pb.UpsertDatasourceRequest) (str
 				DbName:         r.DbName,
 				Entity:         &common.Entity{Comment: r.Comment},
 			}
-			databaseI, err := database.NewDatabase(ctx, dataS, "")
+			databaseI, err := database.NewDatabase(ctx, dataS, "", constant.ServiceDatabaseSqlQueryCallTimeout)
 			if err != nil {
 				return "", err
 			}

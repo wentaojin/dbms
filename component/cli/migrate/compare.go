@@ -40,8 +40,9 @@ type StructCompareConfig struct {
 }
 
 type StructCompareParam struct {
-	CompareThread    int64 `toml:"compare-thread" json:"compareThread"`
-	EnableCheckpoint bool  `toml:"enable-checkpoint" json:"enableCheckpoint"`
+	CompareThread    int64  `toml:"compare-thread" json:"compareThread"`
+	EnableCheckpoint bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
+	CallTimeout      uint64 `toml:"call-timeout" json:"callTimeout"`
 }
 
 type StructCompareRule struct {

@@ -39,6 +39,7 @@ type AssessConfig struct {
 type AssessMigrateParam struct {
 	CaseFieldRuleS string `toml:"case-field-rule-s" json:"caseFieldRuleS"`
 	SchemaNameS    string `toml:"schema-name-s" json:"schemaNameS"`
+	CallTimeout    uint64 `toml:"call-timeout" json:"callTimeout"`
 }
 
 func (d *AssessConfig) String() string {

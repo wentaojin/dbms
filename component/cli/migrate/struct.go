@@ -40,10 +40,11 @@ type StructConfig struct {
 }
 
 type StructMigrateParam struct {
-	MigrateThread      int64 `toml:"migrate-thread" json:"migrateThread"`
-	CreateIfNotExist   bool  `toml:"create-if-not-exist" json:"createIfNotExist"`
-	EnableDirectCreate bool  `toml:"enable-direct-create" json:"enableDirectCreate"`
-	EnableCheckpoint   bool  `toml:"enable-checkpoint" json:"enableCheckpoint"`
+	MigrateThread      int64  `toml:"migrate-thread" json:"migrateThread"`
+	CreateIfNotExist   bool   `toml:"create-if-not-exist" json:"createIfNotExist"`
+	EnableDirectCreate bool   `toml:"enable-direct-create" json:"enableDirectCreate"`
+	EnableCheckpoint   bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
+	CallTimeout        uint64 `toml:"call-timeout" json:"callTimeout"`
 }
 
 type StructMigrateRule struct {

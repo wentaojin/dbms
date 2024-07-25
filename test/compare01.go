@@ -35,7 +35,7 @@ func main() {
 		Port:           1521,
 		ConnectCharset: "zhs16gbk",
 		ServiceName:    "gbk",
-	}, "MARVIN")
+	}, "MARVIN", 600)
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +47,7 @@ func main() {
 		Host:           "120.92.77.145",
 		Port:           4000,
 		ConnectCharset: "utf8mb4",
-	}, "")
+	}, "", 600)
 	if err != nil {
 		panic(err)
 	}

@@ -454,7 +454,6 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 		if err != nil {
 			return err
 		}
-
 		createIfNotExist, err := strconv.ParseBool(paramMap[constant.ParamNameStructMigrateCreateIfNotExist])
 		if err != nil {
 			return err
@@ -463,11 +462,16 @@ func ShowStructMigrateTask(ctx context.Context, req *pb.ShowStructMigrateTaskReq
 		if err != nil {
 			return err
 		}
+		callTimeout, err := strconv.ParseUint(paramMap[constant.ParamNameStructMigrateCallTimeout], 10, 64)
+		if err != nil {
+			return err
+		}
 
 		param = &pb.StructMigrateParam{
 			MigrateThread:      uint64(migrateThread),
 			CreateIfNotExist:   createIfNotExist,
 			EnableDirectCreate: enableDirectCreate,
+			CallTimeout:        callTimeout,
 		}
 
 		taskRules, err := model.GetIStructMigrateTaskRuleRW().QueryTaskStructRule(txnCtx, &migrate.TaskStructRule{TaskName: req.TaskName})
@@ -721,9 +725,16 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		return err
 	}
 
+	logger.Info("struct migrate task get task params",
+		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
+	taskParams, err := getStructMigrateTasKParams(ctx, taskInfo.TaskName)
+	if err != nil {
+		return err
+	}
+
 	logger.Info("struct migrate task init database connection",
 		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	databaseS, err = database.NewDatabase(ctx, datasourceS, schemaRoute.SchemaNameS)
+	databaseS, err = database.NewDatabase(ctx, datasourceS, schemaRoute.SchemaNameS, int64(taskParams.CallTimeout))
 	if err != nil {
 		return err
 	}
@@ -731,20 +742,13 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 
 	switch {
 	case strings.EqualFold(taskInfo.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskInfo.TaskFlow, constant.TaskFlowOracleToMySQL):
-		databaseT, err = database.NewDatabase(ctx, datasourceT, "")
+		databaseT, err = database.NewDatabase(ctx, datasourceT, "", int64(taskParams.CallTimeout))
 		if err != nil {
 			return err
 		}
 		defer databaseT.Close()
 	default:
 		return fmt.Errorf("oracle current taskflow [%s] isn't support, please contact author or reselect", taskInfo.TaskFlow)
-	}
-
-	logger.Info("struct migrate task get task params",
-		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	taskParams, err := getStructMigrateTasKParams(ctx, taskInfo.TaskName)
-	if err != nil {
-		return err
 	}
 
 	switch {
@@ -1007,6 +1011,13 @@ func getStructMigrateTasKParams(ctx context.Context, taskName string) (*pb.Struc
 				return taskParam, err
 			}
 			taskParam.EnableCheckpoint = enableCheckpoint
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameStructMigrateCallTimeout) {
+			callTimeout, err := strconv.ParseUint(p.ParamValue, 10, 64)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.CallTimeout = callTimeout
 		}
 	}
 	return taskParam, nil

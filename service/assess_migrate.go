@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
+	"strconv"
 	"strings"
 	"time"
 
@@ -203,9 +204,15 @@ func ShowAssessMigrateTask(ctx context.Context, req *pb.ShowAssessMigrateTaskReq
 			paramMap[p.ParamName] = p.ParamValue
 		}
 
+		callTimeout, err := strconv.ParseUint(paramMap[constant.ParamNameAssessMigrateCallTimeout], 10, 64)
+		if err != nil {
+			return err
+		}
+
 		param = &pb.AssessMigrateParam{
 			CaseFieldRuleS: paramMap[constant.ParamNameAssessMigrateCaseFieldRuleS],
 			SchemaNameS:    paramMap[constant.ParamNameAssessMigrateSchemaNameS],
+			CallTimeout:    callTimeout,
 		}
 
 		resp = &pb.UpsertAssessMigrateTaskRequest{
@@ -403,6 +410,13 @@ func getAssessMigrateTasKParams(ctx context.Context, taskName string) (*pb.Asses
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameAssessMigrateSchemaNameS) {
 			taskParam.SchemaNameS = p.ParamValue
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameAssessMigrateCallTimeout) {
+			callTimeout, err := strconv.ParseUint(p.ParamValue, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			taskParam.CallTimeout = callTimeout
 		}
 	}
 

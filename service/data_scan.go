@@ -141,7 +141,7 @@ func UpsertDataScanTask(ctx context.Context, req *pb.UpsertDataScanTaskRequest) 
 			return fmt.Errorf("there is the same table within source include and exclude table, please check and remove")
 		}
 
-		databaseS, errN := database.NewDatabase(ctx, datasourceS, "")
+		databaseS, errN := database.NewDatabase(ctx, datasourceS, "", constant.ServiceDatabaseSqlQueryCallTimeout)
 		if errN != nil {
 			return err
 		}

@@ -61,12 +61,12 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 
 	switch {
 	case strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeOracle):
-		databaseS, err = database.NewDatabase(ctx, datasourceS, sourceSchemas)
+		databaseS, err = database.NewDatabase(ctx, datasourceS, sourceSchemas, constant.ServiceDatabaseSqlQueryCallTimeout)
 		if err != nil {
 			return err
 		}
 	case strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeTiDB) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeMySQL) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypePostgresql):
-		databaseS, err = database.NewDatabase(ctx, datasourceS, "")
+		databaseS, err = database.NewDatabase(ctx, datasourceS, "", constant.ServiceDatabaseSqlQueryCallTimeout)
 		if err != nil {
 			return err
 		}

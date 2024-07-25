@@ -9,3 +9,5 @@ comment = "测试数据源"
 # 3，参数值是 2 代表统一转换值为大写，与源端对比
 case-field-rule-s = "0"
 schema-name-s = "MARVIN"
+# calltimeout，单位：秒
+call-timeout = 36000

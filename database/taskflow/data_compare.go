@@ -63,12 +63,12 @@ func (dmt *DataCompareTask) Start() error {
 	if err != nil {
 		return err
 	}
-	databaseS, err := database.NewDatabase(dmt.Ctx, sourceDatasource, schemaRoute.SchemaNameS)
+	databaseS, err := database.NewDatabase(dmt.Ctx, sourceDatasource, schemaRoute.SchemaNameS, int64(dmt.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}
 	defer databaseS.Close()
-	databaseT, err := database.NewDatabase(dmt.Ctx, dmt.DatasourceT, "")
+	databaseT, err := database.NewDatabase(dmt.Ctx, dmt.DatasourceT, "", int64(dmt.TaskParams.CallTimeout))
 	if err != nil {
 		return err
 	}

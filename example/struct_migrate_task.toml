@@ -8,6 +8,8 @@ migrate-thread = 10
 create-if-not-exist = true
 enable-direct-create = true
 enable-checkpoint = true
+# calltimeout，单位：秒
+call-timeout = 36000
 
 [case-field-rule]
 # 控制配置文件内所有 *-s 参数配置值（default-value-s 除外）以及 column-route-rules 中的 key 值
