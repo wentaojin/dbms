@@ -26,7 +26,7 @@ import (
 	"strings"
 )
 
-func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCharset string, caseFieldRule string,
+func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS string, caseFieldRule string,
 	database database.IDatabase, schemaName, tableName string, cons *structure.HighestBucket, chunkSize int64, enableCollation bool) (*structure.HighestBucket, []*structure.Range, error) {
 	if cons == nil {
 		return nil, nil, nil
@@ -38,9 +38,9 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 	var newColumns []string
 	for _, col := range cons.IndexColumn {
 		var columnName string
-		switch stringutil.StringUpper(divideDbType) {
+		switch stringutil.StringUpper(dbTypeS) {
 		case constant.DatabaseTypeOracle:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(divideDbCharset)], constant.CharsetUTF8MB4)
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return nil, nil, nil
 			}
@@ -54,7 +54,7 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 			}
 
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(divideDbCharset)], constant.CharsetUTF8MB4)
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return nil, nil, nil
 			}
@@ -67,7 +67,7 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 				columnName = strings.ToUpper(stringutil.BytesToString(convertUtf8Raws))
 			}
 		default:
-			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", divideDbType)
+			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
 		}
 
 		newColumns = append(newColumns, columnName)
@@ -76,33 +76,33 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 	cons.IndexColumn = newColumns
 
 	for _, b := range cons.Buckets {
-		switch stringutil.StringUpper(divideDbType) {
+		switch stringutil.StringUpper(dbTypeS) {
 		case constant.DatabaseTypeOracle:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(divideDbCharset)], constant.CharsetUTF8MB4)
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return nil, nil, err
 			}
 			b.LowerBound = stringutil.BytesToString(convertUtf8Raws)
 
-			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(divideDbCharset)], constant.CharsetUTF8MB4)
+			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return nil, nil, err
 			}
 			b.UpperBound = stringutil.BytesToString(convertUtf8Raws)
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(divideDbCharset)], constant.CharsetUTF8MB4)
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return nil, nil, err
 			}
 			b.LowerBound = stringutil.BytesToString(convertUtf8Raws)
 
-			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(divideDbCharset)], constant.CharsetUTF8MB4)
+			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return nil, nil, err
 			}
 			b.UpperBound = stringutil.BytesToString(convertUtf8Raws)
 		default:
-			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", divideDbType)
+			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
 		}
 	}
 
@@ -131,12 +131,12 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 			continue
 		}
 
-		upperValues, err = ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, cons.Buckets[i].UpperBound, cons.IndexColumn, cons.ColumnDatatype, cons.DatetimePrecision)
+		upperValues, err = ExtractDatabaseTableStatisticsValuesFromBuckets(dbTypeS, cons.Buckets[i].UpperBound, cons.IndexColumn, cons.ColumnDatatype, cons.DatetimePrecision)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		chunkRange := structure.NewChunkRange(divideDbType, divideDbCharset)
+		chunkRange := structure.NewChunkRange(dbTypeS)
 		for j, columnName := range cons.IndexColumn {
 			var lowerValue, upperValue string
 			if len(lowerValues) > 0 {
@@ -159,6 +159,17 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 				return nil, nil, err
 			}
 			chunkRanges = append(chunkRanges, buckets...)
+
+			logger.Debug("divide database bucket value",
+				zap.String("schema_name_s", schemaName),
+				zap.String("table_name_s", tableName),
+				zap.Int("bucket_id", i),
+				zap.Int("bucket_first_value", firstBucket),
+				zap.Int64("bucket_counts", count),
+				zap.Int64("chunk_size", chunkSize),
+				zap.Any("lower_values", lowerValues),
+				zap.Any("upper_values", upperValues),
+				zap.Any("chunk_ranges", chunkRange))
 		} else {
 			// use multi-buckets so chunkCnt = 1
 			buckets, err := DivideDatabaseTableColumnStatisticsBucket(database, schemaName, tableName, cons, chunkRange, 1)
@@ -166,6 +177,16 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 				return nil, nil, err
 			}
 			chunkRanges = append(chunkRanges, buckets...)
+			logger.Debug("divide database bucket value",
+				zap.String("schema_name_s", schemaName),
+				zap.String("table_name_s", tableName),
+				zap.Int("bucket_id", i),
+				zap.Int("bucket_first_value", firstBucket),
+				zap.Int64("bucket_counts", count),
+				zap.Int64("chunk_size", chunkSize),
+				zap.Any("lower_values", lowerValues),
+				zap.Any("upper_values", upperValues),
+				zap.Any("chunk_ranges", chunkRange))
 		}
 
 		latestCount = cons.Buckets[i].Count
@@ -174,7 +195,7 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 	}
 
 	// merge the rest keys into one chunk
-	chunkRange := structure.NewChunkRange(divideDbType, divideDbCharset)
+	chunkRange := structure.NewChunkRange(dbTypeS)
 	if len(lowerValues) > 0 {
 		for j, columnName := range cons.IndexColumn {
 			err = chunkRange.Update(columnName, cons.ColumnCollation[j], cons.ColumnDatatype[j], cons.DatetimePrecision[j], lowerValues[j], "", true, false)
@@ -191,6 +212,14 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(divideDbType, divideDbCh
 	}
 	chunkRanges = append(chunkRanges, buckets...)
 
+	logger.Debug("divide database bucket value",
+		zap.String("schema_name_s", schemaName),
+		zap.String("table_name_s", tableName),
+		zap.String("bucket_id", "merge"),
+		zap.Int64("chunk_size", chunkSize),
+		zap.Any("lower_values", lowerValues),
+		zap.Any("upper_values", upperValues),
+		zap.Any("chunk_ranges", chunkRange))
 	return cons, chunkRanges, nil
 }
 
@@ -317,9 +346,7 @@ func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT string, bs []*
 		}
 
 		ranges = append(ranges, &structure.Range{
-			DBType: dbTypeT,
-			// the upstream lower and upper value has convert to constant.CharsetUTF8MB4, the downstream database dbCharset ignore convert charset
-			DBCharset:   constant.CharsetUTF8MB4,
+			DBType:      dbTypeT,
 			Bounds:      bounds,
 			BoundOffset: newBoundOffset,
 		})

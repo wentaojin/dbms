@@ -23,6 +23,11 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
+const (
+	DataDivideFlowDatabaseUpstream   = "UPSTREAM"
+	DataDivideFlowDatabaseDownstream = "DOWNSTREAM"
+)
+
 // Bound represents a bound for a column
 type Bound struct {
 	ColumnName        string `json:"columnName"`
@@ -39,16 +44,14 @@ type Bound struct {
 // Range represents chunk range
 type Range struct {
 	DBType      string         `json:"dbType"`
-	DBCharset   string         `json:"dbCharset"`
 	Bounds      []*Bound       `json:"bounds"`
 	BoundOffset map[string]int `json:"boundOffset"`
 }
 
 // NewChunkRange return a Range.
-func NewChunkRange(dbType string, dbCharset string) *Range {
+func NewChunkRange(dbType string) *Range {
 	return &Range{
 		DBType:      dbType,
-		DBCharset:   dbCharset,
 		Bounds:      make([]*Bound, 0, 2),
 		BoundOffset: make(map[string]int),
 	}
@@ -73,19 +76,12 @@ func (rg *Range) addBound(bound *Bound) {
 func (rg *Range) ToString() (string, error) {
 	// bound replace
 	for _, b := range rg.Bounds {
+		var lowerUtf8, upperUtf8 string
+		lowerUtf8 = b.Lower
+		upperUtf8 = b.Upper
+
 		switch stringutil.StringUpper(rg.DBType) {
 		case constant.DatabaseTypeOracle:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.Lower), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(rg.DBCharset)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return "", err
-			}
-			lowerUtf8 := stringutil.BytesToString(convertUtf8Raws)
-
-			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.Upper), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(rg.DBCharset)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return "", err
-			}
-			upperUtf8 := stringutil.BytesToString(convertUtf8Raws)
 			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportNumberSubtypes, b.Datatype) {
 				b.Lower = lowerUtf8
 				b.Upper = upperUtf8
@@ -104,18 +100,6 @@ func (rg *Range) ToString() (string, error) {
 				b.Collation = fmt.Sprintf("'NLS_SORT = %s'", b.Collation)
 			}
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.Lower), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(rg.DBCharset)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return "", err
-			}
-			lowerUtf8 := stringutil.BytesToString(convertUtf8Raws)
-
-			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.Upper), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(rg.DBCharset)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return "", err
-			}
-			upperUtf8 := stringutil.BytesToString(convertUtf8Raws)
-
 			if stringutil.IsContainedString(constant.DataCompareMYSQLCompatibleDatabaseSupportDecimalSubtypes, b.Datatype) {
 				b.Lower = lowerUtf8
 				b.Upper = upperUtf8
@@ -335,7 +319,7 @@ func (rg *Range) Update(columnName, collation, datatype string, datetimePrecisio
 }
 
 func (rg *Range) Copy() *Range {
-	newChunk := NewChunkRange(rg.DBType, rg.DBCharset)
+	newChunk := NewChunkRange(rg.DBType)
 	for _, bound := range rg.Bounds {
 		newChunk.addBound(&Bound{
 			ColumnName:        bound.ColumnName,
