@@ -326,6 +326,8 @@ func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, 
 		columnNames = append(columnNames, fmt.Sprintf("`%s`", col))
 		if !strings.EqualFold(collations[i], "") {
 			columnOrders = append(columnOrders, fmt.Sprintf("`%s` COLLATE '%s'", col, collations[i]))
+		} else {
+			columnOrders = append(columnOrders, fmt.Sprintf("`%s`", col))
 		}
 	}
 
