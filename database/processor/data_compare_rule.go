@@ -288,6 +288,8 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 
 	// find the oracle long/ long raw / bfile datatype, rollback to crc32
 	downstreamOracleDatatypeRollback := make(map[string]string)
+	downstreamOracleDateDatatype := make(map[string]string)
+	downstreamOracleTimestampDatatype := make(map[string]string)
 	if strings.EqualFold(r.TaskFlow, constant.TaskFlowTiDBToOracle) || strings.EqualFold(r.TaskFlow, constant.TaskFlowMySQLToOracle) {
 		targetColumnInfos, err := r.DatabaseT.GetDatabaseTableColumnInfo(r.SchemaNameT, r.TableNameT)
 		if err != nil {
@@ -296,6 +298,12 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		for _, c := range targetColumnInfos {
 			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeLong) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeLongRAW) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeBfile) {
 				downstreamOracleDatatypeRollback[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+			}
+			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, c["DATA_TYPE"]) {
+				downstreamOracleDateDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+			}
+			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, c["DATA_TYPE"]) {
+				downstreamOracleTimestampDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
 			}
 		}
 	}
@@ -379,7 +387,19 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 				if _, rollback := downstreamOracleDatatypeRollback[val]; rollback {
 					isRollbackOracle = true
 				}
-				columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+				if _, okTime := downstreamOracleTimestampDatatype[val]; okTime {
+					datetimePrecision := rowCol["DATETIME_PRECISION"]
+
+					datetimePrecisionS, err := strconv.ParseInt(datetimePrecision, 10, 64)
+					if err != nil {
+						return "", "", "", "", err
+					}
+					columnNameT = stringutil.StringBuilder(`NVL(TO_CHAR("`, val, `",'YYYY-MM-DD HH24:MI:SS.FF`, strconv.FormatInt(datetimePrecisionS, 10), `'),'0')`)
+				} else if _, okDate := downstreamOracleDateDatatype[val]; okDate {
+					columnNameT = stringutil.StringBuilder(`NVL(TO_CHAR("`, val, `",'YYYY-MM-DD HH24:MI:SS'),'0')`)
+				} else {
+					columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+				}
 			default:
 				return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
 			}

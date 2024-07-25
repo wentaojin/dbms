@@ -552,10 +552,8 @@ func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int,
 						}
 						rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
 					}
-				case time.Time:
-					rowData = append(rowData, fmt.Sprintf("'%v'", val.String()))
 				default:
-					return nil, crc32Sum, nil, fmt.Errorf("column [%s] unsupported type: %T", colName, value)
+					return nil, crc32Sum, nil, fmt.Errorf("column [%s] unsupported type: %T, need query sql select column format string", colName, value)
 				}
 			}
 		}
