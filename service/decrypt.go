@@ -76,18 +76,20 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 		}
 
 		type CompareDecrypt struct {
-			ID           int    `json:"id"`
+			ChunkID      string `json:"chunkID"`
 			SchemaNameS  string `json:"schemaNameS"`
 			TableNameS   string `json:"tableNameS"`
 			SchemaNameT  string `json:"schemaNameT"`
 			TableNameT   string `json:"tableNameT"`
 			ChunkDetailS string `json:"chunkDetailS"`
+			ChunkArgsS   string `json:"chunkArgsS"`
 			ChunkDetailT string `json:"chunkDetailT"`
+			ChunkArgsT   string `json:"chunkArgsT"`
 			TaskStatus   string `json:"taskStatus"`
 		}
 		var clusterTable []CompareDecrypt
 
-		for i, v := range compareTasks {
+		for _, v := range compareTasks {
 			desChunkDetailS, err := stringutil.Decrypt(v.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
 				return fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
@@ -109,25 +111,29 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			if !strings.EqualFold(chunk, "") {
 				if strings.EqualFold(v.ChunkDetailS, chunk) {
 					clusterTable = append(clusterTable, CompareDecrypt{
-						ID:           i,
+						ChunkID:      v.ChunkID,
 						SchemaNameS:  v.SchemaNameS,
 						TableNameS:   v.TableNameS,
 						SchemaNameT:  v.SchemaNameT,
 						TableNameT:   v.TableNameT,
 						ChunkDetailS: stringutil.BytesToString(decChunkDetailS),
+						ChunkArgsS:   v.ChunkDetailArgS,
 						ChunkDetailT: stringutil.BytesToString(decChunkDetailT),
+						ChunkArgsT:   v.ChunkDetailArgT,
 						TaskStatus:   v.TaskStatus,
 					})
 				}
 			} else {
 				clusterTable = append(clusterTable, CompareDecrypt{
-					ID:           i,
+					ChunkID:      v.ChunkID,
 					SchemaNameS:  v.SchemaNameS,
 					TableNameS:   v.TableNameS,
 					SchemaNameT:  v.SchemaNameT,
 					TableNameT:   v.TableNameT,
 					ChunkDetailS: stringutil.BytesToString(decChunkDetailS),
+					ChunkArgsS:   v.ChunkDetailArgS,
 					ChunkDetailT: stringutil.BytesToString(decChunkDetailT),
+					ChunkArgsT:   v.ChunkDetailArgT,
 					TaskStatus:   v.TaskStatus,
 				})
 			}
@@ -157,12 +163,13 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 		}
 
 		type MigrateDecrypt struct {
-			ID            int    `json:"id"`
+			ChunkID       string `json:"chunkID"`
 			SchemaNameS   string `json:"schemaNameS"`
 			TableNameS    string `json:"tableNameS"`
-			SchemaNameT   string `json:"schemaNameT"'`
+			SchemaNameT   string `json:"schemaNameT"`
 			TableNameT    string `json:"tableNameT"`
 			ChunkDetailS  string `json:"chunkDetailS"`
+			ChunkArgsS    string `json:"chunkArgsS"`
 			ColumnDetailS string `json:"columnDetailS"`
 			ColumnDetailT string `json:"columnDetailT"`
 			TaskStatus    string `json:"taskStatus"`
@@ -170,7 +177,7 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 
 		var clusterTable []MigrateDecrypt
 
-		for i, v := range migrateTasks {
+		for _, v := range migrateTasks {
 			desChunkDetailS, err := stringutil.Decrypt(v.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
 				return fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
@@ -183,12 +190,13 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			if !strings.EqualFold(chunk, "") {
 				if strings.EqualFold(v.ChunkDetailS, chunk) {
 					clusterTable = append(clusterTable, MigrateDecrypt{
-						ID:            i,
+						ChunkID:       v.ChunkID,
 						SchemaNameS:   v.SchemaNameS,
 						TableNameS:    v.TableNameS,
 						SchemaNameT:   v.SchemaNameT,
 						TableNameT:    v.TableNameT,
 						ChunkDetailS:  stringutil.BytesToString(decChunkDetailS),
+						ChunkArgsS:    v.ChunkDetailArgS,
 						ColumnDetailS: v.ColumnDetailS,
 						ColumnDetailT: v.ColumnDetailT,
 						TaskStatus:    v.TaskStatus,
@@ -196,12 +204,13 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 				}
 			} else {
 				clusterTable = append(clusterTable, MigrateDecrypt{
-					ID:            i,
+					ChunkID:       v.ChunkID,
 					SchemaNameS:   v.SchemaNameS,
 					TableNameS:    v.TableNameS,
 					SchemaNameT:   v.SchemaNameT,
 					TableNameT:    v.TableNameT,
 					ChunkDetailS:  stringutil.BytesToString(decChunkDetailS),
+					ChunkArgsS:    v.ChunkDetailArgS,
 					ColumnDetailS: v.ColumnDetailS,
 					ColumnDetailT: v.ColumnDetailT,
 					TaskStatus:    v.TaskStatus,
@@ -232,17 +241,18 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 		}
 
 		type ScanDecrypt struct {
-			ID            int    `json:"id"`
+			ChunkID       string `json:"chunkID"`
 			SchemaNameS   string `json:"schemaNameS"`
 			TableNameS    string `json:"tableNameS"`
 			ColumnDetailS string `json:"columnDetailS"`
 			ChunkDetailS  string `json:"chunkDetailS"`
+			ChunkArgsS    string `json:"chunkArgsS"`
 			Samplerate    string `json:"samplerate"`
 			TaskStatus    string `json:"taskStatus"`
 		}
 		var clusterTable []ScanDecrypt
 
-		for i, v := range compareTasks {
+		for _, v := range compareTasks {
 			desChunkDetailS, err := stringutil.Decrypt(v.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
 				return fmt.Errorf("error decrypt chunk_detail_s failed: %v", err)
@@ -255,22 +265,24 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			if !strings.EqualFold(chunk, "") {
 				if strings.EqualFold(v.ChunkDetailS, chunk) {
 					clusterTable = append(clusterTable, ScanDecrypt{
-						ID:            i,
+						ChunkID:       v.ChunkID,
 						SchemaNameS:   v.SchemaNameS,
 						TableNameS:    v.TableNameS,
 						ColumnDetailS: v.ColumnDetailS,
 						ChunkDetailS:  stringutil.BytesToString(decChunkDetailS),
+						ChunkArgsS:    v.ChunkDetailArgS,
 						Samplerate:    v.Samplerate,
 						TaskStatus:    v.TaskStatus,
 					})
 				}
 			} else {
 				clusterTable = append(clusterTable, ScanDecrypt{
-					ID:            i,
+					ChunkID:       v.ChunkID,
 					SchemaNameS:   v.SchemaNameS,
 					TableNameS:    v.TableNameS,
 					ColumnDetailS: v.ColumnDetailS,
 					ChunkDetailS:  stringutil.BytesToString(decChunkDetailS),
+					ChunkArgsS:    v.ChunkDetailArgS,
 					Samplerate:    v.Samplerate,
 					TaskStatus:    v.TaskStatus,
 				})

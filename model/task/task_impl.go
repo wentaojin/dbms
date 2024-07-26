@@ -683,7 +683,7 @@ func (rw *RWDataMigrateTask) TableName(ctx context.Context) string {
 
 func (rw *RWDataMigrateTask) CreateDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error) {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
 		UpdateAll: true,
 	}).Create(task).Error
 	if err != nil {
@@ -694,7 +694,7 @@ func (rw *RWDataMigrateTask) CreateDataMigrateTask(ctx context.Context, task *Da
 
 func (rw *RWDataMigrateTask) CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, batchSize int) error {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
 		UpdateAll: true,
 	}).CreateInBatches(task, batchSize).Error
 	if err != nil {
@@ -704,7 +704,7 @@ func (rw *RWDataMigrateTask) CreateInBatchDataMigrateTask(ctx context.Context, t
 }
 
 func (rw *RWDataMigrateTask) UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error) {
-	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_detail_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkDetailS).Updates(updates).Error
+	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_id = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkID).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -1047,7 +1047,7 @@ func (rw *RWDataCompareTask) TableName(ctx context.Context) string {
 
 func (rw *RWDataCompareTask) CreateDataCompareTask(ctx context.Context, task *DataCompareTask) (*DataCompareTask, error) {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
 		UpdateAll: true,
 	}).Create(task).Error
 	if err != nil {
@@ -1058,7 +1058,7 @@ func (rw *RWDataCompareTask) CreateDataCompareTask(ctx context.Context, task *Da
 
 func (rw *RWDataCompareTask) CreateInBatchDataCompareTask(ctx context.Context, task []*DataCompareTask, batchSize int) error {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
 		UpdateAll: true,
 	}).CreateInBatches(task, batchSize).Error
 	if err != nil {
@@ -1068,7 +1068,7 @@ func (rw *RWDataCompareTask) CreateInBatchDataCompareTask(ctx context.Context, t
 }
 
 func (rw *RWDataCompareTask) UpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error) {
-	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_detail_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkDetailS).Updates(updates).Error
+	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_id = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkID).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -1305,7 +1305,7 @@ func (rw *RWDataScanTask) TableName(ctx context.Context) string {
 
 func (rw *RWDataScanTask) CreateDataScanTask(ctx context.Context, task *DataScanTask) (*DataScanTask, error) {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
 		UpdateAll: true,
 	}).Create(task).Error
 	if err != nil {
@@ -1316,7 +1316,7 @@ func (rw *RWDataScanTask) CreateDataScanTask(ctx context.Context, task *DataScan
 
 func (rw *RWDataScanTask) CreateInBatchDataScanTask(ctx context.Context, task []*DataScanTask, batchSize int) error {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_detail_s"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
 		UpdateAll: true,
 	}).CreateInBatches(task, batchSize).Error
 	if err != nil {
@@ -1326,7 +1326,7 @@ func (rw *RWDataScanTask) CreateInBatchDataScanTask(ctx context.Context, task []
 }
 
 func (rw *RWDataScanTask) UpdateDataScanTask(ctx context.Context, task *DataScanTask, updates map[string]interface{}) (*DataScanTask, error) {
-	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_detail_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkDetailS).Updates(updates).Error
+	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_id = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkID).Updates(updates).Error
 	if err != nil {
 		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

@@ -173,7 +173,7 @@ func (dst *DataScanTask) Start() error {
 					dt := j.(*task.DataScanTask)
 					errW := model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
-							&task.DataScanTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkDetailS: dt.ChunkDetailS},
+							&task.DataScanTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
 							map[string]interface{}{
 								"TaskStatus": constant.TaskDatabaseStatusRunning,
 							})
@@ -231,7 +231,7 @@ func (dst *DataScanTask) Start() error {
 
 				errW := model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
 					_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
-						&task.DataScanTask{TaskName: mt.TaskName, SchemaNameS: mt.SchemaNameS, TableNameS: mt.TableNameS, ChunkDetailS: mt.ChunkDetailS},
+						&task.DataScanTask{TaskName: mt.TaskName, SchemaNameS: mt.SchemaNameS, TableNameS: mt.TableNameS, ChunkID: mt.ChunkID},
 						map[string]interface{}{
 							"TaskStatus":  constant.TaskDatabaseStatusFailed,
 							"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
@@ -629,7 +629,9 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							GroupColumnS:    attsRule.GroupColumnS,
 							SqlHintS:        attsRule.SqlHintS,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: "",
 							Samplerate:      attsRule.TableSamplerateS,
 							ConsistentReadS: strconv.FormatBool(dst.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
@@ -706,7 +708,9 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 								ColumnDetailS:   attsRule.ColumnDetailS,
 								GroupColumnS:    attsRule.GroupColumnS,
 								SqlHintS:        attsRule.SqlHintS,
+								ChunkID:         uuid.New().String(),
 								ChunkDetailS:    encryptChunkS,
+								ChunkDetailArgS: "",
 								Samplerate:      attsRule.TableSamplerateS,
 								ConsistentReadS: strconv.FormatBool(dst.TaskParams.EnableConsistentRead),
 								TaskStatus:      constant.TaskDatabaseStatusWaiting,
@@ -746,11 +750,16 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 
 					var metas []*task.DataScanTask
 					for _, r := range upstreamBuckets {
-						whereRange, err = r.ToString()
-						if err != nil {
-							return err
+						toStringS, toStringSArgs := r.ToString()
+						var argsS string
+						if toStringSArgs != nil {
+							argsS, err = stringutil.MarshalJSON(toStringSArgs)
+							if err != nil {
+								return err
+							}
 						}
 
+						whereRange = toStringS
 						encChunkS := snappy.Encode(nil, []byte(whereRange))
 
 						encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
@@ -766,7 +775,9 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							GroupColumnS:    attsRule.GroupColumnS,
 							SqlHintS:        attsRule.SqlHintS,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: argsS,
 							Samplerate:      attsRule.TableSamplerateS,
 							ConsistentReadS: strconv.FormatBool(dst.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
@@ -826,7 +837,9 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							GroupColumnS:    attsRule.GroupColumnS,
 							SqlHintS:        attsRule.SqlHintS,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: "",
 							Samplerate:      attsRule.TableSamplerateS,
 							ConsistentReadS: strconv.FormatBool(dst.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,

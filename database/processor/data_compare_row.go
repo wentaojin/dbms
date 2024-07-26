@@ -66,6 +66,7 @@ func (r *DataCompareRow) CompareRows() error {
 	var (
 		execQueryS, execQueryT                                   string
 		columnDetailS, columnDetailT, chunkDetailS, chunkDetailT string
+		queryCondArgsS, queryCondArgsT                           []interface{}
 	)
 
 	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
@@ -181,6 +182,24 @@ func (r *DataCompareRow) CompareRows() error {
 		zap.String("chunk_detail_t", desChunkDetailT),
 		zap.String("startTime", startTime.String()))
 
+	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
+		queryCondArgsS = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgS), &queryCondArgsS)
+		if err != nil {
+			return fmt.Errorf("the database source query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgS, err)
+		}
+	}
+
+	if strings.EqualFold(r.Dmt.ChunkDetailArgT, "") {
+		queryCondArgsT = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgT), &queryCondArgsT)
+		if err != nil {
+			return fmt.Errorf("the database target query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgT, err)
+		}
+	}
+
 	resultSM := make(chan string, 1)
 	resultTM := make(chan string, 1)
 
@@ -191,9 +210,9 @@ func (r *DataCompareRow) CompareRows() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS)
+			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS)
 			if err != nil {
-				return fmt.Errorf("the database source query sql [%v] running failed: [%v]", execQueryS, err)
+				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
 			resultSM <- resultS[0]["ROWSCOUNT"]
 			return nil
@@ -205,9 +224,9 @@ func (r *DataCompareRow) CompareRows() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT)
+			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT)
 			if err != nil {
-				return fmt.Errorf("the database source target sql [%v] running failed: [%v]", execQueryT, err)
+				return fmt.Errorf("the database source target sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			resultTM <- resultT[0]["ROWSCOUNT"]
 			return nil
@@ -251,7 +270,7 @@ func (r *DataCompareRow) CompareRows() error {
 
 		errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {
 			_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-				&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkDetailS: r.Dmt.ChunkDetailS},
+				&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkID: r.Dmt.ChunkID},
 				map[string]interface{}{
 					"TaskStatus": constant.TaskDatabaseStatusEqual,
 					"Duration":   fmt.Sprintf("%f", time.Now().Sub(r.StartTime).Seconds()),
@@ -300,7 +319,7 @@ func (r *DataCompareRow) CompareRows() error {
 
 	errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {
 		_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-			&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkDetailS: r.Dmt.ChunkDetailS},
+			&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkID: r.Dmt.ChunkID},
 			map[string]interface{}{
 				"TaskStatus": constant.TaskDatabaseStatusNotEqual,
 				"Duration":   fmt.Sprintf("%f", time.Now().Sub(r.StartTime).Seconds()),
@@ -352,6 +371,7 @@ func (r *DataCompareRow) CompareMD5() error {
 	var (
 		execQueryS, execQueryT                                   string
 		columnDetailS, columnDetailT, chunkDetailS, chunkDetailT string
+		queryCondArgsS, queryCondArgsT                           []interface{}
 	)
 
 	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
@@ -514,6 +534,23 @@ FROM
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
 		zap.String("startTime", startTime.String()))
+	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
+		queryCondArgsS = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgS), &queryCondArgsS)
+		if err != nil {
+			return fmt.Errorf("the database source query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgS, err)
+		}
+	}
+
+	if strings.EqualFold(r.Dmt.ChunkDetailArgT, "") {
+		queryCondArgsT = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgT), &queryCondArgsT)
+		if err != nil {
+			return fmt.Errorf("the database target query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgT, err)
+		}
+	}
 
 	resultSM := make(chan string, 1)
 	resultTM := make(chan string, 1)
@@ -525,9 +562,9 @@ FROM
 		case <-ctx.Done():
 			return nil
 		default:
-			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS)
+			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS)
 			if err != nil {
-				return fmt.Errorf("the database source query sql [%v] running failed: [%v]", execQueryS, err)
+				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
 			resultSM <- resultS[0]["ROWSCHECKSUM"]
 			return nil
@@ -539,9 +576,9 @@ FROM
 		case <-ctx.Done():
 			return nil
 		default:
-			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT)
+			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT)
 			if err != nil {
-				return fmt.Errorf("the database target query sql [%v] running failed: [%v]", execQueryT, err)
+				return fmt.Errorf("the database target query sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			resultTM <- resultT[0]["ROWSCHECKSUM"]
 			return nil
@@ -584,7 +621,7 @@ FROM
 
 		errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {
 			_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-				&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkDetailS: r.Dmt.ChunkDetailS},
+				&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkID: r.Dmt.ChunkID},
 				map[string]interface{}{
 					"TaskStatus": constant.TaskDatabaseStatusEqual,
 					"Duration":   fmt.Sprintf("%f", time.Now().Sub(r.StartTime).Seconds()),
@@ -644,6 +681,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 	var (
 		execQueryS, execQueryT                                   string
 		columnDetailS, columnDetailT, chunkDetailS, chunkDetailT string
+		queryCondArgsS, queryCondArgsT                           []interface{}
 	)
 
 	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
@@ -758,6 +796,24 @@ func (r *DataCompareRow) CompareCRC32() error {
 		zap.String("chunk_detail_t", desChunkDetailT),
 		zap.String("startTime", startTime.String()))
 
+	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
+		queryCondArgsS = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgS), &queryCondArgsS)
+		if err != nil {
+			return fmt.Errorf("the database source query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgS, err)
+		}
+	}
+
+	if strings.EqualFold(r.Dmt.ChunkDetailArgT, "") {
+		queryCondArgsT = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgT), &queryCondArgsT)
+		if err != nil {
+			return fmt.Errorf("the database target query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgT, err)
+		}
+	}
+
 	crc32ValSC := make(chan uint32, 1)
 	columnDataSMC := make(chan map[string]int64, 1)
 	columnDataTMC := make(chan map[string]int64, 1)
@@ -773,9 +829,9 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			columnS, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4)
+			columnS, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, queryCondArgsS)
 			if err != nil {
-				return fmt.Errorf("the database source query sql [%v] comparing failed: [%v]", execQueryS, err)
+				return fmt.Errorf("the database source query sql [%v] args [%v] comparing failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
 			columnNameSC <- columnS
 			crc32ValSC <- crc32ValS
@@ -789,9 +845,9 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			columnT, crc32ValT, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4)
+			columnT, crc32ValT, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, queryCondArgsT)
 			if err != nil {
-				return fmt.Errorf("the database target query sql [%v] comparing failed: [%v]", execQueryT, err)
+				return fmt.Errorf("the database target query sql [%v] args [%v] comparing failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			columnNameTC <- columnT
 			crc32ValTC <- crc32ValT
@@ -832,7 +888,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 
 		errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {
 			_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-				&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkDetailS: r.Dmt.ChunkDetailS},
+				&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkID: r.Dmt.ChunkID},
 				map[string]interface{}{
 					"TaskStatus": constant.TaskDatabaseStatusEqual,
 					"Duration":   fmt.Sprintf("%f", time.Now().Sub(r.StartTime).Seconds()),
@@ -1028,7 +1084,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 
 	errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {
 		_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-			&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkDetailS: r.Dmt.ChunkDetailS},
+			&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkID: r.Dmt.ChunkID},
 			map[string]interface{}{
 				"TaskStatus": constant.TaskDatabaseStatusNotEqual,
 				"Duration":   fmt.Sprintf("%f", time.Now().Sub(r.StartTime).Seconds()),
@@ -1078,6 +1134,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 	var (
 		execQueryS, execQueryT                                   string
 		columnDetailS, columnDetailT, chunkDetailS, chunkDetailT string
+		queryCondArgsS, queryCondArgsT                           []interface{}
 	)
 
 	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
@@ -1192,6 +1249,24 @@ func (r *DataCompareRow) compareMd5Row() error {
 		zap.String("chunk_detail_t", desChunkDetailT),
 		zap.String("startTime", startTime.String()))
 
+	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
+		queryCondArgsS = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgS), &queryCondArgsS)
+		if err != nil {
+			return fmt.Errorf("the database source query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgS, err)
+		}
+	}
+
+	if strings.EqualFold(r.Dmt.ChunkDetailArgT, "") {
+		queryCondArgsT = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgT), &queryCondArgsT)
+		if err != nil {
+			return fmt.Errorf("the database target query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgT, err)
+		}
+	}
+
 	columnDataSMC := make(chan map[string]int64, 1)
 	columnNameSC := make(chan []string, 1)
 
@@ -1205,9 +1280,9 @@ func (r *DataCompareRow) compareMd5Row() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			columnS, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4)
+			columnS, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, queryCondArgsS)
 			if err != nil {
-				return fmt.Errorf("the database source query sql [%v] comparing failed: [%v]", execQueryS, err)
+				return fmt.Errorf("the database source query sql [%v] args [%v] comparing failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
 			columnNameSC <- columnS
 			columnDataSMC <- columnDataS
@@ -1220,9 +1295,9 @@ func (r *DataCompareRow) compareMd5Row() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			columnT, _, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4)
+			columnT, _, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, queryCondArgsT)
 			if err != nil {
-				return fmt.Errorf("the database target query sql [%v] comparing failed: [%v]", execQueryT, err)
+				return fmt.Errorf("the database target query sql [%v] args [%v] comparing failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			columnNameTC <- columnT
 			columnDataTMC <- columnDataT
@@ -1390,7 +1465,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 
 	errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {
 		_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-			&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkDetailS: r.Dmt.ChunkDetailS},
+			&task.DataCompareTask{TaskName: r.Dmt.TaskName, SchemaNameS: r.Dmt.SchemaNameS, TableNameS: r.Dmt.TableNameS, ChunkID: r.Dmt.ChunkID},
 			map[string]interface{}{
 				"TaskStatus": constant.TaskDatabaseStatusNotEqual,
 				"Duration":   fmt.Sprintf("%f", time.Now().Sub(r.StartTime).Seconds()),

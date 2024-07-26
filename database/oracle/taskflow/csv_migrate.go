@@ -234,7 +234,7 @@ func (cmt *CsvMigrateTask) Start() error {
 					dt := j.(*task.DataMigrateTask)
 					errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkDetailS: dt.ChunkDetailS},
+							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
 							map[string]interface{}{
 								"TaskStatus": constant.TaskDatabaseStatusRunning,
 							})
@@ -282,7 +282,7 @@ func (cmt *CsvMigrateTask) Start() error {
 
 					errW = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkDetailS: dt.ChunkDetailS},
+							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
 							map[string]interface{}{
 								"TaskStatus": constant.TaskDatabaseStatusSuccess,
 								"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
@@ -327,7 +327,7 @@ func (cmt *CsvMigrateTask) Start() error {
 
 				errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
 					_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-						&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkDetailS: smt.ChunkDetailS},
+						&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
 						map[string]interface{}{
 							"TaskStatus":  constant.TaskDatabaseStatusFailed,
 							"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
@@ -705,7 +705,9 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: "",
 							ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 							CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
@@ -792,7 +794,9 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 								ColumnDetailS:   attsRule.ColumnDetailS,
 								ColumnDetailT:   attsRule.ColumnDetailT,
 								SqlHintS:        attsRule.SqlHintS,
+								ChunkID:         uuid.New().String(),
 								ChunkDetailS:    encryptChunkS,
+								ChunkDetailArgS: "",
 								ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 								TaskStatus:      constant.TaskDatabaseStatusWaiting,
 								CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
@@ -835,13 +839,17 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 
 					var metas []*task.DataMigrateTask
 					for idx, r := range upstreamBuckets {
-						toStringS, err := r.ToString()
-						if err != nil {
-							return err
+						toStringS, toStringSArgs := r.ToString()
+						var argsS string
+						if toStringSArgs != nil {
+							argsS, err = stringutil.MarshalJSON(toStringSArgs)
+							if err != nil {
+								return err
+							}
 						}
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(toStringS, ` AND `, attsRule.WhereRange)
+							whereRange = stringutil.StringBuilder(`(`, toStringS, `) AND (`, attsRule.WhereRange, `)`)
 						default:
 							whereRange = toStringS
 						}
@@ -864,7 +872,9 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: argsS,
 							ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 							CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
@@ -933,7 +943,9 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 							ColumnDetailS:   attsRule.ColumnDetailS,
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: "",
 							ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 							CsvFile: filepath.Join(cmt.TaskParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS,
@@ -995,7 +1007,9 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 						ColumnDetailS:   attsRule.ColumnDetailS,
 						ColumnDetailT:   attsRule.ColumnDetailT,
 						SqlHintS:        attsRule.SqlHintS,
+						ChunkID:         uuid.New().String(),
 						ChunkDetailS:    encryptChunkS,
+						ChunkDetailArgS: "",
 						ConsistentReadS: strconv.FormatBool(cmt.TaskParams.EnableConsistentRead),
 						TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						CsvFile:         csvFile,

@@ -33,7 +33,7 @@ type IDatabase interface {
 	PrepareContext(ctx context.Context, sqlStr string) (*sql.Stmt, error)
 	QueryContext(ctx context.Context, sqlStr string, args ...any) (*sql.Rows, error)
 	ExecContext(ctx context.Context, sqlStr string, args ...any) (sql.Result, error)
-	GeneralQuery(sqlStr string) ([]string, []map[string]string, error)
+	GeneralQuery(sqlStr string, args ...any) ([]string, []map[string]string, error)
 	PingDatabaseConnection() error
 	Close() error
 	IDatabaseTableFilter

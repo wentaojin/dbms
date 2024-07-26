@@ -42,7 +42,12 @@ func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS stri
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, limit int, collations []string) ([][]string, error) {
+func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, condArgs []interface{}, limit int, collations []string) ([][]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
 	//TODO implement me
 	panic("implement me")
 }

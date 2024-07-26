@@ -267,7 +267,7 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 	return highestBucket, nil
 }
 
-func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, limit int, collations []string) ([][]string, error) {
+func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, condArgs []interface{}, limit int, collations []string) ([][]string, error) {
 	if conditions == "" {
 		conditions = "1 = 1"
 	}
@@ -297,14 +297,14 @@ FROM (
 )
 WHERE rn <= %[5]d`, stringutil.StringJoin(columnNames, constant.StringSeparatorComma), fmt.Sprintf(`"%s"."%s"`, schemaNameS, tableNameS), conditions, stringutil.StringJoin(columnOrders, constant.StringSeparatorComma), limit)
 
-	logger.Debug("divide database bucket value by query", zap.Strings("chunk", collations), zap.String("query", query))
+	logger.Debug("divide database bucket value by query", zap.Strings("columns", columnNames), zap.Strings("collations", collations), zap.String("query", query))
 
 	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
 
 	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
 	defer cancel()
 
-	rows, err := d.DBConn.QueryContext(ctx, query)
+	rows, err := d.DBConn.QueryContext(ctx, query, condArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("the database table random values query [%v] failed: %w", query, err)
 	}
@@ -407,7 +407,7 @@ ORDER BY
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error) {
+func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
 	var (
 		rowData       []string
 		columnNames   []string
@@ -426,7 +426,7 @@ func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int,
 	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
 	defer cancel()
 
-	rows, err := d.QueryContext(ctx, querySQL)
+	rows, err := d.QueryContext(ctx, querySQL, queryArgs...)
 	if err != nil {
 		return nil, crc32Sum, nil, err
 	}

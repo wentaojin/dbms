@@ -75,7 +75,7 @@ func (r *SqlMigrateRow) MigrateRead() error {
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.GetDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Smt.ColumnDetailO, r.ReadChan)
+	err = r.DatabaseS.GetDatabaseTableChunkData(execQuerySQL, nil, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Smt.ColumnDetailO, r.ReadChan)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
 	}

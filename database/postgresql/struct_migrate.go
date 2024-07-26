@@ -823,12 +823,12 @@ func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName str
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
+func (d *Database) GetDatabaseTableChunkData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
+func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interface{}, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -844,11 +844,6 @@ func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, colu
 }
 
 func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string) ([]string, uint32, map[string]int64, error) {
 	//TODO implement me
 	panic("implement me")
 }

@@ -198,7 +198,7 @@ END;`, taskName)
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
+func (d *Database) GetDatabaseTableChunkData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
 	var (
 		databaseTypes []string
 		err           error
@@ -222,7 +222,7 @@ func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTim
 	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
 	defer cancel()
 
-	rows, err := d.QueryContext(ctx, querySQL)
+	rows, err := d.QueryContext(ctx, querySQL, queryArgs...)
 	if err != nil {
 		return err
 	}
@@ -359,7 +359,7 @@ func (d *Database) GetDatabaseTableChunkData(querySQL string, batchSize, callTim
 	return nil
 }
 
-func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
+func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interface{}, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
 	var (
 		databaseTypes []string
 		err           error
@@ -379,7 +379,7 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, callTimeout int, tas
 	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
 	defer cancel()
 
-	rows, err := d.QueryContext(ctx, querySQL)
+	rows, err := d.QueryContext(ctx, querySQL, queryArgs...)
 	if err != nil {
 		return err
 	}

@@ -81,7 +81,7 @@ func (d *Database) ExecContext(ctx context.Context, query string, args ...any) (
 	return d.DBConn.ExecContext(ctx, query, args...)
 }
 
-func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, error) {
+func (d *Database) GeneralQuery(query string, args ...any) ([]string, []map[string]string, error) {
 	var (
 		columns []string
 		results []map[string]string
@@ -92,7 +92,7 @@ func (d *Database) GeneralQuery(query string) ([]string, []map[string]string, er
 	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
 	defer cancel()
 
-	rows, err := d.QueryContext(ctx, query)
+	rows, err := d.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, nil, err
 	}

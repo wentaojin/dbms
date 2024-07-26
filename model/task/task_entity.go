@@ -160,7 +160,9 @@ type DataMigrateTask struct {
 	ColumnDetailT   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailT"`
 	SqlHintS        string  `gorm:"type:varchar(300);comment:source sql hint" json:"sqlHintS"`
 	SqlHintT        string  `gorm:"type:varchar(300);comment:target sql hint" json:"sqlHintT"`
-	ChunkDetailS    string  `gorm:"type:varchar(500);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
+	ChunkID         string  `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk random id" json:"chunkID"`
+	ChunkDetailS    string  `gorm:"type:longtext;not null;comment:source table chunk detail" json:"chunkDetailS"`
+	ChunkDetailArgS string  `gorm:"type:longtext;comment:source table chunk detail args" json:"chunkDetailArgS"`
 	ConsistentReadS string  `gorm:"type:varchar(10);comment:source sql consistent read" json:"consistentReadS"`
 	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
 	CsvFile         string  `gorm:"type:varchar(300);comment:csv exporter file path" json:"csvFile"`
@@ -193,7 +195,7 @@ type SqlMigrateTask struct {
 	ColumnDetailT   string  `gorm:"type:longtext;comment:source column information" json:"columnDetailT"`
 	SqlHintT        string  `gorm:"type:varchar(300);comment:target sql hint" json:"sqlHintT"`
 	ConsistentReadS string  `gorm:"type:varchar(10);comment:source sql consistent read" json:"consistentReadS"`
-	SqlQueryS       string  `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source sql query" json:"sqlQueryS"`
+	SqlQueryS       string  `gorm:"type:varchar(600);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source sql query" json:"sqlQueryS"`
 	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
 	ErrorDetail     string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
 	Duration        float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
@@ -239,8 +241,11 @@ type DataCompareTask struct {
 	ColumnDetailT   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailT"`
 	SqlHintS        string  `gorm:"type:varchar(300);comment:source sql hint" json:"sqlHintS"`
 	SqlHintT        string  `gorm:"type:varchar(300);comment:target sql hint" json:"sqlHintT"`
-	ChunkDetailS    string  `gorm:"type:varchar(618);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
-	ChunkDetailT    string  `gorm:"type:varchar(618);not null;comment:target table chunk detail" json:"chunkDetailT"`
+	ChunkID         string  `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk random id" json:"chunkID"`
+	ChunkDetailS    string  `gorm:"type:longtext;not null;comment:source table chunk detail" json:"chunkDetailS"`
+	ChunkDetailT    string  `gorm:"type:longtext;not null;comment:target table chunk detail" json:"chunkDetailT"`
+	ChunkDetailArgS string  `gorm:"type:longtext;comment:source table chunk detail args" json:"chunkDetailArgS"`
+	ChunkDetailArgT string  `gorm:"type:longtext;comment:target table chunk detail args" json:"chunkDetailArgT"`
 	ConsistentReadS string  `gorm:"type:varchar(10);comment:source sql consistent read" json:"consistentReadS"`
 	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
 	ErrorDetail     string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
@@ -289,7 +294,9 @@ type DataScanTask struct {
 	GroupColumnS    string  `gorm:"type:longtext;comment:source column used to group column information" json:"groupColumnS"`
 	SqlHintS        string  `gorm:"type:varchar(300);comment:source sql hint" json:"sqlHintS"`
 	Samplerate      string  `gorm:"type:varchar(100);not null;comment:source table samplerate" json:"samplerate"`
-	ChunkDetailS    string  `gorm:"type:varchar(500);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
+	ChunkID         string  `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk random id" json:"chunkID"`
+	ChunkDetailS    string  `gorm:"type:longtext;not null;comment:source table chunk detail" json:"chunkDetailS"`
+	ChunkDetailArgS string  `gorm:"type:longtext;comment:source table chunk detail args" json:"chunkDetailArgS"`
 	ConsistentReadS string  `gorm:"type:varchar(10);comment:source sql consistent read" json:"consistentReadS"`
 	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
 	ScanResult      string  `gorm:"type:longtext;not null;comment:task scan result" json:"scanResult"`

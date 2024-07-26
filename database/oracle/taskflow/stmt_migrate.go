@@ -202,7 +202,7 @@ func (stm *StmtMigrateTask) Start() error {
 					dt := j.(*task.DataMigrateTask)
 					errW := model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkDetailS: dt.ChunkDetailS},
+							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
 							map[string]interface{}{
 								"TaskStatus": constant.TaskDatabaseStatusRunning,
 							})
@@ -254,7 +254,7 @@ func (stm *StmtMigrateTask) Start() error {
 
 					errW = model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkDetailS: dt.ChunkDetailS},
+							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
 							map[string]interface{}{
 								"TaskStatus": constant.TaskDatabaseStatusSuccess,
 								"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
@@ -299,7 +299,7 @@ func (stm *StmtMigrateTask) Start() error {
 
 				errW := model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
 					_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-						&task.DataMigrateTask{TaskName: mt.TaskName, SchemaNameS: mt.SchemaNameS, TableNameS: mt.TableNameS, ChunkDetailS: mt.ChunkDetailS},
+						&task.DataMigrateTask{TaskName: mt.TaskName, SchemaNameS: mt.SchemaNameS, TableNameS: mt.TableNameS, ChunkID: mt.ChunkID},
 						map[string]interface{}{
 							"TaskStatus":  constant.TaskDatabaseStatusFailed,
 							"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
@@ -683,7 +683,9 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
 							SqlHintT:        stm.TaskParams.SqlHintT,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: "",
 							ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						})
@@ -770,7 +772,9 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 								ColumnDetailT:   attsRule.ColumnDetailT,
 								SqlHintS:        attsRule.SqlHintS,
 								SqlHintT:        stm.TaskParams.SqlHintT,
+								ChunkID:         uuid.New().String(),
 								ChunkDetailS:    encryptChunkS,
+								ChunkDetailArgS: "",
 								ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
 								TaskStatus:      constant.TaskDatabaseStatusWaiting,
 							})
@@ -810,13 +814,20 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 						zap.String("migrate_method", "statistic"))
 					var metas []*task.DataMigrateTask
 					for _, r := range upstreamBuckets {
-						toStringS, err := r.ToString()
+						toStringS, toStringSArg := r.ToString()
 						if err != nil {
 							return err
 						}
+						var argsS string
+						if toStringSArg != nil {
+							argsS, err = stringutil.MarshalJSON(toStringSArg)
+							if err != nil {
+								return err
+							}
+						}
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(toStringS, ` AND `, attsRule.WhereRange)
+							whereRange = stringutil.StringBuilder(`(`, toStringS, `) AND (`, attsRule.WhereRange, `)`)
 						default:
 							whereRange = toStringS
 						}
@@ -840,7 +851,9 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
 							SqlHintT:        stm.TaskParams.SqlHintT,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: argsS,
 							ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						})
@@ -909,7 +922,9 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        attsRule.SqlHintS,
 							SqlHintT:        stm.TaskParams.SqlHintT,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunkS,
+							ChunkDetailArgS: "",
 							ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						})
@@ -968,7 +983,9 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 						ColumnDetailT:   attsRule.ColumnDetailT,
 						SqlHintS:        attsRule.SqlHintS,
 						SqlHintT:        stm.TaskParams.SqlHintT,
+						ChunkID:         uuid.New().String(),
 						ChunkDetailS:    encryptChunkS,
+						ChunkDetailArgS: "",
 						ConsistentReadS: strconv.FormatBool(stm.TaskParams.EnableConsistentRead),
 						TaskStatus:      constant.TaskDatabaseStatusWaiting,
 					})

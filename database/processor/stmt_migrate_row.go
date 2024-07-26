@@ -117,9 +117,19 @@ func (r *StmtMigrateRow) MigrateRead() error {
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.GetDatabaseTableChunkData(execQuerySQL, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
+	var queryCondArgsS []interface{}
+	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
+		queryCondArgsS = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dmt.ChunkDetailArgS), &queryCondArgsS)
+		if err != nil {
+			return fmt.Errorf("the database target query args [%v] running failed: [%v]", r.Dmt.ChunkDetailArgS, err)
+		}
+	}
+
+	err = r.DatabaseS.GetDatabaseTableChunkData(execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
 	if err != nil {
-		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
+		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] args [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, queryCondArgsS, err)
 	}
 
 	endTime := time.Now()

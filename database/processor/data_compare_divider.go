@@ -423,11 +423,9 @@ func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, sche
 		return chunkRanges, nil
 	}
 
-	chunkConds, err := chunkRange.ToString()
-	if err != nil {
-		return nil, err
-	}
-	randomValueSli, err := database.GetDatabaseTableRandomValues(schemaName, tableName, cons.IndexColumn, chunkConds, divideCountCnt-1, cons.ColumnCollation)
+	chunkConds, chunkArgs := chunkRange.ToString()
+
+	randomValueSli, err := database.GetDatabaseTableRandomValues(schemaName, tableName, cons.IndexColumn, chunkConds, chunkArgs, divideCountCnt-1, cons.ColumnCollation)
 	if err != nil {
 		return nil, err
 	}

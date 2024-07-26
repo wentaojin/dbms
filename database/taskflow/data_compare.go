@@ -18,6 +18,7 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/wentaojin/dbms/database/processor"
 	"strconv"
 	"strings"
@@ -180,7 +181,7 @@ func (dmt *DataCompareTask) Start() error {
 					dt := j.(*task.DataCompareTask)
 					errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-							&task.DataCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkDetailS: dt.ChunkDetailS},
+							&task.DataCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
 							map[string]interface{}{
 								"TaskStatus": constant.TaskDatabaseStatusRunning,
 							})
@@ -265,7 +266,7 @@ func (dmt *DataCompareTask) Start() error {
 
 				errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
 					_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-						&task.DataCompareTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkDetailS: smt.ChunkDetailS},
+						&task.DataCompareTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
 						map[string]interface{}{
 							"TaskStatus":  constant.TaskDatabaseStatusFailed,
 							"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
@@ -701,12 +702,15 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							CompareMethod:   attsRule.CompareMethod,
 							ColumnDetailSO:  attsRule.ColumnDetailSO,
 							ColumnDetailS:   attsRule.ColumnDetailS,
+							ChunkID:         uuid.New().String(),
 							ColumnDetailTO:  attsRule.ColumnDetailTO,
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        dmt.TaskParams.SqlHintS,
 							SqlHintT:        dmt.TaskParams.SqlHintT,
 							ChunkDetailS:    encryptChunk,
+							ChunkDetailArgS: "",
 							ChunkDetailT:    encryptChunk,
+							ChunkDetailArgT: "",
 							ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						})
@@ -795,8 +799,11 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							ColumnDetailT:   attsRule.ColumnDetailT,
 							SqlHintS:        dmt.TaskParams.SqlHintS,
 							SqlHintT:        dmt.TaskParams.SqlHintT,
+							ChunkID:         uuid.New().String(),
 							ChunkDetailS:    encryptChunk,
+							ChunkDetailArgS: "",
 							ChunkDetailT:    encryptChunk,
+							ChunkDetailArgT: "",
 							ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
 						})
@@ -879,14 +886,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 
 				var metas []*task.DataCompareTask
 				for i, r := range upstreamBuckets {
-					toStringS, err := r.ToString()
-					if err != nil {
-						return err
-					}
-					toStringT, err := downstreamBuckets[i].ToString()
-					if err != nil {
-						return err
-					}
+					toStringS, toStringArgsS := r.ToString()
+					toStringT, toStringArgsT := downstreamBuckets[i].ToString()
 					encChunkS := snappy.Encode(nil, []byte(toStringS))
 					encChunkT := snappy.Encode(nil, []byte(toStringT))
 
@@ -898,6 +899,21 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					if err != nil {
 						return err
 					}
+
+					var argsS, argsT string
+					if toStringArgsS != nil {
+						argsS, err = stringutil.MarshalJSON(toStringArgsS)
+						if err != nil {
+							return err
+						}
+					}
+					if toStringArgsT != nil {
+						argsT, err = stringutil.MarshalJSON(toStringArgsT)
+						if err != nil {
+							return err
+						}
+					}
+
 					metas = append(metas, &task.DataCompareTask{
 						TaskName:        dmt.Task.TaskName,
 						SchemaNameS:     attsRule.SchemaNameS,
@@ -914,8 +930,11 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 						ColumnDetailT:   attsRule.ColumnDetailT,
 						SqlHintS:        dmt.TaskParams.SqlHintS,
 						SqlHintT:        dmt.TaskParams.SqlHintT,
+						ChunkID:         uuid.New().String(),
 						ChunkDetailS:    encryptChunkS,
+						ChunkDetailArgS: argsS,
 						ChunkDetailT:    encryptChunkT,
+						ChunkDetailArgT: argsT,
 						ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
 						TaskStatus:      constant.TaskDatabaseStatusWaiting,
 					})

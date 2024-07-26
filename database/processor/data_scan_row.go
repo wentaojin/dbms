@@ -142,9 +142,19 @@ FROM
 		return fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 	}
 
-	cols, resultS, err := r.DatabaseS.GeneralQuery(execQueryS)
+	var queryCondArgsS []interface{}
+	if strings.EqualFold(r.Dst.ChunkDetailArgS, "") {
+		queryCondArgsS = nil
+	} else {
+		err = stringutil.UnmarshalJSON([]byte(r.Dst.ChunkDetailArgS), &queryCondArgsS)
+		if err != nil {
+			return fmt.Errorf("the database target query args [%v] running failed: [%v]", r.Dst.ChunkDetailArgS, err)
+		}
+	}
+
+	cols, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS)
 	if err != nil {
-		return fmt.Errorf("the database source query sql [%v] running failed: [%v]", execQueryS, err)
+		return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 	}
 
 	var jsonStr string
@@ -194,7 +204,7 @@ FROM
 
 	errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {
 		_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
-			&task.DataScanTask{TaskName: r.TaskName, SchemaNameS: r.Dst.SchemaNameS, TableNameS: r.Dst.TableNameS, ChunkDetailS: r.Dst.ChunkDetailS},
+			&task.DataScanTask{TaskName: r.TaskName, SchemaNameS: r.Dst.SchemaNameS, TableNameS: r.Dst.TableNameS, ChunkID: r.Dst.ChunkID},
 			map[string]interface{}{
 				"TaskStatus": constant.TaskDatabaseStatusSuccess,
 				"ScanResult": jsonStr,
