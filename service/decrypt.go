@@ -31,6 +31,43 @@ import (
 	"strings"
 )
 
+type CompareDecrypt struct {
+	ChunkID      string `json:"chunkID"`
+	SchemaNameS  string `json:"schemaNameS"`
+	TableNameS   string `json:"tableNameS"`
+	SchemaNameT  string `json:"schemaNameT"`
+	TableNameT   string `json:"tableNameT"`
+	ChunkDetailS string `json:"chunkDetailS"`
+	ChunkArgsS   string `json:"chunkArgsS"`
+	ChunkDetailT string `json:"chunkDetailT"`
+	ChunkArgsT   string `json:"chunkArgsT"`
+	TaskStatus   string `json:"taskStatus"`
+}
+
+type MigrateDecrypt struct {
+	ChunkID       string `json:"chunkID"`
+	SchemaNameS   string `json:"schemaNameS"`
+	TableNameS    string `json:"tableNameS"`
+	SchemaNameT   string `json:"schemaNameT"`
+	TableNameT    string `json:"tableNameT"`
+	ChunkDetailS  string `json:"chunkDetailS"`
+	ChunkArgsS    string `json:"chunkArgsS"`
+	ColumnDetailS string `json:"columnDetailS"`
+	ColumnDetailT string `json:"columnDetailT"`
+	TaskStatus    string `json:"taskStatus"`
+}
+
+type ScanDecrypt struct {
+	ChunkID       string `json:"chunkID"`
+	SchemaNameS   string `json:"schemaNameS"`
+	TableNameS    string `json:"tableNameS"`
+	ColumnDetailS string `json:"columnDetailS"`
+	ChunkDetailS  string `json:"chunkDetailS"`
+	ChunkArgsS    string `json:"chunkArgsS"`
+	Samplerate    string `json:"samplerate"`
+	TaskStatus    string `json:"taskStatus"`
+}
+
 func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table string, chunk string, file *os.File) error {
 	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
 	if err != nil {
@@ -75,19 +112,9 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			return err
 		}
 
-		type CompareDecrypt struct {
-			ChunkID      string `json:"chunkID"`
-			SchemaNameS  string `json:"schemaNameS"`
-			TableNameS   string `json:"tableNameS"`
-			SchemaNameT  string `json:"schemaNameT"`
-			TableNameT   string `json:"tableNameT"`
-			ChunkDetailS string `json:"chunkDetailS"`
-			ChunkArgsS   string `json:"chunkArgsS"`
-			ChunkDetailT string `json:"chunkDetailT"`
-			ChunkArgsT   string `json:"chunkArgsT"`
-			TaskStatus   string `json:"taskStatus"`
-		}
-		var clusterTable []CompareDecrypt
+		var (
+			clusterTable []CompareDecrypt
+		)
 
 		for _, v := range compareTasks {
 			desChunkDetailS, err := stringutil.Decrypt(v.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
@@ -162,19 +189,6 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			return err
 		}
 
-		type MigrateDecrypt struct {
-			ChunkID       string `json:"chunkID"`
-			SchemaNameS   string `json:"schemaNameS"`
-			TableNameS    string `json:"tableNameS"`
-			SchemaNameT   string `json:"schemaNameT"`
-			TableNameT    string `json:"tableNameT"`
-			ChunkDetailS  string `json:"chunkDetailS"`
-			ChunkArgsS    string `json:"chunkArgsS"`
-			ColumnDetailS string `json:"columnDetailS"`
-			ColumnDetailT string `json:"columnDetailT"`
-			TaskStatus    string `json:"taskStatus"`
-		}
-
 		var clusterTable []MigrateDecrypt
 
 		for _, v := range migrateTasks {
@@ -240,16 +254,6 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			return err
 		}
 
-		type ScanDecrypt struct {
-			ChunkID       string `json:"chunkID"`
-			SchemaNameS   string `json:"schemaNameS"`
-			TableNameS    string `json:"tableNameS"`
-			ColumnDetailS string `json:"columnDetailS"`
-			ChunkDetailS  string `json:"chunkDetailS"`
-			ChunkArgsS    string `json:"chunkArgsS"`
-			Samplerate    string `json:"samplerate"`
-			TaskStatus    string `json:"taskStatus"`
-		}
 		var clusterTable []ScanDecrypt
 
 		for _, v := range compareTasks {

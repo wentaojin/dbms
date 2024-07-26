@@ -1,0 +1,79 @@
+task-name = "compare-task00"
+datasource-name-s = "test08"
+datasource-name-t = "o11024"
+comment = "测试数据源"
+
+[case-field-rule]
+# 控制配置文件内所有 *-s 参数配置值以及 column-route-rules 中的 key 值
+# 1，参数值是 0 代表以当前配置文件为准，与源端对比
+# 2，参数值是 1 代表统一转换值为小写，与源端对比
+# 3，参数值是 2 代表统一转换值为大写，与源端对比
+case-field-rule-s = "0"
+# 控制配置文件 *-t 以及 column-route-rules 中的 value 值
+# 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准
+# 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写
+# 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写
+case-field-rule-t = "2"
+
+[schema-route-rule]
+schema-name-s = "ucccis"
+schema-name-t = "SCOTT"
+include-table-s = ["t3"]
+#include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
+#include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
+exclude-table-s = []
+
+[[schema-route-rule.table-route-rules]]
+table-name-s = ""
+table-name-t = ""
+column-route-rules = {}
+
+[[data-compare-rules]]
+table-name-s = ""
+compare-condition-field = ""
+# 指定检查数据范围或者查询条件
+# compare-condition-range 优先级高于 compare-condition-field
+compare-condition-range = ""
+# 忽略对比字段列
+ignore-select-fields = []
+# 禁止条件查询选择字段
+# compare-condition-field 优先级高于 ignore-condition-fields
+ignore-condition-fields = []
+
+# 表串行运行，表内并发
+[data-compare-param]
+# 初始化表任务并发数
+table-thread = 100
+# 数据写入批量大小
+batch-size = 50
+# 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上下游表数据，可动态变更
+sql-thread = 16
+# 数据校验写 meta 数据库并发数
+write-thread = 4
+# 数据对比范围 chunk 行数
+chunk-size = 10000
+# 禁止条件查询选择字段
+ignore-condition-fields = []
+# 指定分片 chunk sql 查询 hint
+sql-hint-s = ""
+# 指定分片 chunk sql 查询 Hint
+sql-hint-t = "/*+ PARALLEL(8) */"
+only-compare-row = false
+# calltimeout，单位：秒
+call-timeout = 36000
+enable-checkpoint = true
+# only upstream oracle 参数生效
+# 是否一致性读 ORA（自动获取上游当前的 SCN 一致性读）
+enable-consistent-read = false
+# 一致性读 point（手工配置上下游一致性 point）
+# upsream oracle，only enable-consistent-read = false And consistent-read-point-s 参数生效，如果是 enable-consistent-read = true，则自动获取上游当前的 SCN 为准
+# upsream non oracle and non mysql，consistent-read-point-s 配置参数生效， mysql 数据库不支持指定配置，自动忽略配置，tidb 数据库支持
+consistent-read-point-s = ""
+# consistent-read-point-t 参数 mysql 数据库不支持指定配置，自动忽略配置，tidb 数据库支持
+consistent-read-point-t = ""
+# 修复语句产生流向 upstream or downstream，默认 downstream
+# upstream 产生上游 datasource-name-s 修复语句
+# downstream 产生下游 datasource-name-t 修复语句
+repair-stmt-flow = "upstream"
+# 开启代表上下游数据库自动进行 collation 配置，关闭代表上下游数据库不进行 collation 配置
+enable-collation-setting = false

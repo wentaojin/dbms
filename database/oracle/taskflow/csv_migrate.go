@@ -849,7 +849,7 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 						}
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(`(`, toStringS, `) AND (`, attsRule.WhereRange, `)`)
+							whereRange = stringutil.StringBuilder(`((`, toStringS, `) AND (`, attsRule.WhereRange, `))`)
 						default:
 							whereRange = toStringS
 						}

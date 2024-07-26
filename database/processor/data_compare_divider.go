@@ -120,21 +120,69 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 		latestCount              int64
 		err                      error
 	)
-	firstBucket := 0
+
+	// `bucketID` is the bucket id of one chunk.
+	bucketID := 0
 
 	halfChunkSize := chunkSize >> 1
 	// `firstBucket` is the first bucket of one chunk.
-	for i := firstBucket; i < len(cons.Buckets); i++ {
+	for i := bucketID; i < len(cons.Buckets); i++ {
 		count := cons.Buckets[i].Count - latestCount
 		if count < chunkSize {
 			// merge more buckets into one chunk
+			logger.Info("divide database bucket value",
+				zap.String("schema_name_s", schemaName),
+				zap.String("table_name_s", tableName),
+				zap.Int("current_bucket_id", bucketID),
+				zap.Int64("bucket_counts", count),
+				zap.Int64("chunk_size", chunkSize),
+				zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
+				zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+				zap.Any("new_lower_values", lowerValues),
+				zap.Any("new_upper_values", upperValues),
+				zap.String("chunk_action", "skip"))
 			continue
+		}
+
+		// [a,b]
+		// the only first bucket, <= a
+		if i == 0 {
+			chunkRange := structure.NewChunkRange(dbTypeS)
+			for j, columnName := range cons.IndexColumn {
+				err = chunkRange.Update(columnName, cons.ColumnCollation[j], cons.ColumnDatatype[j], cons.DatetimePrecision[j], "", cons.Buckets[i].LowerBound, false, true)
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+			chunkRanges = append(chunkRanges, chunkRange)
+			logger.Debug("divide database bucket value",
+				zap.String("schema_name_s", schemaName),
+				zap.String("table_name_s", tableName),
+				zap.Int("current_bucket_id", bucketID),
+				zap.Int64("bucket_counts", count),
+				zap.Int64("chunk_size", chunkSize),
+				zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
+				zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+				zap.Any("new_lower_values", lowerValues),
+				zap.Any("new_upper_values", upperValues),
+				zap.Any("chunk_ranges", chunkRange),
+				zap.String("chunk_action", "first"))
 		}
 
 		upperValues, err = ExtractDatabaseTableStatisticsValuesFromBuckets(dbTypeS, cons.Buckets[i].UpperBound, cons.IndexColumn)
 		if err != nil {
 			return nil, nil, err
 		}
+
+		logger.Debug("divide database bucket value",
+			zap.String("schema_name_s", schemaName),
+			zap.String("table_name_s", tableName),
+			zap.Int("current_bucket_id", bucketID),
+			zap.Int64("bucket_counts", count),
+			zap.Int64("chunk_size", chunkSize),
+			zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
+			zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+			zap.String("chunk_action", "divide"))
 
 		chunkRange := structure.NewChunkRange(dbTypeS)
 		for j, columnName := range cons.IndexColumn {
@@ -152,9 +200,9 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 		}
 
 		// count >= chunkSize
-		if i == firstBucket {
+		if i == bucketID {
 			chunkCnt := int((count + halfChunkSize) / chunkSize)
-			buckets, err := DivideDatabaseTableColumnStatisticsBucket(database, schemaName, tableName, cons, chunkRange, chunkCnt)
+			buckets, err := DivideDatabaseTableColumnStatisticsBucket(dbTypeS, database, schemaName, tableName, bucketID, cons, chunkRange, chunkCnt)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -163,16 +211,19 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 			logger.Debug("divide database bucket value",
 				zap.String("schema_name_s", schemaName),
 				zap.String("table_name_s", tableName),
-				zap.Int("bucket_id", i),
-				zap.Int("bucket_first_value", firstBucket),
+				zap.Int("current_bucket_id", bucketID),
 				zap.Int64("bucket_counts", count),
 				zap.Int64("chunk_size", chunkSize),
-				zap.Any("lower_values", lowerValues),
-				zap.Any("upper_values", upperValues),
-				zap.Any("chunk_ranges", chunkRange))
+				zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
+				zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+				zap.Any("new_lower_values", lowerValues),
+				zap.Any("new_upper_values", upperValues),
+				zap.Any("chunk_ranges", chunkRange),
+				zap.String("chunk_action", "random"))
 		} else {
+			// merge bucket
 			// use multi-buckets so chunkCnt = 1
-			buckets, err := DivideDatabaseTableColumnStatisticsBucket(database, schemaName, tableName, cons, chunkRange, 1)
+			buckets, err := DivideDatabaseTableColumnStatisticsBucket(dbTypeS, database, schemaName, tableName, bucketID, cons, chunkRange, 1)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -180,18 +231,20 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 			logger.Debug("divide database bucket value",
 				zap.String("schema_name_s", schemaName),
 				zap.String("table_name_s", tableName),
-				zap.Int("bucket_id", i),
-				zap.Int("bucket_first_value", firstBucket),
+				zap.Int("current_bucket_id", bucketID),
 				zap.Int64("bucket_counts", count),
 				zap.Int64("chunk_size", chunkSize),
-				zap.Any("lower_values", lowerValues),
-				zap.Any("upper_values", upperValues),
-				zap.Any("chunk_ranges", chunkRange))
+				zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
+				zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+				zap.Any("new_lower_values", lowerValues),
+				zap.Any("new_upper_values", upperValues),
+				zap.Any("chunk_ranges", chunkRange),
+				zap.String("chunk_action", "random"))
 		}
 
 		latestCount = cons.Buckets[i].Count
 		lowerValues = upperValues
-		firstBucket = i + 1
+		bucketID = i + 1
 	}
 
 	// merge the rest keys into one chunk
@@ -206,7 +259,7 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 	}
 	// When the table is much less than chunkSize,
 	// it will return a chunk include the whole table.
-	buckets, err := DivideDatabaseTableColumnStatisticsBucket(database, schemaName, tableName, cons, chunkRange, 1)
+	buckets, err := DivideDatabaseTableColumnStatisticsBucket(dbTypeS, database, schemaName, tableName, len(cons.Buckets)+1, cons, chunkRange, 1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -215,11 +268,12 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 	logger.Debug("divide database bucket value",
 		zap.String("schema_name_s", schemaName),
 		zap.String("table_name_s", tableName),
-		zap.String("bucket_id", "merge"),
+		zap.Int("last_bucket_id", bucketID),
 		zap.Int64("chunk_size", chunkSize),
-		zap.Any("lower_values", lowerValues),
-		zap.Any("upper_values", upperValues),
-		zap.Any("chunk_ranges", chunkRange))
+		zap.Any("new_lower_values", lowerValues),
+		zap.Any("new_upper_values", upperValues),
+		zap.Any("chunk_ranges", chunkRange),
+		zap.String("chunk_action", "merge"))
 	return cons, chunkRanges, nil
 }
 
@@ -415,7 +469,7 @@ func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString s
 
 // DivideDatabaseTableColumnStatisticsBucket splits a chunk to multiple chunks by random
 // Notice: If the `count <= 1`, it will skip splitting and return `chunk` as a slice directly.
-func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, schemaName, tableName string, cons *structure.HighestBucket, chunkRange *structure.Range, divideCountCnt int) ([]*structure.Range, error) {
+func DivideDatabaseTableColumnStatisticsBucket(dbType string, database database.IDatabase, schemaName, tableName string, bucketID int, cons *structure.HighestBucket, chunkRange *structure.Range, divideCountCnt int) ([]*structure.Range, error) {
 	var chunkRanges []*structure.Range
 
 	if divideCountCnt <= 1 {
@@ -430,10 +484,10 @@ func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, sche
 		return nil, err
 	}
 
-	logger.Debug("divide database bucket value by random", zap.Stringer("chunk", chunkRange), zap.Int("random values num", len(randomValueSli)))
+	logger.Debug("divide database bucket value by random", zap.Stringer("chunk", chunkRange), zap.Int("random values num", len(randomValueSli)), zap.Any("random values", randomValueSli))
 
 	for i := 0; i <= len(randomValueSli); i++ {
-		newChunk := chunkRange.Copy()
+		newChunk := structure.NewChunkRange(dbType)
 
 		for j, columnName := range cons.IndexColumn {
 			if i == 0 {
@@ -446,7 +500,7 @@ func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, sche
 					cons.ColumnCollation[j],
 					cons.ColumnDatatype[j],
 					cons.DatetimePrecision[j],
-					"", randomValueSli[i][j], false, true)
+					cons.Buckets[bucketID].LowerBound, randomValueSli[i][j], true, true)
 				if err != nil {
 					return chunkRanges, err
 				}
@@ -456,7 +510,7 @@ func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, sche
 					cons.ColumnCollation[j],
 					cons.ColumnDatatype[j],
 					cons.DatetimePrecision[j],
-					randomValueSli[i-1][j], "", true, false)
+					randomValueSli[i-1][j], cons.Buckets[bucketID].UpperBound, true, true)
 				if err != nil {
 					return chunkRanges, err
 				}
@@ -476,7 +530,10 @@ func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, sche
 		chunkRanges = append(chunkRanges, newChunk)
 	}
 
-	logger.Debug("divide database bucket value by random", zap.Stringer("origin chunk range", chunkRange), zap.Int("divide chunk range num", len(chunkRanges)))
+	logger.Debug("divide database bucket value by random",
+		zap.Int("divide chunk range num", len(chunkRanges)),
+		zap.Stringer("origin chunk range", chunkRange),
+		zap.Any("new chunk range", chunkRanges))
 
 	return chunkRanges, nil
 }

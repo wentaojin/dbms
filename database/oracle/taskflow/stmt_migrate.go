@@ -827,7 +827,7 @@ func (stm *StmtMigrateTask) initStmtMigrateTask(databaseS database.IDatabase, db
 						}
 						switch {
 						case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
-							whereRange = stringutil.StringBuilder(`(`, toStringS, `) AND (`, attsRule.WhereRange, `)`)
+							whereRange = stringutil.StringBuilder(`((`, toStringS, `) AND (`, attsRule.WhereRange, `))`)
 						default:
 							whereRange = toStringS
 						}
