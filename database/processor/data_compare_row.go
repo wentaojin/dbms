@@ -212,11 +212,26 @@ func (r *DataCompareRow) CompareRows() error {
 		case <-ctx.Done():
 			return nil
 		default:
+			streamTime := time.Now()
 			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS...)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
 			resultSM <- resultS[0]["ROWSCOUNT"]
+
+			logger.Info("data compare task chunk rows compare sql",
+				zap.String("task_name", r.Dmt.TaskName),
+				zap.String("task_mode", r.TaskMode),
+				zap.String("task_flow", r.TaskFlow),
+				zap.String("schema_name_s", r.Dmt.SchemaNameS),
+				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("schema_name_t", r.Dmt.SchemaNameT),
+				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("chunk_detail_t", desChunkDetailT),
+				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("upstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -226,11 +241,25 @@ func (r *DataCompareRow) CompareRows() error {
 		case <-ctx.Done():
 			return nil
 		default:
+			streamTime := time.Now()
 			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT...)
 			if err != nil {
 				return fmt.Errorf("the database source target sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			resultTM <- resultT[0]["ROWSCOUNT"]
+			logger.Info("data compare task chunk rows compare sql",
+				zap.String("task_name", r.Dmt.TaskName),
+				zap.String("task_mode", r.TaskMode),
+				zap.String("task_flow", r.TaskFlow),
+				zap.String("schema_name_s", r.Dmt.SchemaNameS),
+				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("schema_name_t", r.Dmt.SchemaNameT),
+				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("chunk_detail_t", desChunkDetailT),
+				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("downstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -570,11 +599,25 @@ FROM
 		case <-ctx.Done():
 			return nil
 		default:
+			streamTime := time.Now()
 			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS...)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
 			resultSM <- resultS[0]["ROWSCHECKSUM"]
+			logger.Info("data compare task chunk md5 compare sql",
+				zap.String("task_name", r.Dmt.TaskName),
+				zap.String("task_mode", r.TaskMode),
+				zap.String("task_flow", r.TaskFlow),
+				zap.String("schema_name_s", r.Dmt.SchemaNameS),
+				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("schema_name_t", r.Dmt.SchemaNameT),
+				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("chunk_detail_t", desChunkDetailT),
+				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("upstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -584,11 +627,25 @@ FROM
 		case <-ctx.Done():
 			return nil
 		default:
+			streamTime := time.Now()
 			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT...)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			resultTM <- resultT[0]["ROWSCHECKSUM"]
+			logger.Info("data compare task chunk md5 compare sql",
+				zap.String("task_name", r.Dmt.TaskName),
+				zap.String("task_mode", r.TaskMode),
+				zap.String("task_flow", r.TaskFlow),
+				zap.String("schema_name_s", r.Dmt.SchemaNameS),
+				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("schema_name_t", r.Dmt.SchemaNameT),
+				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("chunk_detail_t", desChunkDetailT),
+				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("upstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -843,6 +900,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case <-ctx.Done():
 			return nil
 		default:
+			streamTime := time.Now()
 			columnS, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, queryCondArgsS)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] comparing failed: [%v]", execQueryS, queryCondArgsS, err)
@@ -850,6 +908,20 @@ func (r *DataCompareRow) CompareCRC32() error {
 			columnNameSC <- columnS
 			crc32ValSC <- crc32ValS
 			columnDataSMC <- columnDataS
+
+			logger.Info("data compare task chunk crc32 compare details sql",
+				zap.String("task_name", r.Dmt.TaskName),
+				zap.String("task_mode", r.TaskMode),
+				zap.String("task_flow", r.TaskFlow),
+				zap.String("schema_name_s", r.Dmt.SchemaNameS),
+				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("schema_name_t", r.Dmt.SchemaNameT),
+				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("chunk_detail_t", desChunkDetailT),
+				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("upstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -859,6 +931,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case <-ctx.Done():
 			return nil
 		default:
+			streamTime := time.Now()
 			columnT, crc32ValT, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, queryCondArgsT)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] comparing failed: [%v]", execQueryT, queryCondArgsT, err)
@@ -866,6 +939,19 @@ func (r *DataCompareRow) CompareCRC32() error {
 			columnNameTC <- columnT
 			crc32ValTC <- crc32ValT
 			columnDataTMC <- columnDataT
+			logger.Info("data compare task chunk crc32 compare details sql",
+				zap.String("task_name", r.Dmt.TaskName),
+				zap.String("task_mode", r.TaskMode),
+				zap.String("task_flow", r.TaskFlow),
+				zap.String("schema_name_s", r.Dmt.SchemaNameS),
+				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("schema_name_t", r.Dmt.SchemaNameT),
+				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("chunk_detail_t", desChunkDetailT),
+				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("downstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -953,7 +1039,22 @@ func (r *DataCompareRow) CompareCRC32() error {
 		zap.Uint32("table_crc32_t", crc32VT),
 		zap.String("cost", endTime.Sub(startTime).String()))
 
+	compareTime := time.Now()
 	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
+
+	logger.Info("data compare task chunk crc32 compare details compare",
+		zap.String("task_name", r.Dmt.TaskName),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
+		zap.String("schema_name_s", r.Dmt.SchemaNameS),
+		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("schema_name_t", r.Dmt.SchemaNameT),
+		zap.String("table_name_t", r.Dmt.TableNameT),
+		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+		zap.String("compare_row_time", time.Now().Sub(compareTime).String()))
 
 	var (
 		addDetails []string
@@ -1302,12 +1403,26 @@ func (r *DataCompareRow) compareMd5Row() error {
 		case <-ctx.Done():
 			return nil
 		default:
+			streamTime := time.Now()
 			columnS, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, queryCondArgsS)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] comparing failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
 			columnNameSC <- columnS
 			columnDataSMC <- columnDataS
+			logger.Info("data compare task chunk md5 compare details compare rows",
+				zap.String("task_name", r.Dmt.TaskName),
+				zap.String("task_mode", r.TaskMode),
+				zap.String("task_flow", r.TaskFlow),
+				zap.String("schema_name_s", r.Dmt.SchemaNameS),
+				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("schema_name_t", r.Dmt.SchemaNameT),
+				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("chunk_detail_t", desChunkDetailT),
+				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("upstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -1317,12 +1432,26 @@ func (r *DataCompareRow) compareMd5Row() error {
 		case <-ctx.Done():
 			return nil
 		default:
+			streamTime := time.Now()
 			columnT, _, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, queryCondArgsT)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] comparing failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			columnNameTC <- columnT
 			columnDataTMC <- columnDataT
+			logger.Info("data compare task chunk md5 compare details compare rows",
+				zap.String("task_name", r.Dmt.TaskName),
+				zap.String("task_mode", r.TaskMode),
+				zap.String("task_flow", r.TaskFlow),
+				zap.String("schema_name_s", r.Dmt.SchemaNameS),
+				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("schema_name_t", r.Dmt.SchemaNameT),
+				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("chunk_detail_t", desChunkDetailT),
+				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("downstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -1337,7 +1466,21 @@ func (r *DataCompareRow) compareMd5Row() error {
 	columnDataTM := <-columnDataTMC
 	columnNameT := <-columnNameTC
 
+	compareTime := time.Now()
 	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
+	logger.Info("data compare task chunk md5 compare details compare",
+		zap.String("task_name", r.Dmt.TaskName),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
+		zap.String("schema_name_s", r.Dmt.SchemaNameS),
+		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("schema_name_t", r.Dmt.SchemaNameT),
+		zap.String("table_name_t", r.Dmt.TableNameT),
+		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+		zap.String("compare_row_time", time.Now().Sub(compareTime).String()))
 
 	var (
 		addDetails []string

@@ -116,6 +116,7 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 			clusterTable []CompareDecrypt
 		)
 
+		//var totalCounts int64
 		for _, v := range compareTasks {
 			desChunkDetailS, err := stringutil.Decrypt(v.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
@@ -163,8 +164,37 @@ func Decrypt(ctx context.Context, serverAddr, taskName, schema string, table str
 					ChunkArgsT:   v.ChunkDetailArgT,
 					TaskStatus:   v.TaskStatus,
 				})
+				// TODO: testing counts
+				//datasource, err := model.GetIDatasourceRW().GetDatasource(ctx, taskinfo.DatasourceNameS)
+				//if err != nil {
+				//	return err
+				//}
+				//newDatabase, err := database.NewDatabase(ctx, datasource, schema, constant.ServiceDatabaseSqlQueryCallTimeout)
+				//if err != nil {
+				//	return err
+				//}
+				//var args []interface{}
+				//if strings.EqualFold(v.ChunkDetailArgS, "") {
+				//	args = nil
+				//} else {
+				//	err = stringutil.UnmarshalJSON([]byte(v.ChunkDetailArgS), &args)
+				//	if err != nil {
+				//		return err
+				//	}
+				//}
+				//_, res, err := newDatabase.GeneralQuery(fmt.Sprintf("SELECT COUNT(1) AS CT FROM %s.%s WHERE %v", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
+				//if err != nil {
+				//	return err
+				//}
+				//size, err := stringutil.StrconvIntBitSize(res[0]["CT"], 64)
+				//if err != nil {
+				//	return err
+				//}
+				//totalCounts += size
+				//fmt.Printf("chunkID [%v] Counts [%v]\n", v.ChunkID, res[0]["CT"])
 			}
 		}
+		//fmt.Printf("Total Counts [%v]\n", totalCounts)
 
 		bf := bytes.NewBuffer([]byte{})
 		jsonEncoder := json.NewEncoder(bf)

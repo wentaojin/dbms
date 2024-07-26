@@ -480,12 +480,13 @@ func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, sche
 					return chunkRanges, err
 				}
 			} else if i == len(randomValueSli) {
+				// bucket upper newChunk.Bounds[j].Upper
 				err = newChunk.Update(
 					columnName,
 					cons.ColumnCollation[j],
 					cons.ColumnDatatype[j],
 					cons.DatetimePrecision[j],
-					randomValueSli[i-1][j], "", true, false)
+					randomValueSli[i-1][j], newChunk.Bounds[j].Upper, true, true)
 				if err != nil {
 					return chunkRanges, err
 				}
