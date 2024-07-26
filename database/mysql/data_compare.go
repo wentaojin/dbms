@@ -94,15 +94,12 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 		if pkValus, ok := consColumns["PRIMARY"]; ok {
 			pkSlis := stringutil.StringSplit(pkValus, constant.StringSeparatorComplexSymbol)
 			if len(pkSlis) == 1 {
-				columnInfo, err := d.GetDatabaseTableColumnInfo(schemaNameS, tableNameS)
+				columnInfo, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, []string{pkSlis[0]})
 				if err != nil {
 					return nil, err
 				}
-				for _, column := range columnInfo {
-					if strings.EqualFold(pkSlis[0], column["Column_name"]) && stringutil.IsContainedString(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(column["DATA_TYPE"])) {
-						pkIntegerColumnName = pkSlis[0]
-						break
-					}
+				if stringutil.IsContainedStringIgnoreCase(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(columnInfo[0]["DATA_TYPE"])) {
+					pkIntegerColumnName = pkSlis[0]
 				}
 			}
 		}
@@ -162,18 +159,17 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS s
 		if pkValus, ok := consColumns["PRIMARY"]; ok {
 			pkSlis := stringutil.StringSplit(pkValus, constant.StringSeparatorComplexSymbol)
 			if len(pkSlis) == 1 {
-				columnInfo, err := d.GetDatabaseTableColumnInfo(schemaNameS, tableNameS)
+				columnInfo, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, []string{pkSlis[0]})
 				if err != nil {
 					return nil, err
 				}
-				for _, column := range columnInfo {
-					if strings.EqualFold(pkSlis[0], column["Column_name"]) && stringutil.IsContainedString(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(column["DATA_TYPE"])) {
-						pkIntegerColumnName = pkSlis[0]
-						break
-					}
+
+				if stringutil.IsContainedStringIgnoreCase(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(columnInfo[0]["DATA_TYPE"])) {
+					pkIntegerColumnName = pkSlis[0]
 				}
 			}
 		}
+
 		for _, r := range res {
 			disCount, err := strconv.ParseInt(r["Distinct_count"], 10, 64)
 			if err != nil {
@@ -318,6 +314,7 @@ func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, 
 	*/
 	if conditions == "" {
 		conditions = "1 = 1"
+		condArgs = nil
 	}
 
 	columnNames := make([]string, 0, len(columns))

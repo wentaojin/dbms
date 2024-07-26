@@ -270,6 +270,7 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, condArgs []interface{}, limit int, collations []string) ([][]string, error) {
 	if conditions == "" {
 		conditions = "1 = 1"
+		condArgs = nil
 	}
 
 	columnNames := make([]string, 0, len(columns))

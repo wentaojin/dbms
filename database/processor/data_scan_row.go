@@ -137,6 +137,7 @@ FROM
 			zap.String("schema_name_s", r.Dst.SchemaNameS),
 			zap.String("table_name_s", r.Dst.TableNameS),
 			zap.String("chunk_detail_s", desChunkDetailS),
+			zap.Any("chunk_detail_args_s", r.Dst.ChunkDetailArgS),
 			zap.String("startTime", startTime.String()))
 	default:
 		return fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
@@ -152,7 +153,7 @@ FROM
 		}
 	}
 
-	cols, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS)
+	cols, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS...)
 	if err != nil {
 		return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 	}
@@ -200,6 +201,7 @@ FROM
 		zap.String("schema_name_s", r.Dst.SchemaNameS),
 		zap.String("table_name_s", r.Dst.TableNameS),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dst.ChunkDetailArgS),
 		zap.String("cost", endTime.Sub(startTime).String()))
 
 	errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {

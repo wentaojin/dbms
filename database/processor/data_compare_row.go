@@ -177,9 +177,11 @@ func (r *DataCompareRow) CompareRows() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("startTime", startTime.String()))
 
 	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
@@ -210,7 +212,7 @@ func (r *DataCompareRow) CompareRows() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS)
+			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS...)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
@@ -224,7 +226,7 @@ func (r *DataCompareRow) CompareRows() error {
 		case <-ctx.Done():
 			return nil
 		default:
-			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT)
+			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT...)
 			if err != nil {
 				return fmt.Errorf("the database source target sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
@@ -260,9 +262,11 @@ func (r *DataCompareRow) CompareRows() error {
 			zap.String("schema_name_s", r.Dmt.SchemaNameS),
 			zap.String("table_name_s", r.Dmt.TableNameS),
 			zap.String("chunk_detail_s", desChunkDetailS),
+			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 			zap.String("schema_name_t", r.Dmt.SchemaNameT),
 			zap.String("table_name_t", r.Dmt.TableNameT),
 			zap.String("chunk_detail_t", desChunkDetailT),
+			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 			zap.String("compare_method", r.Dmt.CompareMethod),
 			zap.String("table_rows_s", resultStrS),
 			zap.String("table_rows_t", resultStrT),
@@ -309,9 +313,11 @@ func (r *DataCompareRow) CompareRows() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("compare_method", r.Dmt.CompareMethod),
 		zap.String("table_rows_s", resultStrS),
 		zap.String("table_rows_t", resultStrT),
@@ -530,9 +536,11 @@ FROM
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("startTime", startTime.String()))
 	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
 		queryCondArgsS = nil
@@ -562,7 +570,7 @@ FROM
 		case <-ctx.Done():
 			return nil
 		default:
-			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS)
+			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS...)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
@@ -576,7 +584,7 @@ FROM
 		case <-ctx.Done():
 			return nil
 		default:
-			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT)
+			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT...)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
@@ -611,9 +619,11 @@ FROM
 			zap.String("schema_name_s", r.Dmt.SchemaNameS),
 			zap.String("table_name_s", r.Dmt.TableNameS),
 			zap.String("chunk_detail_s", desChunkDetailS),
+			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 			zap.String("schema_name_t", r.Dmt.SchemaNameT),
 			zap.String("table_name_t", r.Dmt.TableNameT),
 			zap.String("chunk_detail_t", desChunkDetailT),
+			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 			zap.String("compare_method", r.Dmt.CompareMethod),
 			zap.String("table_md5_s", resultStrS),
 			zap.String("table_md5_t", resultStrT),
@@ -660,9 +670,11 @@ FROM
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("compare_method", r.Dmt.CompareMethod),
 		zap.String("table_md5_s", resultStrS),
 		zap.String("table_md5_t", resultStrT),
@@ -793,7 +805,9 @@ func (r *DataCompareRow) CompareCRC32() error {
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("startTime", startTime.String()))
 
 	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
@@ -878,9 +892,11 @@ func (r *DataCompareRow) CompareCRC32() error {
 			zap.String("schema_name_s", r.Dmt.SchemaNameS),
 			zap.String("table_name_s", r.Dmt.TableNameS),
 			zap.String("chunk_detail_s", desChunkDetailS),
+			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 			zap.String("schema_name_t", r.Dmt.SchemaNameT),
 			zap.String("table_name_t", r.Dmt.TableNameT),
 			zap.String("chunk_detail_t", desChunkDetailT),
+			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 			zap.String("compare_method", r.Dmt.CompareMethod),
 			zap.Uint32("table_crc32_s", crc32VS),
 			zap.Uint32("table_crc32_t", crc32VT),
@@ -927,9 +943,11 @@ func (r *DataCompareRow) CompareCRC32() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("compare_method", r.Dmt.CompareMethod),
 		zap.Uint32("table_crc32_s", crc32VS),
 		zap.Uint32("table_crc32_t", crc32VT),
@@ -1121,9 +1139,11 @@ func (r *DataCompareRow) CompareCRC32() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
 }
@@ -1244,9 +1264,11 @@ func (r *DataCompareRow) compareMd5Row() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("startTime", startTime.String()))
 
 	if strings.EqualFold(r.Dmt.ChunkDetailArgS, "") {
@@ -1504,7 +1526,9 @@ func (r *DataCompareRow) compareMd5Row() error {
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
 }

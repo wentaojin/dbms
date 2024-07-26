@@ -113,6 +113,7 @@ func (r *StmtMigrateRow) MigrateRead() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", chunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("startTime", startTime.String()))
@@ -140,6 +141,7 @@ func (r *StmtMigrateRow) MigrateRead() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", chunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("origin_sql_s", originQuerySQL),
 		zap.String("cost", endTime.Sub(startTime).String()))
@@ -173,6 +175,7 @@ func (r *StmtMigrateRow) MigrateApply() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", chunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("startTime", startTime.String()))
 
 	columnDetailSCounts := len(stringutil.StringSplit(r.Dmt.ColumnDetailO, constant.StringSeparatorComma))
@@ -218,6 +221,7 @@ func (r *StmtMigrateRow) MigrateApply() error {
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
 		zap.String("chunk_detail_s", chunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
 }

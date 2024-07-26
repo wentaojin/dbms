@@ -51,7 +51,7 @@ sql-thread = 16
 # 数据校验写 meta 数据库并发数
 write-thread = 4
 # 数据对比范围 chunk 行数
-chunk-size = 5000
+chunk-size = 500
 # 禁止条件查询选择字段
 ignore-condition-fields = []
 # 指定分片 chunk sql 查询 hint
