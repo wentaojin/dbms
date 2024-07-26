@@ -18,7 +18,7 @@ case-field-rule-t = "2"
 [schema-route-rule]
 schema-name-s = "ucccis"
 schema-name-t = "SCOTT"
-include-table-s = ["t3"]
+include-table-s = ["t4"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []

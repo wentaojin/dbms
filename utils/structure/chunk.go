@@ -346,19 +346,15 @@ func (rg *Range) ToString() (string, []interface{}) {
 }
 
 func (rg *Range) Update(columnName, collation, datatype string, datetimePrecision string, lower, upper string, updateLower, updateUpper bool) error {
-	var (
-		lowerS string
-		upperS string
-	)
 
 	if offset, ok := rg.BoundOffset[columnName]; ok {
 		// update the bound
 		if updateLower {
-			rg.Bounds[offset].Lower = lowerS
+			rg.Bounds[offset].Lower = lower
 			rg.Bounds[offset].HasLower = true
 		}
 		if updateUpper {
-			rg.Bounds[offset].Upper = upperS
+			rg.Bounds[offset].Upper = upper
 			rg.Bounds[offset].HasUpper = true
 		}
 	}
