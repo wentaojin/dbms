@@ -315,13 +315,14 @@ func (r *DataCompareRow) CompareRows() error {
 				TaskName:    r.Dmt.TaskName,
 				SchemaNameS: r.Dmt.SchemaNameS,
 				TableNameS:  r.Dmt.TableNameS,
-				LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+				LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk_id [%s] chunk [%s] success",
 					stringutil.CurrentTimeFormatString(),
 					stringutil.StringLower(constant.TaskModeDataCompare),
 					r.Dmt.TaskName,
 					r.TaskFlow,
 					r.Dmt.SchemaNameS,
 					r.Dmt.TableNameS,
+					r.Dmt.ChunkID,
 					r.Dmt.ChunkDetailS),
 			})
 			if err != nil {
@@ -366,13 +367,14 @@ func (r *DataCompareRow) CompareRows() error {
 			TaskName:    r.Dmt.TaskName,
 			SchemaNameS: r.Dmt.SchemaNameS,
 			TableNameS:  r.Dmt.TableNameS,
-			LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+			LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk_id [%s] chunk [%s] success",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeDataCompare),
 				r.Dmt.TaskName,
 				r.TaskFlow,
 				r.Dmt.SchemaNameS,
 				r.Dmt.TableNameS,
+				r.Dmt.ChunkID,
 				r.Dmt.ChunkDetailS),
 		})
 		if err != nil {
@@ -645,7 +647,7 @@ FROM
 				zap.String("table_name_t", r.Dmt.TableNameT),
 				zap.String("chunk_detail_t", desChunkDetailT),
 				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
-				zap.String("upstream_database_time", time.Now().Sub(streamTime).String()))
+				zap.String("downstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
 	})
@@ -700,13 +702,14 @@ FROM
 				TaskName:    r.Dmt.TaskName,
 				SchemaNameS: r.Dmt.SchemaNameS,
 				TableNameS:  r.Dmt.TableNameS,
-				LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+				LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk_id [%s] chunk [%s] success",
 					stringutil.CurrentTimeFormatString(),
 					stringutil.StringLower(constant.TaskModeDataCompare),
 					r.Dmt.TaskName,
 					r.TaskFlow,
 					r.Dmt.SchemaNameS,
 					r.Dmt.TableNameS,
+					r.Dmt.ChunkID,
 					r.Dmt.ChunkDetailS),
 			})
 			if err != nil {
@@ -726,6 +729,7 @@ FROM
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
@@ -1002,13 +1006,14 @@ func (r *DataCompareRow) CompareCRC32() error {
 				TaskName:    r.Dmt.TaskName,
 				SchemaNameS: r.Dmt.SchemaNameS,
 				TableNameS:  r.Dmt.TableNameS,
-				LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+				LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk_id [%s] chunk [%s] success",
 					stringutil.CurrentTimeFormatString(),
 					stringutil.StringLower(constant.TaskModeDataCompare),
 					r.Dmt.TaskName,
 					r.TaskFlow,
 					r.Dmt.SchemaNameS,
 					r.Dmt.TableNameS,
+					r.Dmt.ChunkID,
 					r.Dmt.ChunkDetailS),
 			})
 			if err != nil {
@@ -1215,13 +1220,14 @@ func (r *DataCompareRow) CompareCRC32() error {
 			TaskName:    r.Dmt.TaskName,
 			SchemaNameS: r.Dmt.SchemaNameS,
 			TableNameS:  r.Dmt.TableNameS,
-			LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+			LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk_id [%s] chunk [%s] success",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeDataCompare),
 				r.Dmt.TaskName,
 				r.TaskFlow,
 				r.Dmt.SchemaNameS,
 				r.Dmt.TableNameS,
+				r.Dmt.ChunkID,
 				r.Dmt.ChunkDetailS),
 		})
 		if err != nil {
@@ -1468,7 +1474,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 
 	compareTime := time.Now()
 	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
-	logger.Info("data compare task chunk md5 compare details compare",
+	logger.Info("data compare task chunk md5 compare details compare rows",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
@@ -1642,13 +1648,14 @@ func (r *DataCompareRow) compareMd5Row() error {
 			TaskName:    r.Dmt.TaskName,
 			SchemaNameS: r.Dmt.SchemaNameS,
 			TableNameS:  r.Dmt.TableNameS,
-			LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+			LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk_id [%s] chunk [%s] success",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeDataCompare),
 				r.Dmt.TaskName,
 				r.TaskFlow,
 				r.Dmt.SchemaNameS,
 				r.Dmt.TableNameS,
+				r.Dmt.ChunkID,
 				r.Dmt.ChunkDetailS),
 		})
 		if err != nil {
@@ -1660,7 +1667,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 		return errW
 	}
 
-	logger.Info("data compare task chunk md5 compare details finished",
+	logger.Info("data compare task chunk md5 compare details rows finished",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),

@@ -37,6 +37,7 @@ var (
 		BuildInOracleDatatypeNchar,
 		BuildInOracleDatatypeNvarchar2,
 		BuildInOracleDatatypeCharacter,
+		BuildInOracleDatatypeNcharVarying,
 	}
 	DataCompareOracleDatabaseSupportDateSubtypes = []string{
 		BuildInOracleDatatypeDate,

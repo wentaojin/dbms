@@ -159,7 +159,15 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 			zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
 			zap.String("chunk_action", "divide"))
 
-		chunkRange := structure.NewChunkRange(dbTypeS)
+		var chunkRange *structure.Range
+		switch stringutil.StringUpper(dbTypeS) {
+		case constant.DatabaseTypeOracle:
+			chunkRange = structure.NewChunkRange(dbTypeS, dbCharsetS, constant.BuildInOracleCharsetAL32UTF8)
+		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+			chunkRange = structure.NewChunkRange(dbTypeS, dbCharsetS, constant.BuildInMYSQLCharsetUTF8MB4)
+		default:
+			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
+		}
 		for j, columnName := range cons.IndexColumn {
 			var lowerValue, upperValue string
 			if len(lowerValues) > 0 {
@@ -223,7 +231,15 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 	}
 
 	// merge the rest keys into one chunk
-	chunkRange := structure.NewChunkRange(dbTypeS)
+	var chunkRange *structure.Range
+	switch stringutil.StringUpper(dbTypeS) {
+	case constant.DatabaseTypeOracle:
+		chunkRange = structure.NewChunkRange(dbTypeS, dbCharsetS, constant.BuildInOracleCharsetAL32UTF8)
+	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+		chunkRange = structure.NewChunkRange(dbTypeS, dbCharsetS, constant.BuildInMYSQLCharsetUTF8MB4)
+	default:
+		return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
+	}
 	if len(lowerValues) > 0 {
 		for j, columnName := range cons.IndexColumn {
 			err = chunkRange.Update(columnName, cons.ColumnCollation[j], cons.ColumnDatatype[j], cons.DatetimePrecision[j], lowerValues[j], "", true, false)
@@ -314,7 +330,7 @@ func ReverseUpstreamHighestBucketDownstreamRule(taskFlow, dbTypeT, dbCharsetS st
 	}, nil
 }
 
-func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT string, bs []*structure.Range, r *structure.Rule) ([]*structure.Range, error) {
+func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT, dbCharsetT string, bs []*structure.Range, r *structure.Rule) ([]*structure.Range, error) {
 	var ranges []*structure.Range
 	for _, b := range bs {
 		var bounds []*structure.Bound
@@ -334,22 +350,7 @@ func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT string, bs []*
 				return nil, fmt.Errorf("the database type [%s] upstream range column [%s] not found map index column rule [%v]", dbTypeT, s.ColumnName, r.IndexColumnRule)
 			}
 			if val, ok := r.ColumnCollationRule[s.ColumnName]; ok {
-				switch dbTypeT {
-				case constant.DatabaseTypeOracle:
-					if !strings.EqualFold(val, constant.DataCompareDisabledCollationSettingFillEmptyString) {
-						bd.Collation = fmt.Sprintf("'NLS_SORT = %s'", val)
-					} else {
-						bd.Collation = val
-					}
-				case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-					if !strings.EqualFold(val, constant.DataCompareDisabledCollationSettingFillEmptyString) {
-						bd.Collation = fmt.Sprintf("COLLATE '%s'", val)
-					} else {
-						bd.Collation = val
-					}
-				default:
-					return nil, fmt.Errorf("the downstream column collation database type [%s] isn't support, please contact author or reselect", dbTypeT)
-				}
+				bd.Collation = val
 			} else {
 				return nil, fmt.Errorf("the database type [%s] upstream range column [%s] collation not found map index column collation rule [%v]", dbTypeT, s.ColumnName, r.ColumnCollationRule)
 			}
@@ -374,11 +375,28 @@ func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT string, bs []*
 			}
 		}
 
-		ranges = append(ranges, &structure.Range{
-			DBType:      dbTypeT,
-			Bounds:      bounds,
-			BoundOffset: newBoundOffset,
-		})
+		// the database charset
+		switch stringutil.StringUpper(dbTypeT) {
+		case constant.DatabaseTypeOracle:
+			ranges = append(ranges, &structure.Range{
+				DBType:        dbTypeT,
+				DBCharsetFrom: dbCharsetT,
+				DBCharsetDest: constant.BuildInOracleCharsetAL32UTF8,
+				Bounds:        bounds,
+				BoundOffset:   newBoundOffset,
+			})
+		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+			ranges = append(ranges, &structure.Range{
+				DBType:        dbTypeT,
+				DBCharsetFrom: dbCharsetT,
+				DBCharsetDest: constant.BuildInMYSQLCharsetUTF8MB4,
+				Bounds:        bounds,
+				BoundOffset:   newBoundOffset,
+			})
+		default:
+			return nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeT)
+		}
+
 	}
 	return ranges, nil
 }

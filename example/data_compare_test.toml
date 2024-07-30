@@ -76,4 +76,4 @@ consistent-read-point-t = ""
 # downstream 产生下游 datasource-name-t 修复语句
 repair-stmt-flow = "upstream"
 # 开启代表上下游数据库自动进行 collation 配置，关闭代表上下游数据库不进行 collation 配置
-enable-collation-setting = false
+enable-collation-setting = true

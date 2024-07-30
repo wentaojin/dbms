@@ -24,11 +24,6 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-const (
-	DataDivideFlowDatabaseUpstream   = "UPSTREAM"
-	DataDivideFlowDatabaseDownstream = "DOWNSTREAM"
-)
-
 // Bound represents a bound for a column
 type Bound struct {
 	ColumnName        string `json:"columnName"`
@@ -44,17 +39,21 @@ type Bound struct {
 
 // Range represents chunk range
 type Range struct {
-	DBType      string         `json:"dbType"`
-	Bounds      []*Bound       `json:"bounds"`
-	BoundOffset map[string]int `json:"boundOffset"`
+	DBType        string         `json:"dbType"`
+	DBCharsetFrom string         `json:"dbCharsetFrom"` // charset convert, from the charset (used to the data compare)
+	DBCharsetDest string         `json:"dbCharsetDest"` // charset convert, dest the charset (used to the data compare)
+	Bounds        []*Bound       `json:"bounds"`
+	BoundOffset   map[string]int `json:"boundOffset"`
 }
 
 // NewChunkRange return a Range.
-func NewChunkRange(dbType string) *Range {
+func NewChunkRange(dbType, dbCharsetFrom, dbCharsetDest string) *Range {
 	return &Range{
-		DBType:      dbType,
-		Bounds:      make([]*Bound, 0, 2),
-		BoundOffset: make(map[string]int),
+		DBType:        dbType,
+		DBCharsetFrom: dbCharsetFrom,
+		DBCharsetDest: dbCharsetDest,
+		Bounds:        make([]*Bound, 0, 2),
+		BoundOffset:   make(map[string]int),
 	}
 }
 
@@ -79,20 +78,11 @@ func (rg *Range) ToString() (string, []interface{}) {
 	for _, b := range rg.Bounds {
 		switch stringutil.StringUpper(rg.DBType) {
 		case constant.DatabaseTypeOracle:
-			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, b.Datatype) {
-				b.Lower = stringutil.StringBuilder(`TO_DATE('`, b.Lower, `','YYYY-MM-DD HH24:MI:SS')`)
-				b.Upper = stringutil.StringBuilder(`TO_DATE('`, b.Upper, `','YYYY-MM-DD HH24:MI:SS')`)
-			}
-			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, b.Datatype) {
-				// datetimePrecision -> dataScale
-				b.Lower = stringutil.StringBuilder(`TO_TIMESTAMP('`, b.Lower, `','YYYY-MM-DD HH24:MI:SS.FF`, b.DatetimePrecision, `')`)
-				b.Upper = stringutil.StringBuilder(`TO_TIMESTAMP('`, b.Upper, `','YYYY-MM-DD HH24:MI:SS.FF`, b.DatetimePrecision, `')`)
-			}
-			if b.Collation != "" {
+			if b.Collation != constant.DataCompareDisabledCollationSettingFillEmptyString {
 				b.Collation = fmt.Sprintf("'NLS_SORT = %s'", b.Collation)
 			}
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-			if b.Collation != "" {
+			if b.Collation != constant.DataCompareDisabledCollationSettingFillEmptyString {
 				b.Collation = fmt.Sprintf("COLLATE '%s'", b.Collation)
 			}
 		default:
@@ -130,11 +120,25 @@ func (rg *Range) ToString() (string, []interface{}) {
 
 		if strings.EqualFold(rg.DBType, constant.DatabaseTypeOracle) {
 			if strings.EqualFold(bound.Collation, "") {
-				sameCondition = append(sameCondition, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+				if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = TO_DATE(?,'YYYY-MM-DD HH24:MI:SS')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+				} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+					// datetimePrecision -> dataScale
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.DatetimePrecision))
+				} else {
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+				}
 				sameArgs = append(sameArgs, bound.Lower)
 			} else {
-				sameCondition = append(sameCondition, fmt.Sprintf("%s = ?", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")")))
-				sameArgs = append(sameArgs, stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")"))
+				if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = NLSSORT(TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'),%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.Collation))
+				} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+					// datetimePrecision -> dataScale
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = NLSSORT(TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'),%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.DatetimePrecision, bound.Collation))
+				} else {
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = NLSSORT(?,%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.Collation))
+				}
+				sameArgs = append(sameArgs, bound.Lower)
 			}
 		}
 
@@ -143,7 +147,7 @@ func (rg *Range) ToString() (string, []interface{}) {
 				sameCondition = append(sameCondition, fmt.Sprintf("%s = ?", stringutil.StringBuilder("`", bound.ColumnName, "`")))
 				sameArgs = append(sameArgs, bound.Lower)
 			} else {
-				sameCondition = append(sameCondition, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation))
+				sameCondition = append(sameCondition, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("CONVERT(`", bound.ColumnName, "` USING '", rg.DBCharsetDest, "')"), bound.Collation))
 				sameArgs = append(sameArgs, bound.Lower)
 			}
 		}
@@ -167,24 +171,68 @@ func (rg *Range) ToString() (string, []interface{}) {
 			if strings.EqualFold(rg.DBType, constant.DatabaseTypeOracle) {
 				if strings.EqualFold(bound.Collation, "") {
 					if len(preConditionForLower) > 0 {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol, bound.DatetimePrecision))
+						} else {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						}
 						lowerArgs = append(append(lowerArgs, preConditionArgsForLower...), bound.Lower)
 					} else {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s ?)", stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol, bound.DatetimePrecision))
+						} else {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s ?)", stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						}
 						lowerArgs = append(lowerArgs, bound.Lower)
 					}
-					preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+
+					if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = TO_DATE(?,'YYYY-MM-DD HH24:MI:SS')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+						// datetimePrecision -> dataScale
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.DatetimePrecision))
+					} else {
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					}
 					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
 				} else {
 					if len(preConditionForLower) > 0 {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), lowerSymbol))
-						lowerArgs = append(append(lowerArgs, preConditionArgsForLower...), stringutil.StringBuilder("NLSSORT(", bound.Lower, ",", bound.Collation, ")"))
+						if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s NLSSORT(TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'),%s))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), lowerSymbol, bound.Collation))
+						} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s NLSSORT(TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'),%s))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), lowerSymbol, bound.DatetimePrecision, bound.Collation))
+						} else {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s NLSSORT(?,%s))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), lowerSymbol, bound.Collation))
+						}
+						lowerArgs = append(append(lowerArgs, preConditionArgsForLower...), bound.Lower)
 					} else {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s ?)", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), lowerSymbol))
-						lowerArgs = append(lowerArgs, stringutil.StringBuilder("NLSSORT(", bound.Lower, ",", bound.Collation, ")"))
+						if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s NLSSORT(TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'),%s))", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), lowerSymbol, bound.Collation))
+						} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s NLSSORT(TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'),%s))", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), lowerSymbol, bound.DatetimePrecision, bound.Collation))
+						} else {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s NLSSORT(?,%s))", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), lowerSymbol, bound.Collation))
+						}
+						lowerArgs = append(lowerArgs, bound.Lower)
 					}
-					preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = ?", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")")))
-					preConditionArgsForLower = append(preConditionArgsForLower, stringutil.StringBuilder("NLSSORT(", bound.Lower, ",", bound.Collation, ")"))
+
+					if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = NLSSORT(TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'),%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.Collation))
+					} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+						// datetimePrecision -> dataScale
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = NLSSORT(TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'),%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.DatetimePrecision, bound.Collation))
+					} else {
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = NLSSORT(?,%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.Collation))
+					}
+					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
 				}
 			}
 
@@ -201,13 +249,13 @@ func (rg *Range) ToString() (string, []interface{}) {
 					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
 				} else {
 					if len(preConditionForLower) > 0 {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s %s ?)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, lowerSymbol))
+						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s %s ?)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("CONVERT(`", bound.ColumnName, "` USING '", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol))
 						lowerArgs = append(append(lowerArgs, preConditionArgsForLower...), bound.Lower)
 					} else {
-						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s %s ?)", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, lowerSymbol))
+						lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s %s ?)", stringutil.StringBuilder("CONVERT(`", bound.ColumnName, "` USING '", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol))
 						lowerArgs = append(lowerArgs, bound.Lower)
 					}
-					preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation))
+					preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("CONVERT(`", bound.ColumnName, "` USING '", rg.DBCharsetDest, "')"), bound.Collation))
 					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
 				}
 			}
@@ -217,24 +265,68 @@ func (rg *Range) ToString() (string, []interface{}) {
 			if strings.EqualFold(rg.DBType, constant.DatabaseTypeOracle) {
 				if strings.EqualFold(bound.Collation, "") {
 					if len(preConditionForUpper) > 0 {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.DatetimePrecision, upperSymbol))
+						} else {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						}
 						upperArgs = append(append(upperArgs, preConditionArgsForUpper...), bound.Upper)
 					} else {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s %s ?)", stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.DatetimePrecision, upperSymbol))
+						} else {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s ?)", stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						}
 						upperArgs = append(upperArgs, bound.Upper)
 					}
-					preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+
+					if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = TO_DATE(?,'YYYY-MM-DD HH24:MI:SS')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+						// datetimePrecision -> dataScale
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.DatetimePrecision))
+					} else {
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					}
 					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
 				} else {
 					if len(preConditionForUpper) > 0 {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), upperSymbol))
-						upperArgs = append(append(upperArgs, preConditionArgsForUpper...), stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")"))
+						if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s NLSSORT(TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'),%s))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), upperSymbol, bound.Collation))
+						} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s NLSSORT(TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'),%s))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), upperSymbol, bound.DatetimePrecision, bound.Collation))
+						} else {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s NLSSORT(?,%s))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), upperSymbol, bound.Collation))
+						}
+						upperArgs = append(append(upperArgs, preConditionArgsForUpper...), bound.Upper)
 					} else {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s %s ?)", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")"), upperSymbol))
-						upperArgs = append(upperArgs, stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")"))
+						if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s NLSSORT(TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'),%s))", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), upperSymbol, bound.Collation))
+						} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s NLSSORT(TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'),%s))", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), upperSymbol, bound.DatetimePrecision, bound.Collation))
+						} else {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s NLSSORT(?,%s))", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), upperSymbol, bound.Collation))
+						}
+						upperArgs = append(upperArgs, bound.Upper)
 					}
-					preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = ?", stringutil.StringBuilder("NLSSORT(", "\"", bound.ColumnName, "\",", bound.Collation, ")")))
-					preConditionArgsForUpper = append(preConditionArgsForUpper, stringutil.StringBuilder("NLSSORT(", bound.Upper, ",", bound.Collation, ")"))
+
+					if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, bound.Datatype) {
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = NLSSORT(TO_DATE(?,'YYYY-MM-DD HH24:MI:SS'),%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.Collation))
+					} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+						// datetimePrecision -> dataScale
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = NLSSORT(TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'),%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.DatetimePrecision, bound.Collation))
+					} else {
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = NLSSORT(?,%s)", stringutil.StringBuilder(`NLSSORT(CONVERT("`, bound.ColumnName, `",'`, rg.DBCharsetDest, `','`, rg.DBCharsetFrom, `'),`, bound.Collation, `)`), bound.Collation))
+					}
+					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
 				}
 			}
 
@@ -251,13 +343,13 @@ func (rg *Range) ToString() (string, []interface{}) {
 					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
 				} else {
 					if len(preConditionForUpper) > 0 {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s ?)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, upperSymbol))
+						upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s ?)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("CONVERT(`", bound.ColumnName, "` USING '", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol))
 						upperArgs = append(append(upperArgs, preConditionArgsForUpper...), bound.Upper)
 					} else {
-						upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s ?)", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation, upperSymbol))
+						upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s ?)", stringutil.StringBuilder("CONVERT(`", bound.ColumnName, "` USING '", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol))
 						upperArgs = append(upperArgs, bound.Upper)
 					}
-					preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("`", bound.ColumnName, "`"), bound.Collation))
+					preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("CONVERT(`", bound.ColumnName, "` USING '", rg.DBCharsetDest, "')"), bound.Collation))
 					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
 				}
 			}
@@ -374,7 +466,7 @@ func (rg *Range) Update(columnName, collation, datatype string, datetimePrecisio
 }
 
 func (rg *Range) Copy() *Range {
-	newChunk := NewChunkRange(rg.DBType)
+	newChunk := NewChunkRange(rg.DBType, rg.DBCharsetFrom, rg.DBCharsetDest)
 	for _, bound := range rg.Bounds {
 		newChunk.addBound(&Bound{
 			ColumnName:        bound.ColumnName,

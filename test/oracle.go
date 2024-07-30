@@ -27,39 +27,45 @@ func main() {
 	ctx := context.Background()
 	databaseS, err := oracle.NewDatabase(ctx, &datasource.Datasource{
 		DbType:         "oracle",
-		Username:       "marvin",
-		Password:       "marvin",
-		Host:           "120.922.21.117",
-		Port:           31521,
-		ConnectCharset: "al32utf8",
-		ServiceName:    "jem10g",
-	}, "marvin")
+		Username:       "scott",
+		Password:       "tiger",
+		Host:           "12.93.12.151",
+		Port:           1521,
+		ConnectCharset: "zhs16gbk",
+		ServiceName:    "ifdb",
+	}, "scott", 600)
 	if err != nil {
 		panic(err)
 	}
+
+	//	var s []interface{}
+	//	s[0] = "99716061760-07866897534-10853623002-16757842511-44400616623-64918258778-84747634712-26582176156-80045723441-68102414194"
+	//	s[1] = "99999019891-32672521763-04429715883-01213059055-80583980995-54942792772-84177537049-62866496817-55325374451-52763126606"
+	//rows, err := databaseS.QueryContext(context.Background(), "SELECT c1, c2 FROM t99 WHERE CONVERT(c1,'AL32UTF8','ZHS16GBK') < CONVERT('卡','AL32UTF8','ZHS16GBK')")
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//for rows.Next() {
+	//	var c1, c2 string
+	//	err = rows.Scan(&c1, &c2)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	fmt.Println(c1, c2)
+	//}
+	//
+	//err = rows.Err()
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	var s []interface{}
-	s[0] = "99716061760-07866897534-10853623002-16757842511-44400616623-64918258778-84747634712-26582176156-80045723441-68102414194"
-	s[1] = "99999019891-32672521763-04429715883-01213059055-80583980995-54942792772-84177537049-62866496817-55325374451-52763126606"
-	rows, err := databaseS.QueryContext(context.Background(), `SELECT id FROM sbtest.sbtest1 WHERE ((NLSSORT("c",'NLS_SORT = al32utf8') > NLSSORT(:c,'NLS_SORT = al32utf8'))) AND ((NLSSORT("c",'NLS_SORT = al32utf8') <= NLSSORT(:c,'NLS_SORT = al32utf8')))`, s)
+	s = append(s, "卡")
+	_, res, err := databaseS.GeneralQuery(`SELECT CONVERT(c1,'AL32UTF8','zhs16gbk') AS c1, c2 FROM t99 WHERE NLSSORT(CONVERT(c1,'AL32UTF8','zhs16gbk'),'NLS_SORT=BINARY')< NLSSORT(:1,'NLS_SORT=BINARY')`, s...)
 	if err != nil {
 		panic(err)
 	}
 
-	var ids []int
-	for rows.Next() {
-		var id int
-		err = rows.Scan(&id)
-		if err != nil {
-			panic(err)
-		}
-		ids = append(ids, id)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(ids)
+	fmt.Println(res)
 }

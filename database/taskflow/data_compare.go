@@ -871,7 +871,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					zap.Any("downstream column rule", downstreamConsRule))
 
 				// downstream bucket ranges
-				downstreamBuckets, err := processor.ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT, upstreamBuckets, downstreamConsRule)
+				downstreamBuckets, err := processor.ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT, stringutil.StringUpper(dmt.DatasourceT.ConnectCharset), upstreamBuckets, downstreamConsRule)
 				if err != nil {
 					return err
 				}

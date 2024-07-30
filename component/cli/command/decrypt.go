@@ -39,6 +39,7 @@ type AppDecrypt struct {
 	table     string
 	chunk     string
 	decrypt   string
+	counts    bool
 	outputDir string
 }
 
@@ -58,6 +59,7 @@ func (a *AppDecrypt) Cmd() *cobra.Command {
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the task name")
 	cmd.Flags().StringVarP(&a.schema, "schema", "D", "", "the upstream schema name")
 	cmd.Flags().StringVarP(&a.table, "table", "T", "", "the upstream table name")
+	cmd.Flags().BoolVar(&a.counts, "counts", false, "the upstream table chunk counts")
 	cmd.Flags().StringVarP(&a.chunk, "chunk", "c", "", "the database table chunk string")
 	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the upstream table chunk decrypt output file dir, only chunk null and decrypt null take effect")
 	cmd.Flags().StringVarP(&a.decrypt, "decrypt", "e", "", "the decrypt string")
@@ -128,11 +130,20 @@ func (a *AppDecrypt) RunE(cmd *cobra.Command, args []string) error {
 		}
 		defer file.Close()
 
-		err = service.Decrypt(context.TODO(), a.Server, a.task, a.schema, a.table, a.chunk, file)
-		if err != nil {
-			fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-			fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
-			return nil
+		if a.counts {
+			err = service.Counts(context.TODO(), a.Server, a.task, a.schema, a.table, a.chunk, file)
+			if err != nil {
+				fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+				fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
+				return nil
+			}
+		} else {
+			err = service.Decrypt(context.TODO(), a.Server, a.task, a.schema, a.table, a.chunk, file)
+			if err != nil {
+				fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+				fmt.Printf("Response:     %s\n", color.RedString("error decrypt failed: %v", err))
+				return nil
+			}
 		}
 		fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
 		fmt.Printf("Response:     %s\n", color.GreenString(fmt.Sprintf("the database table chunk decrypt records, plesase forward to %s", fileName)))
