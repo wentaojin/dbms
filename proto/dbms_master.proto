@@ -664,6 +664,8 @@ message DataCompareRule {
   string compareConditionRange = 3;
   repeated string ignoreSelectFields = 4;
   repeated string ignoreConditionFields = 5;
+  string sqlHintS = 6;
+  string sqlHintT = 7;
 }
 
 message DataCompareParam{

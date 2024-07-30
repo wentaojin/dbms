@@ -41,6 +41,7 @@ type DataCompareRule struct {
 	SchemaNameT                 string             `json:"schemNameT"`
 	TableNameT                  string             `json:"tableNameT"`
 	GlobalSqlHintS              string             `json:"globalSqlHintS"`
+	GlobalSqlHintT              string             `json:"globalSqlHintT"`
 	TableTypeS                  map[string]string  `json:"tableTypeS"`
 	ColumnNameSliS              []string           `json:"columnNameSliS"`
 	IgnoreSelectFields          []string           `json:"ignoreSelectFields"`
@@ -512,11 +513,11 @@ func (r *DataCompareRule) GenSchemaTableCompareMethodRule() string {
 	return constant.DataCompareMethodCheckMD5
 }
 
-func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, []string, error) {
+func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, []string, string, string, error) {
 	compareRule, err := model.GetIDataCompareRuleRW().GetDataCompareRule(r.Ctx, &rule.DataCompareRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, "", "", err
 	}
 	if !strings.EqualFold(compareRule.IgnoreSelectFields, "") {
 		r.IgnoreSelectFields = stringutil.StringSplit(compareRule.IgnoreSelectFields, constant.StringSeparatorComma)
@@ -527,5 +528,17 @@ func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, []string, 
 	} else {
 		ignoreColumnConditionFields = r.GlobalIgnoreConditionFields
 	}
-	return compareRule.CompareConditionField, compareRule.CompareConditionRange, ignoreColumnConditionFields, nil
+
+	var sqlHintS, sqlHintT string
+	if strings.EqualFold(compareRule.SqlHintS, "") {
+		sqlHintS = r.GlobalSqlHintS
+	} else {
+		sqlHintS = compareRule.SqlHintS
+	}
+	if strings.EqualFold(compareRule.SqlHintT, "") {
+		sqlHintT = r.GlobalSqlHintT
+	} else {
+		sqlHintT = compareRule.SqlHintT
+	}
+	return compareRule.CompareConditionField, compareRule.CompareConditionRange, ignoreColumnConditionFields, sqlHintS, sqlHintT, nil
 }

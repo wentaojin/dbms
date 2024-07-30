@@ -338,6 +338,8 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 						CompareConditionRange: st.CompareConditionRange,
 						IgnoreSelectFields:    stringutil.StringJoin(ignoreSelectFields, constant.StringSeparatorComma),
 						IgnoreConditionFields: stringutil.StringJoin(ignoreCondFields, constant.StringSeparatorComma),
+						SqlHintS:              st.SqlHintS,
+						SqlHintT:              st.SqlHintT,
 					})
 				}
 			}
@@ -493,6 +495,8 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 				CompareConditionRange: st.CompareConditionRange,
 				IgnoreSelectFields:    stringutil.StringSplit(st.IgnoreSelectFields, constant.StringSeparatorComma),
 				IgnoreConditionFields: stringutil.StringSplit(st.IgnoreConditionFields, constant.StringSeparatorComma),
+				SqlHintS:              st.SqlHintS,
+				SqlHintT:              st.SqlHintT,
 			})
 		}
 

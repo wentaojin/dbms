@@ -45,6 +45,8 @@ type DataCompareRule struct {
 	CompareConditionRange string   `toml:"compare-condition-range" json:"compareConditionRange"`
 	IgnoreSelectFields    []string `toml:"ignore-select-fields" json:"ignoreSelectFields"`
 	IgnoreConditionFields []string `toml:"ignore-condition-fields" json:"ignoreConditionFields"`
+	SqlHintS              string   `toml:"sql-hint-s" json:"sqlHintS"`
+	SqlHintT              string   `toml:"sql-hint-t" json:"sqlHintT"`
 }
 
 type DataCompareParam struct {

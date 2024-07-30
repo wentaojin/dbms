@@ -1109,6 +1109,12 @@ components:
           type: array
           items:
             type: string
+        sqlHintS:
+          type: string
+          format: string
+        sqlHintT:
+          type: string
+          format: string
     DataCompareParam:
       type: object
       properties:

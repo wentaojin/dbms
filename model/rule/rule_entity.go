@@ -78,6 +78,8 @@ type DataCompareRule struct {
 	CompareConditionRange string `gorm:"type:varchar(120);comment:source sql query where" json:"compareConditionRange"`
 	IgnoreSelectFields    string `gorm:"type:text;comment:ignore select filed" json:"ignoreSelectFields"`
 	IgnoreConditionFields string `gorm:"type:text;comment:ignore condition filed" json:"ignoreConditionFields"`
+	SqlHintS              string `gorm:"type:varchar(120);comment:source sql query hint" json:"sqlHintS"`
+	SqlHintT              string `gorm:"type:varchar(120);comment:target sql query hint" json:"sqlHintT"`
 	*common.Entity
 }
 

@@ -125,12 +125,18 @@ func (r *DataCompareRow) CompareRows() error {
 		} else {
 			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
 		}
-	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+	case constant.DatabaseTypeTiDB:
 		if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` AS OF SCN ", r.Dmt.SnapshotPointS, " WHERE ", chunkDetailS)
 		} else if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` AS OF SCN ", r.Dmt.SnapshotPointS, " WHERE ", chunkDetailS)
 		} else if strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
+		} else {
+			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
+		}
+	case constant.DatabaseTypeMySQL:
+		if !strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
@@ -476,12 +482,28 @@ func (r *DataCompareRow) CompareMD5() error {
 FROM
 	(%v) subq`, execQueryS)
 		}
-	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+	case constant.DatabaseTypeTiDB:
 		if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` AS OF SCN ", r.Dmt.SnapshotPointS, " WHERE ", chunkDetailS)
 		} else if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` AS OF SCN ", r.Dmt.SnapshotPointS, " WHERE ", chunkDetailS)
 		} else if strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
+		} else {
+			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
+		}
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+			execQueryS = fmt.Sprintf(`
+SELECT
+	 CAST(IFNULL(SUM(CONV(SUBSTRING(subq.ROWSCHECKSUM, 1, 8),16,10)+ 
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 9, 8),16,10)+
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 17, 8),16,10)+
+	 CONV(SUBSTRING(subq.ROWSCHECKSUM, 25, 8),16,10)),0) AS CHAR) AS ROWSCHECKSUM
+FROM
+	(%v) subq`, execQueryS)
+		}
+	case constant.DatabaseTypeMySQL:
+		if !strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
@@ -812,12 +834,18 @@ func (r *DataCompareRow) CompareCRC32() error {
 		} else {
 			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
 		}
-	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+	case constant.DatabaseTypeTiDB:
 		if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` AS OF SCN ", r.Dmt.SnapshotPointS, " WHERE ", chunkDetailS)
 		} else if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` AS OF SCN ", r.Dmt.SnapshotPointS, " WHERE ", chunkDetailS)
 		} else if strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
+		} else {
+			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
+		}
+	case constant.DatabaseTypeMySQL:
+		if !strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
@@ -1319,12 +1347,18 @@ func (r *DataCompareRow) compareMd5Row() error {
 		} else {
 			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
 		}
-	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+	case constant.DatabaseTypeTiDB:
 		if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` AS OF SCN ", r.Dmt.SnapshotPointS, " WHERE ", chunkDetailS)
 		} else if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` AS OF SCN ", r.Dmt.SnapshotPointS, " WHERE ", chunkDetailS)
 		} else if strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
+		} else {
+			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
+		}
+	case constant.DatabaseTypeMySQL:
+		if !strings.EqualFold(r.Dmt.SqlHintS, "") {
 			execQueryS = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintS, " ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)

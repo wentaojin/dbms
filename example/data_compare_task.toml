@@ -39,6 +39,12 @@ ignore-select-fields = []
 # 禁止条件查询选择字段
 # compare-condition-field 优先级高于 ignore-condition-fields
 ignore-condition-fields = []
+# 指定分片 chunk sql hint
+# 优先级高于 data-compare-param
+sql-hint-s = ""
+# 指定分片 chunk sql Hint
+# 优先级高于 data-compare-param
+sql-hint-t = ""
 
 # 表串行运行，表内并发
 [data-compare-param]
@@ -54,9 +60,9 @@ write-thread = 4
 chunk-size = 500
 # 禁止条件查询选择字段
 ignore-condition-fields = []
-# 指定分片 chunk sql 查询 hint
+# 指定分片 chunk sql hint
 sql-hint-s = ""
-# 指定分片 chunk sql 查询 Hint
+# 指定分片 chunk sql Hint
 sql-hint-t = ""
 only-compare-row = false
 # calltimeout，单位：秒
@@ -76,7 +82,9 @@ consistent-read-point-t = ""
 # downstream 产生下游 datasource-name-t 修复语句
 repair-stmt-flow = "upstream"
 # 开启代表上下游数据库自动进行 collation 配置，关闭代表上下游数据库不进行 collation 配置
-# Note：开启该参数已知 Oracle 不会走索引，需手工建立函数索引
-# 创建 linguistic index：
+# Note：开启该参数不会走索引，上下游需手工建立函数索引，字符集以及排序规则需根据实际情况调整
+# 创建 index ORACLE 示例：
 # CREATE INDEX idx_t99_nlstest ON t99(NLSSORT(CONVERT(c1,'AL32UTF8','ZHA16GBK'),'NLS_SORT = BINARY'));
+# 创建 index MYSQL 兼容性数据库示例：
+# CREATE INDEX idx_t99_nlstest ON t99(CONVERT(c1, USING 'UTF8MB4'));
 enable-collation-setting = false

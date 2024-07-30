@@ -35,7 +35,7 @@ type IDatabaseDataCompare interface {
 // IDataCompareRuleInitializer used for database table rule initializer
 type IDataCompareRuleInitializer interface {
 	GenSchemaTableCompareMethodRule() string
-	GenSchemaTableCustomRule() (string, string, []string, error)
+	GenSchemaTableCustomRule() (string, string, []string, string, string, error)
 	IDatabaseSchemaTableRule
 }
 
@@ -54,10 +54,12 @@ type DataCompareAttributesRule struct {
 	CompareConditionFieldC string            `json:"compareConditionFieldC"`
 	CompareConditionRangeC string            `json:"compareConditionRangeC"`
 	IgnoreConditionFields  []string          `json:"ignoreConditionFields"`
+	SqlHintS               string            `json:"sqlHintS"`
+	SqlHintT               string            `json:"sqlHintT"`
 }
 
 func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttributesRule, error) {
-	columnFields, compareRange, ignoreConditionFields, err := i.GenSchemaTableCustomRule()
+	columnFields, compareRange, ignoreConditionFields, sqlHintS, sqlHintT, err := i.GenSchemaTableCustomRule()
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
@@ -92,6 +94,8 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 		CompareConditionRangeC: compareRange,
 		IgnoreConditionFields:  ignoreConditionFields,
 		ColumnNameRouteRule:    columnRouteRule,
+		SqlHintS:               sqlHintS,
+		SqlHintT:               sqlHintT,
 	}, nil
 }
 
