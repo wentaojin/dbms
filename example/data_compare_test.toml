@@ -18,7 +18,7 @@ case-field-rule-t = "2"
 [schema-route-rule]
 schema-name-s = "ucccis"
 schema-name-t = "SCOTT"
-include-table-s = ["t3"]
+include-table-s = ["t5"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
@@ -57,13 +57,13 @@ sql-thread = 16
 # 数据校验写 meta 数据库并发数
 write-thread = 4
 # 数据对比范围 chunk 行数
-chunk-size = 10000
+chunk-size = 100000
 # 禁止条件查询选择字段
 ignore-condition-fields = []
 # 指定分片 chunk sql 查询 hint
 sql-hint-s = ""
 # 指定分片 chunk sql 查询 Hint
-sql-hint-t = "/*+ PARALLEL(8) */"
+sql-hint-t = ""
 only-compare-row = false
 # calltimeout，单位：秒
 call-timeout = 36000

@@ -481,8 +481,8 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 	switch r.TaskFlow {
 	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
-			fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(UTL_I18N.STRING_TO_RAW(%s,'%s'), 2)) AS ROWSCHECKSUM`,
-				stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8),
+			fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(%s),'%s','%s'), 2)) AS ROWSCHECKSUM`,
+				stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.DBCharsetS)),
 			stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
 			fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
 				stringutil.StringJoin(columnNameSliTC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4), nil
@@ -491,8 +491,8 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
 				stringutil.StringJoin(columnNameSilSC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4),
 			stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
-			fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(UTL_I18N.STRING_TO_RAW(%s,'%s'), 2)) AS ROWSCHECKSUM`,
-				stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8), nil
+			fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(%s),'%s','%s'), 2)) AS ROWSCHECKSUM`,
+				stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.DBCharsetT)), nil
 	default:
 		return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] return isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
 	}
