@@ -136,10 +136,11 @@ func OptimizerMYSQLCompatibleMigrateOracleDataCompareColumnST(columnNameS, datat
 	case constant.BuildInMySQLDatatypeChar, constant.BuildInMySQLDatatypeVarchar:
 		// in order to save character length, cut more than varchar2. For character bytes smaller than 32, do not use HASH or destroy them in advance.
 		//if dataLengthS <= int64(constant.DataCompareMethodCheckMD5ValueLength) {
-		return stringutil.StringBuilder(`CONVERT(`, nvlNullStringS, ` USING '`, dbCharsetSDest, `')`), stringutil.StringBuilder(`CONVERT(TO_CLOB(`, nvlNullStringT, `),'`, dbCharsetTDest, `','`, dbCharsetTFrom, `')`), nil
+		//return stringutil.StringBuilder(`CONVERT(`, nvlNullStringS, ` USING '`, dbCharsetSDest, `')`), stringutil.StringBuilder(`CONVERT(TO_CLOB(`, nvlNullStringT, `),'`, dbCharsetTDest, `','`, dbCharsetTFrom, `')`), nil
 		//} else {
 		//	return stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullStringS, ` USING '`, dbCharsetSDest, `')))`), stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(`, nvlNullStringT, `),'`, dbCharsetTDest, `','`, dbCharsetTFrom, `'),2))`), nil
 		//}
+		return nvlNullStringS, nvlNullStringT, nil
 	case constant.BuildInMySQLDatatypeLongText,
 		constant.BuildInMySQLDatatypeMediumText,
 		constant.BuildInMySQLDatatypeText,

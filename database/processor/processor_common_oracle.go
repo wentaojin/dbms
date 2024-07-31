@@ -202,17 +202,19 @@ func OptimizerOracleMigrateMYSQLCompatibleDataCompareColumnST(columnNameS, datat
 	case constant.BuildInOracleDatatypeCharacter, constant.BuildInOracleDatatypeVarchar, constant.BuildInOracleDatatypeChar, constant.BuildInOracleDatatypeVarchar2:
 		// in order to save character length, cut more than varchar2. For character bytes smaller than 32, do not use HASH or destroy them in advance.
 		//if dataLengthS <= int64(constant.DataCompareMethodCheckMD5ValueLength) {
-		return stringutil.StringBuilder(`CONVERT(TO_CLOB(`, nvlNullStringS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `')`), stringutil.StringBuilder(`CONVERT(`, nvlNullStringT, ` USING '`, dbCharsetTDest, `')`), nil
+		//return stringutil.StringBuilder(`CONVERT(TO_CLOB(`, nvlNullStringS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `')`), stringutil.StringBuilder(`CONVERT(`, nvlNullStringT, ` USING '`, dbCharsetTDest, `')`), nil
 		//} else {
 		//	return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(`, nvlNullStringS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullStringT, ` USING '`, dbCharsetTDest, `')))`), nil
 		//}
+		return nvlNullStringS, nvlNullStringT, nil
 	case constant.BuildInOracleDatatypeNcharVarying, constant.BuildInOracleDatatypeNchar, constant.BuildInOracleDatatypeNvarchar2:
 		// in order to save character length, cut more than varchar2. For character bytes smaller than 32, do not use HASH or destroy them in advance.
 		//if dataLengthS <= int64(constant.DataCompareMethodCheckMD5ValueLength) {
-		return stringutil.StringBuilder(`CONVERT(TO_CLOB(`, nvlNullStringS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `')`), stringutil.StringBuilder(`CONVERT(`, nvlNullStringT, ` USING '`, dbCharsetTDest, `')`), nil
+		//return stringutil.StringBuilder(`CONVERT(TO_CLOB(`, nvlNullStringS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `')`), stringutil.StringBuilder(`CONVERT(`, nvlNullStringT, ` USING '`, dbCharsetTDest, `')`), nil
 		//} else {
 		//	return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(`, nvlNullStringS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullStringT, ` USING '`, dbCharsetTDest, `')))`), nil
 		//}
+		return nvlNullStringS, nvlNullStringT, nil
 	case constant.BuildInOracleDatatypeClob:
 		return stringutil.StringBuilder(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(`, nvlNullStringS, `),'`, dbCharsetSDest, `','`, dbCharsetSFrom, `'),2))`), stringutil.StringBuilder(`UPPER(MD5(CONVERT(`, nvlNullStringT, ` USING '`, dbCharsetTDest, `')))`), nil
 	case constant.BuildInOracleDatatypeNclob:
