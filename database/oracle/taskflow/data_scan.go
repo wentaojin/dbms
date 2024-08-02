@@ -17,7 +17,6 @@ package taskflow
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/golang/snappy"
 	"github.com/google/uuid"
@@ -166,57 +165,52 @@ func (dst *DataScanTask) Start() error {
 		for _, j := range migrateTasks {
 			gTime := time.Now()
 			g.Go(j, gTime, func(j interface{}) error {
-				select {
-				case <-dst.Ctx.Done():
-					return nil
-				default:
-					dt := j.(*task.DataScanTask)
-					errW := model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
-						_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
-							&task.DataScanTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-							map[string]interface{}{
-								"TaskStatus": constant.TaskDatabaseStatusRunning,
-							})
-						if err != nil {
-							return err
-						}
-						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-							TaskName:    dt.TaskName,
-							SchemaNameS: dt.SchemaNameS,
-							TableNameS:  dt.TableNameS,
-							LogDetail: fmt.Sprintf("%v [%v] data scan task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
-								stringutil.CurrentTimeFormatString(),
-								stringutil.StringLower(constant.TaskModeDataScan),
-								dt.TaskName,
-								dst.Task.TaskMode,
-								dt.SchemaNameS,
-								dt.TableNameS,
-								dt.ChunkDetailS),
+				dt := j.(*task.DataScanTask)
+				errW := model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
+					_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
+						&task.DataScanTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+						map[string]interface{}{
+							"TaskStatus": constant.TaskDatabaseStatusRunning,
 						})
-						if err != nil {
-							return err
-						}
-						return nil
-					})
-					if errW != nil {
-						return errW
+					if err != nil {
+						return err
 					}
-
-					err = database.IDataScanProcess(&processor.DataScanRow{
-						Ctx:        dst.Ctx,
-						StartTime:  gTime,
-						TaskName:   dt.TaskName,
-						TaskMode:   dst.Task.TaskMode,
-						TaskFlow:   dst.Task.TaskFlow,
-						Dst:        dt,
-						DatabaseS:  databaseS,
-						DBCharsetS: stringutil.StringUpper(dst.DatasourceS.ConnectCharset),
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] data scan task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(constant.TaskModeDataScan),
+							dt.TaskName,
+							dst.Task.TaskMode,
+							dt.SchemaNameS,
+							dt.TableNameS,
+							dt.ChunkDetailS),
 					})
 					if err != nil {
 						return err
 					}
 					return nil
+				})
+				if errW != nil {
+					return errW
 				}
+
+				err = database.IDataScanProcess(&processor.DataScanRow{
+					Ctx:        dst.Ctx,
+					StartTime:  gTime,
+					TaskName:   dt.TaskName,
+					TaskMode:   dst.Task.TaskMode,
+					TaskFlow:   dst.Task.TaskFlow,
+					Dst:        dt,
+					DatabaseS:  databaseS,
+					DBCharsetS: stringutil.StringUpper(dst.DatasourceS.ConnectCharset),
+				})
+				if err != nil {
+					return err
+				}
+				return nil
 			})
 		}
 
@@ -553,7 +547,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 				startTime := time.Now()
 				if _, ok := repeatInitTableMap[sourceTable]; ok {
@@ -930,9 +924,8 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 		})
 	}
 
-	// ignore context canceled error
-	if err = g.Wait(); !errors.Is(err, context.Canceled) {
-		logger.Warn("data scan task init failed",
+	if err = g.Wait(); err != nil {
+		logger.Error("data scan task init failed",
 			zap.String("task_name", dst.Task.TaskName),
 			zap.String("task_mode", dst.Task.TaskMode),
 			zap.String("task_flow", dst.Task.TaskFlow),

@@ -214,24 +214,19 @@ func (st *StructMigrateTask) Start() error {
 	for _, job := range migrateTasks {
 		gTime := time.Now()
 		g.Go(job, gTime, func(job interface{}) error {
-			select {
-			case <-st.Ctx.Done():
-				return nil
-			default:
-				smt := job.(*task.StructMigrateTask)
-				err = st.structMigrateStart(
-					st.DatabaseS,
-					st.DatabaseT,
-					gTime,
-					smt,
-					buildInDatatypeRules,
-					buildInDefaultValueRules,
-					dbCollationS)
-				if err != nil {
-					return err
-				}
-				return nil
+			smt := job.(*task.StructMigrateTask)
+			err = st.structMigrateStart(
+				st.DatabaseS,
+				st.DatabaseT,
+				gTime,
+				smt,
+				buildInDatatypeRules,
+				buildInDefaultValueRules,
+				dbCollationS)
+			if err != nil {
+				return err
 			}
+			return nil
 		})
 	}
 	for _, r := range g.Wait() {
