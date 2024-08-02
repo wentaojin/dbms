@@ -256,7 +256,7 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 
 	if len(buckets) == 0 {
 		// not found bucket
-		return nil, fmt.Errorf("the schema [%s] table [%s] not found buckets, please contact author or reselect", schemaNameS, tableNameS)
+		return nil, nil
 	}
 
 	highestBucket, err := structure.FindMatchDistinctCountBucket(sortHists, buckets, consColumns)
