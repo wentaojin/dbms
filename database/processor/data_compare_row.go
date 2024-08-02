@@ -1522,6 +1522,22 @@ func (r *DataCompareRow) compareMd5Row() error {
 		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("compare_row_time", time.Now().Sub(compareTime).String()))
 
+	logger.Debug("data compare task chunk md5 compare details compare rows",
+		zap.String("task_name", r.Dmt.TaskName),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
+		zap.String("schema_name_s", r.Dmt.SchemaNameS),
+		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("schema_name_t", r.Dmt.SchemaNameT),
+		zap.String("table_name_t", r.Dmt.TableNameT),
+		zap.String("chunk_id", r.Dmt.ChunkID),
+		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+		zap.Any("addSets", addDestSets),
+		zap.Any("deleteSets", delDestSets),
+		zap.String("compare_row_time", time.Now().Sub(compareTime).String()))
 	var (
 		addDetails []string
 		delDetails []string
