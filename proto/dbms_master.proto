@@ -685,6 +685,7 @@ message DataCompareParam{
   repeated string ignoreConditionFields = 15;
   string repairStmtFlow = 16;
   bool enableCollationSetting = 17;
+  bool disableMd5Checksum = 18;
 }
 
 message SqlMigrateRule {

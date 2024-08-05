@@ -66,11 +66,17 @@ type DataCompareParam struct {
 	IgnoreConditionFields  []string `toml:"ignore-condition-fields" json:"ignoreConditionFields"`
 	RepairStmtFlow         string   `toml:"repair-stmt-flow" json:"repairStmtFlow"`
 	EnableCollationSetting bool     `toml:"enable-collation-setting" json:"enableCollationSetting"`
+	DisableMd5Checksum     bool     `toml:"disable-md5-checksum" json:"disableMd5Checksum"`
 }
 
 func (d *CompareConfig) String() string {
 	jsonStr, _ := stringutil.MarshalJSON(d)
 	return jsonStr
+}
+
+func (d *CompareConfig) SetDisableMd5ChecksumDefault() *CompareConfig {
+	d.DataCompareParam.DisableMd5Checksum = false
+	return d
 }
 
 func UpsertDataCompare(serverAddr string, file string) error {
@@ -81,7 +87,7 @@ func UpsertDataCompare(serverAddr string, file string) error {
 	fmt.Printf("File:         %s\n", cyan.Sprint(file))
 	fmt.Printf("Action:       %s\n", cyan.Sprint("upsert"))
 
-	if _, err := toml.DecodeFile(file, cfg); err != nil {
+	if _, err := toml.DecodeFile(file, cfg.SetDisableMd5ChecksumDefault()); err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("failed decode toml config file %s: %v", file, err))
 		return nil

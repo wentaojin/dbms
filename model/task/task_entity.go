@@ -260,7 +260,8 @@ type DataCompareResult struct {
 	TableNameS   string `gorm:"type:varchar(60);not null;index:idx_schema_table_name_complex;comment:source table name" json:"tableNameS"`
 	SchemaNameT  string `gorm:"type:varchar(60);not null;comment:target schema name" json:"schemaNameT"`
 	TableNameT   string `gorm:"type:varchar(60);not null;comment:target table name" json:"tableNameT"`
-	ChunkDetailS string `gorm:"type:varchar(500);not null;index:idx_schema_table_name_complex;comment:source table chunk detail" json:"chunkDetailS"`
+	ChunkID      string `gorm:"type:varchar(300);not null;index:idx_schema_table_name_complex;comment:source table chunk random id" json:"chunkID"`
+	ChunkDetailS string `gorm:"type:longtext;not null;comment:source table chunk detail" json:"chunkDetailS"`
 	FixStmtType  string `gorm:"type:varchar(2);not null;comment:fix stmt type,eg: I represent INSERT D represent DELETE" json:"fixStmtType"`
 	FixDetailT   string `gorm:"type:longtext;comment:fix detail infos used to query information" json:"fixDetailT"`
 }

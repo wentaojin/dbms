@@ -97,7 +97,7 @@ func (s *DataCompareFile) SyncFile() error {
 		keySli := stringutil.StringSplit(k, constant.StringSeparatorAite)
 		valSli := stringutil.StringSplit(v, constant.StringSeparatorAite)
 
-		if strings.EqualFold(compareMethodM[k], constant.DataCompareMethodCheckRows) {
+		if strings.EqualFold(compareMethodM[k], constant.DataCompareMethodDatabaseCheckRows) {
 			var sqlComp strings.Builder
 
 			sqlComp.WriteString("/*\n")
@@ -157,7 +157,9 @@ func (s *DataCompareFile) SyncFile() error {
 		wt := table.NewWriter()
 		wt.SetStyle(table.StyleLight)
 		wt.AppendHeader(table.Row{"#", "TASK_NAME", "TASK_FLOW", "TABLE_NAME_S", "TABLE_NAME_T", "COMPARE_METHOD", "SUGGEST"})
-		if strings.EqualFold(compareMethodM[k], constant.DataCompareMethodCheckMD5) {
+
+		switch stringutil.StringUpper(compareMethodM[k]) {
+		case constant.DataCompareMethodDatabaseCheckMD5, constant.DataCompareMethodDatabaseCheckCRC32:
 			wt.AppendRows([]table.Row{
 				{"Schema", s.TaskName, s.TaskFlow,
 					fmt.Sprintf("%s.%s", keySli[0], keySli[1]),
@@ -165,7 +167,7 @@ func (s *DataCompareFile) SyncFile() error {
 					"DATABASE",
 					"Row Verify Difference, Please Fixed SQL"},
 			})
-		} else if strings.EqualFold(compareMethodM[k], constant.DataCompareMethodCheckCRC32) {
+		case constant.DataCompareMethodProgramCheckCRC32:
 			wt.AppendRows([]table.Row{
 				{"Schema", s.TaskName, s.TaskFlow,
 					fmt.Sprintf("%s.%s", keySli[0], keySli[1]),
@@ -173,7 +175,7 @@ func (s *DataCompareFile) SyncFile() error {
 					"PROGRAM",
 					"Row Verify Difference, Please Fixed SQL"},
 			})
-		} else {
+		default:
 			wt.AppendRows([]table.Row{
 				{"Schema", s.TaskName, s.TaskFlow,
 					fmt.Sprintf("%s.%s", keySli[0], keySli[1]),
@@ -182,6 +184,7 @@ func (s *DataCompareFile) SyncFile() error {
 					"Row Verify Difference, Please Fixed SQL"},
 			})
 		}
+
 		sqlComp.WriteString(wt.Render() + "\n")
 		sqlComp.WriteString("*/\n")
 

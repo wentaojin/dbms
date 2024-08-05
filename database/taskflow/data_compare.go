@@ -186,10 +186,10 @@ func (dmt *DataCompareTask) Start() error {
 					}
 					// clear data compare chunk result
 					err = model.GetIDataCompareResultRW().DeleteDataCompareResult(txnCtx, &task.DataCompareResult{
-						TaskName:     dt.TaskName,
-						SchemaNameS:  dt.SchemaNameS,
-						TableNameS:   dt.TableNameS,
-						ChunkDetailS: dt.ChunkDetailS,
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						ChunkID:     dt.ChunkID,
 					})
 					if err != nil {
 						return err
@@ -657,7 +657,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					SchemaNameS:                 schemaRoute.SchemaNameS,
 					TableNameS:                  sourceTable,
 					TableTypeS:                  databaseTableTypeMap,
-					OnlyCompareRow:              dmt.TaskParams.OnlyCompareRow,
+					OnlyDatabaseCompareRow:      dmt.TaskParams.OnlyCompareRow,
+					DisableDatabaseCompareMd5:   dmt.TaskParams.DisableMd5Checksum,
 					DBCharsetS:                  dmt.DatasourceS.ConnectCharset,
 					DBCharsetT:                  dmt.DatasourceT.ConnectCharset,
 					CaseFieldRuleS:              dmt.Task.CaseFieldRuleS,

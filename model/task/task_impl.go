@@ -1204,8 +1204,8 @@ func (rw *RWDataCompareResult) FindDataCompareResult(ctx context.Context, task *
 }
 
 func (rw *RWDataCompareResult) DeleteDataCompareResult(ctx context.Context, task *DataCompareResult) error {
-	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_detail_s = ?",
-		task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkDetailS).Delete(&DataCompareResult{}).Error
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_id = ?",
+		task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkID).Delete(&DataCompareResult{}).Error
 	if err != nil {
 		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

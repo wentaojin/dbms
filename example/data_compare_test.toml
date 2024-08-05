@@ -88,3 +88,4 @@ repair-stmt-flow = "upstream"
 # 创建 index MYSQL 兼容性数据库示例：
 # CREATE INDEX idx_t99_nlstest ON t99(CONVERT(c1, USING 'UTF8MB4'));
 enable-collation-setting = false
+disable-md5-checksum = true

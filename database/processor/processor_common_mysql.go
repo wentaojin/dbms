@@ -69,7 +69,7 @@ func OptimizerMYSQLCompatibleDataMigrateColumnS(columnName, datatype, datetimePr
 		if datetimeP == 0 {
 			return fmt.Sprintf("IFNULL(DATE_FORMAT(`%s`, '%%Y-%%m-%%d %%H:%%i:%%s'),'0') AS %s", columnName, columnName), nil
 		} else {
-			return fmt.Sprintf("IFNULL(CONCAT(DATE_FORMAT(%s, '%%Y-%%m-%%d %%T:'),LPAD(SUBSTRING(TIME_FORMAT(%s, '%%f'), 1, %s), %s, '0')),'0') AS %s", columnName, columnName, datetimePrecision, datetimePrecision, columnName), nil
+			return fmt.Sprintf("IFNULL(CONCAT(DATE_FORMAT(`%s`, '%%Y-%%m-%%d %%T:'),LPAD(SUBSTRING(TIME_FORMAT(`%s`, '%%f'), 1, %s), %s, '0')),'0') AS `%s`", columnName, columnName, datetimePrecision, datetimePrecision, columnName), nil
 		}
 	case constant.BuildInMySQLDatatypeBit:
 		return stringutil.StringBuilder("`", columnName, "`"), nil
@@ -157,17 +157,17 @@ func OptimizerMYSQLCompatibleMigrateOracleDataCompareColumnST(columnNameS, datat
 
 	// time datatype
 	case constant.BuildInMySQLDatatypeDate:
-		return nvlNullStringS, stringutil.StringBuilder(`NVL(TO_CHAR(`, columnNameT, `,'YYYY-MM-DD'),'0')`), nil
+		return nvlNullStringS, stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameT, `",'YYYY-MM-DD'),'0')`), nil
 	case constant.BuildInMySQLDatatypeTime:
-		return nvlNullStringS, stringutil.StringBuilder(`NVL(TO_CHAR(`, columnNameT, `,'HH24:MI:SS'),'0')`), nil
+		return nvlNullStringS, stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameT, `",'HH24:MI:SS'),'0')`), nil
 	case constant.BuildInMySQLDatatypeYear:
-		return nvlNullStringS, stringutil.StringBuilder(`NVL(TO_CHAR(`, columnNameT, `,'YYYY'),'0')`), nil
+		return nvlNullStringS, stringutil.StringBuilder(`NVL(TO_CHAR("`, columnNameT, `",'YYYY'),'0')`), nil
 	case constant.BuildInMySQLDatatypeDatetime,
 		constant.BuildInMySQLDatatypeTimestamp:
 		if datetimePrecisionS == 0 {
-			return nvlNullStringS, stringutil.StringBuilder(`NVL(TO_CHAR(`, columnNameS, `,'YYYY-MM-DD HH24:MI:SS'),'0')`), nil
+			return nvlNullStringS, columnNameT, nil
 		} else {
-			return nvlNullStringS, stringutil.StringBuilder(`NVL(TO_CHAR(`, columnNameS, `,'YYYY-MM-DD HH24:MI:SS.FF`, strconv.FormatInt(datetimePrecisionS, 10), `'),'0')`), nil
+			return nvlNullStringS, columnNameT, nil
 		}
 	case constant.BuildInMySQLDatatypeBit:
 		return nvlNullStringS, nvlNullStringT, nil

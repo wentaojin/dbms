@@ -85,12 +85,13 @@ var (
 		BuildInOracleDatatypeCharacter,
 		BuildInOracleDatatypeNcharVarying}
 
-	DataCompareSymbolLt         = "<"
-	DataCompareSymbolLte        = "<="
-	DataCompareSymbolGt         = ">"
-	DataCompareMethodCheckMD5   = "CHECKMD5"
-	DataCompareMethodCheckRows  = "CHECKROWS"
-	DataCompareMethodCheckCRC32 = "CHECKCRC32"
+	DataCompareSymbolLt                 = "<"
+	DataCompareSymbolLte                = "<="
+	DataCompareSymbolGt                 = ">"
+	DataCompareMethodDatabaseCheckMD5   = "DATABASE_MD5"
+	DataCompareMethodDatabaseCheckCRC32 = "DATABASE_CRC32"
+	DataCompareMethodDatabaseCheckRows  = "DATABASE_ROWS"
+	DataCompareMethodProgramCheckCRC32  = "PROGRAM_CRC32"
 
 	DataCompareMethodCheckMD5ValueLength = 32
 

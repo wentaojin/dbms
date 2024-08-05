@@ -1161,6 +1161,8 @@ components:
           format: string
         enableCollationSetting:
           type: boolean
+        disableMd5Checksum:
+          type: boolean
     CsvMigrateParam:
       type: object
       properties:

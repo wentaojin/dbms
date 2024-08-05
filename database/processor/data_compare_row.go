@@ -176,12 +176,14 @@ func (r *DataCompareRow) CompareRows() error {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_t [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[1])
 	}
 
-	logger.Info("data compare task chunk rows compare starting",
+	logger.Info("data compare task chunk compare starting",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
@@ -225,18 +227,17 @@ func (r *DataCompareRow) CompareRows() error {
 			}
 			resultSM <- resultS[0]["ROWSCOUNT"]
 
-			logger.Info("data compare task chunk rows compare sql",
+			logger.Info("data compare task chunk upstream compare sql",
 				zap.String("task_name", r.Dmt.TaskName),
 				zap.String("task_mode", r.TaskMode),
 				zap.String("task_flow", r.TaskFlow),
 				zap.String("schema_name_s", r.Dmt.SchemaNameS),
 				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("compare_method", r.Dmt.CompareMethod),
+				zap.String("chunk_id", r.Dmt.ChunkID),
 				zap.String("chunk_detail_s", desChunkDetailS),
 				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
-				zap.String("schema_name_t", r.Dmt.SchemaNameT),
-				zap.String("table_name_t", r.Dmt.TableNameT),
-				zap.String("chunk_detail_t", desChunkDetailT),
-				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("chunk_result_s", resultS[0]["ROWSCOUNT"]),
 				zap.String("upstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
@@ -253,18 +254,17 @@ func (r *DataCompareRow) CompareRows() error {
 				return fmt.Errorf("the database source target sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			resultTM <- resultT[0]["ROWSCOUNT"]
-			logger.Info("data compare task chunk rows compare sql",
+			logger.Info("data compare task chunk downstream compare sql",
 				zap.String("task_name", r.Dmt.TaskName),
 				zap.String("task_mode", r.TaskMode),
 				zap.String("task_flow", r.TaskFlow),
-				zap.String("schema_name_s", r.Dmt.SchemaNameS),
-				zap.String("table_name_s", r.Dmt.TableNameS),
-				zap.String("chunk_detail_s", desChunkDetailS),
-				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+				zap.String("compare_method", r.Dmt.CompareMethod),
+				zap.String("chunk_id", r.Dmt.ChunkID),
 				zap.String("schema_name_t", r.Dmt.SchemaNameT),
 				zap.String("table_name_t", r.Dmt.TableNameT),
 				zap.String("chunk_detail_t", desChunkDetailT),
 				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("chunk_result_t", resultT[0]["ROWSCOUNT"]),
 				zap.String("downstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
@@ -281,28 +281,29 @@ func (r *DataCompareRow) CompareRows() error {
 
 	resultS, err := decimal.NewFromString(resultStrS)
 	if err != nil {
-		return fmt.Errorf("parse the database source rowcounts failed: %v", err)
+		return fmt.Errorf("parse the database source rowcounts [%s] failed: %v", err, resultStrS)
 	}
 
 	resultT, err := decimal.NewFromString(resultStrT)
 	if err != nil {
-		return fmt.Errorf("parse the database target rowcounts failed: %v", err)
+		return fmt.Errorf("parse the database target rowcounts [%s] failed: %v", err, resultStrT)
 	}
 
 	if resultS.Equal(resultT) {
-		logger.Info("data compare task chunk rows compare is equaled",
+		logger.Info("data compare task chunk compare is equaled",
 			zap.String("task_name", r.Dmt.TaskName),
 			zap.String("task_mode", r.TaskMode),
 			zap.String("task_flow", r.TaskFlow),
 			zap.String("schema_name_s", r.Dmt.SchemaNameS),
 			zap.String("table_name_s", r.Dmt.TableNameS),
+			zap.String("compare_method", r.Dmt.CompareMethod),
+			zap.String("chunk_id", r.Dmt.ChunkID),
 			zap.String("chunk_detail_s", desChunkDetailS),
 			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 			zap.String("schema_name_t", r.Dmt.SchemaNameT),
 			zap.String("table_name_t", r.Dmt.TableNameT),
 			zap.String("chunk_detail_t", desChunkDetailT),
 			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
-			zap.String("compare_method", r.Dmt.CompareMethod),
 			zap.String("table_rows_s", resultStrS),
 			zap.String("table_rows_t", resultStrT),
 			zap.String("cost", endTime.Sub(startTime).String()))
@@ -339,22 +340,40 @@ func (r *DataCompareRow) CompareRows() error {
 		if errW != nil {
 			return errW
 		}
+
+		logger.Info("data compare task chunk compare finished",
+			zap.String("task_name", r.Dmt.TaskName),
+			zap.String("task_mode", r.TaskMode),
+			zap.String("task_flow", r.TaskFlow),
+			zap.String("schema_name_s", r.Dmt.SchemaNameS),
+			zap.String("table_name_s", r.Dmt.TableNameS),
+			zap.String("compare_method", r.Dmt.CompareMethod),
+			zap.String("chunk_id", r.Dmt.ChunkID),
+			zap.String("chunk_detail_s", desChunkDetailS),
+			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+			zap.String("schema_name_t", r.Dmt.SchemaNameT),
+			zap.String("table_name_t", r.Dmt.TableNameT),
+			zap.String("chunk_detail_t", desChunkDetailT),
+			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+			zap.String("cost", time.Now().Sub(startTime).String()))
+
 		return nil
 	}
 
-	logger.Info("data compare task chunk rows compare isn't equaled",
+	logger.Info("data compare task chunk compare isn't equaled",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
 		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
-		zap.String("compare_method", r.Dmt.CompareMethod),
 		zap.String("table_rows_s", resultStrS),
 		zap.String("table_rows_t", resultStrT),
 		zap.String("cost", endTime.Sub(startTime).String()))
@@ -393,6 +412,7 @@ func (r *DataCompareRow) CompareRows() error {
 			TableNameS:   r.Dmt.TableNameS,
 			SchemaNameT:  r.Dmt.SchemaNameT,
 			TableNameT:   r.Dmt.TableNameT,
+			ChunkID:      r.Dmt.ChunkID,
 			ChunkDetailS: r.Dmt.ChunkDetailS,
 			FixStmtType:  constant.DataCompareFixStmtTypeRows,
 			FixDetailT:   fmt.Sprintf("rowCountsS:%v rowCountsT:%v", resultS, resultT),
@@ -405,10 +425,26 @@ func (r *DataCompareRow) CompareRows() error {
 	if errW != nil {
 		return errW
 	}
+
+	logger.Info("data compare task chunk compare finished",
+		zap.String("task_name", r.Dmt.TaskName),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
+		zap.String("schema_name_s", r.Dmt.SchemaNameS),
+		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
+		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+		zap.String("schema_name_t", r.Dmt.SchemaNameT),
+		zap.String("table_name_t", r.Dmt.TableNameT),
+		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
 }
 
-func (r *DataCompareRow) CompareMD5() error {
+func (r *DataCompareRow) CompareMd5ORCrc32() error {
 	startTime := time.Now()
 
 	var (
@@ -473,7 +509,7 @@ func (r *DataCompareRow) CompareMD5() error {
 		} else {
 			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
 		}
-		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
 			execQueryS = fmt.Sprintf(`SELECT
 	TO_CHAR(NVL(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'xxxxxxxx')+
@@ -492,7 +528,7 @@ FROM
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		}
-		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
 			execQueryS = fmt.Sprintf(`
 SELECT
 	 CAST(IFNULL(SUM(CONV(SUBSTRING(subq.ROWSCHECKSUM, 1, 8),16,10)+ 
@@ -508,7 +544,7 @@ FROM
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		}
-		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
 			execQueryS = fmt.Sprintf(`
 SELECT
 	 CAST(IFNULL(SUM(CONV(SUBSTRING(subq.ROWSCHECKSUM, 1, 8),16,10)+ 
@@ -533,7 +569,7 @@ FROM
 		} else {
 			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
 		}
-		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
 			execQueryT = fmt.Sprintf(`SELECT
 	TO_CHAR(NVL(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'xxxxxxxx')+
 	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'xxxxxxxx')+
@@ -552,7 +588,7 @@ FROM
 		} else {
 			execQueryT = stringutil.StringBuilder("SELECT ", columnDetailT, " FROM `", r.Dmt.SchemaNameT, "`.`", r.Dmt.TableNameT, "` WHERE ", chunkDetailT)
 		}
-		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
 			execQueryT = fmt.Sprintf(`
 SELECT
 	 CAST(IFNULL(SUM(CONV(SUBSTRING(subq.ROWSCHECKSUM, 1, 8),16,10)+ 
@@ -568,7 +604,7 @@ FROM
 		} else {
 			execQueryT = stringutil.StringBuilder("SELECT ", columnDetailT, " FROM ", r.Dmt.SchemaNameT, "`.`", r.Dmt.TableNameT, "` WHERE ", chunkDetailT)
 		}
-		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodCheckMD5) {
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
 			execQueryT = fmt.Sprintf(`
 SELECT
 	 CAST(IFNULL(SUM(CONV(SUBSTRING(subq.ROWSCHECKSUM, 1, 8),16,10)+ 
@@ -582,12 +618,14 @@ FROM
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_t [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[1])
 	}
 
-	logger.Info("data compare task chunk md5 compare starting",
+	logger.Info("data compare task chunk compare starting",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
@@ -629,18 +667,17 @@ FROM
 				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
 			resultSM <- resultS[0]["ROWSCHECKSUM"]
-			logger.Info("data compare task chunk md5 compare sql",
+			logger.Info("data compare task chunk upstream compare sql",
 				zap.String("task_name", r.Dmt.TaskName),
 				zap.String("task_mode", r.TaskMode),
 				zap.String("task_flow", r.TaskFlow),
 				zap.String("schema_name_s", r.Dmt.SchemaNameS),
 				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("compare_method", r.Dmt.CompareMethod),
 				zap.String("chunk_detail_s", desChunkDetailS),
+				zap.String("chunk_id", r.Dmt.ChunkID),
 				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
-				zap.String("schema_name_t", r.Dmt.SchemaNameT),
-				zap.String("table_name_t", r.Dmt.TableNameT),
-				zap.String("chunk_detail_t", desChunkDetailT),
-				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("chunk_result_s", resultS[0]["ROWSCHECKSUM"]),
 				zap.String("upstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
@@ -657,18 +694,17 @@ FROM
 				return fmt.Errorf("the database target query sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
 			resultTM <- resultT[0]["ROWSCHECKSUM"]
-			logger.Info("data compare task chunk md5 compare sql",
+			logger.Info("data compare task chunk downstream compare sql",
 				zap.String("task_name", r.Dmt.TaskName),
 				zap.String("task_mode", r.TaskMode),
 				zap.String("task_flow", r.TaskFlow),
-				zap.String("schema_name_s", r.Dmt.SchemaNameS),
-				zap.String("table_name_s", r.Dmt.TableNameS),
-				zap.String("chunk_detail_s", desChunkDetailS),
-				zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 				zap.String("schema_name_t", r.Dmt.SchemaNameT),
 				zap.String("table_name_t", r.Dmt.TableNameT),
+				zap.String("compare_method", r.Dmt.CompareMethod),
+				zap.String("chunk_id", r.Dmt.ChunkID),
 				zap.String("chunk_detail_t", desChunkDetailT),
 				zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+				zap.String("chunk_result_s", resultT[0]["ROWSCHECKSUM"]),
 				zap.String("downstream_database_time", time.Now().Sub(streamTime).String()))
 			return nil
 		}
@@ -685,29 +721,30 @@ FROM
 
 	resultS, err := decimal.NewFromString(resultStrS)
 	if err != nil {
-		return fmt.Errorf("parse the database source failed: %v", err)
+		return fmt.Errorf("parse the database source value [%s] target value [%s] failed: %v", resultStrS, resultStrT, err)
 	}
 
 	resultT, err := decimal.NewFromString(resultStrT)
 	if err != nil {
-		return fmt.Errorf("parse the database target failed: %v", err)
+		return fmt.Errorf("parse the database target value [%s] source value [%s] failed: %v", resultStrT, resultStrS, err)
 	}
 	if resultS.Equal(resultT) {
-		logger.Info("data compare task chunk md5 compare is equaled",
+		logger.Info("data compare task chunk compare is equaled",
 			zap.String("task_name", r.Dmt.TaskName),
 			zap.String("task_mode", r.TaskMode),
 			zap.String("task_flow", r.TaskFlow),
 			zap.String("schema_name_s", r.Dmt.SchemaNameS),
 			zap.String("table_name_s", r.Dmt.TableNameS),
+			zap.String("compare_method", r.Dmt.CompareMethod),
+			zap.String("chunk_id", r.Dmt.ChunkID),
 			zap.String("chunk_detail_s", desChunkDetailS),
 			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 			zap.String("schema_name_t", r.Dmt.SchemaNameT),
 			zap.String("table_name_t", r.Dmt.TableNameT),
 			zap.String("chunk_detail_t", desChunkDetailT),
 			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
-			zap.String("compare_method", r.Dmt.CompareMethod),
-			zap.String("table_md5_s", resultStrS),
-			zap.String("table_md5_t", resultStrT),
+			zap.String("chunk_result_s", resultStrS),
+			zap.String("chunk_result_t", resultStrT),
 			zap.String("cost", endTime.Sub(startTime).String()))
 
 		errW := model.Transaction(r.Ctx, func(txnCtx context.Context) error {
@@ -742,15 +779,32 @@ FROM
 		if errW != nil {
 			return errW
 		}
+
+		logger.Info("data compare task chunk compare finished",
+			zap.String("task_name", r.Dmt.TaskName),
+			zap.String("task_mode", r.TaskMode),
+			zap.String("task_flow", r.TaskFlow),
+			zap.String("schema_name_s", r.Dmt.SchemaNameS),
+			zap.String("table_name_s", r.Dmt.TableNameS),
+			zap.String("compare_method", r.Dmt.CompareMethod),
+			zap.String("chunk_id", r.Dmt.ChunkID),
+			zap.String("chunk_detail_s", desChunkDetailS),
+			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+			zap.String("schema_name_t", r.Dmt.SchemaNameT),
+			zap.String("table_name_t", r.Dmt.TableNameT),
+			zap.String("chunk_detail_t", desChunkDetailT),
+			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
 	}
 
-	logger.Info("data compare task chunk md5 compare isn't equaled",
+	logger.Info("data compare task chunk compare isn't equaled",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
 		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
@@ -758,12 +812,11 @@ FROM
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
 		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
-		zap.String("compare_method", r.Dmt.CompareMethod),
-		zap.String("table_md5_s", resultStrS),
-		zap.String("table_md5_t", resultStrT),
+		zap.String("chunk_result_s", resultStrS),
+		zap.String("chunk_result_t", resultStrT),
 		zap.String("cost", endTime.Sub(startTime).String()))
 
-	err = r.compareMd5Row()
+	err = r.compareMd5OrCrc32Row()
 	if err != nil {
 		return err
 	}
@@ -885,12 +938,14 @@ func (r *DataCompareRow) CompareCRC32() error {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_t [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[1])
 	}
 
-	logger.Info("data compare task chunk crc32 compare details starting",
+	logger.Info("data compare task chunk compare details starting",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_s", desChunkDetailS),
@@ -941,12 +996,14 @@ func (r *DataCompareRow) CompareCRC32() error {
 			crc32ValSC <- crc32ValS
 			columnDataSMC <- columnDataS
 
-			logger.Info("data compare task chunk crc32 compare details sql",
+			logger.Info("data compare task chunk upstream compare sql",
 				zap.String("task_name", r.Dmt.TaskName),
 				zap.String("task_mode", r.TaskMode),
 				zap.String("task_flow", r.TaskFlow),
 				zap.String("schema_name_s", r.Dmt.SchemaNameS),
 				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("compare_method", r.Dmt.CompareMethod),
+				zap.String("chunk_id", r.Dmt.ChunkID),
 				zap.String("schema_name_t", r.Dmt.SchemaNameT),
 				zap.String("table_name_t", r.Dmt.TableNameT),
 				zap.String("chunk_detail_s", desChunkDetailS),
@@ -971,12 +1028,14 @@ func (r *DataCompareRow) CompareCRC32() error {
 			columnNameTC <- columnT
 			crc32ValTC <- crc32ValT
 			columnDataTMC <- columnDataT
-			logger.Info("data compare task chunk crc32 compare details sql",
+			logger.Info("data compare task chunk downstream compare sql",
 				zap.String("task_name", r.Dmt.TaskName),
 				zap.String("task_mode", r.TaskMode),
 				zap.String("task_flow", r.TaskFlow),
 				zap.String("schema_name_s", r.Dmt.SchemaNameS),
 				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("compare_method", r.Dmt.CompareMethod),
+				zap.String("chunk_id", r.Dmt.ChunkID),
 				zap.String("schema_name_t", r.Dmt.SchemaNameT),
 				zap.String("table_name_t", r.Dmt.TableNameT),
 				zap.String("chunk_detail_s", desChunkDetailS),
@@ -1003,19 +1062,20 @@ func (r *DataCompareRow) CompareCRC32() error {
 	endTime := time.Now()
 
 	if crc32VS == crc32VT {
-		logger.Info("data compare task chunk crc32 compare is equaled",
+		logger.Info("data compare task chunk compare is equaled",
 			zap.String("task_name", r.Dmt.TaskName),
 			zap.String("task_mode", r.TaskMode),
 			zap.String("task_flow", r.TaskFlow),
 			zap.String("schema_name_s", r.Dmt.SchemaNameS),
 			zap.String("table_name_s", r.Dmt.TableNameS),
+			zap.String("compare_method", r.Dmt.CompareMethod),
+			zap.String("chunk_id", r.Dmt.ChunkID),
 			zap.String("chunk_detail_s", desChunkDetailS),
 			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 			zap.String("schema_name_t", r.Dmt.SchemaNameT),
 			zap.String("table_name_t", r.Dmt.TableNameT),
 			zap.String("chunk_detail_t", desChunkDetailT),
 			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
-			zap.String("compare_method", r.Dmt.CompareMethod),
 			zap.Uint32("table_crc32_s", crc32VS),
 			zap.Uint32("table_crc32_t", crc32VT),
 			zap.String("cost", endTime.Sub(startTime).String()))
@@ -1052,22 +1112,39 @@ func (r *DataCompareRow) CompareCRC32() error {
 		if errW != nil {
 			return errW
 		}
+
+		logger.Info("data compare task chunk compare details finished",
+			zap.String("task_name", r.Dmt.TaskName),
+			zap.String("task_mode", r.TaskMode),
+			zap.String("task_flow", r.TaskFlow),
+			zap.String("schema_name_s", r.Dmt.SchemaNameS),
+			zap.String("table_name_s", r.Dmt.TableNameS),
+			zap.String("compare_method", r.Dmt.CompareMethod),
+			zap.String("chunk_id", r.Dmt.ChunkID),
+			zap.String("schema_name_t", r.Dmt.SchemaNameT),
+			zap.String("table_name_t", r.Dmt.TableNameT),
+			zap.String("chunk_detail_s", desChunkDetailS),
+			zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+			zap.String("chunk_detail_t", desChunkDetailT),
+			zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
 	}
 
-	logger.Info("data compare task chunk crc32 compare isn't equaled",
+	logger.Info("data compare task chunk compare isn't equaled",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_t", desChunkDetailT),
 		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
-		zap.String("compare_method", r.Dmt.CompareMethod),
 		zap.Uint32("table_crc32_s", crc32VS),
 		zap.Uint32("table_crc32_t", crc32VT),
 		zap.String("cost", endTime.Sub(startTime).String()))
@@ -1075,18 +1152,39 @@ func (r *DataCompareRow) CompareCRC32() error {
 	compareTime := time.Now()
 	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
 
-	logger.Info("data compare task chunk crc32 compare details compare",
+	logger.Info("data compare task chunk compare rows detail",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("chunk_detail_t", desChunkDetailT),
 		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+		zap.String("compare_row_time", time.Now().Sub(compareTime).String()))
+
+	logger.Debug("data compare task chunk compare rows detail",
+		zap.String("task_name", r.Dmt.TaskName),
+		zap.String("task_mode", r.TaskMode),
+		zap.String("task_flow", r.TaskFlow),
+		zap.String("schema_name_s", r.Dmt.SchemaNameS),
+		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
+		zap.String("schema_name_t", r.Dmt.SchemaNameT),
+		zap.String("table_name_t", r.Dmt.TableNameT),
+		zap.String("chunk_id", r.Dmt.ChunkID),
+		zap.String("chunk_detail_s", desChunkDetailS),
+		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
+		zap.String("chunk_detail_t", desChunkDetailT),
+		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
+		zap.Any("addSets", addDestSets),
+		zap.Any("deleteSets", delDestSets),
 		zap.String("compare_row_time", time.Now().Sub(compareTime).String()))
 
 	var (
@@ -1175,6 +1273,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 						TableNameS:   r.Dmt.TableNameS,
 						SchemaNameT:  r.Dmt.SchemaNameT,
 						TableNameT:   r.Dmt.TableNameT,
+						ChunkID:      r.Dmt.ChunkID,
 						ChunkDetailS: r.Dmt.ChunkDetailS,
 						FixStmtType:  constant.DataCompareFixStmtTypeDelete,
 						FixDetailT:   encryptDelDetails,
@@ -1218,6 +1317,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 						TableNameS:   r.Dmt.TableNameS,
 						SchemaNameT:  r.Dmt.SchemaNameT,
 						TableNameT:   r.Dmt.TableNameT,
+						ChunkID:      r.Dmt.ChunkID,
 						ChunkDetailS: r.Dmt.ChunkDetailS,
 						FixStmtType:  constant.DataCompareFixStmtTypeInsert,
 						FixDetailT:   encryptAddDetails,
@@ -1267,12 +1367,14 @@ func (r *DataCompareRow) CompareCRC32() error {
 		return errW
 	}
 
-	logger.Info("data compare task chunk crc32 compare details finished",
+	logger.Info("data compare task chunk compare details finished",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
@@ -1283,7 +1385,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 	return nil
 }
 
-func (r *DataCompareRow) compareMd5Row() error {
+func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 	startTime := time.Now()
 
 	var (
@@ -1398,12 +1500,14 @@ func (r *DataCompareRow) compareMd5Row() error {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_t [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[1])
 	}
 
-	logger.Info("data compare task chunk md5 compare details starting",
+	logger.Info("data compare task chunk compare details starting",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("chunk_detail_s", desChunkDetailS),
 		zap.Any("chunk_detail_args_s", r.Dmt.ChunkDetailArgS),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
@@ -1450,12 +1554,14 @@ func (r *DataCompareRow) compareMd5Row() error {
 			}
 			columnNameSC <- columnS
 			columnDataSMC <- columnDataS
-			logger.Info("data compare task chunk md5 compare details compare rows",
+			logger.Info("data compare task chunk upstream compare rows",
 				zap.String("task_name", r.Dmt.TaskName),
 				zap.String("task_mode", r.TaskMode),
 				zap.String("task_flow", r.TaskFlow),
 				zap.String("schema_name_s", r.Dmt.SchemaNameS),
 				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("compare_method", r.Dmt.CompareMethod),
+				zap.String("chunk_id", r.Dmt.ChunkID),
 				zap.String("schema_name_t", r.Dmt.SchemaNameT),
 				zap.String("table_name_t", r.Dmt.TableNameT),
 				zap.String("chunk_detail_s", desChunkDetailS),
@@ -1479,12 +1585,14 @@ func (r *DataCompareRow) compareMd5Row() error {
 			}
 			columnNameTC <- columnT
 			columnDataTMC <- columnDataT
-			logger.Info("data compare task chunk md5 compare details compare rows",
+			logger.Info("data compare task chunk downstream compare rows",
 				zap.String("task_name", r.Dmt.TaskName),
 				zap.String("task_mode", r.TaskMode),
 				zap.String("task_flow", r.TaskFlow),
 				zap.String("schema_name_s", r.Dmt.SchemaNameS),
 				zap.String("table_name_s", r.Dmt.TableNameS),
+				zap.String("compare_method", r.Dmt.CompareMethod),
+				zap.String("chunk_id", r.Dmt.ChunkID),
 				zap.String("schema_name_t", r.Dmt.SchemaNameT),
 				zap.String("table_name_t", r.Dmt.TableNameT),
 				zap.String("chunk_detail_s", desChunkDetailS),
@@ -1508,12 +1616,14 @@ func (r *DataCompareRow) compareMd5Row() error {
 
 	compareTime := time.Now()
 	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
-	logger.Info("data compare task chunk md5 compare details compare rows",
+	logger.Info("data compare task chunk compare rows detail",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_s", desChunkDetailS),
@@ -1522,12 +1632,14 @@ func (r *DataCompareRow) compareMd5Row() error {
 		zap.Any("chunk_detail_args_t", r.Dmt.ChunkDetailArgT),
 		zap.String("compare_row_time", time.Now().Sub(compareTime).String()))
 
-	logger.Debug("data compare task chunk md5 compare details compare rows",
+	logger.Debug("data compare task chunk compare rows detail",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_id", r.Dmt.ChunkID),
@@ -1625,6 +1737,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 						TableNameS:   r.Dmt.TableNameS,
 						SchemaNameT:  r.Dmt.SchemaNameT,
 						TableNameT:   r.Dmt.TableNameT,
+						ChunkID:      r.Dmt.ChunkID,
 						ChunkDetailS: r.Dmt.ChunkDetailS,
 						FixStmtType:  constant.DataCompareFixStmtTypeDelete,
 						FixDetailT:   encryptDelDetails,
@@ -1668,6 +1781,7 @@ func (r *DataCompareRow) compareMd5Row() error {
 						TableNameS:   r.Dmt.TableNameS,
 						SchemaNameT:  r.Dmt.SchemaNameT,
 						TableNameT:   r.Dmt.TableNameT,
+						ChunkID:      r.Dmt.ChunkID,
 						ChunkDetailS: r.Dmt.ChunkDetailS,
 						FixStmtType:  constant.DataCompareFixStmtTypeInsert,
 						FixDetailT:   encryptAddDetails,
@@ -1717,12 +1831,14 @@ func (r *DataCompareRow) compareMd5Row() error {
 		return errW
 	}
 
-	logger.Info("data compare task chunk md5 compare details rows finished",
+	logger.Info("data compare task chunk compare details finished",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
 		zap.String("schema_name_s", r.Dmt.SchemaNameS),
 		zap.String("table_name_s", r.Dmt.TableNameS),
+		zap.String("compare_method", r.Dmt.CompareMethod),
+		zap.String("chunk_id", r.Dmt.ChunkID),
 		zap.String("schema_name_t", r.Dmt.SchemaNameT),
 		zap.String("table_name_t", r.Dmt.TableNameT),
 		zap.String("chunk_detail_s", desChunkDetailS),

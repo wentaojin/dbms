@@ -46,8 +46,9 @@ type DataCompareRule struct {
 	ColumnNameSliS              []string           `json:"columnNameSliS"`
 	IgnoreSelectFields          []string           `json:"ignoreSelectFields"`
 	GlobalIgnoreConditionFields []string           `json:"globalIgnoreConditionFields"`
-	OnlyCompareRow              bool               `json:"onlyCompareRow"`
-	OnlyCompareCRC              bool               `json:"onlyCompareCRC"`
+	OnlyDatabaseCompareRow      bool               `json:"onlyDatabaseCompareRow"`
+	OnlyProgramCompareCRC32     bool               `json:"onlyProgramCompareCRC32"`
+	DisableDatabaseCompareMd5   bool               `json:"disableDatabaseCompareMd5"`
 	DatabaseS                   database.IDatabase `json:"-"`
 	DatabaseT                   database.IDatabase `json:"-"`
 	DBCharsetS                  string             `json:"DBCharsetS"`
@@ -459,14 +460,14 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		}
 	}
 
-	if r.OnlyCompareRow {
+	if r.OnlyDatabaseCompareRow {
 		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma), "COUNT(1) AS ROWSCOUNT", stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma), "COUNT(1) AS ROWSCOUNT", nil
 	}
 
 	// if the database table column is existed in long and long raw datatype, the data compare task degenerate into program CRC32 data check
 	// you can circumvent this by setting ignore-fields
 	if len(ignoreTypes) > 0 {
-		r.OnlyCompareCRC = true
+		r.OnlyProgramCompareCRC32 = true
 		logger.Warn("data compare task column datatype rollback action",
 			zap.String("task_name", r.TaskName),
 			zap.String("task_mode", r.TaskMode),
@@ -478,25 +479,44 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma), "", stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma), "", nil
 	}
 
+	if !r.DisableDatabaseCompareMd5 {
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
+				fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(%s),'%s','%s'), 2)) AS ROWSCHECKSUM`,
+					stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.DBCharsetS)),
+				stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
+				fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+					stringutil.StringJoin(columnNameSliTC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4), nil
+		case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
+			return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
+				fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+					stringutil.StringJoin(columnNameSilSC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4),
+				stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
+				fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(%s),'%s','%s'), 2)) AS ROWSCHECKSUM`,
+					stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.DBCharsetT)), nil
+		default:
+			return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] return isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
+		}
+	}
 	switch r.TaskFlow {
 	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
-			fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(%s),'%s','%s'), 2)) AS ROWSCHECKSUM`,
+			fmt.Sprintf(`TO_CHAR(NVL(SUM(CRC32(CONVERT(%s,'%s','%s'))),0)) AS ROWSCHECKSUM`,
 				stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.DBCharsetS)),
 			stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
-			fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+			fmt.Sprintf(`CAST(IFNULL(SUM(CRC32(CONVERT(CONCAT(%s) USING '%s'))),0) AS CHAR) AS ROWSCHECKSUM`,
 				stringutil.StringJoin(columnNameSliTC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4), nil
 	case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
-			fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+			fmt.Sprintf(`CAST(IFNULL(SUM(CRC32(CONVERT(CONCAT(%s) USING '%s'))),0) AS CHAR) AS ROWSCHECKSUM`,
 				stringutil.StringJoin(columnNameSilSC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4),
 			stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
-			fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(%s),'%s','%s'), 2)) AS ROWSCHECKSUM`,
+			fmt.Sprintf(`TO_CHAR(NVL(SUM(CRC32(CONVERT(%s,'%s','%s'))),0)) AS ROWSCHECKSUM`,
 				stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.DBCharsetT)), nil
 	default:
 		return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] return isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
 	}
-
 }
 
 func (r *DataCompareRule) GenSchemaTableTypeRule() string {
@@ -504,13 +524,16 @@ func (r *DataCompareRule) GenSchemaTableTypeRule() string {
 }
 
 func (r *DataCompareRule) GenSchemaTableCompareMethodRule() string {
-	if r.OnlyCompareRow {
-		return constant.DataCompareMethodCheckRows
+	if r.OnlyDatabaseCompareRow {
+		return constant.DataCompareMethodDatabaseCheckRows
 	}
-	if r.OnlyCompareCRC {
-		return constant.DataCompareMethodCheckCRC32
+	if r.OnlyProgramCompareCRC32 {
+		return constant.DataCompareMethodProgramCheckCRC32
 	}
-	return constant.DataCompareMethodCheckMD5
+	if !r.DisableDatabaseCompareMd5 {
+		return constant.DataCompareMethodDatabaseCheckMD5
+	}
+	return constant.DataCompareMethodDatabaseCheckCRC32
 }
 
 func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, []string, string, string, error) {

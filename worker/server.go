@@ -349,6 +349,8 @@ func (s *Server) OperateStartWorker(ctx context.Context, t *task.Task) {
 			if err != nil {
 				panic(fmt.Errorf("the worker task [%v] success, but the worker status wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
 			}
+
+			s.cancelFunc()
 		}
 	}
 }

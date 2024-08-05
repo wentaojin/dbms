@@ -102,18 +102,18 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 type IDataCompareProcessor interface {
 	CompareMethod() string
 	CompareRows() error
-	CompareMD5() error
+	CompareMd5ORCrc32() error
 	CompareCRC32() error
 }
 
 func IDataCompareProcess(p IDataCompareProcessor) error {
 	switch p.CompareMethod() {
-	case constant.DataCompareMethodCheckRows:
+	case constant.DataCompareMethodDatabaseCheckRows:
 		return p.CompareRows()
-	case constant.DataCompareMethodCheckCRC32:
+	case constant.DataCompareMethodProgramCheckCRC32:
 		return p.CompareCRC32()
-	case constant.DataCompareMethodCheckMD5:
-		return p.CompareMD5()
+	case constant.DataCompareMethodDatabaseCheckMD5, constant.DataCompareMethodDatabaseCheckCRC32:
+		return p.CompareMd5ORCrc32()
 	default:
 		return fmt.Errorf("not support compare method [%s]", p.CompareMethod())
 	}

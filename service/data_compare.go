@@ -258,7 +258,10 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 		if err != nil {
 			return err
 		}
-
+		disableMd5Checksum, err := strconv.ParseBool(paramMap[constant.ParamNameDataCompareDisableMd5Checksum])
+		if err != nil {
+			return err
+		}
 		param = &pb.DataCompareParam{
 			TableThread:            tableThread,
 			BatchSize:              batchSize,
@@ -275,6 +278,7 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			RepairStmtFlow:         paramMap[constant.ParamNameDataCompareRepairStmtFlow],
 			IgnoreConditionFields:  stringutil.StringSplit(paramMap[constant.ParamNameDataCompareIgnoreConditionFields], constant.StringSeparatorComma),
 			EnableCollationSetting: enableCollationSetting,
+			DisableMd5Checksum:     disableMd5Checksum,
 		}
 
 		schemaRouteRule, _, dataCompareRules, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -592,7 +596,7 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir str
 	}
 
 	if !strings.EqualFold(taskInfo.TaskStatus, constant.TaskDatabaseStatusSuccess) {
-		return fmt.Errorf("the [%v] task [%v] status [%v] is running in the worker [%v], please waiting success and retry", stringutil.StringLower(taskInfo.TaskMode),
+		return fmt.Errorf("the [%v] task [%v] is status [%v] in the worker [%v], please waiting success and retry", stringutil.StringLower(taskInfo.TaskMode),
 			taskInfo.TaskName, stringutil.StringLower(taskInfo.TaskStatus), taskInfo.WorkerAddr)
 	}
 
@@ -710,6 +714,13 @@ func getDataCompareTasKParams(ctx context.Context, taskName string, caseFieldRul
 				return taskParam, err
 			}
 			taskParam.EnableCollationSetting = enableCollationSetting
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareDisableMd5Checksum) {
+			disableMd5Checksum, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.DisableMd5Checksum = disableMd5Checksum
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareIgnoreConditionFields) {
 			var newFields []string
