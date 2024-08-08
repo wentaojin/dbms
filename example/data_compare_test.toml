@@ -1,4 +1,4 @@
-task-name = "compare-task00"
+task-name = "compare-task03"
 datasource-name-s = "test08"
 datasource-name-t = "o11024"
 comment = "测试数据源"
@@ -17,7 +17,7 @@ case-field-rule-t = "2"
 
 [schema-route-rule]
 schema-name-s = "ucccis"
-schema-name-t = "marvin"
+schema-name-t = "scott"
 include-table-s = ["t5"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]

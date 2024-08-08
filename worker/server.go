@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/wentaojin/dbms/proto/pb"
 	"net"
 	"runtime/debug"
 	"strings"
@@ -30,8 +31,6 @@ import (
 	"github.com/wentaojin/dbms/openapi"
 	"github.com/wentaojin/dbms/service"
 	"google.golang.org/grpc"
-
-	"github.com/wentaojin/dbms/proto/pb"
 
 	"go.uber.org/zap"
 
@@ -62,6 +61,8 @@ type Server struct {
 	mu         sync.Mutex
 	cancelCtx  context.Context
 	cancelFunc context.CancelFunc
+
+	grpcServer *grpc.Server
 
 	// UnimplementedWorkerServer
 	pb.UnimplementedWorkerServer
@@ -148,17 +149,38 @@ func (s *Server) initOption(opts ...configutil.WorkerOption) (err error) {
 
 func (s *Server) registerService(ctx context.Context) error {
 	// init register service and binding lease
-	n := &etcdutil.Node{
-		Addr: s.WorkerOptions.WorkerAddr,
-		Role: constant.DefaultInstanceRoleWorker,
+	workerState := constant.DefaultInstanceFreeState
+
+	stateKeyResp, err := etcdutil.GetKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr))
+	if err != nil {
+		return err
+	}
+
+	if len(stateKeyResp.Kvs) > 1 {
+		return fmt.Errorf("the dbms-worker instance register service failed: service register records [%s] are [%d], should be one record", stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), len(stateKeyResp.Kvs))
+	}
+
+	for _, ev := range stateKeyResp.Kvs {
+		var w *etcdutil.Instance
+		err = stringutil.UnmarshalJSON(ev.Value, &w)
+		if err != nil {
+			return err
+		}
+		workerState = w.State
+	}
+
+	n := &etcdutil.Instance{
+		Addr:  s.WorkerOptions.WorkerAddr,
+		Role:  constant.DefaultInstanceRoleWorker,
+		State: workerState,
 	}
 
 	r := etcdutil.NewServiceRegister(
 		s.etcdClient, s.WorkerOptions.WorkerAddr,
-		stringutil.StringBuilder(constant.DefaultWorkerRegisterPrefixKey, s.WorkerOptions.WorkerAddr),
+		stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr),
 		n.String(), s.WorkerOptions.KeepaliveTTL)
 
-	err := r.Register(ctx)
+	err = r.Register(ctx)
 	if err != nil {
 		return err
 	}
@@ -189,10 +211,11 @@ func (s *Server) gRPCServe() error {
 	if err != nil {
 		return err
 	}
-	server := grpc.NewServer()
-	pb.RegisterWorkerServer(server, s)
 
-	err = server.Serve(lis)
+	s.grpcServer = grpc.NewServer()
+	pb.RegisterWorkerServer(s.grpcServer, s)
+
+	err = s.grpcServer.Serve(lis)
 	if err != nil {
 		return err
 	}
@@ -201,10 +224,17 @@ func (s *Server) gRPCServe() error {
 
 // Close the server, this function can be called multiple times.
 func (s *Server) Close() {
-	logger.Info("dbms-worker closing server")
+	logger.Info("the dbms-worker closing server")
 	defer func() {
-		logger.Info("dbms-worker server closed")
+		logger.Info("the dbms-worker server closed")
 	}()
+
+	if s.cancelFunc != nil {
+		s.cancelFunc()
+	}
+	if s.grpcServer != nil {
+		s.grpcServer.GracefulStop()
+	}
 }
 
 func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest) (*pb.OperateWorkerResponse, error) {
@@ -225,7 +255,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 
 		go func() {
 			defer s.handlePanicRecover(context.Background(), t)
-			s.OperateStartWorker(s.cancelCtx, t)
+			s.OperateStart(s.cancelCtx, t)
 		}()
 
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
@@ -237,7 +267,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 		// the task is exits, stop the task
 		if s.cancelFunc != nil {
 			s.cancelFunc()
-			err = s.OperateStopWorker(context.TODO(), t)
+			err = s.OperateStop(context.TODO(), t)
 			if err != nil {
 				return &pb.OperateWorkerResponse{Response: &pb.Response{
 					Result:  openapi.ResponseResultStatusFailed,
@@ -260,7 +290,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 
 		if s.cancelFunc != nil {
 			s.cancelFunc()
-			err = s.OperateStopWorker(context.TODO(), t)
+			err = s.OperateStop(context.TODO(), t)
 			if err != nil {
 				return &pb.OperateWorkerResponse{Response: &pb.Response{
 					Result:  openapi.ResponseResultStatusFailed,
@@ -270,7 +300,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			s.cancelFunc = nil // reset
 		}
 
-		err = s.OperateDeleteWorker(context.TODO(), t)
+		err = s.OperateDelete(context.TODO(), t)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -289,7 +319,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 
 }
 
-func (s *Server) OperateStartWorker(ctx context.Context, t *task.Task) {
+func (s *Server) OperateStart(ctx context.Context, t *task.Task) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -340,12 +370,13 @@ func (s *Server) OperateStartWorker(ctx context.Context, t *task.Task) {
 				panic(fmt.Errorf("the worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode))
 			}
 
-			w := &etcdutil.Worker{
+			w := &etcdutil.Instance{
 				Addr:     s.WorkerOptions.WorkerAddr,
-				State:    constant.DefaultWorkerFreeState,
+				Role:     constant.DefaultInstanceRoleWorker,
+				State:    constant.DefaultInstanceFreeState,
 				TaskName: "",
 			}
-			_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+			_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
 			if err != nil {
 				panic(fmt.Errorf("the worker task [%v] success, but the worker status wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
 			}
@@ -355,7 +386,7 @@ func (s *Server) OperateStartWorker(ctx context.Context, t *task.Task) {
 	}
 }
 
-func (s *Server) OperateStopWorker(ctx context.Context, t *task.Task) error {
+func (s *Server) OperateStop(ctx context.Context, t *task.Task) error {
 	switch stringutil.StringUpper(t.TaskMode) {
 	case constant.TaskModeAssessMigrate:
 		err := service.StopAssessMigrateTask(ctx, t.TaskName)
@@ -401,12 +432,13 @@ func (s *Server) OperateStopWorker(ctx context.Context, t *task.Task) error {
 		panic(fmt.Errorf("the worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode))
 	}
 
-	w := &etcdutil.Worker{
+	w := &etcdutil.Instance{
 		Addr:     s.WorkerOptions.WorkerAddr,
-		State:    constant.DefaultWorkerStoppedState,
+		Role:     constant.DefaultInstanceRoleWorker,
+		State:    constant.DefaultInstanceStoppedState,
 		TaskName: t.TaskName,
 	}
-	_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+	_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
 	if err != nil {
 		return err
 	}
@@ -415,11 +447,11 @@ func (s *Server) OperateStopWorker(ctx context.Context, t *task.Task) error {
 		zap.String("task_name", t.TaskName),
 		zap.String("task_mode", t.TaskMode),
 		zap.String("task_flow", t.TaskFlow),
-		zap.String("worker_addr", w.Addr))
+		zap.String("worker", w.String()))
 	return nil
 }
 
-func (s *Server) OperateDeleteWorker(ctx context.Context, t *task.Task) error {
+func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 	switch stringutil.StringUpper(t.TaskMode) {
 	case constant.TaskModeAssessMigrate:
 		_, err := service.DeleteAssessMigrateTask(ctx, &pb.DeleteAssessMigrateTaskRequest{TaskName: []string{t.TaskName}})
@@ -466,12 +498,13 @@ func (s *Server) OperateDeleteWorker(ctx context.Context, t *task.Task) error {
 	}
 
 	// persistence worker state
-	w := &etcdutil.Worker{
+	w := &etcdutil.Instance{
 		Addr:     s.WorkerOptions.WorkerAddr,
-		State:    constant.DefaultWorkerFreeState,
+		Role:     constant.DefaultInstanceRoleWorker,
+		State:    constant.DefaultInstanceFreeState,
 		TaskName: "",
 	}
-	_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+	_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
 	if err != nil {
 		return err
 	}
@@ -484,12 +517,17 @@ func (s *Server) OperateDeleteWorker(ctx context.Context, t *task.Task) error {
 		zap.String("task_name", t.TaskName),
 		zap.String("task_mode", t.TaskMode),
 		zap.String("task_flow", t.TaskFlow),
-		zap.String("worker_addr", w.Addr))
+		zap.String("worker", w.String()))
 	return nil
 }
 
 func (s *Server) handlePanicRecover(ctx context.Context, t *task.Task) {
 	if r := recover(); r != nil {
+		// recover cancel
+		if s.cancelFunc != nil {
+			s.cancelFunc()
+		}
+
 		errTxn := model.Transaction(ctx, func(txnCtx context.Context) error {
 			_, err := model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
 				TaskName: t.TaskName,
@@ -517,12 +555,13 @@ func (s *Server) handlePanicRecover(ctx context.Context, t *task.Task) {
 			return nil
 		})
 
-		w := &etcdutil.Worker{
+		w := &etcdutil.Instance{
 			Addr:     s.WorkerOptions.WorkerAddr,
-			State:    constant.DefaultWorkerFailedState,
+			Role:     constant.DefaultInstanceRoleWorker,
+			State:    constant.DefaultInstanceFailedState,
 			TaskName: t.TaskName,
 		}
-		_, errPut := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+		_, errPut := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
 
 		logger.Error("the worker running task panic",
 			zap.String("task_name", t.TaskName),

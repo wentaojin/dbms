@@ -17,6 +17,7 @@ package etcdutil
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 
@@ -33,14 +34,14 @@ import (
 
 type Discovery struct {
 	etcdClient *clientv3.Client
-	nodes      map[string]string
+	machines   map[string][]*Instance
 	lock       sync.Mutex
 }
 
 func NewServiceDiscovery(etcdCli *clientv3.Client) *Discovery {
 	return &Discovery{
 		etcdClient: etcdCli,
-		nodes:      make(map[string]string),
+		machines:   make(map[string][]*Instance),
 	}
 }
 
@@ -61,24 +62,24 @@ func (d *Discovery) Discovery(prefixKey string) error {
 }
 
 // Watch used for
-// 1, watch service register, and initial node list
-// 2, watch prefix, modify the occurring change's node
+// 1, watch service register, and initial instance list
+// 2, watch prefix, modify the occurring change's instance
 func (d *Discovery) Watch(prefixKey string) {
-	logger.Info("discovery node watching", zap.String("discovery key prefix", prefixKey))
+	logger.Info("discovery instance watching", zap.String("discovery key prefix", prefixKey))
 
 	watchCh := WatchKey(d.etcdClient, prefixKey, clientv3.WithPrefix())
 
 	for {
 		select {
 		case <-d.etcdClient.Ctx().Done():
-			logger.Error("discovery node watch cancel", zap.String("discovery key prefix", prefixKey))
+			logger.Error("discovery instance watch cancel", zap.String("discovery key prefix", prefixKey))
 			return
 		default:
 			for wresp := range watchCh {
 				if wresp.Err() != nil {
-					logger.Error("discovery node watch failed", zap.String("discovery key prefix", prefixKey), zap.Error(wresp.Err()))
+					logger.Error("discovery instance watch failed", zap.String("discovery key prefix", prefixKey), zap.Error(wresp.Err()))
 					// skip, only log
-					//return fmt.Errorf("discovery node watch failed, error: [%v]", wresp.Err())
+					//return fmt.Errorf("discovery instance watch failed, error: [%v]", wresp.Err())
 				}
 				for _, ev := range wresp.Events {
 					switch ev.Type {
@@ -95,150 +96,162 @@ func (d *Discovery) Watch(prefixKey string) {
 	}
 }
 
-// Set used for add service node
+// Set used for add service machine
 func (d *Discovery) Set(key string, val string) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	d.nodes[key] = val
 
-	logger.Info("discovery node set", zap.String("key", key), zap.String("node", val))
+	// check if the machine is already registered
+	keyS := stringutil.StringSplit(key, constant.StringSeparatorSlash)
+	instAddr := keyS[len(keyS)-1]
+	hostPort := stringutil.StringSplit(instAddr, constant.StringSeparatorDoubleColon)
+	host := hostPort[0]
+
+	var w *Instance
+	err := stringutil.UnmarshalJSON([]byte(val), &w)
+	if err != nil {
+		panic(fmt.Sprintf("the instance key [%s] value [%v] set unmarshal json failed: %v", key, val, err))
+	}
+
+	if insts, ok := d.machines[host]; ok {
+		// modify machine entry
+		isFound := false
+		for i, inst := range insts {
+			if strings.EqualFold(w.Addr, inst.Addr) {
+				insts[i] = w
+				isFound = true
+			}
+		}
+		if !isFound {
+			d.machines[host] = append(d.machines[host], w)
+		}
+	} else {
+		// create a new machine entry
+		d.machines[host] = append(d.machines[host], w)
+	}
+
+	jsonMachines, err := stringutil.MarshalJSON(d.machines)
+	if err != nil {
+		panic(fmt.Sprintf("the discovery machine marshal json string failed: %v", err))
+	}
+	logger.Info("discovery instance set", zap.String("instance", instAddr), zap.String("key", key), zap.String("value", val), zap.String("machine", jsonMachines))
 }
 
-// Del used for del service node
+// Del used for del service instance
 func (d *Discovery) Del(key string) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	delWorker := d.nodes[key]
-	delete(d.nodes, key)
+	// Check if the machine is already registered
+	keyS := stringutil.StringSplit(key, constant.StringSeparatorSlash)
+	instAddr := keyS[len(keyS)-1]
 
-	logger.Info("discovery node del", zap.String("key", key), zap.String("node", delWorker))
-}
+	hostPort := stringutil.StringSplit(instAddr, constant.StringSeparatorDoubleColon)
+	host := hostPort[0]
 
-// GetAllNodeAddr used for get all service node addr
-func (d *Discovery) GetAllNodeAddr() map[string]string {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
-	nodeAddr := make(map[string]string)
-	for k, v := range d.nodes {
-		keyS := stringutil.StringSplit(k, constant.StringSeparatorSlash)
-		instAddr := keyS[len(keyS)-1]
-		nodeAddr[instAddr] = v
-	}
-
-	return d.nodes
-}
-
-// GetFreeWorker used for get free service node addr
-func (d *Discovery) GetFreeWorker(taskName string) (string, error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
-	var (
-		nodes []string
-		dists []*Node
-	)
-	registerKeyResp, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerRegisterPrefixKey), clientv3.WithPrefix())
-	if err != nil {
-		return "", err
-	}
-	if len(registerKeyResp.Kvs) == 0 {
-		return "", fmt.Errorf("there are not active node currently, please waiting register or scale-out worker node")
-	} else {
-		for _, ev := range registerKeyResp.Kvs {
-			var n *Node
-			err = stringutil.UnmarshalJSON(ev.Value, &n)
-			if err != nil {
-				return "", err
+	var ws []*Instance
+	if insts, ok := d.machines[host]; ok {
+		for _, w := range insts {
+			if !strings.EqualFold(w.Addr, instAddr) {
+				ws = append(ws, w)
 			}
-			nodes = append(nodes, n.Addr)
-			dists = append(dists, n)
+		}
+		d.machines[host] = ws
+		logger.Info("discovery instance del", zap.String("instance", instAddr), zap.String("key", key))
+	} else {
+		logger.Warn("discovery instance not exist, skip", zap.String("instance", instAddr), zap.String("key", key))
+	}
+}
+
+// Assign used for get free status service instance addr
+func (d *Discovery) Assign(taskName string) (string, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	// the machine worker statistics, exclude the master role
+	// sort according to the busyness of the machine workers. If the busyness is the same, the original worker registration order will be randomized.
+	var leastBusyMachine string
+	minBusyWorkers := math.MaxInt32
+
+	for machine, insts := range d.machines {
+		busyWorkers := 0
+		usableWorkers := 0
+		for _, w := range insts {
+			if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
+				switch {
+				case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
+					return w.Addr, nil
+				case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, taskName):
+					return w.Addr, nil
+				case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, taskName):
+					return w.Addr, nil
+				case strings.EqualFold(w.State, constant.DefaultInstanceFreeState) && strings.EqualFold(w.TaskName, ""):
+					usableWorkers++
+				case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, ""):
+					usableWorkers++
+				case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, ""):
+					usableWorkers++
+				case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, ""):
+					usableWorkers++
+				default:
+					busyWorkers++
+				}
+			}
+		}
+
+		if busyWorkers < minBusyWorkers && usableWorkers > 0 {
+			minBusyWorkers = busyWorkers
+			leastBusyMachine = machine
 		}
 	}
 
-	stateKeyResp, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey), clientv3.WithPrefix())
-	if err != nil {
-		return "", err
+	if strings.EqualFold(leastBusyMachine, "") {
+		return "", fmt.Errorf("there are not machine with avaliable worker instance currently, please waiting register or scale-out worker instance")
 	}
 
 	var (
-		freeWorkers   []string
-		activeWorkers []string
-		workers       []*Worker
+		busyWorkers []string
+		freeWorkers []string
 	)
-
-	if len(stateKeyResp.Kvs) == 0 {
-		return nodes[0], nil
-	} else {
-		for _, ev := range stateKeyResp.Kvs {
-			var w *Worker
-			err = stringutil.UnmarshalJSON(ev.Value, &w)
-			if err != nil {
-				return "", err
-			}
-
-			workers = append(workers, w)
-
+	for _, w := range d.machines[leastBusyMachine] {
+		if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
 			switch {
-			case strings.EqualFold(w.State, constant.DefaultWorkerStoppedState) && strings.EqualFold(w.TaskName, taskName):
-				if stringutil.IsContainedString(nodes, w.Addr) {
-					return w.Addr, nil
-				}
-
-			case strings.EqualFold(w.State, constant.DefaultWorkerFailedState) && strings.EqualFold(w.TaskName, taskName):
-				if stringutil.IsContainedString(nodes, w.Addr) {
-					return w.Addr, nil
-				}
-			case strings.EqualFold(w.State, constant.DefaultWorkerBoundState) && strings.EqualFold(w.TaskName, taskName):
-				if stringutil.IsContainedString(nodes, w.Addr) {
-					return w.Addr, nil
-				}
-			case strings.EqualFold(w.State, constant.DefaultWorkerFreeState) && strings.EqualFold(w.TaskName, ""):
-				if stringutil.IsContainedString(nodes, w.Addr) {
-					freeWorkers = append(freeWorkers, w.Addr)
-				}
-			case strings.EqualFold(w.State, constant.DefaultWorkerBoundState) && strings.EqualFold(w.TaskName, ""):
-				if stringutil.IsContainedString(nodes, w.Addr) {
-					freeWorkers = append(freeWorkers, w.Addr)
-				}
-			case strings.EqualFold(w.State, constant.DefaultWorkerFailedState) && strings.EqualFold(w.TaskName, ""):
-				if stringutil.IsContainedString(nodes, w.Addr) {
-					freeWorkers = append(freeWorkers, w.Addr)
-				}
+			case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
+				return w.Addr, nil
+			case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, taskName):
+				return w.Addr, nil
+			case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, taskName):
+				return w.Addr, nil
+			case strings.EqualFold(w.State, constant.DefaultInstanceFreeState) && strings.EqualFold(w.TaskName, ""):
+				freeWorkers = append(freeWorkers, w.Addr)
+			case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, ""):
+				freeWorkers = append(freeWorkers, w.Addr)
+			case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, ""):
+				freeWorkers = append(freeWorkers, w.Addr)
+			case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, ""):
+				freeWorkers = append(freeWorkers, w.Addr)
 			default:
-				activeWorkers = append(activeWorkers, w.Addr)
+				busyWorkers = append(busyWorkers, w.Addr)
 			}
 		}
-	}
-
-	data := make(map[string]interface{})
-	data["workerNodes"] = dists
-	data["workerStates"] = workers
-	jsonStr, err := stringutil.MarshalJSON(data)
-	if err != nil {
-		return "", err
 	}
 
 	if len(freeWorkers) == 0 {
-		filterFree := stringutil.StringItemsFilterDifference(nodes, activeWorkers)
-		if len(filterFree) == 0 {
-			return jsonStr, fmt.Errorf("there are not free node currently, please waiting or scale-out worker node")
-		}
-		elem, err := stringutil.GetRandomElem(filterFree)
-		if err != nil {
-			return jsonStr, err
-		}
-		return elem, nil
+		return "", fmt.Errorf("there are not free instance in the least busy machine [%s] currently, total workers [%d] busy workers [%d] free workers [%d], please waiting or scale-out worker instance", leastBusyMachine, len(d.machines[leastBusyMachine]), len(busyWorkers), len(freeWorkers))
 	}
-	if len(freeWorkers) > 0 {
-		elem, err := stringutil.GetRandomElem(freeWorkers)
-		if err != nil {
-			return jsonStr, err
-		}
-		return elem, nil
+
+	elem, err := stringutil.GetRandomElem(freeWorkers)
+	if err != nil {
+		return "", err
 	}
-	return jsonStr, fmt.Errorf("there are not free node currently, please waiting or scale-out worker node")
+
+	jsonMachines, err := stringutil.MarshalJSON(d.machines)
+	if err != nil {
+		panic(fmt.Sprintf("the discovery machine assign marshal json string failed: %v", err))
+	}
+	logger.Info("the worker assign task", zap.String("machine", jsonMachines), zap.String("worker", elem))
+
+	return elem, nil
 }
 
 // Close used for close service

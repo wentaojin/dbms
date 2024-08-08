@@ -38,6 +38,7 @@ const (
 	StringSeparatorCenterLine    = "-"
 	StringSeparatorComplexSymbol = "|+|"
 	StringSeparatorDoubleQuotes  = "\""
+	StringSeparatorDoubleColon   = ":"
 )
 
 const (

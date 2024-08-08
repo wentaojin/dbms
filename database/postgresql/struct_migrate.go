@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
+	"strconv"
 	"strings"
 )
 
@@ -784,28 +785,128 @@ func (d *Database) GetDatabaseTableOriginStruct(schemaName, tableName, tableType
 }
 
 func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
+	version, err := d.GetDatabaseVersion()
+	if err != nil {
+		return nil, err
+	}
+	var queryStr string
+	if stringutil.VersionOrdinal(version) > stringutil.VersionOrdinal("10") {
+		queryStr = fmt.Sprintf(`SELECT
+	sequenceowner AS sequence_owner,
+	sequencename AS sequence_name,
+	min_value,
+	max_value,
+	increment_by,
+	cycle AS cycle_flag
+	cache_size,
+	last_value
+FROM pg_sequences
+WHERE
+    sequenceowner = '%s'`, schemaName)
+		_, res, err := d.GeneralQuery(queryStr)
+		if err != nil {
+			return res, err
+		}
+		return res, nil
+	} else {
+		queryStr = fmt.Sprintf(`SELECT
+	sequence_schema AS sequence_schema,
+	sequence_name AS sequence_name,
+	minimum_value AS min_value,
+	maximum_value AS max_value,
+	increment AS increment_by,
+	cycle_option AS cycle_flag
+FROM information_schema.sequences
+WHERE
+    sequence_schema = '%s'`, schemaName)
+		_, res, err := d.GeneralQuery(queryStr)
+		if err != nil {
+			return res, err
+		}
+
+		for _, r := range res {
+			_, seqs, err := d.GeneralQuery(fmt.Sprintf(`SELECT last_value,cache_value FROM %s.%s`, r["sequence_schema"], r["sequence_name"]))
+			if err != nil {
+				return nil, err
+			}
+			r["last_value"] = seqs[0]["cache_value"]
+			r["cache_size"] = seqs[0]["cache_value"]
+		}
+		return res, nil
+	}
 }
 
 func (d *Database) GetDatabaseRole() (string, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT pg_is_in_recovery() AS role`))
+	if err != nil {
+		return "", fmt.Errorf("get database role failed: %v", err)
+	}
+	return res[0]["role"], nil
 }
 
 func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
-	//TODO implement me
-	panic("implement me")
+	version, err := d.GetDatabaseVersion()
+	if err != nil {
+		return 0, err
+	}
+	var queryStr string
+	if stringutil.VersionOrdinal(version) > stringutil.VersionOrdinal("10") {
+		queryStr = fmt.Sprintf(`SELECT pg_current_wal_lsn() AS scn`)
+	} else {
+		queryStr = fmt.Sprintf(`SELECT pg_current_xlog_location() AS scn`)
+	}
+
+	_, res, err := d.GeneralQuery(queryStr)
+	if err != nil {
+		return 0, err
+	}
+
+	size, err := stringutil.StrconvUintBitSize(res[0]["scn"], 64)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
 }
 
 func (d *Database) GetDatabaseTableColumnNameTableDimensions(schemaName, tableName string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+	rows, err := d.QueryContext(d.Ctx, fmt.Sprintf(`SELECT * FROM "%s"."%s" LIMIT 1`, schemaName, tableName))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return columns, err
+	}
+	return columns, nil
 }
 
 func (d *Database) GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]string, map[string]string, map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
+	rows, err := d.QueryContext(d.Ctx, fmt.Sprintf(`SELECT * FROM (%v) t LIMIT 1`, sqlStr))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer rows.Close()
+
+	var columns []string
+	columnTypeMap := make(map[string]string)
+	columnScaleMap := make(map[string]string)
+
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return columns, columnTypeMap, columnScaleMap, err
+	}
+
+	for _, c := range columnTypes {
+		columns = append(columns, c.Name())
+		columnTypeMap[c.Name()] = c.DatabaseTypeName()
+		_, dataScale, ok := c.DecimalSize()
+		if ok {
+			columnScaleMap[c.Name()] = strconv.FormatInt(dataScale, 10)
+		}
+	}
+	return columns, columnTypeMap, columnScaleMap, nil
 }
 
 func (d *Database) GetDatabaseTableRows(schemaName, tableName string) (uint64, error) {

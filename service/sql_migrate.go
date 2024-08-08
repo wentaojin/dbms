@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"strconv"
@@ -35,7 +36,6 @@ import (
 	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/model/params"
 	"github.com/wentaojin/dbms/model/task"
-	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )

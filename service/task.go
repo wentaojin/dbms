@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/wentaojin/dbms/proto/pb"
 	"go.uber.org/zap"
 	"strings"
 
@@ -34,7 +35,6 @@ import (
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/openapi"
-	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -64,15 +64,33 @@ func StartTask(ctx context.Context, cli *clientv3.Client, discoveries *etcdutil.
 		}
 	}
 
-	workerAddr, err := discoveries.GetFreeWorker(req.TaskName)
+	workerAddr, err := discoveries.Assign(req.TaskName)
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
 			Message: workerAddr,
 		}}, err
 	}
+
+	w := &etcdutil.Instance{
+		Addr:     workerAddr,
+		Role:     constant.DefaultInstanceRoleWorker,
+		State:    constant.DefaultInstanceBoundState,
+		TaskName: req.TaskName,
+	}
+	_, err = etcdutil.PutKey(cli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, workerAddr), w.String())
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	logger.Info("the worker task start",
+		zap.String("task", req.TaskName),
+		zap.String("role", constant.DefaultInstanceRoleWorker),
+		zap.String("worker", w.String()))
 	// send worker request
-	grpcConn, err := grpc.DialContext(ctx, workerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcConn, err := grpc.NewClient(workerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
@@ -88,7 +106,7 @@ func StartTask(ctx context.Context, cli *clientv3.Client, discoveries *etcdutil.
 		TaskName: req.TaskName,
 	}
 
-	w, err := client.OperateWorker(ctx, request)
+	ws, err := client.OperateWorker(ctx, request)
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
@@ -96,29 +114,16 @@ func StartTask(ctx context.Context, cli *clientv3.Client, discoveries *etcdutil.
 		}}, err
 	}
 
-	if !strings.EqualFold(w.Response.Result, openapi.ResponseResultStatusSuccess) {
+	if !strings.EqualFold(ws.Response.Result, openapi.ResponseResultStatusSuccess) {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
-			Message: w.Response.Message,
-		}}, errors.New(w.Response.Message)
+			Message: ws.Response.Message,
+		}}, errors.New(ws.Response.Message)
 	}
 
-	// persistence worker state
-	node := &etcdutil.Worker{
-		Addr:     workerAddr,
-		State:    constant.DefaultWorkerBoundState,
-		TaskName: req.TaskName,
-	}
-	_, err = etcdutil.PutKey(cli, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, workerAddr), node.String())
-	if err != nil {
-		return &pb.OperateTaskResponse{Response: &pb.Response{
-			Result:  openapi.ResponseResultStatusFailed,
-			Message: err.Error(),
-		}}, err
-	}
 	return &pb.OperateTaskResponse{Response: &pb.Response{
 		Result:  openapi.ResponseResultStatusSuccess,
-		Message: w.Response.Message,
+		Message: ws.Response.Message,
 	}}, nil
 }
 
@@ -138,7 +143,7 @@ func StopTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequ
 		}}, errMsg
 	}
 
-	keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, t.WorkerAddr))
+	keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, t.WorkerAddr))
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
@@ -154,7 +159,12 @@ func StopTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRequ
 	}
 
 	// send worker request
-	grpcConn, err := grpc.DialContext(ctx, t.WorkerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	logger.Warn("the worker task stop",
+		zap.String("task", req.TaskName),
+		zap.String("role", constant.DefaultInstanceRoleWorker),
+		zap.String("worker", t.WorkerAddr))
+
+	grpcConn, err := grpc.NewClient(t.WorkerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
@@ -238,7 +248,7 @@ func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRe
 			Message: errMsg.Error(),
 		}}, errMsg
 	} else {
-		keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultWorkerStatePrefixKey, t.WorkerAddr))
+		keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, t.WorkerAddr))
 		if err != nil {
 			return &pb.OperateTaskResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -254,7 +264,9 @@ func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRe
 		}
 
 		// send worker request
-		grpcConn, err := grpc.DialContext(ctx, t.WorkerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		logger.Warn("the worker task delete", zap.String("task", req.TaskName), zap.String("role", constant.DefaultInstanceRoleWorker), zap.String("worker", t.WorkerAddr))
+
+		grpcConn, err := grpc.NewClient(t.WorkerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return &pb.OperateTaskResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,

@@ -22,20 +22,22 @@ const (
 	// DefaultMasterDatabaseDBMSKey is used for saving dbms meta database infos
 	DefaultMasterDatabaseDBMSKey         = "/dbms-master/database"
 	DefaultMasterCrontabExpressPrefixKey = "/dbms-master/crontab/express/"
-	DefaultMasterRegisterPrefixKey       = "/dbms-master/register/"
 	DefaultMasterLeaderPrefixKey         = "/dbms-master/leader"
 )
 
 // Worker
 const (
-	DefaultWorkerRegisterPrefixKey     = "/dbms-worker/register/"
-	DefaultWorkerStatePrefixKey        = "/dbms-worker/state/"
-	DefaultWorkerBoundState            = "BOUND"
-	DefaultWorkerFreeState             = "FREE"
-	DefaultWorkerStoppedState          = "STOPPED"
-	DefaultWorkerFailedState           = "FAILED"
 	DefaultWorkerServerDialTimeout     = 5 * time.Second
 	DefaultWorkerServerBackoffMaxDelay = 5 * time.Second
+)
+
+// Instance
+const (
+	DefaultInstanceServiceRegisterPrefixKey = "/dbms-instance/register/"
+	DefaultInstanceBoundState               = "BOUND"
+	DefaultInstanceFreeState                = "FREE"
+	DefaultInstanceStoppedState             = "STOPPED"
+	DefaultInstanceFailedState              = "FAILED"
 )
 
 // Instance
@@ -43,6 +45,6 @@ const (
 	DefaultInstanceRoleMaster = "MASTER"
 	DefaultInstanceRoleWorker = "WORKER"
 
-	DefaultInstanceServiceRetryCounts   = 5
+	DefaultInstanceServiceRetryCounts   = 1440
 	DefaultInstanceServiceRetryInterval = 5 * time.Second
 )

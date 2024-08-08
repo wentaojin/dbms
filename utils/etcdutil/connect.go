@@ -64,21 +64,46 @@ func (c *Connect) Connect(prefixKey string) error {
 		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", prefixKey, keyResp.Kvs)
 	case len(keyResp.Kvs) == 1:
 		// open database conn
-		var dbCfg *model.Database
-		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
-		if err != nil {
-			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+		for i := 1; i <= constant.DefaultInstanceServiceRetryCounts; i++ {
+			var dbCfg *model.Database
+			err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+			if err != nil {
+				if i == constant.DefaultInstanceServiceRetryCounts {
+					return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+				} else {
+					// retry
+					logger.Warn("json unmarshal bytes to struct database failed, retrying",
+						zap.String("bytes", stringutil.BytesToString(keyResp.Kvs[0].Value)),
+						zap.Int("current retry counts", i),
+						zap.Int("max retry counts", constant.DefaultInstanceServiceRetryCounts),
+						zap.Duration("retry interval", constant.DefaultInstanceServiceRetryInterval))
+
+					time.Sleep(constant.DefaultInstanceServiceRetryInterval)
+					continue
+				}
+			}
+
+			err = model.CreateDatabaseConnection(dbCfg, c.addrRole, c.logLevel)
+			if err != nil && i == constant.DefaultInstanceServiceRetryCounts {
+				return err
+			} else if err == nil {
+				logger.Info("database open init connect", zap.String("dbconn", dbCfg.String()))
+
+				// before database connect success, api request disable service
+				c.dbConnReady.Store(true)
+				// break for loop
+				break
+			} else {
+				// retry
+				logger.Warn("database create connection failed, retrying",
+					zap.String("connection info", dbCfg.String()),
+					zap.Int("current retry counts", i),
+					zap.Int("max retry counts", constant.DefaultInstanceServiceRetryCounts),
+					zap.Duration("retry interval", constant.DefaultInstanceServiceRetryInterval))
+				time.Sleep(constant.DefaultInstanceServiceRetryInterval)
+				continue
+			}
 		}
-
-		err = model.CreateDatabaseConnection(dbCfg, c.addrRole, c.logLevel)
-		if err != nil {
-			return err
-		}
-
-		// before database connect success, api request disable service
-		c.dbConnReady.Store(true)
-
-		logger.Info("database open init connect", zap.String("dbconn", dbCfg.String()))
 	default:
 		logger.Warn("database conn info is not exist, watch starting", zap.String("database key prefix", prefixKey))
 	}

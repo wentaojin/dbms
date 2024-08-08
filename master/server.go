@@ -18,6 +18,7 @@ package master
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/proto/pb"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -45,8 +46,6 @@ import (
 
 	"github.com/wentaojin/dbms/openapi"
 	"google.golang.org/grpc"
-
-	"github.com/wentaojin/dbms/proto/pb"
 
 	"github.com/wentaojin/dbms/logger"
 
@@ -153,12 +152,12 @@ func (s *Server) Start(ctx context.Context) error {
 		return err
 	}
 
-	err = s.serviceDiscovery()
+	err = s.registerService(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = s.registerService(ctx)
+	err = s.serviceDiscovery()
 	if err != nil {
 		return err
 	}
@@ -239,12 +238,7 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) serviceDiscovery() error {
 	s.discWorkers = etcdutil.NewServiceDiscovery(s.etcdClient)
 
-	err := s.discWorkers.Discovery(constant.DefaultMasterRegisterPrefixKey)
-	if err != nil {
-		return err
-	}
-
-	err = etcdutil.NewServiceDiscovery(s.etcdClient).Discovery(constant.DefaultWorkerRegisterPrefixKey)
+	err := s.discWorkers.Discovery(constant.DefaultInstanceServiceRegisterPrefixKey)
 	if err != nil {
 		return err
 	}
@@ -252,18 +246,38 @@ func (s *Server) serviceDiscovery() error {
 }
 
 func (s *Server) registerService(ctx context.Context) error {
-	// init register service and binding lease
-	n := &etcdutil.Node{
-		Addr: s.MasterOptions.ClientAddr,
-		Role: constant.DefaultInstanceRoleMaster,
+	workerState := constant.DefaultInstanceFreeState
+
+	stateKeyResp, err := etcdutil.GetKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.ClientAddr))
+	if err != nil {
+		return err
+	}
+
+	if len(stateKeyResp.Kvs) > 1 {
+		return fmt.Errorf("the dbms-master instance register service failed: service register records [%s] are [%d], should be one record", stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.ClientAddr), len(stateKeyResp.Kvs))
+	}
+
+	for _, ev := range stateKeyResp.Kvs {
+		var w *etcdutil.Instance
+		err = stringutil.UnmarshalJSON(ev.Value, &w)
+		if err != nil {
+			return err
+		}
+		workerState = w.State
+	}
+
+	n := &etcdutil.Instance{
+		Addr:  s.MasterOptions.ClientAddr,
+		Role:  constant.DefaultInstanceRoleMaster,
+		State: workerState,
 	}
 
 	r := etcdutil.NewServiceRegister(
 		s.etcdClient, s.MasterOptions.ClientAddr,
-		stringutil.StringBuilder(constant.DefaultMasterRegisterPrefixKey, s.MasterOptions.ClientAddr),
+		stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.ClientAddr),
 		n.String(), s.MasterOptions.KeepaliveTTL)
 
-	err := r.Register(ctx)
+	err = r.Register(ctx)
 	if err != nil {
 		return err
 	}
@@ -292,9 +306,9 @@ func (s *Server) watchConn() {
 
 // Close the RPC server, this function can be called multiple times.
 func (s *Server) Close() {
-	logger.Info("dbms-master closing server")
+	logger.Info("the dbms-master closing server")
 	defer func() {
-		logger.Info("dbms-master server closed")
+		logger.Info("the dbms-master server closed")
 	}()
 
 	// close the etcd and other attached servers

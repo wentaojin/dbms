@@ -17,13 +17,12 @@ package master
 
 import (
 	"context"
+	"github.com/wentaojin/dbms/proto/pb"
 
 	"github.com/wentaojin/dbms/openapi"
 	"github.com/wentaojin/dbms/service"
 
 	"github.com/wentaojin/dbms/utils/constant"
-
-	"github.com/wentaojin/dbms/proto/pb"
 )
 
 // UpsertDatabase implements MasterServer.UpsertDatabase

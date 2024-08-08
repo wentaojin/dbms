@@ -30,20 +30,11 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-type Node struct {
+// Instance register service information, used for etcd key -> value
+type Instance struct {
 	Addr string
 	// the Role column represent the node role
 	Role string
-}
-
-func (n *Node) String() string {
-	jsonByte, _ := stringutil.MarshalJSON(n)
-	return jsonByte
-}
-
-// Worker register service information, used for etcd key -> value
-type Worker struct {
-	Addr string
 	// the State column represent the node state, options: BOUND、FREE
 	State string
 	// the TaskName column represent the node bound task
@@ -138,7 +129,7 @@ func (r *Register) keepAlive(ctx context.Context) {
 	}
 }
 
-func (w *Worker) String() string {
-	jsonByte, _ := stringutil.MarshalJSON(w)
+func (i *Instance) String() string {
+	jsonByte, _ := stringutil.MarshalJSON(i)
 	return jsonByte
 }
