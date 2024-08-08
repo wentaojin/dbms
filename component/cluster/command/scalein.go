@@ -294,13 +294,13 @@ func scaleInDBMSCluster(ctx context.Context, topo *cluster.Topology, gOpt *opera
 					}
 				}
 
-				_, err = etcdutil.DeleteKey(etcdCli, stringutil.StringBuilder(constant.DefaultMasterRegisterPrefixKey, instance.InstanceName()))
+				_, err = etcdutil.DeleteKey(etcdCli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, instance.InstanceName()))
 				if err != nil {
 					return err
 				}
 
 			case cluster.ComponentDBMSWorker:
-				_, err = etcdutil.DeleteKey(etcdCli, stringutil.StringBuilder(constant.DefaultWorkerRegisterPrefixKey, instance.InstanceName()))
+				_, err = etcdutil.DeleteKey(etcdCli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, instance.InstanceName()))
 				if err != nil {
 					return err
 				}
