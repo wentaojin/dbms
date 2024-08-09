@@ -210,6 +210,10 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 		if err != nil {
 			return err
 		}
+		writeThread, err := strconv.ParseUint(paramMap[constant.ParamNameSqlMigrateWriteThread], 10, 64)
+		if err != nil {
+			return err
+		}
 		sqlThreadS, err := strconv.ParseUint(paramMap[constant.ParamNameSqlMigrateSqlThreadS], 10, 64)
 		if err != nil {
 			return err
@@ -233,6 +237,7 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 
 		param = &pb.SqlMigrateParam{
 			BatchSize:            batchSize,
+			WriteThread:          writeThread,
 			SqlThreadS:           sqlThreadS,
 			SqlThreadT:           sqlThreadT,
 			SqlHintT:             paramMap[constant.ParamNameSqlMigrateSqlHintT],
@@ -562,6 +567,13 @@ func getSqlMigrateTasKParams(ctx context.Context, taskName string) (*pb.SqlMigra
 				return taskParam, err
 			}
 			taskParam.SqlThreadS = sqlThreadS
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateWriteThread) {
+			writeThread, err := strconv.ParseUint(p.ParamValue, 10, 64)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.WriteThread = writeThread
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateSqlThreadT) {
 			sqlThreadT, err := strconv.ParseUint(p.ParamValue, 10, 64)

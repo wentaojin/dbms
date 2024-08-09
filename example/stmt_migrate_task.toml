@@ -48,6 +48,8 @@ sql-hint-s = "/*+ PARALLEL(8) */"
 table-thread = 100
 # 数据写入批量大小
 batch-size = 500
+# 数据校验写 meta 数据库并发数
+write-thread = 4
 # 任务 chunk 数，固定动作，一旦确认，不能更改，除非设置 enable-checkpoint = false，重新导出导入
 # 1、代表每张表每并发处理多少行数
 # 2、建议参数值是 insert-batch-size 整数倍，会根据 insert-batch-size 大小切分

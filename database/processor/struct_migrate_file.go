@@ -121,8 +121,8 @@ func (s *StructMigrateFile) SyncStructFile() error {
 	}
 
 	// incompatible table
-	switch {
-	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToMySQL):
+	switch s.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
 		var (
 			tableRows, partitionTables, sessionTemporaryTables, transactionTemporaryTables, clusteredTables, materializedViews []table.Row
 		)

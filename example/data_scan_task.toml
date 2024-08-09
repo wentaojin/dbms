@@ -24,6 +24,8 @@ table-samplerate-s = 100
 # 全表扫描用于初始化表任务并发数
 # 采样扫描下用于表执行并发数
 table-thread = 100
+# 数据校验写 meta 数据库并发数
+write-thread = 4
 # 数据写入批量大小
 batch-size = 500
 # 全表扫描

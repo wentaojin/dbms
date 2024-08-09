@@ -101,7 +101,7 @@ type IDataMigrateSummary interface {
 
 type IDataMigrateTask interface {
 	CreateDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error)
-	CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, batchSize int) error
+	CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, thread, batchSize int) error
 	UpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
 	BatchUpdateDataMigrateTask(ctx context.Context, task *DataMigrateTask, updates map[string]interface{}) (*DataMigrateTask, error)
 	GetDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error)
@@ -127,7 +127,7 @@ type IDataCompareSummary interface {
 
 type IDataCompareTask interface {
 	CreateDataCompareTask(ctx context.Context, task *DataCompareTask) (*DataCompareTask, error)
-	CreateInBatchDataCompareTask(ctx context.Context, task []*DataCompareTask, batchSize int) error
+	CreateInBatchDataCompareTask(ctx context.Context, task []*DataCompareTask, thread, batchSize int) error
 	UpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
 	BatchUpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
 	FindDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
@@ -159,7 +159,7 @@ type ISqlMigrateSummary interface {
 
 type ISqlMigrateTask interface {
 	CreateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask) (*SqlMigrateTask, error)
-	CreateInBatchSqlMigrateTask(ctx context.Context, task []*SqlMigrateTask, batchSize int) error
+	CreateInBatchSqlMigrateTask(ctx context.Context, task []*SqlMigrateTask, thread, batchSize int) error
 	UpdateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask, updates map[string]interface{}) (*SqlMigrateTask, error)
 	BatchUpdateSqlMigrateTask(ctx context.Context, task *SqlMigrateTask, updates map[string]interface{}) (*SqlMigrateTask, error)
 	FindSqlMigrateTaskByTaskStatus(ctx context.Context, task *SqlMigrateTask) ([]*SqlMigrateTask, error)
@@ -180,7 +180,7 @@ type IDataScanSummary interface {
 
 type IDataScanTask interface {
 	CreateDataScanTask(ctx context.Context, task *DataScanTask) (*DataScanTask, error)
-	CreateInBatchDataScanTask(ctx context.Context, task []*DataScanTask, batchSize int) error
+	CreateInBatchDataScanTask(ctx context.Context, task []*DataScanTask, thread, batchSize int) error
 	UpdateDataScanTask(ctx context.Context, task *DataScanTask, updates map[string]interface{}) (*DataScanTask, error)
 	BatchUpdateDataScanTask(ctx context.Context, task *DataScanTask, updates map[string]interface{}) (*DataScanTask, error)
 	ListDataScanTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataScanTask, error)

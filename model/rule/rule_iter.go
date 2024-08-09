@@ -37,7 +37,7 @@ type IMigrateTaskTable interface {
 
 type ITableRouteRule interface {
 	CreateTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
-	CreateInBatchTableRouteRule(ctx context.Context, rule []*TableRouteRule, batchSize int) ([]*TableRouteRule, error)
+	CreateInBatchTableRouteRule(ctx context.Context, rule []*TableRouteRule, thread, batchSize int) ([]*TableRouteRule, error)
 	UpdateTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
 	GetTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
 	ListTableRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*TableRouteRule, error)
@@ -47,7 +47,7 @@ type ITableRouteRule interface {
 
 type IColumnRouteRule interface {
 	CreateColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
-	CreateInBatchColumnRouteRule(ctx context.Context, rule []*ColumnRouteRule, batchSize int) ([]*ColumnRouteRule, error)
+	CreateInBatchColumnRouteRule(ctx context.Context, rule []*ColumnRouteRule, thread, batchSize int) ([]*ColumnRouteRule, error)
 	UpdateColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
 	GetColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) (*ColumnRouteRule, error)
 	ListColumnRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*ColumnRouteRule, error)
@@ -57,7 +57,7 @@ type IColumnRouteRule interface {
 
 type IDataMigrateRule interface {
 	CreateDataMigrateRule(ctx context.Context, rule *DataMigrateRule) (*DataMigrateRule, error)
-	CreateInBatchDataMigrateRule(ctx context.Context, rule []*DataMigrateRule, batchSize int) ([]*DataMigrateRule, error)
+	CreateInBatchDataMigrateRule(ctx context.Context, rule []*DataMigrateRule, thread, batchSize int) ([]*DataMigrateRule, error)
 	GetDataMigrateRule(ctx context.Context, rule *DataMigrateRule) (*DataMigrateRule, error)
 	DeleteDataMigrateRule(ctx context.Context, taskNames []string) error
 	FindDataMigrateRule(ctx context.Context, rule *DataMigrateRule) ([]*DataMigrateRule, error)
@@ -66,7 +66,7 @@ type IDataMigrateRule interface {
 
 type IDataCompareRule interface {
 	CreateDataCompareRule(ctx context.Context, rule *DataCompareRule) (*DataCompareRule, error)
-	CreateInBatchDataCompareRule(ctx context.Context, rule []*DataCompareRule, batchSize int) ([]*DataCompareRule, error)
+	CreateInBatchDataCompareRule(ctx context.Context, rule []*DataCompareRule, thread, batchSize int) ([]*DataCompareRule, error)
 	GetDataCompareRule(ctx context.Context, rule *DataCompareRule) (*DataCompareRule, error)
 	DeleteDataCompareRule(ctx context.Context, taskNames []string) error
 	FindDataCompareRule(ctx context.Context, rule *DataCompareRule) ([]*DataCompareRule, error)
@@ -75,7 +75,7 @@ type IDataCompareRule interface {
 
 type IDataScanRule interface {
 	CreateDataScanRule(ctx context.Context, rule *DataScanRule) (*DataScanRule, error)
-	CreateInBatchDataScanRule(ctx context.Context, rule []*DataScanRule, batchSize int) ([]*DataScanRule, error)
+	CreateInBatchDataScanRule(ctx context.Context, rule []*DataScanRule, thread, batchSize int) ([]*DataScanRule, error)
 	GetDataScanRule(ctx context.Context, rule *DataScanRule) (*DataScanRule, error)
 	DeleteDataScanRule(ctx context.Context, taskNames []string) error
 	FindDataScanRule(ctx context.Context, rule *DataScanRule) ([]*DataScanRule, error)
@@ -84,7 +84,7 @@ type IDataScanRule interface {
 
 type ISqlMigrateRule interface {
 	CreateSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) (*SqlMigrateRule, error)
-	CreateInBatchSqlMigrateRule(ctx context.Context, rule []*SqlMigrateRule, batchSize int) ([]*SqlMigrateRule, error)
+	CreateInBatchSqlMigrateRule(ctx context.Context, rule []*SqlMigrateRule, thread, batchSize int) ([]*SqlMigrateRule, error)
 	UpdateSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) (*SqlMigrateRule, error)
 	GetSqlMigrateRule(ctx context.Context, rule *SqlMigrateRule) (*SqlMigrateRule, error)
 	DeleteSqlMigrateRule(ctx context.Context, taskNames []string) error

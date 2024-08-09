@@ -250,12 +250,12 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 				}
 			}
 
-			_, err = model.GetIMigrateTableRouteRW().CreateInBatchTableRouteRule(ctx, tableRules, constant.DefaultRecordCreateBatchSize)
+			_, err = model.GetIMigrateTableRouteRW().CreateInBatchTableRouteRule(ctx, tableRules, constant.DefaultRecordCreateWriteThread, constant.DefaultRecordCreateBatchSize)
 			if err != nil {
 				return err
 			}
 
-			_, err = model.GetIMigrateColumnRouteRW().CreateInBatchColumnRouteRule(ctx, columnRules, constant.DefaultRecordCreateBatchSize)
+			_, err = model.GetIMigrateColumnRouteRW().CreateInBatchColumnRouteRule(ctx, columnRules, constant.DefaultRecordCreateWriteThread, constant.DefaultRecordCreateBatchSize)
 			if err != nil {
 				return err
 			}
@@ -287,7 +287,7 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 			}
 
 			if len(tableMigrateRules) > 0 {
-				_, err = model.GetIDataMigrateRuleRW().CreateInBatchDataMigrateRule(ctx, tableMigrateRules, constant.DefaultRecordCreateBatchSize)
+				_, err = model.GetIDataMigrateRuleRW().CreateInBatchDataMigrateRule(ctx, tableMigrateRules, constant.DefaultRecordCreateWriteThread, constant.DefaultRecordCreateBatchSize)
 				if err != nil {
 					return err
 				}
@@ -345,7 +345,7 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 			}
 
 			if len(tableCompareRules) > 0 {
-				_, err = model.GetIDataCompareRuleRW().CreateInBatchDataCompareRule(ctx, tableCompareRules, constant.DefaultRecordCreateBatchSize)
+				_, err = model.GetIDataCompareRuleRW().CreateInBatchDataCompareRule(ctx, tableCompareRules, constant.DefaultRecordCreateWriteThread, constant.DefaultRecordCreateBatchSize)
 				if err != nil {
 					return err
 				}
@@ -575,7 +575,7 @@ func UpsertSqlMigrateRule(ctx context.Context, taskName string, caseFieldRule *p
 			})
 		}
 
-		_, err := model.GetISqlMigrateRuleRW().CreateInBatchSqlMigrateRule(ctx, sqlRouteRules, constant.DefaultRecordCreateBatchSize)
+		_, err := model.GetISqlMigrateRuleRW().CreateInBatchSqlMigrateRule(ctx, sqlRouteRules, constant.DefaultRecordCreateWriteThread, constant.DefaultRecordCreateBatchSize)
 		if err != nil {
 			return err
 		}

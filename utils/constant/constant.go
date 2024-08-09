@@ -24,7 +24,10 @@ const (
 )
 
 // DefaultRecordCreateBatchSize Model Create Record Default Batch Size
-const DefaultRecordCreateBatchSize = 50
+const (
+	DefaultRecordCreateBatchSize   = 50
+	DefaultRecordCreateWriteThread = 4
+)
 
 const (
 	StringSeparatorComma         = ","

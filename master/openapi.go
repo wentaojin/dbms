@@ -470,6 +470,7 @@ func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutSt
 		DataMigrateRules: dataMigrateRules,
 		StatementMigrateParam: &pb.StatementMigrateParam{
 			TableThread:          *req.StatementMigrateParam.TableThread,
+			WriteThread:          *req.StatementMigrateParam.WriteThread,
 			BatchSize:            *req.StatementMigrateParam.BatchSize,
 			ChunkSize:            *req.StatementMigrateParam.ChunkSize,
 			SqlThreadS:           *req.StatementMigrateParam.SqlThreadS,
@@ -658,6 +659,7 @@ func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsv
 		DataMigrateRules: dataMigrateRules,
 		CsvMigrateParam: &pb.CsvMigrateParam{
 			TableThread:          *req.CsvMigrateParam.TableThread,
+			WriteThread:          *req.CsvMigrateParam.WriteThread,
 			BatchSize:            *req.CsvMigrateParam.BatchSize,
 			DiskUsageFactor:      *req.CsvMigrateParam.DiskUsageFactor,
 			Header:               *req.CsvMigrateParam.Header,
@@ -737,6 +739,7 @@ func (s *Server) upsertSqlMigrateTask(ctx context.Context, req openapi.APIPutSql
 		},
 		SqlMigrateRules: sqlRoutes,
 		SqlMigrateParam: &pb.SqlMigrateParam{
+			WriteThread:          *req.SqlMigrateParam.WriteThread,
 			BatchSize:            *req.SqlMigrateParam.BatchSize,
 			SqlThreadS:           *req.SqlMigrateParam.SqlThreadS,
 			SqlThreadT:           *req.SqlMigrateParam.SqlThreadT,
@@ -811,6 +814,7 @@ func (s *Server) upsertDataScanTask(ctx context.Context, req openapi.APIPutDataS
 		DataScanRules:   dataScanRules,
 		DataScanParam: &pb.DataScanParam{
 			TableThread:          *req.DataScanParam.TableThread,
+			WriteThread:          *req.DataScanParam.WriteThread,
 			BatchSize:            *req.DataScanParam.BatchSize,
 			ChunkSize:            *req.DataScanParam.ChunkSize,
 			SqlThreadS:           *req.DataScanParam.SqlThreadS,

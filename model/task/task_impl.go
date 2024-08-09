@@ -18,6 +18,8 @@ package task
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/stringutil"
+	"golang.org/x/sync/errgroup"
 	"reflect"
 
 	"gorm.io/gorm/clause"
@@ -692,14 +694,27 @@ func (rw *RWDataMigrateTask) CreateDataMigrateTask(ctx context.Context, task *Da
 	return task, nil
 }
 
-func (rw *RWDataMigrateTask) CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, batchSize int) error {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
-		UpdateAll: true,
-	}).CreateInBatches(task, batchSize).Error
-	if err != nil {
-		return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+func (rw *RWDataMigrateTask) CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, thread, batchSize int) error {
+	values := stringutil.AnySliceSplit(task, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
 	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -892,14 +907,27 @@ func (rw *RWSqlMigrateTask) CreateSqlMigrateTask(ctx context.Context, task *SqlM
 	return task, nil
 }
 
-func (rw *RWSqlMigrateTask) CreateInBatchSqlMigrateTask(ctx context.Context, task []*SqlMigrateTask, batchSize int) error {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_t"}, {Name: "table_name_t"}, {Name: "sql_query_s"}},
-		UpdateAll: true,
-	}).CreateInBatches(task, batchSize).Error
-	if err != nil {
-		return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+func (rw *RWSqlMigrateTask) CreateInBatchSqlMigrateTask(ctx context.Context, task []*SqlMigrateTask, thread, batchSize int) error {
+	values := stringutil.AnySliceSplit(task, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_t"}, {Name: "table_name_t"}, {Name: "sql_query_s"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
 	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1056,14 +1084,27 @@ func (rw *RWDataCompareTask) CreateDataCompareTask(ctx context.Context, task *Da
 	return task, nil
 }
 
-func (rw *RWDataCompareTask) CreateInBatchDataCompareTask(ctx context.Context, task []*DataCompareTask, batchSize int) error {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
-		UpdateAll: true,
-	}).CreateInBatches(task, batchSize).Error
-	if err != nil {
-		return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+func (rw *RWDataCompareTask) CreateInBatchDataCompareTask(ctx context.Context, task []*DataCompareTask, thread, batchSize int) error {
+	values := stringutil.AnySliceSplit(task, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
 	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1314,14 +1355,27 @@ func (rw *RWDataScanTask) CreateDataScanTask(ctx context.Context, task *DataScan
 	return task, nil
 }
 
-func (rw *RWDataScanTask) CreateInBatchDataScanTask(ctx context.Context, task []*DataScanTask, batchSize int) error {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
-		UpdateAll: true,
-	}).CreateInBatches(task, batchSize).Error
-	if err != nil {
-		return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+func (rw *RWDataScanTask) CreateInBatchDataScanTask(ctx context.Context, task []*DataScanTask, thread, batchSize int) error {
+	values := stringutil.AnySliceSplit(task, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
 	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

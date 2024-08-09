@@ -79,7 +79,7 @@ func (dmt *DataCompareTask) Start() error {
 	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 		logger.Info("data compare task inspect migrate task",
 			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
-		_, _, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
+		_, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
 		if err != nil {
 			return err
 		}
@@ -937,27 +937,21 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					})
 				}
 
-				err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-					err = model.GetIDataCompareTaskRW().CreateInBatchDataCompareTask(txnCtx, metas, int(dmt.TaskParams.BatchSize))
-					if err != nil {
-						return err
-					}
-					_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(txnCtx, &task.DataCompareSummary{
-						TaskName:       dmt.Task.TaskName,
-						SchemaNameS:    attsRule.SchemaNameS,
-						TableNameS:     attsRule.TableNameS,
-						SchemaNameT:    attsRule.SchemaNameT,
-						TableNameT:     attsRule.TableNameT,
-						SnapshotPointS: globalScnS,
-						SnapshotPointT: globalScnT,
-						TableRowsS:     tableRows,
-						TableSizeS:     tableSize,
-						ChunkTotals:    uint64(len(upstreamBuckets)),
-					})
-					if err != nil {
-						return err
-					}
-					return nil
+				err = model.GetIDataCompareTaskRW().CreateInBatchDataCompareTask(gCtx, metas, int(dmt.TaskParams.WriteThread), int(dmt.TaskParams.BatchSize))
+				if err != nil {
+					return err
+				}
+				_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(gCtx, &task.DataCompareSummary{
+					TaskName:       dmt.Task.TaskName,
+					SchemaNameS:    attsRule.SchemaNameS,
+					TableNameS:     attsRule.TableNameS,
+					SchemaNameT:    attsRule.SchemaNameT,
+					TableNameT:     attsRule.TableNameT,
+					SnapshotPointS: globalScnS,
+					SnapshotPointT: globalScnT,
+					TableRowsS:     tableRows,
+					TableSizeS:     tableSize,
+					ChunkTotals:    uint64(len(upstreamBuckets)),
 				})
 				if err != nil {
 					return err

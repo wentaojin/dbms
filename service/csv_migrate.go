@@ -213,6 +213,10 @@ func ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) 
 		if err != nil {
 			return err
 		}
+		writeThread, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateWriteThread], 10, 64)
+		if err != nil {
+			return err
+		}
 		batchSize, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateBatchSize], 10, 64)
 		if err != nil {
 			return err
@@ -248,6 +252,7 @@ func ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) 
 
 		param = &pb.CsvMigrateParam{
 			TableThread:          tableThread,
+			WriteThread:          writeThread,
 			BatchSize:            batchSize,
 			DiskUsageFactor:      paramMap[constant.ParamNameCsvMigrateDiskUsageFactor],
 			Header:               header,
@@ -556,6 +561,13 @@ func getCsvMigrateTasKParams(ctx context.Context, taskName string) (*pb.CsvMigra
 				return taskParam, err
 			}
 			taskParam.TableThread = tableThread
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateWriteThread) {
+			writeThread, err := strconv.ParseUint(p.ParamValue, 10, 64)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.WriteThread = writeThread
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateBatchSize) {
 			batchSize, err := strconv.ParseUint(p.ParamValue, 10, 64)

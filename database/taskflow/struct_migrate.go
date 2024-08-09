@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/wentaojin/dbms/database/processor"
+	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/model/rule"
 	"strings"
 	"time"
@@ -44,38 +45,54 @@ type StructMigrateTask struct {
 	Task        *task.Task
 	SchemaNameS string
 	SchemaNameT string
-	DatabaseS   database.IDatabase
-	DatabaseT   database.IDatabase
-	DBCharsetS  string
-	DBCharsetT  string
+	DatasourceS *datasource.Datasource
+	DatasourceT *datasource.Datasource
 	TaskParams  *pb.StructMigrateParam
 }
 
 func (st *StructMigrateTask) Start() error {
 	schemaStartTime := time.Now()
-	logger.Info("struct migrate task inspect migrate task",
+	var (
+		databaseS, databaseT database.IDatabase
+		err                  error
+	)
+	logger.Info("struct migrate task init database connection",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
-	dbVersion, nlsComp, err := processor.InspectOracleMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, st.DatabaseS, st.DBCharsetS, st.DBCharsetT)
-	if err != nil {
-		return err
+	switch st.Task.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
+		databaseS, err = database.NewDatabase(st.Ctx, st.DatasourceS, st.SchemaNameS, int64(st.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+		databaseT, err = database.NewDatabase(st.Ctx, st.DatasourceT, "", int64(st.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
+	default:
+		return fmt.Errorf("the task_name [%v] task_mode [%v] task_flow [%s] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow)
 	}
 
 	logger.Info("struct migrate task get buildin rule",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
-
 	dbTypeSli := stringutil.StringSplit(st.Task.TaskFlow, constant.StringSeparatorAite)
-	buildInDatatypeRules, err := model.GetIBuildInDatatypeRuleRW().QueryBuildInDatatypeRule(st.Ctx, dbTypeSli[0], dbTypeSli[1])
+
+	dbTypeS := dbTypeSli[0]
+	dbTypeT := dbTypeSli[1]
+
+	buildInDatatypeRules, err := model.GetIBuildInDatatypeRuleRW().QueryBuildInDatatypeRule(st.Ctx, dbTypeS, dbTypeT)
 	if err != nil {
 		return err
 	}
-	buildInDefaultValueRules, err := model.GetBuildInDefaultValueRuleRW().QueryBuildInDefaultValueRule(st.Ctx, dbTypeSli[0], dbTypeSli[1])
+	buildInDefaultValueRules, err := model.GetBuildInDefaultValueRuleRW().QueryBuildInDefaultValueRule(st.Ctx, dbTypeS, dbTypeT)
 	if err != nil {
 		return err
 	}
 
 	logger.Info("struct migrate task init task information",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
-	err = st.initStructMigrateTask()
+	err = st.initStructMigrateTask(databaseS)
 	if err != nil {
 		return err
 	}
@@ -90,41 +107,59 @@ func (st *StructMigrateTask) Start() error {
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT))
 
-	dbCollationS := false
-	if stringutil.VersionOrdinal(dbVersion) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
-		dbCollationS = true
-	} else {
-		dbCollationS = false
+	dbVersionS, err := databaseS.GetDatabaseVersion()
+	if err != nil {
+		return err
 	}
-	switch {
-	case strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
+
+	switch st.Task.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
+		logger.Info("struct migrate task inspect migrate task",
+			zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+		nlsComp, err := processor.InspectOracleMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, databaseS, stringutil.StringUpper(st.DatasourceS.ConnectCharset), stringutil.StringUpper(st.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
+
+		dbCollationS := false
+		if stringutil.VersionOrdinal(dbVersionS) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+			dbCollationS = true
+		} else {
+			dbCollationS = false
+		}
 		if dbCollationS {
-			schemaCollationS, err := st.DatabaseS.GetDatabaseSchemaCollation(st.SchemaNameS)
+			schemaCollationS, err := databaseS.GetDatabaseSchemaCollation(st.SchemaNameS)
 			if err != nil {
 				return err
 			}
-			targetSchemaCollation, ok := constant.MigrateTableStructureDatabaseCollationMap[st.Task.TaskFlow][stringutil.StringUpper(schemaCollationS)][stringutil.StringUpper(st.DBCharsetT)]
+			targetSchemaCollation, ok := constant.MigrateTableStructureDatabaseCollationMap[st.Task.TaskFlow][stringutil.StringUpper(schemaCollationS)][stringutil.StringUpper(st.DatasourceT.ConnectCharset)]
 			if !ok {
-				return fmt.Errorf("oracle current task [%s] task_mode [%s] task_flow [%s] schema [%s] collation [%s] isn't support", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS, schemaCollationS)
+				return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema [%s] collation [%s] isn't support", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS, schemaCollationS)
 			}
 			if st.TaskParams.CreateIfNotExist {
-				createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DBCharsetT), targetSchemaCollation)
+				createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DatasourceT.ConnectCharset), targetSchemaCollation)
 			} else {
-				createSchema = fmt.Sprintf("CREATE DATABASE `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DBCharsetT), targetSchemaCollation)
+				createSchema = fmt.Sprintf("CREATE DATABASE `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DatasourceT.ConnectCharset), targetSchemaCollation)
 			}
 		} else {
-			targetSchemaCollation, ok := constant.MigrateTableStructureDatabaseCollationMap[st.Task.TaskFlow][stringutil.StringUpper(nlsComp)][stringutil.StringUpper(st.DBCharsetT)]
+			targetSchemaCollation, ok := constant.MigrateTableStructureDatabaseCollationMap[st.Task.TaskFlow][stringutil.StringUpper(nlsComp)][stringutil.StringUpper(st.DatasourceT.ConnectCharset)]
 			if !ok {
-				return fmt.Errorf("oracle current task [%s] task_mode [%s] task_flow [%s] schema [%s] nls_comp collation [%s] isn't support", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS, nlsComp)
+				return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema [%s] nls_comp collation [%s] isn't support", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS, nlsComp)
 			}
 			if st.TaskParams.CreateIfNotExist {
-				createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DBCharsetT), targetSchemaCollation)
+				createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DatasourceT.ConnectCharset), targetSchemaCollation)
 			} else {
-				createSchema = fmt.Sprintf("CREATE DATABASE `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DBCharsetT), targetSchemaCollation)
+				createSchema = fmt.Sprintf("CREATE DATABASE `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DatasourceT.ConnectCharset), targetSchemaCollation)
 			}
 		}
+	//case constant.TaskFlowPostgresToTiDB:
+	//TODO
+	//schemaCollationS, err := databaseS.GetDatabaseSchemaCollation(st.SchemaNameS)
+	//if err != nil {
+	//	return err
+	//}
 	default:
-		return fmt.Errorf("oracle current task [%s] task_mode [%s] task_flow [%s] schema [%s] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS)
+		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema [%s] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS)
 	}
 
 	encryptCreateSchema, err := stringutil.Encrypt(createSchema, []byte(constant.DefaultDataEncryptDecryptKey))
@@ -149,7 +184,7 @@ func (st *StructMigrateTask) Start() error {
 
 	// direct write database -> schema
 	if st.TaskParams.EnableDirectCreate {
-		_, err = st.DatabaseT.ExecContext(st.Ctx, createSchema)
+		_, err = databaseT.ExecContext(st.Ctx, createSchema)
 		if err != nil {
 			return err
 		}
@@ -216,13 +251,16 @@ func (st *StructMigrateTask) Start() error {
 		g.Go(job, gTime, func(job interface{}) error {
 			smt := job.(*task.StructMigrateTask)
 			err = st.structMigrateStart(
-				st.DatabaseS,
-				st.DatabaseT,
+				dbTypeS,
+				dbVersionS,
+				databaseS,
+				databaseT,
+				stringutil.StringUpper(st.DatasourceS.ConnectCharset),
+				stringutil.StringUpper(st.DatasourceT.ConnectCharset),
 				gTime,
 				smt,
 				buildInDatatypeRules,
-				buildInDefaultValueRules,
-				dbCollationS)
+				buildInDefaultValueRules)
 			if err != nil {
 				return err
 			}
@@ -275,16 +313,16 @@ func (st *StructMigrateTask) Start() error {
 	}
 
 	// sequence migrate exclude struct_migrate_summary compute counts
-	err = st.sequenceMigrateStart(st.DatabaseS, st.DatabaseT)
+	err = st.sequenceMigrateStart(databaseS, databaseT)
 	if err != nil {
 		return err
 	}
 
-	err = st.DatabaseS.Close()
+	err = databaseS.Close()
 	if err != nil {
 		return err
 	}
-	err = st.DatabaseT.Close()
+	err = databaseT.Close()
 	if err != nil {
 		return err
 	}
@@ -308,13 +346,16 @@ func (st *StructMigrateTask) Start() error {
 }
 
 func (st *StructMigrateTask) structMigrateStart(
+	dbTypeS string,
+	dbVersionS string,
 	databaseS,
 	databaseT database.IDatabase,
+	dbCharsetS,
+	dbCharsetT string,
 	startTime time.Time,
 	smt *task.StructMigrateTask,
 	buildInDatatypeRules []*buildin.BuildinDatatypeRule,
-	buildInDefaultValueRules []*buildin.BuildinDefaultvalRule,
-	dbCollationS bool) error {
+	buildInDefaultValueRules []*buildin.BuildinDefaultvalRule) error {
 	// if the schema table success, skip
 	if strings.EqualFold(smt.TaskStatus, constant.TaskDatabaseStatusSuccess) {
 		logger.Warn("struct migrate task process",
@@ -375,14 +416,16 @@ func (st *StructMigrateTask) structMigrateStart(
 	}
 
 	sourceTime := time.Now()
-	dataSource := &processor.Datasource{
+	datasourceS := &processor.Datasource{
+		DBTypeS:     dbTypeS,
+		DBVersionS:  dbVersionS,
 		DatabaseS:   databaseS,
 		SchemaNameS: smt.SchemaNameS,
 		TableNameS:  smt.TableNameS,
 		TableTypeS:  smt.TableTypeS,
 	}
 
-	attrs, err := database.IStructMigrateAttributes(dataSource)
+	attrs, err := database.IStructMigrateAttributes(datasourceS)
 	if err != nil {
 		return err
 	}
@@ -393,7 +436,7 @@ func (st *StructMigrateTask) structMigrateStart(
 		zap.String("schema_name_s", smt.SchemaNameS),
 		zap.String("table_name_s", smt.TableNameS),
 		zap.String("task_stage", "datasource"),
-		zap.String("datasource", dataSource.String()),
+		zap.String("datasource", datasourceS.String()),
 		zap.String("cost", time.Now().Sub(sourceTime).String()))
 	ruleTime := time.Now()
 	dataRule := &processor.StructMigrateRule{
@@ -407,9 +450,9 @@ func (st *StructMigrateTask) structMigrateStart(
 		TableCommentAttrs:        attrs.TableComment,
 		CreateIfNotExist:         st.TaskParams.CreateIfNotExist,
 		CaseFieldRuleT:           st.Task.CaseFieldRuleT,
-		DBCollationS:             dbCollationS,
-		DBCharsetS:               st.DBCharsetS,
-		DBCharsetT:               st.DBCharsetT,
+		DBVersionS:               dbVersionS,
+		DBCharsetS:               dbCharsetS,
+		DBCharsetT:               dbCharsetT,
 		BuildinDatatypeRules:     buildInDatatypeRules,
 		BuildinDefaultValueRules: buildInDefaultValueRules,
 	}
@@ -429,11 +472,11 @@ func (st *StructMigrateTask) structMigrateStart(
 		zap.String("cost", time.Now().Sub(ruleTime).String()))
 
 	tableTime := time.Now()
-	dataTable := &StructMigrateTable{
+	dataTable := &processor.StructMigrateTable{
 		TaskName:            smt.TaskName,
 		TaskFlow:            st.Task.TaskFlow,
-		DatasourceS:         dataSource,
-		DBCharsetT:          st.DBCharsetT,
+		DatasourceS:         datasourceS,
+		DBCharsetT:          dbCharsetT,
 		TableAttributes:     attrs,
 		TableAttributesRule: rules,
 	}
@@ -519,8 +562,8 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 			lastNumber = lastNumber + (cacheSize * 2)
 		}
 
-		switch {
-		case strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(st.Task.TaskFlow, constant.TaskFlowOracleToTiDB):
+		switch st.Task.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			if st.TaskParams.CreateIfNotExist {
 				seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seq["SEQUENCE_NAME"], lastNumber, seq["INCREMENT_BY"], seq["MIN_VALUE"], seq["MAX_VALUE"], seq["CACHE_SIZE"], seq["CYCLE_FLAG"]))
 			} else {
@@ -564,7 +607,7 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 	return nil
 }
 
-func (st *StructMigrateTask) initStructMigrateTask() error {
+func (st *StructMigrateTask) initStructMigrateTask(databaseS database.IDatabase) error {
 	// delete checkpoint
 	initFlags, err := model.GetITaskRW().GetTask(st.Ctx, &task.Task{TaskName: st.Task.TaskName})
 	if err != nil {
@@ -618,7 +661,7 @@ func (st *StructMigrateTask) initStructMigrateTask() error {
 		}
 	}
 
-	tableObjs, err := st.DatabaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
+	tableObjs, err := databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includeTables, excludeTables)
 	if err != nil {
 		return err
 	}
@@ -639,7 +682,7 @@ func (st *StructMigrateTask) initStructMigrateTask() error {
 		databaseTaskTables = append(databaseTaskTables, tabName)
 	}
 
-	databaseTableTypeMap, err = st.DatabaseS.GetDatabaseTableType(schemaRoute.SchemaNameS)
+	databaseTableTypeMap, err = databaseS.GetDatabaseTableType(schemaRoute.SchemaNameS)
 	if err != nil {
 		return err
 	}

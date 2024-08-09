@@ -40,6 +40,7 @@ type SqlConfig struct {
 
 type SqlMigrateParam struct {
 	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
+	WriteThread          uint64 `toml:"write-thread" json:"writeThread"`
 	SqlThreadS           uint64 `toml:"sql-thread-s" json:"sqlThreadS"`
 	SqlThreadT           uint64 `toml:"sql-thread-t" json:"sqlThreadT"`
 	SqlHintT             string `toml:"sql-hint-t" json:"sqlHintT"`

@@ -41,6 +41,7 @@ type StatementConfig struct {
 
 type StatementMigrateParam struct {
 	TableThread          uint64 `toml:"table-thread" json:"tableThread"`
+	WriteThread          uint64 `toml:"write-thread" json:"writeThread"`
 	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
 	ChunkSize            uint64 `toml:"chunk-size" json:"chunkSize"`
 	SqlThreadS           uint64 `toml:"sql-thread-s" json:"sqlThreadS"`

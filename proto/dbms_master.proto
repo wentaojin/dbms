@@ -636,6 +636,7 @@ message StatementMigrateParam {
   bool enableCheckpoint = 9;
   bool enableConsistentRead = 10;
   bool enableSafeMode = 11;
+  uint64 writeThread = 12;
 }
 
 message CsvMigrateParam{
@@ -656,6 +657,7 @@ message CsvMigrateParam{
   uint64 callTimeout = 15;
   bool enableCheckpoint = 16;
   bool enableConsistentRead = 17;
+  uint64 writeThread = 18;
 }
 
 message DataCompareRule {
@@ -704,6 +706,7 @@ message SqlMigrateParam {
   uint64 callTimeout = 5;
   bool enableConsistentRead = 6;
   bool enableSafeMode = 7;
+  uint64 writeThread = 8;
 }
 
 message DataScanRule {
@@ -722,4 +725,5 @@ message DataScanParam {
   bool enableCheckpoint = 7;
   bool enableConsistentRead = 8;
   uint64 tableSamplerateS = 9;
+  uint64 writeThread = 10;
 }

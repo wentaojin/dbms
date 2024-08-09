@@ -78,14 +78,18 @@ func (cmt *CsvMigrateTask) Start() error {
 
 	logger.Info("csv migrate task inspect migrate task",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
-	dbVersion, _, err := processor.InspectOracleMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
+	_, err = processor.InspectOracleMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
 
 	logger.Info("csv migrate task init task",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
-	err = cmt.InitCsvMigrateTask(databaseS, dbVersion, schemaRoute)
+	dbVersionS, err := databaseS.GetDatabaseVersion()
+	if err != nil {
+		return err
+	}
+	err = cmt.InitCsvMigrateTask(databaseS, dbVersionS, schemaRoute)
 	if err != nil {
 		return err
 	}
@@ -876,26 +880,20 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 						})
 					}
 
-					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-						err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(txnCtx, metas, int(cmt.TaskParams.BatchSize))
-						if err != nil {
-							return err
-						}
-						_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-							TaskName:       cmt.Task.TaskName,
-							SchemaNameS:    attsRule.SchemaNameS,
-							TableNameS:     attsRule.TableNameS,
-							SchemaNameT:    attsRule.SchemaNameT,
-							TableNameT:     attsRule.TableNameT,
-							SnapshotPointS: globalScn,
-							TableRowsS:     tableRows,
-							TableSizeS:     tableSize,
-							ChunkTotals:    uint64(len(upstreamBuckets)),
-						})
-						if err != nil {
-							return err
-						}
-						return nil
+					err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(gCtx, metas, int(cmt.TaskParams.WriteThread), int(cmt.TaskParams.BatchSize))
+					if err != nil {
+						return err
+					}
+					_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
+						TaskName:       cmt.Task.TaskName,
+						SchemaNameS:    attsRule.SchemaNameS,
+						TableNameS:     attsRule.TableNameS,
+						SchemaNameT:    attsRule.SchemaNameT,
+						TableNameT:     attsRule.TableNameT,
+						SnapshotPointS: globalScn,
+						TableRowsS:     tableRows,
+						TableSizeS:     tableSize,
+						ChunkTotals:    uint64(len(upstreamBuckets)),
 					})
 					if err != nil {
 						return err
@@ -1010,26 +1008,20 @@ func (cmt *CsvMigrateTask) InitCsvMigrateTask(databaseS database.IDatabase, dbVe
 					})
 				}
 
-				err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-					err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(txnCtx, metas, int(cmt.TaskParams.BatchSize))
-					if err != nil {
-						return err
-					}
-					_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-						TaskName:       cmt.Task.TaskName,
-						SchemaNameS:    attsRule.SchemaNameS,
-						TableNameS:     attsRule.TableNameS,
-						SchemaNameT:    attsRule.SchemaNameT,
-						TableNameT:     attsRule.TableNameT,
-						SnapshotPointS: globalScn,
-						TableRowsS:     tableRows,
-						TableSizeS:     tableSize,
-						ChunkTotals:    uint64(len(chunks)),
-					})
-					if err != nil {
-						return err
-					}
-					return nil
+				err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(gCtx, metas, int(cmt.TaskParams.WriteThread), int(cmt.TaskParams.BatchSize))
+				if err != nil {
+					return err
+				}
+				_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
+					TaskName:       cmt.Task.TaskName,
+					SchemaNameS:    attsRule.SchemaNameS,
+					TableNameS:     attsRule.TableNameS,
+					SchemaNameT:    attsRule.SchemaNameT,
+					TableNameT:     attsRule.TableNameT,
+					SnapshotPointS: globalScn,
+					TableRowsS:     tableRows,
+					TableSizeS:     tableSize,
+					ChunkTotals:    uint64(len(chunks)),
 				})
 				if err != nil {
 					return err

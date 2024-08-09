@@ -16,6 +16,7 @@ limitations under the License.
 package processor
 
 import (
+	"fmt"
 	"github.com/wentaojin/dbms/utils/constant"
 	"strings"
 
@@ -24,6 +25,8 @@ import (
 )
 
 type Datasource struct {
+	DBTypeS     string             `json:"dbTypeS"`
+	DBVersionS  string             `json:"dbVersionS"`
 	DatabaseS   database.IDatabase `json:"-"`
 	SchemaNameS string             `json:"schemaNameS"`
 	TableNameS  string             `json:"tableNameS"`
@@ -72,37 +75,31 @@ func (d *Datasource) GetTableCharsetCollation() (string, string, error) {
 		return "", "", err
 	}
 
-	version, err := d.DatabaseS.GetDatabaseVersion()
-	if err != nil {
-		return "", "", err
-	}
-
-	collationS := false
-	if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
-		collationS = true
-	} else {
-		collationS = false
-	}
-	if collationS {
-		tableCollation, err := d.DatabaseS.GetDatabaseTableCollation(d.SchemaNameS, d.TableNameS)
-		if err != nil {
-			return "", "", err
-		}
-		if strings.EqualFold(tableCollation, "") {
-			schemaCollation, err := d.DatabaseS.GetDatabaseSchemaCollation(d.SchemaNameS)
+	switch stringutil.StringUpper(d.DBTypeS) {
+	case constant.DatabaseTypeOracle:
+		if stringutil.VersionOrdinal(d.DBVersionS) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+			tableCollation, err := d.DatabaseS.GetDatabaseTableCollation(d.SchemaNameS, d.TableNameS)
 			if err != nil {
 				return "", "", err
 			}
-			return charset, schemaCollation, nil
+			if strings.EqualFold(tableCollation, "") {
+				schemaCollation, err := d.DatabaseS.GetDatabaseSchemaCollation(d.SchemaNameS)
+				if err != nil {
+					return "", "", err
+				}
+				return charset, schemaCollation, nil
+			}
+			return charset, tableCollation, nil
+		} else {
+			nlsComp, err := d.DatabaseS.GetDatabaseCollation()
+			if err != nil {
+				return "", "", err
+			}
+			return charset, nlsComp, nil
 		}
-		return charset, tableCollation, nil
+	default:
+		return charset, "", fmt.Errorf("the struct migrate task unsupported database type: %s", d.DBTypeS)
 	}
-
-	nlsComp, err := d.DatabaseS.GetDatabaseCollation()
-	if err != nil {
-		return "", "", err
-	}
-	return charset, nlsComp, nil
 }
 
 func (d *Datasource) GetTableOriginStruct() (string, error) {

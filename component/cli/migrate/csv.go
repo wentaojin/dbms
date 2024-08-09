@@ -42,6 +42,7 @@ type CsvConfig struct {
 type CsvMigrateParam struct {
 	TableThread          uint64 `toml:"table-thread" json:"tableThread"`
 	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
+	WriteThread          uint64 `toml:"write-thread" json:"writeThread"`
 	DiskUsageFactor      string `toml:"disk-usage-factor" json:"diskUsageFactor"`
 	Header               bool   `toml:"header" json:"header"`
 	Separator            string `toml:"separator" json:"separator"`

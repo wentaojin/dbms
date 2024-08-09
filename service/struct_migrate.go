@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/database/processor"
+	"github.com/wentaojin/dbms/database/taskflow"
 	"strconv"
 	"strings"
 	"time"
@@ -35,8 +36,6 @@ import (
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
-
-	"github.com/wentaojin/dbms/database/oracle/taskflow"
 
 	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/model/migrate"
@@ -673,12 +672,11 @@ func GenStructMigrateTask(ctx context.Context, serverAddr, taskName, outputDir s
 func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) error {
 	startTime := time.Now()
 	logger.Info("struct migrate task start", zap.String("task_name", taskName))
-	logger.Info("struct migrate task get task information", zap.String("task_name", taskName))
+	logger.Info("struct migrate task get task", zap.String("task_name", taskName))
 	var (
-		taskInfo    *task.Task
-		datasourceS *datasource.Datasource
-		datasourceT *datasource.Datasource
-		err         error
+		taskInfo                 *task.Task
+		datasourceS, datasourceT *datasource.Datasource
+		err                      error
 	)
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeStructMigrate})
@@ -702,22 +700,6 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 	if err != nil {
 		return err
 	}
-
-	logger.Info("struct migrate task update task status",
-		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	_, err = model.GetITaskRW().UpdateTask(ctx, &task.Task{
-		TaskName: taskInfo.TaskName,
-	}, map[string]interface{}{
-		"WorkerAddr": workerAddr,
-		"TaskStatus": constant.TaskDatabaseStatusRunning,
-		"StartTime":  startTime,
-	})
-	if err != nil {
-		return err
-	}
-
-	var databaseS, databaseT database.IDatabase
-
 	logger.Info("struct migrate task get schema route",
 		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(ctx, &rule.SchemaRouteRule{TaskName: taskInfo.TaskName})
@@ -732,23 +714,17 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		return err
 	}
 
-	logger.Info("struct migrate task init database connection",
+	logger.Info("struct migrate task update task status",
 		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	databaseS, err = database.NewDatabase(ctx, datasourceS, schemaRoute.SchemaNameS, int64(taskParams.CallTimeout))
+	_, err = model.GetITaskRW().UpdateTask(ctx, &task.Task{
+		TaskName: taskInfo.TaskName,
+	}, map[string]interface{}{
+		"WorkerAddr": workerAddr,
+		"TaskStatus": constant.TaskDatabaseStatusRunning,
+		"StartTime":  startTime,
+	})
 	if err != nil {
 		return err
-	}
-	defer databaseS.Close()
-
-	switch {
-	case strings.EqualFold(taskInfo.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskInfo.TaskFlow, constant.TaskFlowOracleToMySQL):
-		databaseT, err = database.NewDatabase(ctx, datasourceT, "", int64(taskParams.CallTimeout))
-		if err != nil {
-			return err
-		}
-		defer databaseT.Close()
-	default:
-		return fmt.Errorf("oracle current taskflow [%s] isn't support, please contact author or reselect", taskInfo.TaskFlow)
 	}
 
 	switch {
@@ -761,10 +737,8 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 			Task:        taskInfo,
 			SchemaNameS: schemaRoute.SchemaNameS,
 			SchemaNameT: schemaRoute.SchemaNameT,
-			DatabaseS:   databaseS,
-			DatabaseT:   databaseT,
-			DBCharsetS:  datasourceS.ConnectCharset,
-			DBCharsetT:  datasourceT.ConnectCharset,
+			DatasourceS: datasourceS,
+			DatasourceT: datasourceT,
 			TaskParams:  taskParams,
 		}
 		err = taskStruct.Start()

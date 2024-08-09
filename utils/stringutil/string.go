@@ -439,6 +439,29 @@ func StringSliceSplit(items []string, splitCounts int) [][]string {
 	return result
 }
 
+// AnySliceSplit used for the according to splitCounts, split slice
+func AnySliceSplit(value interface{}, batchSize int) []interface{} {
+	var result []interface{}
+
+	reflectValue := reflect.Indirect(reflect.ValueOf(value))
+
+	switch reflectValue.Kind() {
+	case reflect.Slice, reflect.Array:
+		// the reflection length judgment of the optimized value
+		reflectLen := reflectValue.Len()
+		for i := 0; i < reflectLen; i += batchSize {
+			ends := i + batchSize
+			if ends > reflectLen {
+				ends = reflectLen
+			}
+			result = append(result, reflectValue.Slice(i, ends).Interface())
+		}
+	default:
+		result = append(result, value)
+	}
+	return result
+}
+
 // GetJSONTagFieldValue used for get field value with json tag
 func GetJSONTagFieldValue(obj interface{}) map[string]string {
 	objValue := reflect.ValueOf(obj)

@@ -287,7 +287,7 @@ func UpsertDataScanTask(ctx context.Context, req *pb.UpsertDataScanTaskRequest) 
 			}
 
 			if len(tableScanRules) > 0 {
-				_, err = model.GetIDataScanRuleRW().CreateInBatchDataScanRule(ctx, tableScanRules, constant.DefaultRecordCreateBatchSize)
+				_, err = model.GetIDataScanRuleRW().CreateInBatchDataScanRule(ctx, tableScanRules, int(req.DataScanParam.WriteThread), int(req.DataScanParam.BatchSize))
 				if err != nil {
 					return err
 				}
@@ -368,6 +368,11 @@ func ShowDataScanTask(ctx context.Context, req *pb.ShowDataScanTaskRequest) (str
 			return err
 		}
 
+		writeThread, err := strconv.ParseUint(paramMap[constant.ParamNameDataScanWriteThread], 10, 64)
+		if err != nil {
+			return err
+		}
+
 		batchSize, err := strconv.ParseUint(paramMap[constant.ParamNameDataScanBatchSize], 10, 64)
 		if err != nil {
 			return err
@@ -402,6 +407,7 @@ func ShowDataScanTask(ctx context.Context, req *pb.ShowDataScanTaskRequest) (str
 
 		param = &pb.DataScanParam{
 			TableThread:          tableThread,
+			WriteThread:          writeThread,
 			BatchSize:            batchSize,
 			ChunkSize:            chunkSize,
 			SqlThreadS:           sqlThreadS,
@@ -812,6 +818,13 @@ func getDataScanTaskParams(ctx context.Context, taskName string) (*pb.DataScanPa
 				return taskParam, err
 			}
 			taskParam.TableThread = tableThread
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataScanWriteThread) {
+			writeThread, err := strconv.ParseUint(p.ParamValue, 10, 64)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.WriteThread = writeThread
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataScanBatchSize) {
 			batchSize, err := strconv.ParseUint(p.ParamValue, 10, 64)

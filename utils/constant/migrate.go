@@ -410,6 +410,7 @@ var MigrateTableStructureDatabaseCollationMap = map[string]map[string]map[string
 			ORACLECharsetZHS32GB18030: "BINARY/BINARY_CS",
 		},
 	},
+	TaskFlowPostgresToTiDB: {},
 }
 
 const (
@@ -454,6 +455,7 @@ const (
 // statement migrate parameters
 const (
 	ParamNameStmtMigrateTableThread          = "tableThread"
+	ParamNameStmtMigrateWriteThread          = "writeThread"
 	ParamNameStmtMigrateBatchSize            = "batchSize"
 	ParamNameStmtMigrateChunkSize            = "chunkSize"
 	ParamNameStmtMigrateSqlThreadS           = "sqlThreadS"
@@ -477,6 +479,7 @@ const (
 // csv migrate parameters
 const (
 	ParamNameCsvMigrateTableThread          = "tableThread"
+	ParamNameCsvMigrateWriteThread          = "writeThread"
 	ParamNameCsvMigrateBatchSize            = "batchSize"
 	ParamNameCsvMigrateDiskUsageFactor      = "diskUsageFactor"
 	ParamNameCsvMigrateHeader               = "header"
@@ -498,6 +501,7 @@ const (
 // sql migrate parameters
 const (
 	ParamNameSqlMigrateBatchSize            = "batchSize"
+	ParamNameSqlMigrateWriteThread          = "writeThread"
 	ParamNameSqlMigrateSqlThreadS           = "sqlThreadS"
 	ParamNameSqlMigrateSqlThreadT           = "sqlThreadT"
 	ParamNameSqlMigrateSqlHintT             = "sqlHintT"
@@ -561,6 +565,7 @@ const (
 // data scan parameters
 const (
 	ParamNameDataScanTableThread          = "tableThread"
+	ParamNameDataScanWriteThread          = "writeThread"
 	ParamNameDataScanBatchSize            = "batchSize"
 	ParamNameDataScanChunkSize            = "chunkSize"
 	ParamNameDataScanSqlThreadS           = "sqlThreadS"

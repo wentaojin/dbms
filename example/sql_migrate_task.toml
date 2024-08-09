@@ -37,6 +37,8 @@ column-route-rules = {"ID" = "id", "NAME" = "n"}
 [sql-migrate-param]
 # 数据写入批量大小
 batch-size = 50
+# 数据校验写 meta 数据库并发数
+write-thread = 4
 # 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上游表数据，可动态变更
 sql-thread-s = 32
 # 表内每 sql-thread-s 线程写下游并发数，可动态变更

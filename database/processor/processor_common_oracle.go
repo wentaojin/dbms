@@ -26,55 +26,50 @@ import (
 	"go.uber.org/zap"
 )
 
-func InspectOracleMigrateTask(taskName, taskFlow, taskMode string, databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (string, string, error) {
+func InspectOracleMigrateTask(taskName, taskFlow, taskMode string, databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (string, error) {
 	if strings.EqualFold(taskMode, constant.TaskModeStructMigrate) {
 		dbCharsetMapping := constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][stringutil.StringUpper(connectDBCharsetS)]
 		if !strings.EqualFold(connectDBCharsetT, dbCharsetMapping) {
-			return "", "", fmt.Errorf("oracle current task [%s] taskflow [%s] charset [%s] mapping [%v] isn't equal with database connect charset [%s], please adjust database connect charset", taskName, taskFlow, connectDBCharsetS, dbCharsetMapping, connectDBCharsetT)
+			return "", fmt.Errorf("oracle current task [%s] taskflow [%s] charset [%s] mapping [%v] isn't equal with database connect charset [%s], please adjust database connect charset", taskName, taskFlow, connectDBCharsetS, dbCharsetMapping, connectDBCharsetT)
 		}
-	}
-
-	version, err := databaseS.GetDatabaseVersion()
-	if err != nil {
-		return version, "", err
 	}
 
 	// whether the oracle version can specify table and field collation，if the oracle database version is 12.2 and the above version, it's specify table and field collation, otherwise can't specify
 	// oracle database nls_sort/nls_comp value need to be equal, USING_NLS_COMP value is nls_comp
 	dbCharsetS, err := databaseS.GetDatabaseCharset()
 	if err != nil {
-		return version, "", err
+		return "", err
 	}
 	if !strings.EqualFold(connectDBCharsetS, dbCharsetS) {
 		zap.L().Warn("oracle charset and oracle config charset",
 			zap.String("oracle database charset", dbCharsetS),
 			zap.String("oracle config charset", connectDBCharsetS))
-		return version, "", fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", dbCharsetS, connectDBCharsetS)
+		return "", fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", dbCharsetS, connectDBCharsetS)
 	}
 	if _, ok := constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(connectDBCharsetS)]; !ok {
-		return version, "", fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
+		return "", fmt.Errorf("oracle database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigrateOracleCharsetStringConvertMapping))
 	}
 	if !stringutil.IsContainedString(constant.MigrateDataSupportCharset, stringutil.StringUpper(connectDBCharsetT)) {
-		return version, "", fmt.Errorf("mysql compatible database current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
+		return "", fmt.Errorf("mysql compatible database current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
 	}
 
 	if strings.EqualFold(taskMode, constant.TaskModeStructMigrate) {
 		nlsComp, err := databaseS.GetDatabaseCollation()
 		if err != nil {
-			return version, "", err
+			return "", err
 		}
 		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)]; !ok {
-			return version, "", fmt.Errorf("oracle database collation nlssort [%v] isn't support", nlsComp)
+			return "", fmt.Errorf("oracle database collation nlssort [%v] isn't support", nlsComp)
 		}
 
 		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)]; !ok {
-			return version, "", fmt.Errorf("oracle database collation nlscomp [%v] isn't support", nlsComp)
+			return "", fmt.Errorf("oracle database collation nlscomp [%v] isn't support", nlsComp)
 		}
 
-		return version, nlsComp, nil
+		return nlsComp, nil
 	}
 
-	return version, "", nil
+	return "", nil
 }
 
 func OptimizerOracleDataMigrateColumnS(columnName, datatype, dataScale string) (string, error) {

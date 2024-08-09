@@ -72,14 +72,18 @@ func (dst *DataScanTask) Start() error {
 	logger.Info("data scan task inspect migrate task",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
 
-	dbVersion, _, err := processor.InspectOracleMigrateTask(dst.Task.TaskName, dst.Task.TaskFlow, dst.Task.TaskMode, databaseS, stringutil.StringUpper(dst.DatasourceS.ConnectCharset), stringutil.StringUpper(dst.DatasourceT.ConnectCharset))
+	_, err = processor.InspectOracleMigrateTask(dst.Task.TaskName, dst.Task.TaskFlow, dst.Task.TaskMode, databaseS, stringutil.StringUpper(dst.DatasourceS.ConnectCharset), stringutil.StringUpper(dst.DatasourceT.ConnectCharset))
 	if err != nil {
 		return err
 	}
 
 	logger.Info("data scan task init task",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
-	err = dst.initDataScanTask(databaseS, dbVersion, schemaNameS)
+	dbVersionS, err := databaseS.GetDatabaseVersion()
+	if err != nil {
+		return err
+	}
+	err = dst.initDataScanTask(databaseS, dbVersionS, schemaNameS)
 	if err != nil {
 		return err
 	}
@@ -778,24 +782,18 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 						})
 					}
 
-					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-						err = model.GetIDataScanTaskRW().CreateInBatchDataScanTask(txnCtx, metas, int(dst.TaskParams.BatchSize))
-						if err != nil {
-							return err
-						}
-						_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(txnCtx, &task.DataScanSummary{
-							TaskName:       dst.Task.TaskName,
-							SchemaNameS:    attsRule.SchemaNameS,
-							TableNameS:     attsRule.TableNameS,
-							SnapshotPointS: globalScn,
-							TableRowsS:     tableRows,
-							TableSizeS:     tableSize,
-							ChunkTotals:    uint64(len(upstreamBuckets)),
-						})
-						if err != nil {
-							return err
-						}
-						return nil
+					err = model.GetIDataScanTaskRW().CreateInBatchDataScanTask(gCtx, metas, int(dst.TaskParams.WriteThread), int(dst.TaskParams.BatchSize))
+					if err != nil {
+						return err
+					}
+					_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(gCtx, &task.DataScanSummary{
+						TaskName:       dst.Task.TaskName,
+						SchemaNameS:    attsRule.SchemaNameS,
+						TableNameS:     attsRule.TableNameS,
+						SnapshotPointS: globalScn,
+						TableRowsS:     tableRows,
+						TableSizeS:     tableSize,
+						ChunkTotals:    uint64(len(upstreamBuckets)),
 					})
 					if err != nil {
 						return err
@@ -890,7 +888,7 @@ func (dst *DataScanTask) initDataScanTask(databaseS database.IDatabase, dbVersio
 				}
 
 				err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-					err = model.GetIDataScanTaskRW().CreateInBatchDataScanTask(txnCtx, metas, int(dst.TaskParams.BatchSize))
+					err = model.GetIDataScanTaskRW().CreateInBatchDataScanTask(txnCtx, metas, int(dst.TaskParams.WriteThread), int(dst.TaskParams.BatchSize))
 					if err != nil {
 						return err
 					}

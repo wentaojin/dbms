@@ -18,6 +18,8 @@ package rule
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/stringutil"
+	"golang.org/x/sync/errgroup"
 	"reflect"
 
 	"gorm.io/gorm/clause"
@@ -189,14 +191,27 @@ func (rw *RWTableRouteRule) CreateTableRouteRule(ctx context.Context, rule *Tabl
 	return rule, nil
 }
 
-func (rw *RWTableRouteRule) CreateInBatchTableRouteRule(ctx context.Context, rule []*TableRouteRule, batchSize int) ([]*TableRouteRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
-		UpdateAll: true,
-	}).CreateInBatches(rule, batchSize).Error
-	if err != nil {
-		return nil, fmt.Errorf("create table [%s] record by batch failed: %v", rw.TableName(ctx), err)
+func (rw *RWTableRouteRule) CreateInBatchTableRouteRule(ctx context.Context, rule []*TableRouteRule, thread, batchSize int) ([]*TableRouteRule, error) {
+	values := stringutil.AnySliceSplit(rule, batchSize)
+	g := errgroup.Group{}
+	g.SetLimit(thread)
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] record by batch failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
 	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
 	return rule, nil
 }
 
@@ -272,13 +287,25 @@ func (rw *RWColumnRouteRule) CreateColumnRouteRule(ctx context.Context, rule *Co
 	return rule, nil
 }
 
-func (rw *RWColumnRouteRule) CreateInBatchColumnRouteRule(ctx context.Context, rule []*ColumnRouteRule, batchSize int) ([]*ColumnRouteRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "column_name_s"}},
-		UpdateAll: true,
-	}).CreateInBatches(rule, batchSize).Error
-	if err != nil {
-		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+func (rw *RWColumnRouteRule) CreateInBatchColumnRouteRule(ctx context.Context, rule []*ColumnRouteRule, thread, batchSize int) ([]*ColumnRouteRule, error) {
+	values := stringutil.AnySliceSplit(rule, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "column_name_s"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return rule, nil
 }
@@ -360,13 +387,26 @@ func (rw *RWDataMigrateRule) CreateDataMigrateRule(ctx context.Context, rule *Da
 	return rule, nil
 }
 
-func (rw *RWDataMigrateRule) CreateInBatchDataMigrateRule(ctx context.Context, rule []*DataMigrateRule, batchSize int) ([]*DataMigrateRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
-		UpdateAll: true,
-	}).CreateInBatches(rule, batchSize).Error
-	if err != nil {
-		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+func (rw *RWDataMigrateRule) CreateInBatchDataMigrateRule(ctx context.Context, rule []*DataMigrateRule, thread, batchSize int) ([]*DataMigrateRule, error) {
+	values := stringutil.AnySliceSplit(rule, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return rule, nil
 }
@@ -452,13 +492,26 @@ func (rw *RWDataCompareRule) CreateDataCompareRule(ctx context.Context, rule *Da
 	return rule, nil
 }
 
-func (rw *RWDataCompareRule) CreateInBatchDataCompareRule(ctx context.Context, rule []*DataCompareRule, batchSize int) ([]*DataCompareRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
-		UpdateAll: true,
-	}).CreateInBatches(rule, batchSize).Error
-	if err != nil {
-		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+func (rw *RWDataCompareRule) CreateInBatchDataCompareRule(ctx context.Context, rule []*DataCompareRule, thread, batchSize int) ([]*DataCompareRule, error) {
+	values := stringutil.AnySliceSplit(rule, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return rule, nil
 }
@@ -544,13 +597,26 @@ func (rw *RWSqlMigrateRule) CreateSqlMigrateRule(ctx context.Context, rule *SqlM
 	return rule, nil
 }
 
-func (rw *RWSqlMigrateRule) CreateInBatchSqlMigrateRule(ctx context.Context, rule []*SqlMigrateRule, batchSize int) ([]*SqlMigrateRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "schema_name_t"}, {Name: "table_name_t"}},
-		UpdateAll: true,
-	}).CreateInBatches(rule, batchSize).Error
-	if err != nil {
-		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+func (rw *RWSqlMigrateRule) CreateInBatchSqlMigrateRule(ctx context.Context, rule []*SqlMigrateRule, thread, batchSize int) ([]*SqlMigrateRule, error) {
+	values := stringutil.AnySliceSplit(rule, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "schema_name_t"}, {Name: "table_name_t"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return rule, nil
 }
@@ -630,13 +696,25 @@ func (rw *RWDataScanRule) CreateDataScanRule(ctx context.Context, rule *DataScan
 	return rule, nil
 }
 
-func (rw *RWDataScanRule) CreateInBatchDataScanRule(ctx context.Context, rule []*DataScanRule, batchSize int) ([]*DataScanRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
-		UpdateAll: true,
-	}).CreateInBatches(rule, batchSize).Error
-	if err != nil {
-		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+func (rw *RWDataScanRule) CreateInBatchDataScanRule(ctx context.Context, rule []*DataScanRule, thread, batchSize int) ([]*DataScanRule, error) {
+	values := stringutil.AnySliceSplit(rule, batchSize)
+	g := &errgroup.Group{}
+	g.SetLimit(thread)
+	for _, v := range values {
+		val := v
+		g.Go(func() error {
+			err := rw.DB(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
+				UpdateAll: true,
+			}).Create(val).Error
+			if err != nil {
+				return fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return rule, nil
 }

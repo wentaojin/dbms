@@ -910,13 +910,32 @@ func (d *Database) GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]str
 }
 
 func (d *Database) GetDatabaseTableRows(schemaName, tableName string) (uint64, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
+    reltuples AS row_counts 
+FROM pg_class
+WHERE relkind = 'r'
+AND relnamespace = (SELECT oid from pg_namespace where nspname = '%s')
+AND relname = '%s'`, schemaName, tableName))
+	if err != nil {
+		return 0, err
+	}
+	size, err := stringutil.StrconvUintBitSize(res[0]["row_counts"], 64)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
 }
 
 func (d *Database) GetDatabaseTableSize(schemaName, tableName string) (float64, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT pg_total_relation_size('%s.%s')/1024/1024 AS mb`, schemaName, tableName))
+	if err != nil {
+		return 0, err
+	}
+	size, err := stringutil.StrconvFloatBitSize(res[0]["mb"], 64)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
 }
 
 func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) ([]map[string]string, error) {

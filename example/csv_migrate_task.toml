@@ -46,6 +46,8 @@ sql-hint-s = "/*+ PARALLEL(8) */"
 table-thread = 100
 # 数据写入批量大小
 batch-size = 50
+# 数据校验写 meta 数据库并发数
+write-thread = 4
 # 数据表大小放大系数，当磁盘空间小于数据表大小时，则不执行导出任务自动跳过，直至满足条件或者任务结束为止
 disk-usage-factor = "1.5"
 # CSV 文件是否包含表头
