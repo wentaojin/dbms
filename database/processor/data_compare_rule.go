@@ -536,32 +536,38 @@ func (r *DataCompareRule) GenSchemaTableCompareMethodRule() string {
 	return constant.DataCompareMethodDatabaseCheckCRC32
 }
 
-func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, []string, string, string, error) {
-	compareRule, err := model.GetIDataCompareRuleRW().GetDataCompareRule(r.Ctx, &rule.DataCompareRule{
+func (r *DataCompareRule) GenSchemaTableCustomRule() (string, string, string, []string, string, string, error) {
+	cr, err := model.GetIDataCompareRuleRW().GetDataCompareRule(r.Ctx, &rule.DataCompareRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS, TableNameS: r.TableNameS})
 	if err != nil {
-		return "", "", nil, "", "", err
+		return "", "", "", nil, "", "", err
 	}
-	if !strings.EqualFold(compareRule.IgnoreSelectFields, "") {
-		r.IgnoreSelectFields = stringutil.StringSplit(compareRule.IgnoreSelectFields, constant.StringSeparatorComma)
+	if !strings.EqualFold(cr.IgnoreSelectFields, "") {
+		r.IgnoreSelectFields = stringutil.StringSplit(cr.IgnoreSelectFields, constant.StringSeparatorComma)
 	}
 	var ignoreColumnConditionFields []string
-	if !strings.EqualFold(compareRule.IgnoreConditionFields, "") {
-		ignoreColumnConditionFields = stringutil.StringSplit(compareRule.IgnoreConditionFields, constant.StringSeparatorComma)
+	if !strings.EqualFold(cr.IgnoreConditionFields, "") {
+		ignoreColumnConditionFields = stringutil.StringSplit(cr.IgnoreConditionFields, constant.StringSeparatorComma)
 	} else {
 		ignoreColumnConditionFields = r.GlobalIgnoreConditionFields
 	}
 
 	var sqlHintS, sqlHintT string
-	if strings.EqualFold(compareRule.SqlHintS, "") {
+	if strings.EqualFold(cr.SqlHintS, "") {
 		sqlHintS = r.GlobalSqlHintS
 	} else {
-		sqlHintS = compareRule.SqlHintS
+		sqlHintS = cr.SqlHintS
 	}
-	if strings.EqualFold(compareRule.SqlHintT, "") {
+	if strings.EqualFold(cr.SqlHintT, "") {
 		sqlHintT = r.GlobalSqlHintT
 	} else {
-		sqlHintT = compareRule.SqlHintT
+		sqlHintT = cr.SqlHintT
 	}
-	return compareRule.CompareConditionField, compareRule.CompareConditionRange, ignoreColumnConditionFields, sqlHintS, sqlHintT, nil
+
+	// replace compareConditionRangeT
+	if strings.EqualFold(cr.CompareConditionRangeT, "") {
+		cr.CompareConditionRangeT = cr.CompareConditionRangeS
+	}
+
+	return cr.CompareConditionField, cr.CompareConditionRangeS, cr.CompareConditionRangeT, ignoreColumnConditionFields, sqlHintS, sqlHintT, nil
 }

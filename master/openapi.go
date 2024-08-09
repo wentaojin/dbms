@@ -535,11 +535,12 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 
 	for _, r := range *req.DataCompareRules {
 		compareRules = append(compareRules, &pb.DataCompareRule{
-			TableNameS:            *r.TableNameS,
-			CompareConditionField: *r.CompareConditionField,
-			CompareConditionRange: *r.CompareConditionRange,
-			IgnoreConditionFields: *r.IgnoreConditionFields,
-			IgnoreSelectFields:    *r.IgnoreSelectFields,
+			TableNameS:             *r.TableNameS,
+			CompareConditionField:  *r.CompareConditionField,
+			CompareConditionRangeS: *r.CompareConditionRangeS,
+			CompareConditionRangeT: *r.CompareConditionRangeT,
+			IgnoreConditionFields:  *r.IgnoreConditionFields,
+			IgnoreSelectFields:     *r.IgnoreSelectFields,
 		})
 	}
 

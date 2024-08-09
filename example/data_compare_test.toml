@@ -31,9 +31,11 @@ column-route-rules = {}
 [[data-compare-rules]]
 table-name-s = ""
 compare-condition-field = ""
-# 指定检查数据范围或者查询条件
-# compare-condition-range 优先级高于 compare-condition-field
-compare-condition-range = ""
+# 指定检查数据范围或者查询条件 upstream
+compare-condition-range-s = ""
+# 指定检查数据范围或者查询条件 downstream
+# 如果没有填写，则取 compare-condition-range-s 值，主要用于上下游字段名不一样
+compare-condition-range-t = ""
 # 忽略对比字段列
 ignore-select-fields = []
 # 禁止条件查询选择字段

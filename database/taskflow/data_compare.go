@@ -679,65 +679,8 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					zap.String("task_flow", dmt.Task.TaskFlow),
 					zap.String("schema_name_s", attsRule.SchemaNameS),
 					zap.String("table_name_s", attsRule.TableNameS))
-				// optimizer
-				if !strings.EqualFold(attsRule.CompareConditionRangeC, "") {
-					encChunk := snappy.Encode(nil, []byte(attsRule.CompareConditionRangeC))
-					encryptChunk, err := stringutil.Encrypt(stringutil.BytesToString(encChunk), []byte(constant.DefaultDataEncryptDecryptKey))
-					if err != nil {
-						return err
-					}
-					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
-						_, err = model.GetIDataCompareTaskRW().CreateDataCompareTask(txnCtx, &task.DataCompareTask{
-							TaskName:        dmt.Task.TaskName,
-							SchemaNameS:     attsRule.SchemaNameS,
-							TableNameS:      attsRule.TableNameS,
-							SchemaNameT:     attsRule.SchemaNameT,
-							TableNameT:      attsRule.TableNameT,
-							TableTypeS:      attsRule.TableTypeS,
-							SnapshotPointS:  globalScnS,
-							SnapshotPointT:  globalScnT,
-							CompareMethod:   attsRule.CompareMethod,
-							ColumnDetailSO:  attsRule.ColumnDetailSO,
-							ColumnDetailS:   attsRule.ColumnDetailS,
-							ChunkID:         uuid.New().String(),
-							ColumnDetailTO:  attsRule.ColumnDetailTO,
-							ColumnDetailT:   attsRule.ColumnDetailT,
-							SqlHintS:        attsRule.SqlHintS,
-							SqlHintT:        attsRule.SqlHintT,
-							ChunkDetailS:    encryptChunk,
-							ChunkDetailArgS: "",
-							ChunkDetailT:    encryptChunk,
-							ChunkDetailArgT: "",
-							ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
-							TaskStatus:      constant.TaskDatabaseStatusWaiting,
-						})
-						if err != nil {
-							return err
-						}
-						_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(txnCtx, &task.DataCompareSummary{
-							TaskName:       dmt.Task.TaskName,
-							SchemaNameS:    attsRule.SchemaNameS,
-							TableNameS:     attsRule.TableNameS,
-							SchemaNameT:    attsRule.SchemaNameT,
-							TableNameT:     attsRule.TableNameT,
-							SnapshotPointS: globalScnS,
-							SnapshotPointT: globalScnT,
-							TableRowsS:     tableRows,
-							TableSizeS:     tableSize,
-							ChunkTotals:    1,
-						})
-						if err != nil {
-							return err
-						}
-						return nil
-					})
-					if err != nil {
-						return err
-					}
-					return nil
-				}
 
-				upstreamCons, err := databaseS.GetDatabaseTableHighestSelectivityIndex(attsRule.SchemaNameS, attsRule.TableNameS, attsRule.CompareConditionFieldC, attsRule.IgnoreConditionFields)
+				upstreamCons, err := databaseS.GetDatabaseTableHighestSelectivityIndex(attsRule.SchemaNameS, attsRule.TableNameS, attsRule.CompareConditionFieldS, attsRule.IgnoreConditionFields)
 				if err != nil {
 					return err
 				}
@@ -766,6 +709,18 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 				}
 
 				if len(upstreamBuckets) == 0 {
+					var encChunkS, encChunkT []byte
+					if !strings.EqualFold(attsRule.CompareConditionRangeS, "") {
+						encChunkS = snappy.Encode(nil, []byte(attsRule.CompareConditionRangeS))
+					} else {
+						encChunkS = snappy.Encode(nil, []byte("1 = 1"))
+					}
+					if !strings.EqualFold(attsRule.CompareConditionRangeT, "") {
+						encChunkT = snappy.Encode(nil, []byte(attsRule.CompareConditionRangeT))
+					} else {
+						encChunkT = snappy.Encode(nil, []byte("1 = 1"))
+					}
+
 					logger.Warn("data compare task init table chunk",
 						zap.String("task_name", dmt.Task.TaskName),
 						zap.String("task_mode", dmt.Task.TaskMode),
@@ -773,9 +728,13 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 						zap.String("schema_name_s", attsRule.SchemaNameS),
 						zap.String("table_name_s", attsRule.TableNameS),
 						zap.Any("upstream bucket new", upstreamConsNew),
-						zap.Any("upstream bucket range", "1 = 1"))
-					encChunk := snappy.Encode(nil, []byte("1 = 1"))
-					encryptChunk, err := stringutil.Encrypt(stringutil.BytesToString(encChunk), []byte(constant.DefaultDataEncryptDecryptKey))
+						zap.Any("upstream bucket range", string(encChunkS)))
+
+					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					encryptChunkT, err := stringutil.Encrypt(stringutil.BytesToString(encChunkT), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {
 						return err
 					}
@@ -797,9 +756,9 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 							SqlHintS:        attsRule.SqlHintS,
 							SqlHintT:        attsRule.SqlHintT,
 							ChunkID:         uuid.New().String(),
-							ChunkDetailS:    encryptChunk,
+							ChunkDetailS:    encryptChunkS,
 							ChunkDetailArgS: "",
-							ChunkDetailT:    encryptChunk,
+							ChunkDetailT:    encryptChunkT,
 							ChunkDetailArgT: "",
 							ConsistentReadS: strconv.FormatBool(dmt.TaskParams.EnableConsistentRead),
 							TaskStatus:      constant.TaskDatabaseStatusWaiting,
@@ -827,6 +786,7 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 					if err != nil {
 						return err
 					}
+
 					return nil
 				}
 
@@ -885,6 +845,14 @@ func (dmt *DataCompareTask) InitDataCompareTask(databaseS, databaseT database.ID
 				for i, r := range upstreamBuckets {
 					toStringS, toStringArgsS := r.ToString()
 					toStringT, toStringArgsT := downstreamBuckets[i].ToString()
+
+					if !strings.EqualFold(attsRule.CompareConditionRangeS, "") {
+						toStringS = fmt.Sprintf("%s AND (%s)", toStringS, attsRule.CompareConditionRangeS)
+					}
+					if !strings.EqualFold(attsRule.CompareConditionRangeT, "") {
+						toStringT = fmt.Sprintf("%s AND (%s)", toStringT, attsRule.CompareConditionRangeT)
+					}
+
 					encChunkS := snappy.Encode(nil, []byte(toStringS))
 					encChunkT := snappy.Encode(nil, []byte(toStringT))
 

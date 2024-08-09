@@ -35,7 +35,7 @@ type IDatabaseDataCompare interface {
 // IDataCompareRuleInitializer used for database table rule initializer
 type IDataCompareRuleInitializer interface {
 	GenSchemaTableCompareMethodRule() string
-	GenSchemaTableCustomRule() (string, string, []string, string, string, error)
+	GenSchemaTableCustomRule() (string, string, string, []string, string, string, error)
 	IDatabaseSchemaTableRule
 }
 
@@ -51,15 +51,16 @@ type DataCompareAttributesRule struct {
 	ColumnDetailTO         string            `json:"columnDetailTO"`
 	CompareMethod          string            `json:"compareMethod"`
 	ColumnNameRouteRule    map[string]string `json:"columnNameRouteRule"` // keep the column name upstream and downstream mapping, a -> b
-	CompareConditionFieldC string            `json:"compareConditionFieldC"`
-	CompareConditionRangeC string            `json:"compareConditionRangeC"`
+	CompareConditionFieldS string            `json:"compareConditionFieldS"`
+	CompareConditionRangeS string            `json:"compareConditionRangeS"`
+	CompareConditionRangeT string            `json:"compareConditionRangeT"`
 	IgnoreConditionFields  []string          `json:"ignoreConditionFields"`
 	SqlHintS               string            `json:"sqlHintS"`
 	SqlHintT               string            `json:"sqlHintT"`
 }
 
 func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttributesRule, error) {
-	columnFields, compareRange, ignoreConditionFields, sqlHintS, sqlHintT, err := i.GenSchemaTableCustomRule()
+	columnFields, compareRangeS, compareRangeT, ignoreConditionFields, sqlHintS, sqlHintT, err := i.GenSchemaTableCustomRule()
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
@@ -90,8 +91,9 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 		ColumnDetailTO:         targetColumnTO,
 		ColumnDetailT:          targetColumnT,
 		CompareMethod:          i.GenSchemaTableCompareMethodRule(),
-		CompareConditionFieldC: columnFields,
-		CompareConditionRangeC: compareRange,
+		CompareConditionFieldS: columnFields,
+		CompareConditionRangeS: compareRangeS,
+		CompareConditionRangeT: compareRangeT,
 		IgnoreConditionFields:  ignoreConditionFields,
 		ColumnNameRouteRule:    columnRouteRule,
 		SqlHintS:               sqlHintS,

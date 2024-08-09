@@ -40,13 +40,14 @@ type CompareConfig struct {
 }
 
 type DataCompareRule struct {
-	TableNameS            string   `toml:"table-name-s" json:"tableNameS"`
-	CompareConditionField string   `toml:"compare-condition-field" json:"compareConditionField"`
-	CompareConditionRange string   `toml:"compare-condition-range" json:"compareConditionRange"`
-	IgnoreSelectFields    []string `toml:"ignore-select-fields" json:"ignoreSelectFields"`
-	IgnoreConditionFields []string `toml:"ignore-condition-fields" json:"ignoreConditionFields"`
-	SqlHintS              string   `toml:"sql-hint-s" json:"sqlHintS"`
-	SqlHintT              string   `toml:"sql-hint-t" json:"sqlHintT"`
+	TableNameS             string   `toml:"table-name-s" json:"tableNameS"`
+	CompareConditionField  string   `toml:"compare-condition-field" json:"compareConditionField"`
+	CompareConditionRangeS string   `toml:"compare-condition-range-s" json:"compareConditionRangeS"`
+	CompareConditionRangeT string   `toml:"compare-condition-range-t" json:"compareConditionRangeT"`
+	IgnoreSelectFields     []string `toml:"ignore-select-fields" json:"ignoreSelectFields"`
+	IgnoreConditionFields  []string `toml:"ignore-condition-fields" json:"ignoreConditionFields"`
+	SqlHintS               string   `toml:"sql-hint-s" json:"sqlHintS"`
+	SqlHintT               string   `toml:"sql-hint-t" json:"sqlHintT"`
 }
 
 type DataCompareParam struct {

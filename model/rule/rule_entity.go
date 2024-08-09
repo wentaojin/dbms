@@ -70,16 +70,17 @@ type DataMigrateRule struct {
 }
 
 type DataCompareRule struct {
-	ID                    uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName              string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
-	SchemaNameS           string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
-	TableNameS            string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
-	CompareConditionField string `gorm:"type:varchar(120);comment:compare filed" json:"compareConditionField"`
-	CompareConditionRange string `gorm:"type:varchar(120);comment:source sql query where" json:"compareConditionRange"`
-	IgnoreSelectFields    string `gorm:"type:text;comment:ignore select filed" json:"ignoreSelectFields"`
-	IgnoreConditionFields string `gorm:"type:text;comment:ignore condition filed" json:"ignoreConditionFields"`
-	SqlHintS              string `gorm:"type:varchar(120);comment:source sql query hint" json:"sqlHintS"`
-	SqlHintT              string `gorm:"type:varchar(120);comment:target sql query hint" json:"sqlHintT"`
+	ID                     uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName               string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task datasource name" json:"taskName"`
+	SchemaNameS            string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source schema name" json:"schemaNameS"`
+	TableNameS             string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_table_name;comment:source table name" json:"tableNameS"`
+	CompareConditionField  string `gorm:"type:varchar(120);comment:compare filed" json:"compareConditionField"`
+	CompareConditionRangeS string `gorm:"type:varchar(120);comment:source sql query where" json:"compareConditionRangeS"`
+	CompareConditionRangeT string `gorm:"type:varchar(120);comment:target sql query where" json:"compareConditionRangeT"`
+	IgnoreSelectFields     string `gorm:"type:text;comment:ignore select filed" json:"ignoreSelectFields"`
+	IgnoreConditionFields  string `gorm:"type:text;comment:ignore condition filed" json:"ignoreConditionFields"`
+	SqlHintS               string `gorm:"type:varchar(120);comment:source sql query hint" json:"sqlHintS"`
+	SqlHintT               string `gorm:"type:varchar(120);comment:target sql query hint" json:"sqlHintT"`
 	*common.Entity
 }
 

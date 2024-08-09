@@ -663,11 +663,12 @@ message CsvMigrateParam{
 message DataCompareRule {
   string tableNameS = 1;
   string compareConditionField = 2;
-  string compareConditionRange = 3;
-  repeated string ignoreSelectFields = 4;
-  repeated string ignoreConditionFields = 5;
-  string sqlHintS = 6;
-  string sqlHintT = 7;
+  string compareConditionRangeS = 3;
+  string compareConditionRangeT = 4;
+  repeated string ignoreSelectFields = 5;
+  repeated string ignoreConditionFields = 6;
+  string sqlHintS = 7;
+  string sqlHintT = 8;
 }
 
 message DataCompareParam{

@@ -331,15 +331,16 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 					}
 
 					tableCompareRules = append(tableCompareRules, &rule.DataCompareRule{
-						TaskName:              taskName,
-						SchemaNameS:           sourceSchema,
-						TableNameS:            sourceTable,
-						CompareConditionField: compareFiled,
-						CompareConditionRange: st.CompareConditionRange,
-						IgnoreSelectFields:    stringutil.StringJoin(ignoreSelectFields, constant.StringSeparatorComma),
-						IgnoreConditionFields: stringutil.StringJoin(ignoreCondFields, constant.StringSeparatorComma),
-						SqlHintS:              st.SqlHintS,
-						SqlHintT:              st.SqlHintT,
+						TaskName:               taskName,
+						SchemaNameS:            sourceSchema,
+						TableNameS:             sourceTable,
+						CompareConditionField:  compareFiled,
+						CompareConditionRangeS: st.CompareConditionRangeS,
+						CompareConditionRangeT: st.CompareConditionRangeT,
+						IgnoreSelectFields:     stringutil.StringJoin(ignoreSelectFields, constant.StringSeparatorComma),
+						IgnoreConditionFields:  stringutil.StringJoin(ignoreCondFields, constant.StringSeparatorComma),
+						SqlHintS:               st.SqlHintS,
+						SqlHintT:               st.SqlHintT,
 					})
 				}
 			}
@@ -490,13 +491,14 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 		}
 		for _, st := range migrateCompareRules {
 			opCompareRules = append(opCompareRules, &pb.DataCompareRule{
-				TableNameS:            st.TableNameS,
-				CompareConditionField: st.CompareConditionField,
-				CompareConditionRange: st.CompareConditionRange,
-				IgnoreSelectFields:    stringutil.StringSplit(st.IgnoreSelectFields, constant.StringSeparatorComma),
-				IgnoreConditionFields: stringutil.StringSplit(st.IgnoreConditionFields, constant.StringSeparatorComma),
-				SqlHintS:              st.SqlHintS,
-				SqlHintT:              st.SqlHintT,
+				TableNameS:             st.TableNameS,
+				CompareConditionField:  st.CompareConditionField,
+				CompareConditionRangeS: st.CompareConditionRangeS,
+				CompareConditionRangeT: st.CompareConditionRangeT,
+				IgnoreSelectFields:     stringutil.StringSplit(st.IgnoreSelectFields, constant.StringSeparatorComma),
+				IgnoreConditionFields:  stringutil.StringSplit(st.IgnoreConditionFields, constant.StringSeparatorComma),
+				SqlHintS:               st.SqlHintS,
+				SqlHintT:               st.SqlHintT,
 			})
 		}
 

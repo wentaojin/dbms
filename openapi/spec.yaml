@@ -1102,7 +1102,9 @@ components:
           type: string
         compareConditionField:
           type: string
-        compareConditionRange:
+        compareConditionRangeS:
+          type: string
+        compareConditionRangeT:
           type: string
         ignoreSelectFields:
           type: array
