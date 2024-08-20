@@ -17,6 +17,7 @@ package task
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"golang.org/x/sync/errgroup"
@@ -259,9 +260,12 @@ func (rw *RWStructMigrateSummary) GetStructMigrateSummary(ctx context.Context, t
 	var dataS *StructMigrateSummary
 	err := rw.DB(ctx).Model(&StructMigrateSummary{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
-	return task, nil
+	return dataS, nil
 }
 
 func (rw *RWStructMigrateSummary) UpdateStructMigrateSummary(ctx context.Context, task *StructMigrateSummary, updates map[string]interface{}) (*StructMigrateSummary, error) {
@@ -449,9 +453,12 @@ func (rw *RWStructCompareSummary) GetStructCompareSummary(ctx context.Context, t
 	var dataS *StructCompareSummary
 	err := rw.DB(ctx).Model(&StructCompareSummary{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
-	return task, nil
+	return dataS, nil
 }
 
 func (rw *RWStructCompareSummary) UpdateStructCompareSummary(ctx context.Context, task *StructCompareSummary, updates map[string]interface{}) (*StructCompareSummary, error) {
@@ -630,9 +637,12 @@ func (rw *RWDataMigrateSummary) GetDataMigrateSummary(ctx context.Context, task 
 	var dataS *DataMigrateSummary
 	err := rw.DB(ctx).Model(&DataMigrateSummary{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
-	return task, nil
+	return dataS, nil
 }
 
 func (rw *RWDataMigrateSummary) UpdateDataMigrateSummary(ctx context.Context, task *DataMigrateSummary, updates map[string]interface{}) (*DataMigrateSummary, error) {
@@ -738,6 +748,9 @@ func (rw *RWDataMigrateTask) GetDataMigrateTask(ctx context.Context, task *DataM
 	var dataS *DataMigrateTask
 	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? ", task.TaskName, task.SchemaNameS, task.TableNameS).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
@@ -761,20 +774,20 @@ func (rw *RWDataMigrateTask) FindDataMigrateTask(ctx context.Context, task *Data
 	return dataS, nil
 }
 
+func (rw *RWDataMigrateTask) FindDataMigrateTaskTableStatus(ctx context.Context, taskName, schemaName, tableName string, taskStatus []string) ([]*DataMigrateTask, error) {
+	var dataS []*DataMigrateTask
+	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status IN (?)", taskName, schemaName, tableName, taskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 func (rw *RWDataMigrateTask) FindDataMigrateTaskBySchemaTableChunkStatus(ctx context.Context, task *DataMigrateTask) ([]*DataGroupTaskStatusResult, error) {
 	var dataS []*DataGroupTaskStatusResult
 	err := rw.DB(ctx).Model(&DataMigrateTask{}).Select("task_name,schema_name_s,table_name_s,task_status,count(1) as status_totals").Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Group("task_name,schema_name_s,table_name_s,task_status").Order("status_totals desc").Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] group by the the task_name and schema_name_s and table_name_s ans task_status record failed: %v", rw.TableName(ctx), err)
-	}
-	return dataS, nil
-}
-
-func (rw *RWDataMigrateTask) FindDataMigrateTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error) {
-	var dataS []*DataGroupChunkResult
-	err := rw.DB(ctx).Model(&DataMigrateTask{}).Select("task_name,schema_name_s,table_name_s,count(1) as chunk_totals").Where("task_name = ?", taskName).Group("task_name,schema_name_s,table_name_s").Order("chunk_totals desc").Find(&dataS).Error
-	if err != nil {
-		return nil, fmt.Errorf("find table [%s] group by the the task_name and schema_name_s and table_name_s record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }
@@ -852,9 +865,12 @@ func (rw *RWSqlMigrateSummary) GetSqlMigrateSummary(ctx context.Context, task *S
 	var dataS *SqlMigrateSummary
 	err := rw.DB(ctx).Model(&SqlMigrateSummary{}).Where("task_name = ?", task.TaskName).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
-	return task, nil
+	return dataS, nil
 }
 
 func (rw *RWSqlMigrateSummary) UpdateSqlMigrateSummary(ctx context.Context, task *SqlMigrateSummary, updates map[string]interface{}) (*SqlMigrateSummary, error) {
@@ -1020,9 +1036,12 @@ func (rw *RWDataCompareSummary) GetDataCompareSummary(ctx context.Context, task 
 	var dataS *DataCompareSummary
 	err := rw.DB(ctx).Model(&DataCompareSummary{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
-	return task, nil
+	return dataS, nil
 }
 
 func (rw *RWDataCompareSummary) UpdateDataCompareSummary(ctx context.Context, task *DataCompareSummary, updates map[string]interface{}) (*DataCompareSummary, error) {
@@ -1291,9 +1310,12 @@ func (rw *RWDataScanSummary) GetDataScanSummary(ctx context.Context, task *DataS
 	var dataS *DataScanSummary
 	err := rw.DB(ctx).Model(&DataScanSummary{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
-	return task, nil
+	return dataS, nil
 }
 
 func (rw *RWDataScanSummary) FindDataScanSummary(ctx context.Context, task *DataScanSummary) ([]*DataScanSummary, error) {

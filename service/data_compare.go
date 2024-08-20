@@ -563,7 +563,7 @@ func StopDataCompareTask(ctx context.Context, taskName string) error {
 	return nil
 }
 
-func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir string) error {
+func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir string, force bool) error {
 	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
 	if err != nil {
 		return err
@@ -595,9 +595,11 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir str
 		return err
 	}
 
-	if !strings.EqualFold(taskInfo.TaskStatus, constant.TaskDatabaseStatusSuccess) {
-		return fmt.Errorf("the [%v] task [%v] is status [%v] in the worker [%v], please waiting success and retry", stringutil.StringLower(taskInfo.TaskMode),
-			taskInfo.TaskName, stringutil.StringLower(taskInfo.TaskStatus), taskInfo.WorkerAddr)
+	if !force {
+		if !strings.EqualFold(taskInfo.TaskStatus, constant.TaskDatabaseStatusSuccess) {
+			return fmt.Errorf("the [%v] task [%v] is status [%v] in the worker [%v], please waiting success and retry", stringutil.StringLower(taskInfo.TaskMode),
+				taskInfo.TaskName, stringutil.StringLower(taskInfo.TaskStatus), taskInfo.WorkerAddr)
+		}
 	}
 
 	var w database.IFileWriter

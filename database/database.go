@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"github.com/wentaojin/dbms/database/postgresql"
 	"github.com/wentaojin/dbms/utils/structure"
+	"golang.org/x/sync/errgroup"
 	"strings"
 
 	"github.com/wentaojin/dbms/database/mysql"
@@ -55,6 +56,45 @@ type IDatabaseSchemaTableRule interface {
 	GenSchemaTableNameRule() (string, string, error)
 	GetSchemaTableColumnNameRule() (map[string]string, error)
 	GenSchemaTableColumnSelectRule() (string, string, string, string, error)
+}
+
+// IDatabaseRunner used for database table migrate runner
+type IDatabaseRunner interface {
+	Init() error
+	Run() error
+	Resume() error
+}
+
+func IDatabaseRun(ctx context.Context, i IDatabaseRunner) error {
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		err := i.Init()
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err := i.Run()
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err := i.Resume()
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewDatabase(ctx context.Context, datasource *datasource.Datasource, migrateOracleSchema string, callTimeout int64) (IDatabase, error) {

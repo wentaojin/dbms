@@ -181,6 +181,7 @@ type AppVerifyGen struct {
 	*AppVerify
 	task      string
 	outputDir string
+	force     bool
 }
 
 func (a *AppVerify) AppVerifyGen() component.Cmder {
@@ -198,6 +199,7 @@ func (a *AppVerifyGen) Cmd() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the data compare task")
 	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the data compare task output file dir")
+	cmd.Flags().BoolVarP(&a.force, "force", "f", false, "the data compare task force ignore the task status success check, output fixed file")
 	return cmd
 }
 
@@ -235,7 +237,7 @@ func (a *AppVerifyGen) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := service.GenDataCompareTask(context.Background(), a.Server, a.task, a.outputDir)
+	err := service.GenDataCompareTask(context.Background(), a.Server, a.task, a.outputDir, a.force)
 	if err != nil {
 		if errors.Is(err, errors.New(constant.TaskDatabaseStatusEqual)) {
 			fmt.Printf("Status:       %s\n", cyan.Sprint("success"))

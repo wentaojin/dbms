@@ -508,6 +508,7 @@ const (
 	ParamNameSqlMigrateCallTimeout          = "callTimeout"
 	ParamNameSqlMigrateEnableConsistentRead = "enableConsistentRead"
 	ParamNameSqlMigrateEnableSafeMode       = "enableSafeMode"
+	ParamNameSqlMigrateEnableCheckpoint     = "enableCheckpoint"
 
 	// ParamValueSqlMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

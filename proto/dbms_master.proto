@@ -708,6 +708,7 @@ message SqlMigrateParam {
   bool enableConsistentRead = 6;
   bool enableSafeMode = 7;
   uint64 writeThread = 8;
+  bool enableCheckpoint = 9;
 }
 
 message DataScanRule {

@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/wentaojin/dbms/database/oracle/taskflow"
+	"github.com/wentaojin/dbms/database/taskflow"
 	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -375,8 +375,6 @@ func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error
 	}
 
 	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
-		logger.Info("csv migrate task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-		taskTime := time.Now()
 		dm := &taskflow.CsvMigrateTask{
 			Ctx:         ctx,
 			Task:        taskInfo,
@@ -388,9 +386,6 @@ func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error
 		if err != nil {
 			return err
 		}
-		logger.Info("csv migrate task process task",
-			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
-			zap.String("cost", time.Now().Sub(taskTime).String()))
 	} else {
 		return fmt.Errorf("current csv migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}

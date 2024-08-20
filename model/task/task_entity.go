@@ -31,7 +31,6 @@ type Task struct {
 	WorkerAddr      string     `gorm:"type:varchar(30);comment:worker addr" json:"workerAddr"`
 	CaseFieldRuleS  string     `gorm:"type:varchar(30);comment:source case field rule" json:"caseFieldRuleS"`
 	CaseFieldRuleT  string     `gorm:"type:varchar(30);comment:target case field rule" json:"CaseFieldRuleT"`
-	TaskInit        string     `gorm:"type:varchar(30);default:N;comment:the task init status" json:"TaskInit"`
 	TaskStatus      string     `gorm:"type:varchar(30);comment:task status" json:"taskStatus"`
 	StartTime       *time.Time `gorm:"default:null;comment:task start running time" json:"startTime"`
 	EndTime         *time.Time `gorm:"default:null;comment:task end running time" json:"endTime"`
@@ -70,6 +69,8 @@ type StructMigrateSummary struct {
 	TableWaits   uint64  `gorm:"type:int;comment:source table table waits" json:"tableWaits"`
 	TableRuns    uint64  `gorm:"type:int;comment:source table table runs" json:"tableRuns"`
 	TableStops   uint64  `gorm:"type:int;comment:source table table stops" json:"tableStops"`
+	InitFlag     string  `gorm:"type:char(1);default:N;comment:the task table init flag" json:"initFlag"`
+	MigrateFlag  string  `gorm:"type:char(1);default:N;comment:the task table migrate finished flag" json:"migrateFlag"`
 	Duration     float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }
@@ -104,6 +105,8 @@ type StructCompareSummary struct {
 	TableWaits     uint64  `gorm:"type:int;comment:source table table waits" json:"tableWaits"`
 	TableRuns      uint64  `gorm:"type:int;comment:source table table runs" json:"tableRuns"`
 	TableStops     uint64  `gorm:"type:int;comment:source table table stops" json:"tableStops"`
+	InitFlag       string  `gorm:"type:char(1);default:N;comment:the task table init flag" json:"initFlag"`
+	CompareFlag    string  `gorm:"type:char(1);default:N;comment:the task table compare finished flag" json:"compareFlag"`
 	Duration       float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }
@@ -141,6 +144,8 @@ type DataMigrateSummary struct {
 	ChunkWaits     uint64  `gorm:"type:int;comment:source table chunk waits" json:"chunkWaits"`
 	ChunkRuns      uint64  `gorm:"type:int;comment:source table chunk runs" json:"chunkRuns"`
 	ChunkStops     uint64  `gorm:"type:int;comment:source table chunk stops" json:"chunkStops"`
+	InitFlag       string  `gorm:"type:char(1);default:N;comment:the task table init flag" json:"initFlag"`
+	MigrateFlag    string  `gorm:"type:char(1);default:N;comment:the task table migrate finished flag" json:"migrateFlag"`
 	Refused        string  `gorm:"type:text;comment:csv migrate table refused" json:"refused"`
 	Duration       float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
@@ -172,15 +177,17 @@ type DataMigrateTask struct {
 }
 
 type SqlMigrateSummary struct {
-	ID         uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
-	TaskName   string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_complex;comment:task name" json:"taskName"`
-	SqlTotals  uint64  `gorm:"type:int;comment:source table sql totals" json:"sqlTotals"`
-	SqlSuccess uint64  `gorm:"type:int;comment:source table sql success" json:"sqlSuccess"`
-	SqlFails   uint64  `gorm:"type:int;comment:source table sql fails" json:"sqlFails"`
-	SqlWaits   uint64  `gorm:"type:int;comment:source table sql waits" json:"sqlWaits"`
-	SqlRuns    uint64  `gorm:"type:int;comment:source table sql runs" json:"sqlRuns"`
-	SqlStops   uint64  `gorm:"type:int;comment:source table sql stops" json:"sqlStops"`
-	Duration   float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	ID          uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName    string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_complex;comment:task name" json:"taskName"`
+	SqlTotals   uint64  `gorm:"type:int;comment:source table sql totals" json:"sqlTotals"`
+	SqlSuccess  uint64  `gorm:"type:int;comment:source table sql success" json:"sqlSuccess"`
+	SqlFails    uint64  `gorm:"type:int;comment:source table sql fails" json:"sqlFails"`
+	SqlWaits    uint64  `gorm:"type:int;comment:source table sql waits" json:"sqlWaits"`
+	SqlRuns     uint64  `gorm:"type:int;comment:source table sql runs" json:"sqlRuns"`
+	SqlStops    uint64  `gorm:"type:int;comment:source table sql stops" json:"sqlStops"`
+	Duration    float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	InitFlag    string  `gorm:"type:char(1);default:N;comment:the task sql init flag" json:"initFlag"`
+	MigrateFlag string  `gorm:"type:char(1);default:N;comment:the task sql migrate finished flag" json:"migrateFlag"`
 	*common.Entity
 }
 
@@ -220,6 +227,8 @@ type DataCompareSummary struct {
 	ChunkWaits     uint64  `gorm:"type:int;comment:source table chunk waits" json:"chunkWaits"`
 	ChunkRuns      uint64  `gorm:"type:int;comment:source table chunk runs" json:"chunkRuns"`
 	ChunkStops     uint64  `gorm:"type:int;comment:source table chunk stops" json:"chunkStops"`
+	InitFlag       string  `gorm:"type:char(1);default:N;comment:the task table init flag" json:"initFlag"`
+	CompareFlag    string  `gorm:"type:char(1);default:N;comment:the task table compare finished flag" json:"compareFlag"`
 	Duration       float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }
@@ -281,6 +290,8 @@ type DataScanSummary struct {
 	ChunkRuns      uint64  `gorm:"type:int;comment:source table chunk runs" json:"chunkRuns"`
 	ChunkStops     uint64  `gorm:"type:int;comment:source table chunk stops" json:"chunkStops"`
 	Duration       float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	InitFlag       string  `gorm:"type:char(1);default:N;comment:the task table init flag" json:"initFlag"`
+	ScanFlag       string  `gorm:"type:char(1);default:N;comment:the task table scan finished flag" json:"scanFlag"`
 	*common.Entity
 }
 

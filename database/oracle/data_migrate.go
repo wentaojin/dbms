@@ -152,13 +152,13 @@ func (d *Database) GetDatabaseDirectoryName(directory string) (string, error) {
 	return res[0]["DIRECTORY_PATH"], nil
 }
 
-func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64, batchSize int, dataChan chan []map[string]string) error {
 	sqlStr00 := fmt.Sprintf(`BEGIN
   DBMS_PARALLEL_EXECUTE.CREATE_TASK (TASK_NAME => '%s');
 END;`, taskName)
 	_, err := d.ExecContext(d.Ctx, sqlStr00)
 	if err != nil {
-		return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create task failed: %v, sql: %v", err, sqlStr00)
+		return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create task failed: %v, sql: %v", err, sqlStr00)
 	}
 
 	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
@@ -181,21 +181,91 @@ END;`, taskName)
 	if err != nil {
 		_, err = d.ExecContext(d.Ctx, sqlStr02)
 		if err != nil {
-			return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid drop task failed: %v, sql: %v", err, sqlStr02)
+			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid drop task failed: %v, sql: %v", err, sqlStr02)
 		}
-		return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid task failed: %v, sql: %v", err, sqlStr01)
+		return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid task failed: %v, sql: %v", err, sqlStr01)
 	}
 
 	sqlStr03 := fmt.Sprintf(`SELECT 'ROWID BETWEEN ''' || START_ROWID || ''' AND ''' || END_ROWID || '''' CMD FROM DBA_PARALLEL_EXECUTE_CHUNKS WHERE  TASK_NAME = '%s' ORDER BY CHUNK_ID`, taskName)
-	_, res, err := d.GeneralQuery(sqlStr03)
+
+	batchRowsData := make([]map[string]string, 0, batchSize)
+
+	qdeadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
+
+	qctx, qcancel := context.WithDeadline(d.Ctx, qdeadline)
+	defer qcancel()
+
+	rows, err := d.QueryContext(qctx, sqlStr03)
 	if err != nil {
 		_, err = d.ExecContext(d.Ctx, sqlStr02)
 		if err != nil {
-			return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed: %v, sql: %v", err, sqlStr02)
+			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed: %v, sql: %v", err, sqlStr03)
 		}
-		return nil, fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid task failed: %v, sql: %v", err, sqlStr03)
+		return err
 	}
-	return res, nil
+	defer rows.Close()
+
+	// general query, automatic get column name
+	columns, err := rows.Columns()
+	if err != nil {
+		_, err = d.ExecContext(d.Ctx, sqlStr02)
+		if err != nil {
+			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed: %v, sql: %v", err, sqlStr03)
+		}
+		return fmt.Errorf("query rows.Columns failed, sql: [%v], error: [%v]", sqlStr03, err)
+	}
+
+	values := make([][]byte, len(columns))
+	scans := make([]interface{}, len(columns))
+	for i := range values {
+		scans[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(scans...)
+		if err != nil {
+			return fmt.Errorf("query rows.Scan failed, sql: [%v], error: [%v]", sqlStr03, err)
+		}
+
+		row := make(map[string]string)
+		for k, v := range values {
+			// Notes: oracle database NULL and ""
+			//	1, if the return value is NULLABLE, it represents the value is NULL, oracle sql query statement had be required the field NULL judgement, and if the filed is NULL, it returns that the value is NULLABLE
+			//	2, if the return value is nil, it represents the value is NULL
+			//	3, if the return value is "", it represents the value is "" string
+			//	4, if the return value is 'NULL' or 'null', it represents the value is NULL or null string
+			if v == nil {
+				row[columns[k]] = "NULLABLE"
+			} else {
+				// Handling empty string and other values, the return value output string
+				row[columns[k]] = stringutil.BytesToString(v)
+			}
+		}
+
+		// temporary array
+		batchRowsData = append(batchRowsData, row)
+
+		// batch
+		if len(batchRowsData) == batchSize {
+			dataChan <- batchRowsData
+			// clear
+			batchRowsData = make([]map[string]string, 0, batchSize)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		_, err = d.ExecContext(d.Ctx, sqlStr02)
+		if err != nil {
+			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed: %v, sql: %v", err, sqlStr03)
+		}
+		return fmt.Errorf("query rows.Next failed, sql: [%v], error: [%v]", sqlStr03, err)
+	}
+
+	// non-batch batch
+	if len(batchRowsData) > 0 {
+		dataChan <- batchRowsData
+	}
+	return nil
 }
 
 func (d *Database) GetDatabaseTableChunkData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {

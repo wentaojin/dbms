@@ -119,7 +119,7 @@ WHERE
 	return sizeMB, nil
 }
 
-func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64) ([]map[string]string, error) {
+func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64, batchSize int, dataChan chan []map[string]string) error {
 	//TODO implement me
 	panic("implement me")
 }

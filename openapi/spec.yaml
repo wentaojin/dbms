@@ -1325,6 +1325,8 @@ components:
           type: boolean
         enableSafeMode:
           type: boolean
+        enableCheckpoint:
+          type: boolean
     StructMigrateParam:
       type: object
       properties:

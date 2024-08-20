@@ -72,10 +72,10 @@ func GetGormLogger(logLevel string, slowThreshold uint64) zapgorm2.Logger {
 	} else if strings.EqualFold(spaceLogLevel, "error") {
 		gormLogger.LogLevel = logger2.Error
 	}
-
+	// avoid First Method logger output "error": "record not found"
+	gormLogger.IgnoreRecordNotFoundError = false
 	gormLogger.LogMode(gormLogger.LogLevel)
 	gormLogger.SetAsDefault()
-
 	return gormLogger
 }
 

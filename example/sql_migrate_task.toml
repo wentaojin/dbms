@@ -47,6 +47,8 @@ sql-thread-t = 64
 sql-hint-t = ""
 # calltimeout，单位：秒
 call-timeout = 36000
+# 断点续传
+enable-checkpoint = true
 # 是否一致性读 ORA
 enable-consistent-read = false
 # 是否 safe-mode , false -> insert into, true -> repalce into

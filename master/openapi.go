@@ -748,6 +748,7 @@ func (s *Server) upsertSqlMigrateTask(ctx context.Context, req openapi.APIPutSql
 			CallTimeout:          *req.SqlMigrateParam.CallTimeout,
 			EnableConsistentRead: *req.SqlMigrateParam.EnableConsistentRead,
 			EnableSafeMode:       *req.SqlMigrateParam.EnableSafeMode,
+			EnableCheckpoint:     *req.SqlMigrateParam.EnableCheckpoint,
 		},
 	})
 	if err != nil {

@@ -17,14 +17,16 @@ package structure
 
 import (
 	"fmt"
+	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
+	"go.uber.org/zap"
 	"sort"
 	"strings"
 )
 
-// HighestBucket store the highest selectivity constraint or index bucket
-type HighestBucket struct {
+// Selectivity store the highest selectivity constraint or index bucket
+type Selectivity struct {
 	IndexName         string
 	IndexColumn       []string
 	ColumnDatatype    []string
@@ -33,7 +35,142 @@ type HighestBucket struct {
 	Buckets           []Bucket
 }
 
-func (h *HighestBucket) String() string {
+func (h *Selectivity) TransSelectivity(dbTypeS, dbCharsetS string, caseFieldRuleS string, enableCollationSetting bool) error {
+	// column name charset transform
+	var newColumns []string
+	for _, col := range h.IndexColumn {
+		var columnName string
+		switch stringutil.StringUpper(dbTypeS) {
+		case constant.DatabaseTypeOracle:
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket column charset convert failed: %v", dbTypeS, err)
+			}
+			columnName = stringutil.BytesToString(convertUtf8Raws)
+
+			if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleLower) {
+				columnName = strings.ToLower(stringutil.BytesToString(convertUtf8Raws))
+			}
+			if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleUpper) {
+				columnName = strings.ToUpper(stringutil.BytesToString(convertUtf8Raws))
+			}
+
+		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket column charset convert failed: %v", dbTypeS, err)
+			}
+			columnName = stringutil.BytesToString(convertUtf8Raws)
+
+			if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleLower) {
+				columnName = strings.ToLower(stringutil.BytesToString(convertUtf8Raws))
+			}
+			if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleUpper) {
+				columnName = strings.ToUpper(stringutil.BytesToString(convertUtf8Raws))
+			}
+		default:
+			return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
+		}
+
+		newColumns = append(newColumns, columnName)
+	}
+
+	h.IndexColumn = newColumns
+
+	for _, b := range h.Buckets {
+		switch stringutil.StringUpper(dbTypeS) {
+		case constant.DatabaseTypeOracle:
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket charset convert failed: %v", dbTypeS, err)
+			}
+			b.LowerBound = stringutil.BytesToString(convertUtf8Raws)
+
+			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket charset convert failed: %v", dbTypeS, err)
+			}
+			b.UpperBound = stringutil.BytesToString(convertUtf8Raws)
+		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket charset convert failed: %v", dbTypeS, err)
+			}
+			b.LowerBound = stringutil.BytesToString(convertUtf8Raws)
+
+			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket charset convert failed: %v", dbTypeS, err)
+			}
+			b.UpperBound = stringutil.BytesToString(convertUtf8Raws)
+		default:
+			return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
+		}
+	}
+
+	// collation enable setting
+	for i, _ := range h.ColumnCollation {
+		if !enableCollationSetting {
+			// ignore collation setting, fill ""
+			h.ColumnCollation[i] = constant.DataCompareDisabledCollationSettingFillEmptyString
+		}
+	}
+	return nil
+}
+
+func (h *Selectivity) TransSelectivityRule(taskFlow, dbTypeT, dbCharsetS string, columnDatatypeT []string, columnRouteRule map[string]string) (*Rule, error) {
+	var columnCollationDownStreams []string
+
+	switch stringutil.StringUpper(dbTypeT) {
+	case constant.DatabaseTypeOracle:
+		for _, c := range h.ColumnCollation {
+			if !strings.EqualFold(c, constant.DataCompareDisabledCollationSettingFillEmptyString) {
+				collationTStr := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]]
+				collationTSli := stringutil.StringSplit(collationTStr, constant.StringSeparatorSlash)
+				// get first collation
+				columnCollationDownStreams = append(columnCollationDownStreams, collationTSli[0])
+			} else {
+				columnCollationDownStreams = append(columnCollationDownStreams, c)
+			}
+		}
+	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
+		for _, c := range h.ColumnCollation {
+			if !strings.EqualFold(c, constant.DataCompareDisabledCollationSettingFillEmptyString) {
+				collationTStr := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]]
+				collationTSli := stringutil.StringSplit(collationTStr, constant.StringSeparatorSlash)
+				// get first collation
+				columnCollationDownStreams = append(columnCollationDownStreams, collationTSli[0])
+			} else {
+				columnCollationDownStreams = append(columnCollationDownStreams, c)
+			}
+		}
+	default:
+		return nil, fmt.Errorf("unsupported the downstream database type: %s", dbTypeT)
+	}
+
+	columnDatatypeM := make(map[string]string)
+	columnCollationM := make(map[string]string)
+	columnDatePrecisionM := make(map[string]string)
+
+	for i, c := range h.IndexColumn {
+		columnDatatypeM[c] = columnDatatypeT[i]
+		columnCollationM[c] = columnCollationDownStreams[i]
+		columnDatePrecisionM[c] = h.DatetimePrecision[i]
+	}
+
+	rule := &Rule{
+		IndexColumnRule:       columnRouteRule,
+		ColumnDatatypeRule:    columnDatatypeM,
+		ColumnCollationRule:   columnCollationM,
+		DatetimePrecisionRule: columnDatePrecisionM,
+	}
+	logger.Info("data compare task init table chunk",
+		zap.Any("upstream selectivity", h),
+		zap.Any("downstream selectivity rule", rule))
+	return rule, nil
+}
+
+func (h *Selectivity) String() string {
 	jsonStr, _ := stringutil.MarshalJSON(h)
 	return jsonStr
 }
@@ -143,13 +280,13 @@ func SortDistinctCountHistogram(histogramMap map[string]Histogram, consColumns m
 	return hists
 }
 
-func FindMatchDistinctCountBucket(sortHists SortHistograms, bucketMap map[string][]Bucket, consColumns map[string]string) (*HighestBucket, error) {
+func FindMatchDistinctCountBucket(sortHists SortHistograms, bucketMap map[string][]Bucket, consColumns map[string]string) (*Selectivity, error) {
 	var (
-		sortBuckets []*HighestBucket
+		sortBuckets []*Selectivity
 	)
 	for _, hist := range sortHists {
 		if val, ok := bucketMap[hist.Key]; ok {
-			sortBuckets = append(sortBuckets, &HighestBucket{
+			sortBuckets = append(sortBuckets, &Selectivity{
 				IndexName:         hist.Key,
 				IndexColumn:       stringutil.StringSplit(consColumns[hist.Key], constant.StringSeparatorComplexSymbol),
 				ColumnDatatype:    nil,
@@ -164,5 +301,5 @@ func FindMatchDistinctCountBucket(sortHists SortHistograms, bucketMap map[string
 	if len(sortBuckets) >= 1 {
 		return sortBuckets[0], nil
 	}
-	return &HighestBucket{}, fmt.Errorf("the database table index name is empty, please contact author or analyze table statistics and historgam rerunning")
+	return &Selectivity{}, fmt.Errorf("the database table index name is empty, please contact author or analyze table statistics and historgam rerunning")
 }

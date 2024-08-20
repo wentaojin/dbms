@@ -211,7 +211,7 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS s
 	return nil, fmt.Errorf("the database table statistics histograms doesn't supported, only support tidb database, version: [%v]", res[0]["VERSION"])
 }
 
-func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.HighestBucket, error) {
+func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.Selectivity, error) {
 	consColumns, err := d.GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS)
 	if err != nil {
 		return nil, err
@@ -259,12 +259,12 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		return nil, nil
 	}
 
-	highestBucket, err := structure.FindMatchDistinctCountBucket(sortHists, buckets, consColumns)
+	Selectivity, err := structure.FindMatchDistinctCountBucket(sortHists, buckets, consColumns)
 	if err != nil {
 		return nil, err
 	}
 
-	properties, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, highestBucket.IndexColumn)
+	properties, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, Selectivity.IndexColumn)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +273,7 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		columnCollations  []string
 		datetimePrecision []string
 	)
-	for _, c := range highestBucket.IndexColumn {
+	for _, c := range Selectivity.IndexColumn {
 		for _, p := range properties {
 			if strings.EqualFold(p["COLUMN_NAME"], c) {
 				columnProps = append(columnProps, p["DATA_TYPE"])
@@ -294,10 +294,10 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		}
 	}
 
-	highestBucket.ColumnDatatype = columnProps
-	highestBucket.ColumnCollation = columnCollations
-	highestBucket.DatetimePrecision = datetimePrecision
-	return highestBucket, nil
+	Selectivity.ColumnDatatype = columnProps
+	Selectivity.ColumnCollation = columnCollations
+	Selectivity.DatetimePrecision = datetimePrecision
+	return Selectivity, nil
 }
 
 func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, condArgs []interface{}, limit int, collations []string) ([][]string, error) {

@@ -26,94 +26,18 @@ import (
 	"strings"
 )
 
-func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS string, caseFieldRule string,
-	database database.IDatabase, schemaName, tableName string, cons *structure.HighestBucket, chunkSize int64, enableCollation bool) (*structure.HighestBucket, []*structure.Range, error) {
-	if cons == nil {
-		return nil, nil, nil
-	}
+type Divide struct {
+	DBTypeS     string
+	DBCharsetS  string
+	SchemaNameS string
+	TableNameS  string
+	ChunkSize   int64
+	DatabaseS   database.IDatabase
+	Cons        *structure.Selectivity
+	RangeC      chan []*structure.Range
+}
 
-	var chunkRanges []*structure.Range
-
-	// column name charset transform
-	var newColumns []string
-	for _, col := range cons.IndexColumn {
-		var columnName string
-		switch stringutil.StringUpper(dbTypeS) {
-		case constant.DatabaseTypeOracle:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return nil, nil, nil
-			}
-			columnName = stringutil.BytesToString(convertUtf8Raws)
-
-			if strings.EqualFold(caseFieldRule, constant.ParamValueDataCompareCaseFieldRuleLower) {
-				columnName = strings.ToLower(stringutil.BytesToString(convertUtf8Raws))
-			}
-			if strings.EqualFold(caseFieldRule, constant.ParamValueDataCompareCaseFieldRuleUpper) {
-				columnName = strings.ToUpper(stringutil.BytesToString(convertUtf8Raws))
-			}
-
-		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return nil, nil, nil
-			}
-			columnName = stringutil.BytesToString(convertUtf8Raws)
-
-			if strings.EqualFold(caseFieldRule, constant.ParamValueDataCompareCaseFieldRuleLower) {
-				columnName = strings.ToLower(stringutil.BytesToString(convertUtf8Raws))
-			}
-			if strings.EqualFold(caseFieldRule, constant.ParamValueDataCompareCaseFieldRuleUpper) {
-				columnName = strings.ToUpper(stringutil.BytesToString(convertUtf8Raws))
-			}
-		default:
-			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
-		}
-
-		newColumns = append(newColumns, columnName)
-	}
-
-	cons.IndexColumn = newColumns
-
-	for _, b := range cons.Buckets {
-		switch stringutil.StringUpper(dbTypeS) {
-		case constant.DatabaseTypeOracle:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return nil, nil, err
-			}
-			b.LowerBound = stringutil.BytesToString(convertUtf8Raws)
-
-			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return nil, nil, err
-			}
-			b.UpperBound = stringutil.BytesToString(convertUtf8Raws)
-		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return nil, nil, err
-			}
-			b.LowerBound = stringutil.BytesToString(convertUtf8Raws)
-
-			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
-			if err != nil {
-				return nil, nil, err
-			}
-			b.UpperBound = stringutil.BytesToString(convertUtf8Raws)
-		default:
-			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
-		}
-	}
-
-	// collation enable setting
-	for i, _ := range cons.ColumnCollation {
-		if !enableCollation {
-			// ignore collation setting, fill ""
-			cons.ColumnCollation[i] = constant.DataCompareDisabledCollationSettingFillEmptyString
-		}
-	}
-
+func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 	// divide buckets
 	var (
 		lowerValues, upperValues []string
@@ -124,51 +48,51 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 	// `bucketID` is the bucket id of one chunk.
 	bucketID := 0
 
-	halfChunkSize := chunkSize >> 1
+	halfChunkSize := d.ChunkSize >> 1
 	// `firstBucket` is the first bucket of one chunk.
-	for i := bucketID; i < len(cons.Buckets); i++ {
-		count := cons.Buckets[i].Count - latestCount
-		if count < chunkSize {
+	for i := bucketID; i < len(d.Cons.Buckets); i++ {
+		count := d.Cons.Buckets[i].Count - latestCount
+		if count < d.ChunkSize {
 			// merge more buckets into one chunk
 			logger.Info("divide database bucket value",
-				zap.String("schema_name_s", schemaName),
-				zap.String("table_name_s", tableName),
+				zap.String("schema_name_s", d.SchemaNameS),
+				zap.String("table_name_s", d.TableNameS),
 				zap.Int("current_bucket_id", bucketID),
 				zap.Int64("bucket_counts", count),
-				zap.Int64("chunk_size", chunkSize),
-				zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
-				zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+				zap.Int64("chunk_size", d.ChunkSize),
+				zap.String("origin_lower_value", d.Cons.Buckets[i].LowerBound),
+				zap.String("origin_upper_value", d.Cons.Buckets[i].UpperBound),
 				zap.Any("new_lower_values", lowerValues),
 				zap.Any("new_upper_values", upperValues),
 				zap.String("chunk_action", "skip"))
 			continue
 		}
 
-		upperValues, err = ExtractDatabaseTableStatisticsValuesFromBuckets(dbTypeS, cons.Buckets[i].UpperBound, cons.IndexColumn)
+		upperValues, err = ExtractDatabaseTableStatisticsValuesFromBuckets(d.DBTypeS, d.Cons.Buckets[i].UpperBound, d.Cons.IndexColumn)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		logger.Debug("divide database bucket value",
-			zap.String("schema_name_s", schemaName),
-			zap.String("table_name_s", tableName),
+			zap.String("schema_name_s", d.SchemaNameS),
+			zap.String("table_name_s", d.TableNameS),
 			zap.Int("current_bucket_id", bucketID),
 			zap.Int64("bucket_counts", count),
-			zap.Int64("chunk_size", chunkSize),
-			zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
-			zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+			zap.Int64("chunk_size", d.ChunkSize),
+			zap.String("origin_lower_value", d.Cons.Buckets[i].LowerBound),
+			zap.String("origin_upper_value", d.Cons.Buckets[i].UpperBound),
 			zap.String("chunk_action", "divide"))
 
 		var chunkRange *structure.Range
-		switch stringutil.StringUpper(dbTypeS) {
+		switch stringutil.StringUpper(d.DBTypeS) {
 		case constant.DatabaseTypeOracle:
-			chunkRange = structure.NewChunkRange(dbTypeS, dbCharsetS, constant.BuildInOracleCharsetAL32UTF8)
+			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.BuildInOracleCharsetAL32UTF8)
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-			chunkRange = structure.NewChunkRange(dbTypeS, dbCharsetS, constant.BuildInMYSQLCharsetUTF8MB4)
+			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.BuildInMYSQLCharsetUTF8MB4)
 		default:
-			return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
+			return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", d.DBTypeS)
 		}
-		for j, columnName := range cons.IndexColumn {
+		for j, columnName := range d.Cons.IndexColumn {
 			var lowerValue, upperValue string
 			if len(lowerValues) > 0 {
 				lowerValue = lowerValues[j]
@@ -176,29 +100,29 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 			if len(upperValues) > 0 {
 				upperValue = upperValues[j]
 			}
-			err = chunkRange.Update(columnName, cons.ColumnCollation[j], cons.ColumnDatatype[j], cons.DatetimePrecision[j], lowerValue, upperValue, len(lowerValues) > 0, len(upperValues) > 0)
+			err = chunkRange.Update(columnName, d.Cons.ColumnCollation[j], d.Cons.ColumnDatatype[j], d.Cons.DatetimePrecision[j], lowerValue, upperValue, len(lowerValues) > 0, len(upperValues) > 0)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
 		}
 
 		// count >= chunkSize
 		if i == bucketID {
-			chunkCnt := int((count + halfChunkSize) / chunkSize)
-			buckets, err := DivideDatabaseTableColumnStatisticsBucket(database, schemaName, tableName, cons, chunkRange, chunkCnt)
+			chunkCnt := int((count + halfChunkSize) / d.ChunkSize)
+			ranges, err := DivideDatabaseTableColumnStatisticsBucket(d.DatabaseS, d.SchemaNameS, d.TableNameS, d.Cons, chunkRange, chunkCnt)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
-			chunkRanges = append(chunkRanges, buckets...)
+			d.RangeC <- ranges
 
 			logger.Debug("divide database bucket value",
-				zap.String("schema_name_s", schemaName),
-				zap.String("table_name_s", tableName),
+				zap.String("schema_name_s", d.SchemaNameS),
+				zap.String("table_name_s", d.TableNameS),
 				zap.Int("current_bucket_id", bucketID),
 				zap.Int64("bucket_counts", count),
-				zap.Int64("chunk_size", chunkSize),
-				zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
-				zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+				zap.Int64("chunk_size", d.ChunkSize),
+				zap.String("origin_lower_value", d.Cons.Buckets[i].LowerBound),
+				zap.String("origin_upper_value", d.Cons.Buckets[i].UpperBound),
 				zap.Any("new_lower_values", lowerValues),
 				zap.Any("new_upper_values", upperValues),
 				zap.Any("chunk_ranges", chunkRange),
@@ -206,131 +130,70 @@ func ProcessUpstreamDatabaseTableColumnStatisticsBucket(dbTypeS, dbCharsetS stri
 		} else {
 			// merge bucket
 			// use multi-buckets so chunkCnt = 1
-			buckets, err := DivideDatabaseTableColumnStatisticsBucket(database, schemaName, tableName, cons, chunkRange, 1)
+			ranges, err := DivideDatabaseTableColumnStatisticsBucket(d.DatabaseS, d.SchemaNameS, d.TableNameS, d.Cons, chunkRange, 1)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
-			chunkRanges = append(chunkRanges, buckets...)
+			d.RangeC <- ranges
+
 			logger.Debug("divide database bucket value",
-				zap.String("schema_name_s", schemaName),
-				zap.String("table_name_s", tableName),
+				zap.String("schema_name_s", d.SchemaNameS),
+				zap.String("table_name_s", d.TableNameS),
 				zap.Int("current_bucket_id", bucketID),
 				zap.Int64("bucket_counts", count),
-				zap.Int64("chunk_size", chunkSize),
-				zap.String("origin_lower_value", cons.Buckets[i].LowerBound),
-				zap.String("origin_upper_value", cons.Buckets[i].UpperBound),
+				zap.Int64("chunk_size", d.ChunkSize),
+				zap.String("origin_lower_value", d.Cons.Buckets[i].LowerBound),
+				zap.String("origin_upper_value", d.Cons.Buckets[i].UpperBound),
 				zap.Any("new_lower_values", lowerValues),
 				zap.Any("new_upper_values", upperValues),
 				zap.Any("chunk_ranges", chunkRange),
 				zap.String("chunk_action", "random"))
 		}
 
-		latestCount = cons.Buckets[i].Count
+		latestCount = d.Cons.Buckets[i].Count
 		lowerValues = upperValues
 		bucketID = i + 1
 	}
 
 	// merge the rest keys into one chunk
 	var chunkRange *structure.Range
-	switch stringutil.StringUpper(dbTypeS) {
+	switch stringutil.StringUpper(d.DBTypeS) {
 	case constant.DatabaseTypeOracle:
-		chunkRange = structure.NewChunkRange(dbTypeS, dbCharsetS, constant.BuildInOracleCharsetAL32UTF8)
+		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.BuildInOracleCharsetAL32UTF8)
 	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-		chunkRange = structure.NewChunkRange(dbTypeS, dbCharsetS, constant.BuildInMYSQLCharsetUTF8MB4)
+		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.BuildInMYSQLCharsetUTF8MB4)
 	default:
-		return nil, nil, fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
+		return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", d.DBTypeS)
 	}
 	if len(lowerValues) > 0 {
-		for j, columnName := range cons.IndexColumn {
-			err = chunkRange.Update(columnName, cons.ColumnCollation[j], cons.ColumnDatatype[j], cons.DatetimePrecision[j], lowerValues[j], "", true, false)
+		for j, columnName := range d.Cons.IndexColumn {
+			err = chunkRange.Update(columnName, d.Cons.ColumnCollation[j], d.Cons.ColumnDatatype[j], d.Cons.DatetimePrecision[j], lowerValues[j], "", true, false)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
 		}
 	}
 	// When the table is much less than chunkSize,
 	// it will return a chunk include the whole table.
-	buckets, err := DivideDatabaseTableColumnStatisticsBucket(database, schemaName, tableName, cons, chunkRange, 1)
+	ranges, err := DivideDatabaseTableColumnStatisticsBucket(d.DatabaseS, d.SchemaNameS, d.TableNameS, d.Cons, chunkRange, 1)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	chunkRanges = append(chunkRanges, buckets...)
+	d.RangeC <- ranges
 
 	logger.Debug("divide database bucket value",
-		zap.String("schema_name_s", schemaName),
-		zap.String("table_name_s", tableName),
+		zap.String("schema_name_s", d.SchemaNameS),
+		zap.String("table_name_s", d.TableNameS),
 		zap.Int("last_bucket_id", bucketID),
-		zap.Int64("chunk_size", chunkSize),
+		zap.Int64("chunk_size", d.ChunkSize),
 		zap.Any("new_lower_values", lowerValues),
 		zap.Any("new_upper_values", upperValues),
 		zap.Any("chunk_ranges", chunkRange),
 		zap.String("chunk_action", "merge"))
-	return cons, chunkRanges, nil
+	return nil
 }
 
-func ReverseUpstreamHighestBucketDownstreamRule(taskFlow, dbTypeT, dbCharsetS string, columnDatatypeT []string, cons *structure.HighestBucket, columnRouteRule map[string]string) (*structure.Rule, error) {
-	cons.ColumnDatatype = columnDatatypeT
-
-	var columnCollationDownStreams []string
-
-	switch stringutil.StringUpper(dbTypeT) {
-	case constant.DatabaseTypeOracle:
-		for _, c := range cons.ColumnCollation {
-			if !strings.EqualFold(c, constant.DataCompareDisabledCollationSettingFillEmptyString) {
-				collationTStr := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]]
-				collationTSli := stringutil.StringSplit(collationTStr, constant.StringSeparatorSlash)
-				// get first collation
-				columnCollationDownStreams = append(columnCollationDownStreams, collationTSli[0])
-			} else {
-				columnCollationDownStreams = append(columnCollationDownStreams, c)
-			}
-		}
-	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-		for _, c := range cons.ColumnCollation {
-			if !strings.EqualFold(c, constant.DataCompareDisabledCollationSettingFillEmptyString) {
-				collationTStr := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(c)][constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][dbCharsetS]]
-				collationTSli := stringutil.StringSplit(collationTStr, constant.StringSeparatorSlash)
-				// get first collation
-				columnCollationDownStreams = append(columnCollationDownStreams, collationTSli[0])
-			} else {
-				columnCollationDownStreams = append(columnCollationDownStreams, c)
-			}
-		}
-	default:
-		return nil, fmt.Errorf("unsupported the downstream database type: %s", dbTypeT)
-	}
-
-	if len(columnCollationDownStreams) > 0 {
-		cons.ColumnCollation = columnCollationDownStreams
-	}
-
-	columnDatatypeM := make(map[string]string)
-	columnCollationM := make(map[string]string)
-	columnDatePrecisionM := make(map[string]string)
-
-	for i, c := range cons.IndexColumn {
-		columnDatatypeM[c] = cons.ColumnDatatype[i]
-		columnCollationM[c] = cons.ColumnCollation[i]
-		columnDatePrecisionM[c] = cons.DatetimePrecision[i]
-	}
-
-	logger.Info("reverse data compare task init table chunk",
-		zap.Any("upstreamConsIndexColumns", &structure.Rule{
-			IndexColumnRule:       columnRouteRule,
-			ColumnDatatypeRule:    columnDatatypeM,
-			ColumnCollationRule:   columnCollationM,
-			DatetimePrecisionRule: columnDatePrecisionM,
-		}))
-
-	return &structure.Rule{
-		IndexColumnRule:       columnRouteRule,
-		ColumnDatatypeRule:    columnDatatypeM,
-		ColumnCollationRule:   columnCollationM,
-		DatetimePrecisionRule: columnDatePrecisionM,
-	}, nil
-}
-
-func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT, dbCharsetT string, bs []*structure.Range, r *structure.Rule) ([]*structure.Range, error) {
+func ProcessDownstreamStatisticsBucket(dbTypeT, dbCharsetT string, bs []*structure.Range, r *structure.Rule) ([]*structure.Range, error) {
 	var ranges []*structure.Range
 	for _, b := range bs {
 		var bounds []*structure.Bound
@@ -401,7 +264,7 @@ func ProcessDownstreamDatabaseTableColumnStatisticsBucket(dbTypeT, dbCharsetT st
 	return ranges, nil
 }
 
-func GetDownstreamDatabaseTableColumnDatatype(schemaNameT, tableNameT string, databaseT database.IDatabase, originColumnNameSli []string, columnNameRouteRule map[string]string) ([]string, error) {
+func GetDownstreamTableColumnDatatype(schemaNameT, tableNameT string, databaseT database.IDatabase, originColumnNameSli []string, columnNameRouteRule map[string]string) ([]string, error) {
 	var (
 		columnNameSliT []string
 		columnTypeSliT []string
@@ -435,99 +298,4 @@ func GetDownstreamDatabaseTableColumnDatatype(schemaNameT, tableNameT string, da
 		}
 	}
 	return columnTypeSliT, nil
-}
-
-// ExtractDatabaseTableStatisticsValuesFromBuckets analyze upperBound or lowerBound to string for each column.
-// upperBound and lowerBound are looks like '(123, abc)' for multiple fields, or '123' for one field.
-func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString string, columnNames []string) ([]string, error) {
-	switch stringutil.StringUpper(divideDbType) {
-	case constant.DatabaseTypeTiDB:
-		// FIXME: maybe some values contains '(', ')' or ', '
-		vStr := strings.Trim(valueString, "()")
-		values := strings.Split(vStr, ", ")
-		if len(values) != len(columnNames) {
-			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)
-		}
-		return values, nil
-	case constant.DatabaseTypeOracle:
-		values := strings.Split(valueString, constant.StringSeparatorComma)
-		if len(values) != len(columnNames) {
-			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)
-		}
-		return values, nil
-	default:
-		return nil, fmt.Errorf("extract database type [%s] value %s is not supported, please contact author or reselect", divideDbType, valueString)
-	}
-}
-
-// DivideDatabaseTableColumnStatisticsBucket splits a chunk to multiple chunks by random
-// Notice: If the `count <= 1`, it will skip splitting and return `chunk` as a slice directly.
-func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, schemaName, tableName string, cons *structure.HighestBucket, chunkRange *structure.Range, divideCountCnt int) ([]*structure.Range, error) {
-	var chunkRanges []*structure.Range
-
-	if divideCountCnt <= 1 {
-		chunkRanges = append(chunkRanges, chunkRange)
-		return chunkRanges, nil
-	}
-
-	chunkConds, chunkArgs := chunkRange.ToString()
-
-	randomValueSli, err := database.GetDatabaseTableRandomValues(schemaName, tableName, cons.IndexColumn, chunkConds, chunkArgs, divideCountCnt-1, cons.ColumnCollation)
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Debug("divide database bucket value by random", zap.Stringer("chunk", chunkRange), zap.Int("random values num", len(randomValueSli)), zap.Any("random values", randomValueSli))
-
-	for i := 0; i <= len(randomValueSli); i++ {
-		newChunk := chunkRange.Copy()
-
-		for j, columnName := range cons.IndexColumn {
-			if i == 0 {
-				if len(randomValueSli) == 0 {
-					// randomValues is empty, so chunks will append chunk itself
-					break
-				}
-				err = newChunk.Update(
-					columnName,
-					cons.ColumnCollation[j],
-					cons.ColumnDatatype[j],
-					cons.DatetimePrecision[j],
-					"", randomValueSli[i][j], false, true)
-				if err != nil {
-					return chunkRanges, err
-				}
-			} else if i == len(randomValueSli) {
-				// bucket upper newChunk.Bounds[j].Upper
-				err = newChunk.Update(
-					columnName,
-					cons.ColumnCollation[j],
-					cons.ColumnDatatype[j],
-					cons.DatetimePrecision[j],
-					randomValueSli[i-1][j], newChunk.Bounds[j].Upper, true, true)
-				if err != nil {
-					return chunkRanges, err
-				}
-			} else {
-				err = newChunk.Update(
-					columnName,
-					cons.ColumnCollation[j],
-					cons.ColumnDatatype[j],
-					cons.DatetimePrecision[j],
-					randomValueSli[i-1][j],
-					randomValueSli[i][j], true, true)
-				if err != nil {
-					return chunkRanges, err
-				}
-			}
-		}
-		chunkRanges = append(chunkRanges, newChunk)
-	}
-
-	logger.Debug("divide database bucket value by random",
-		zap.Int("divide chunk range num", len(chunkRanges)),
-		zap.Stringer("origin chunk range", chunkRange),
-		zap.Any("new chunk range", chunkRanges))
-
-	return chunkRanges, nil
 }

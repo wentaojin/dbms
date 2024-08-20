@@ -381,7 +381,6 @@ type List struct {
 	DatasourceNameS string `json:"datasourceNameS"`
 	DatasourceNameT string `json:"datasourceNameT"`
 	TaskStatus      string `json:"taskStatus"`
-	TaskInit        string `json:"taskInit"`
 	WorkerAddr      string `json:"workerAddr"`
 }
 
@@ -429,7 +428,6 @@ func ListTask(ctx context.Context, taskName, serverAddr string) ([]List, error) 
 				DatasourceNameS: t.DatasourceNameS,
 				DatasourceNameT: t.DatasourceNameT,
 				TaskStatus:      t.TaskStatus,
-				TaskInit:        t.TaskInit,
 				WorkerAddr:      t.WorkerAddr,
 			})
 		}
@@ -452,7 +450,6 @@ func ListTask(ctx context.Context, taskName, serverAddr string) ([]List, error) 
 		DatasourceNameS: t.DatasourceNameS,
 		DatasourceNameT: t.DatasourceNameT,
 		TaskStatus:      t.TaskStatus,
-		TaskInit:        t.TaskInit,
 		WorkerAddr:      t.WorkerAddr,
 	})
 	return lists, nil

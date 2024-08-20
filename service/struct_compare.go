@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/database/processor"
+	"github.com/wentaojin/dbms/database/taskflow"
 	"strconv"
 	"strings"
 	"time"
@@ -35,8 +36,6 @@ import (
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
-
-	"github.com/wentaojin/dbms/database/oracle/taskflow"
 
 	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/model/migrate"

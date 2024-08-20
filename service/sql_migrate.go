@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/database/taskflow"
 	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -27,7 +28,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wentaojin/dbms/database/oracle/taskflow"
 	"github.com/wentaojin/dbms/logger"
 	"go.uber.org/zap"
 
@@ -234,6 +234,10 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 		if err != nil {
 			return err
 		}
+		enableCheckpoint, err := strconv.ParseBool(paramMap[constant.ParamNameSqlMigrateEnableCheckpoint])
+		if err != nil {
+			return err
+		}
 
 		param = &pb.SqlMigrateParam{
 			BatchSize:            batchSize,
@@ -244,6 +248,7 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 			CallTimeout:          callTimeout,
 			EnableConsistentRead: enableConsistentRead,
 			EnableSafeMode:       enableSafeMode,
+			EnableCheckpoint:     enableCheckpoint,
 		}
 
 		sqlRouteRules, err := ShowSqlMigrateRule(txnCtx, taskInfo.TaskName)
@@ -605,6 +610,13 @@ func getSqlMigrateTasKParams(ctx context.Context, taskName string) (*pb.SqlMigra
 				return taskParam, err
 			}
 			taskParam.EnableSafeMode = enableSafeMode
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateEnableCheckpoint) {
+			enableCheckpoint, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.EnableCheckpoint = enableCheckpoint
 		}
 	}
 	return taskParam, nil

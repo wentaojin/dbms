@@ -95,7 +95,7 @@ func (r *CsvMigrateRow) MigrateRead() error {
 		return fmt.Errorf("the task_flow [%s] task_mode [%s] isn't support, please contact author or reselect", r.TaskFlow, r.TaskMode)
 	}
 
-	logger.Info("csv migrate task chunk rows extractor starting",
+	logger.Info("data migrate task chunk rows extractor starting",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
@@ -123,7 +123,7 @@ func (r *CsvMigrateRow) MigrateRead() error {
 	}
 
 	endTime := time.Now()
-	logger.Info("csv migrate task chunk rows extractor finished",
+	logger.Info("data migrate task chunk rows extractor finished",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
@@ -148,7 +148,7 @@ func (r *CsvMigrateRow) MigrateProcess() error {
 func (r *CsvMigrateRow) MigrateApply() error {
 	startTime := time.Now()
 
-	logger.Info("csv migrate task chunk rows applier starting",
+	logger.Info("data migrate task chunk rows applier starting",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),
@@ -183,7 +183,7 @@ func (r *CsvMigrateRow) MigrateApply() error {
 			return fmt.Errorf("failed to write data row to csv: %v", err)
 		}
 	}
-	logger.Info("csv migrate task chunk rows applier finished",
+	logger.Info("data migrate task chunk rows applier finished",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
 		zap.String("task_flow", r.TaskFlow),

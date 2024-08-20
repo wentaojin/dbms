@@ -32,7 +32,7 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemeNameS, tableNameS s
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.HighestBucket, error) {
+func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.Selectivity, error) {
 	//TODO implement me
 	panic("implement me")
 }
