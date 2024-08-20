@@ -90,7 +90,7 @@ func (dmt *DataCompareTask) Start() error {
 
 		logger.Info("data compare task inspect task",
 			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
-		_, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseT, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
+		_, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseT, stringutil.StringUpper(dmt.DatasourceT.ConnectCharset), stringutil.StringUpper(dmt.DatasourceS.ConnectCharset))
 		if err != nil {
 			return err
 		}
