@@ -54,6 +54,8 @@ type AssessMigrateTask struct {
 	AssessDetail string  `gorm:"type:longtext;comment:assess detail" json:"assessDetail"`
 	AssessUser   string  `gorm:"type:varchar(200);comment:assess username" json:"assessUser"`
 	AssessFile   string  `gorm:"type:varchar(300);comment:assess filename" json:"assessFile"`
+	InitFlag     string  `gorm:"type:char(1);default:N;comment:the task table init flag" json:"initFlag"`
+	AssessFlag   string  `gorm:"type:char(1);default:N;comment:the task table assess finished flag" json:"migrateFlag"`
 	ErrorDetail  string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
 	Duration     float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity

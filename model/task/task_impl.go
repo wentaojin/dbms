@@ -65,8 +65,11 @@ func (rw *RWTask) UpdateTask(ctx context.Context, task *Task, updates map[string
 
 func (rw *RWTask) GetTask(ctx context.Context, task *Task) (*Task, error) {
 	var dataS *Task
-	err := rw.DB(ctx).Model(&Task{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&Task{}).Where("task_name = ?", task.TaskName).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
@@ -179,10 +182,13 @@ func (rw *RWAssessMigrateTask) CreateAssessMigrateTask(ctx context.Context, task
 	return task, nil
 }
 
-func (rw *RWAssessMigrateTask) GetAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) ([]*AssessMigrateTask, error) {
-	var dataS []*AssessMigrateTask
-	err := rw.DB(ctx).Model(&AssessMigrateTask{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Find(&dataS).Error
+func (rw *RWAssessMigrateTask) GetAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) (*AssessMigrateTask, error) {
+	var dataS *AssessMigrateTask
+	err := rw.DB(ctx).Model(&AssessMigrateTask{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil

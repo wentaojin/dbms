@@ -1,6 +1,6 @@
 task-name = "smt_33to45"
-datasource-name-s = "oracle10g"
-datasource-name-t = "tidb186"
+datasource-name-s = "o11024"
+datasource-name-t = "test08"
 comment = "测试数据源"
 
 [struct-migrate-param]
@@ -24,9 +24,9 @@ case-field-rule-s = "0"
 case-field-rule-t = "0"
 
 [schema-route-rule]
-schema-name-s = "MARVIN"
-schema-name-t = "STEVEN"
-include-table-s = ["T1"]
+schema-name-s = "SCOTT"
+schema-name-t = "MARVIN"
+include-table-s = []
 exclude-table-s = []
 
 [[schema-route-rule.table-route-rules]]

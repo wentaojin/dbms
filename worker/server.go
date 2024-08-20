@@ -248,6 +248,12 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 			Message: err.Error(),
 		}}, err
 	}
+	// task check
+	if t == nil {
+		return &pb.OperateWorkerResponse{Response: &pb.Response{
+			Result: openapi.ResponseResultStatusFailed,
+		}}, fmt.Errorf("the task_name [%s] is not exist, please upsert the task and rerun start the task", req.TaskName)
+	}
 
 	switch stringutil.StringUpper(req.Operate) {
 	case constant.TaskOperationStart:

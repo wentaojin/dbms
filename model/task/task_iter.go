@@ -35,7 +35,7 @@ type ILog interface {
 
 type IAssessMigrateTask interface {
 	CreateAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) (*AssessMigrateTask, error)
-	GetAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) ([]*AssessMigrateTask, error)
+	GetAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) (*AssessMigrateTask, error)
 	QueryAssessMigrateTask(ctx context.Context, task *AssessMigrateTask) ([]*AssessMigrateTask, error)
 	UpdateAssessMigrateTask(ctx context.Context, task *AssessMigrateTask, updates map[string]interface{}) (*AssessMigrateTask, error)
 	ListAssessMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*AssessMigrateTask, error)

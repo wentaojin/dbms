@@ -69,9 +69,28 @@ func (dmt *DataCompareTask) Start() error {
 		}
 		defer databaseT.Close()
 
-		logger.Info("data compare task inspect migrate task",
+		logger.Info("data compare task inspect task",
 			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 		_, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
+	case constant.TaskFlowTiDBToOracle:
+		databaseS, err = database.NewDatabase(dmt.Ctx, dmt.DatasourceS, "", int64(dmt.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+
+		databaseT, err = database.NewDatabase(dmt.Ctx, dmt.DatasourceT, schemaRoute.SchemaNameT, int64(dmt.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
+
+		logger.Info("data compare task inspect task",
+			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		_, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseT, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
 		if err != nil {
 			return err
 		}
