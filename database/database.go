@@ -48,6 +48,7 @@ type IDatabase interface {
 
 type IDatabaseTableFilter interface {
 	FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) (*structure.TableObjects, error)
+	FilterDatabaseSequence(sourceSchema string, includeSequenceS, excludeSequenceS []string) (*structure.SequenceObjects, error)
 }
 
 type IDatabaseSchemaTableRule interface {

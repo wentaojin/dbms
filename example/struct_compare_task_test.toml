@@ -1,6 +1,6 @@
 task-name = "scmt_33to45"
-datasource-name-s = "oracle33"
-datasource-name-t = "tidb145"
+datasource-name-s = "o11024"
+datasource-name-t = "test08"
 comment = "测试数据源"
 
 [struct-compare-param]
@@ -23,18 +23,17 @@ case-field-rule-s = "0"
 # 3，参数值是 2 代表统一转换数据库名、表名、column-route-rules 中的 value 值为大写，default-value-t 参数配置始终以参数配置大小为准
 case-field-rule-t = "1"
 
-
 [schema-route-rule]
-schema-name-s = "MARVIN"
-schema-name-t = "STEVEN"
+schema-name-s = "SCOTT"
+schema-name-t = "marvin"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 include-table-s = ["T1"]
 exclude-table-s = []
 
 [[schema-route-rule.table-route-rules]]
-table-name-s = "MARVIN00"
-table-name-t = "STEVEN00"
-column-route-rules = {"NAME" = "T_NAME00"}
+table-name-s = ""
+table-name-t = ""
+column-route-rules = {}
 
 # 默认值规则设置分为字符类型 OR 数值类型 OR 函数表达式 OR '' 空字符串 OR NULL 字符
 # 字符类型设置需要带单引号
@@ -45,54 +44,28 @@ column-route-rules = {"NAME" = "T_NAME00"}
 # 对于 N01 VARCHAR2(10) 字段设置 NULL 映射，以 NULLSTRING 设置代替
 [struct-compare-rule]
 [[struct-compare-rule.task-struct-rules]]
-column-type-s = "NUMBER(38)"
-column-type-t = "BIGINT"
-default-value-s = "5"
-default-value-t = "10"
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
 [[struct-compare-rule.schema-struct-rules]]
-schema-name-s = "MARVIN"
-column-type-s = "NUMBER"
-column-type-t = "BIGINT"
+schema-name-s = ""
+column-type-s = ""
+column-type-t = ""
 default-value-s = ""
 default-value-t = ""
 [[struct-compare-rule.table-struct-rules]]
-schema-name-s = "MARVIN"
-table-name-s = "MARVIN00"
-column-type-s = "NUMBER"
-column-type-t = "BIGINT(20)"
-default-value-s = "'pw'"
-default-value-t = "'pc'"
-[[struct-compare-rule.column-struct-rules]]
-schema-name-s = "MARVIN"
-table-name-s = "MARVIN00"
-column-name-s = "ID"
-column-type-s = "NUMBER"
-column-type-t = "INT"
+schema-name-s = ""
+table-name-s = ""
+column-type-s = ""
+column-type-t = ""
 default-value-s = ""
 default-value-t = ""
 [[struct-compare-rule.column-struct-rules]]
-schema-name-s = "MARVIN"
-table-name-s = "MARVIN01"
-column-name-s = "XF"
+schema-name-s = ""
+table-name-s = ""
+column-name-s = ""
 column-type-s = ""
 column-type-t = ""
-default-value-s = "''"
-default-value-t = "'STRING'"
-[[struct-compare-rule.column-struct-rules]]
-schema-name-s = "MARVIN"
-table-name-s = "MARVIN01"
-column-name-s = "XFO"
-column-type-s = ""
-column-type-t = ""
-default-value-s = "NULLSTRING"
-default-value-t = "'pingcap'"
-[[struct-compare-rule.column-struct-rules]]
-schema-name-s = "MARVIN"
-table-name-s = "MARVIN01"
-column-name-s = "XFT"
-column-type-s = ""
-column-type-t = ""
-default-value-s = "NULL"
-default-value-t = "'marvin'"
-
-
+default-value-s = ""
+default-value-t = ""

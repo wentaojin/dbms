@@ -330,7 +330,24 @@ WHERE
 	return res[0]["VALUE"], nil
 }
 
-func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, error) {
+func (d *Database) GetDatabaseSequences(schemaName string) ([]string, error) {
+	queryStr := fmt.Sprintf(`SELECT
+	SEQUENCE_NAME
+FROM DBA_SEQUENCES
+WHERE
+    SEQUENCE_OWNER = '%s'`, schemaName)
+	_, res, err := d.GeneralQuery(queryStr)
+	if err != nil {
+		return nil, err
+	}
+	var seqs []string
+	for _, r := range res {
+		seqs = append(seqs, r["SEQUENCE_NAME"])
+	}
+	return seqs, nil
+}
+
+func (d *Database) GetDatabaseSequenceName(schemaName string, seqName string) ([]map[string]string, error) {
 	queryStr := fmt.Sprintf(`SELECT
 	SEQUENCE_OWNER,
 	SEQUENCE_NAME,
@@ -343,7 +360,8 @@ func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, 
 	LAST_NUMBER
 FROM DBA_SEQUENCES
 WHERE
-    SEQUENCE_OWNER = '%s'`, schemaName)
+    SEQUENCE_OWNER = '%s'
+AND SEQUENCE_NAME = '%s'`, schemaName, seqName)
 	_, res, err := d.GeneralQuery(queryStr)
 	if err != nil {
 		return res, err

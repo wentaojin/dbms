@@ -392,7 +392,7 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 					Build(),
 				mg.Logger).
 			ParallelStep("+ Initialize target host environments", gOpt.Force, envInitTasks...).
-			ParallelStep("+ Deploy TiDB instance", gOpt.Force, deployCompTasks...).
+			ParallelStep("+ Deploy dbms instance", gOpt.Force, deployCompTasks...).
 			ParallelStep("+ Generate scale-out config", gOpt.Force, scaleConfigTasks...).
 			ParallelStep("+ Refresh components config", gOpt.Force, refreshConfigTasks...).Func("Start new instances", func(ctx context.Context) error {
 			return operator.Start(ctx, scaleOutTopo, gOpt, nil)
@@ -406,7 +406,7 @@ func (a *AppScaleOut) ScaleOut(clusterName, fileName string, gOpt *operator.Opti
 				mg.Logger).
 			ParallelStep("+ Initialize target host environments", gOpt.Force, envInitTasks...).
 			ParallelStep("+ Deploy target host instantClients", gOpt.Force, deployInstantClientTasks...).
-			ParallelStep("+ Deploy TiDB instance", gOpt.Force, deployCompTasks...).
+			ParallelStep("+ Deploy dbms instance", gOpt.Force, deployCompTasks...).
 			ParallelStep("+ Generate scale-out config", gOpt.Force, scaleConfigTasks...).
 			ParallelStep("+ Refresh components config", gOpt.Force, refreshConfigTasks...).Func("Start new instances", func(ctx context.Context) error {
 			return operator.Start(ctx, scaleOutTopo, gOpt, nil)

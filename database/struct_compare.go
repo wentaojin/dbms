@@ -16,6 +16,7 @@ limitations under the License.
 package database
 
 import (
+	"github.com/wentaojin/dbms/utils/stringutil"
 	"strings"
 
 	"github.com/wentaojin/dbms/utils/structure"
@@ -55,7 +56,27 @@ type IDatabaseStructCompareTable interface {
 	CompareTablePartitionDetail() (string, error)
 }
 
-func IStructCompareProcessor(p IDatabaseStructCompareProcessor) (*structure.Table, error) {
+// ignoreCase used to control whether to ignore case comparison, and convert to uppercase comparison
+// ignoreCase control object:
+// TableComment       string
+// NewColumns         map[string]NewColumn            // columnNameNew -> NewColumn
+// OldColumns         map[string]map[string]OldColumn // originColumnName -> columnNameNew -> OldColumn
+// Indexes            map[string]Index                // indexName -> Index
+// PrimaryConstraints map[string]ConstraintPrimary    // constraintName -> ConstraintPrimary
+// UniqueConstraints  map[string]ConstraintUnique     // constraintName -> ConstraintUnique
+// ForeignConstraints map[string]ConstraintForeign    // constraintName -> ConstraintForeign
+// CheckConstraints   map[string]ConstraintCheck      // constraintName -> ConstraintCheck
+// Partitions         []Partition
+
+// default upper object:
+// TableCharset       string
+// TableCollation     string
+
+// default origin object:
+//
+//	SchemaName         string
+//	TableName          string
+func IStructCompareProcessor(p IDatabaseStructCompareProcessor, ignoreCase bool) (*structure.Table, error) {
 	schemaName, tableName := p.GenDatabaseSchemaTable()
 	collation, err := p.GenDatabaseTableCollation()
 	if err != nil {
@@ -97,20 +118,58 @@ func IStructCompareProcessor(p IDatabaseStructCompareProcessor) (*structure.Tabl
 	if err != nil {
 		return nil, err
 	}
+
+	var (
+		commentNew         string
+		partitionDetailNew []structure.Partition
+	)
+	newColumnDetailNew := make(map[string]structure.NewColumn)
+	indexDetailNew := make(map[string]structure.Index)
+	oldColumnDetailsNew := make(map[string]map[string]structure.OldColumn)
+	primaryConstraintDetailNew := make(map[string]structure.ConstraintPrimary)
+	uniqueConstraintDetailNew := make(map[string]structure.ConstraintUnique)
+	foreignConstraintDetailNew := make(map[string]structure.ConstraintForeign)
+	checkConstraintDetailNew := make(map[string]structure.ConstraintCheck)
+
+	if ignoreCase {
+		comment = stringutil.StringUpper(comment)
+		newColumnDetailNew = stringutil.UppercaseMap(newColumnDetail).(map[string]structure.NewColumn)
+
+		for k, v := range oldColumnDetails {
+			oldColumnDetailsNew[stringutil.StringUpper(k)] = stringutil.UppercaseMap(v).(map[string]structure.OldColumn)
+		}
+		indexDetailNew = stringutil.UppercaseMap(indexDetail).(map[string]structure.Index)
+		primaryConstraintDetailNew = stringutil.UppercaseMap(primaryConstraintDetail).(map[string]structure.ConstraintPrimary)
+		uniqueConstraintDetailNew = stringutil.UppercaseMap(uniqueConstraintDetail).(map[string]structure.ConstraintUnique)
+		foreignConstraintDetailNew = stringutil.UppercaseMap(foreignConstraintDetail).(map[string]structure.ConstraintForeign)
+		checkConstraintDetailNew = stringutil.UppercaseMap(checkConstraintDetail).(map[string]structure.ConstraintCheck)
+		partitionDetailNew = stringutil.UppercaseMap(partitionDetail).([]structure.Partition)
+	} else {
+		commentNew = comment
+		newColumnDetailNew = newColumnDetail
+		oldColumnDetailsNew = oldColumnDetails
+		indexDetailNew = indexDetail
+		primaryConstraintDetailNew = primaryConstraintDetail
+		uniqueConstraintDetailNew = uniqueConstraintDetail
+		foreignConstraintDetailNew = foreignConstraintDetail
+		checkConstraintDetailNew = checkConstraintDetail
+		partitionDetailNew = partitionDetail
+	}
+
 	return &structure.Table{
 		SchemaName:         schemaName,
 		TableName:          tableName,
-		TableComment:       comment,
-		TableCharset:       charset,
-		TableCollation:     collation,
-		NewColumns:         newColumnDetail,
-		OldColumns:         oldColumnDetails,
-		Indexes:            indexDetail,
-		PrimaryConstraints: primaryConstraintDetail,
-		UniqueConstraints:  uniqueConstraintDetail,
-		ForeignConstraints: foreignConstraintDetail,
-		CheckConstraints:   checkConstraintDetail,
-		Partitions:         partitionDetail,
+		TableCharset:       stringutil.StringUpper(charset),
+		TableCollation:     stringutil.StringUpper(collation),
+		TableComment:       commentNew,
+		NewColumns:         newColumnDetailNew,
+		OldColumns:         oldColumnDetailsNew,
+		Indexes:            indexDetailNew,
+		PrimaryConstraints: primaryConstraintDetailNew,
+		UniqueConstraints:  uniqueConstraintDetailNew,
+		ForeignConstraints: foreignConstraintDetailNew,
+		CheckConstraints:   checkConstraintDetailNew,
+		Partitions:         partitionDetailNew,
 	}, nil
 }
 

@@ -8,6 +8,7 @@ case-field-rule-s = "0"
 
 [schema-route-rule]
 schema-name-s = "MARVIN"
+# include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 include-table-s = ["MARVIN10"]
 #include-table-s = ["MARVIN00","MARVIN01"]
 exclude-table-s = []

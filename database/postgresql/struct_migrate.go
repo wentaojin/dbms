@@ -784,7 +784,47 @@ func (d *Database) GetDatabaseTableOriginStruct(schemaName, tableName, tableType
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, error) {
+func (d *Database) GetDatabaseSequences(schemaName string) ([]string, error) {
+	version, err := d.GetDatabaseVersion()
+	if err != nil {
+		return nil, err
+	}
+	var (
+		queryStr string
+		seqNames []string
+	)
+	if stringutil.VersionOrdinal(version) > stringutil.VersionOrdinal("10") {
+		queryStr = fmt.Sprintf(`SELECT
+	sequencename AS sequence_name
+FROM pg_sequences
+WHERE
+    sequenceowner = '%s'`, schemaName)
+		_, res, err := d.GeneralQuery(queryStr)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range res {
+			seqNames = append(seqNames, r["sequence_name"])
+		}
+		return seqNames, nil
+	} else {
+		queryStr = fmt.Sprintf(`SELECT
+	sequence_name AS sequence_name
+FROM information_schema.sequences
+WHERE
+    sequence_schema = '%s'`, schemaName)
+		_, res, err := d.GeneralQuery(queryStr)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range res {
+			seqNames = append(seqNames, r["sequence_name"])
+		}
+		return seqNames, nil
+	}
+}
+
+func (d *Database) GetDatabaseSequenceName(schemaName string, seqName string) ([]map[string]string, error) {
 	version, err := d.GetDatabaseVersion()
 	if err != nil {
 		return nil, err
@@ -802,7 +842,8 @@ func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, 
 	last_value
 FROM pg_sequences
 WHERE
-    sequenceowner = '%s'`, schemaName)
+    sequenceowner = '%s'
+AND sequencename = '%s'`, schemaName, seqName)
 		_, res, err := d.GeneralQuery(queryStr)
 		if err != nil {
 			return res, err
@@ -818,7 +859,8 @@ WHERE
 	cycle_option AS cycle_flag
 FROM information_schema.sequences
 WHERE
-    sequence_schema = '%s'`, schemaName)
+    sequence_schema = '%s'
+AND sequence_name = '%s'`, schemaName, seqName)
 		_, res, err := d.GeneralQuery(queryStr)
 		if err != nil {
 			return res, err

@@ -1242,6 +1242,18 @@ components:
           items:
             type: string
             format: string
+        includeSequenceS:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: string
+        excludeSequenceS:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: string
         tableRouteRules:
           type: array
           nullable: true
@@ -1353,6 +1365,8 @@ components:
         callTimeout:
           type: integer
           format: uint64
+        ignoreCaseCompare:
+          type: boolean
     CaseFieldRule:
       type: object
       properties:

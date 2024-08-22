@@ -52,9 +52,13 @@ type StructMigrateTask struct {
 	BuildInDatatypeRules     []*buildin.BuildinDatatypeRule
 	BuildInDefaultValueRules []*buildin.BuildinDefaultvalRule
 	TaskParams               *pb.StructMigrateParam
+
+	ReadyInit chan bool
 }
 
 func (st *StructMigrateTask) Init() error {
+	defer close(st.ReadyInit)
+
 	logger.Info("struct migrate task init table",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 
@@ -93,6 +97,8 @@ func (st *StructMigrateTask) Init() error {
 		if err != nil {
 			return err
 		}
+	} else {
+		st.ReadyInit <- true
 	}
 
 	// filter database table
@@ -231,10 +237,32 @@ func (st *StructMigrateTask) Init() error {
 	if err != nil {
 		return err
 	}
+
+	st.ReadyInit <- true
 	return nil
 }
 
 func (st *StructMigrateTask) Run() error {
+	logger.Info("struct migrate task run table",
+		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	for ready := range st.ReadyInit {
+		if ready {
+			err := st.Process()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (st *StructMigrateTask) Resume() error {
+	logger.Info("struct migrate task resume table",
+		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	return nil
+}
+
+func (st *StructMigrateTask) Process() error {
 	logger.Info("struct migrate task run table",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 	s, err := model.GetIStructMigrateSummaryRW().GetStructMigrateSummary(st.Ctx, &task.StructMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
@@ -379,7 +407,7 @@ func (st *StructMigrateTask) Run() error {
 	}
 
 	// sequence migrate exclude struct_migrate_summary compute counts
-	err = st.sequenceMigrateStart(st.DatabaseS, st.DatabaseT)
+	err = st.sequenceMigrateStart()
 	if err != nil {
 		return err
 	}
@@ -413,12 +441,6 @@ func (st *StructMigrateTask) Run() error {
 			return err
 		}
 	}
-	return nil
-}
-
-func (st *StructMigrateTask) Resume() error {
-	logger.Info("struct migrate task resume table",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 	return nil
 }
 
@@ -599,7 +621,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 	return nil
 }
 
-func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.IDatabase) error {
+func (st *StructMigrateTask) sequenceMigrateStart() error {
 	startTime := time.Now()
 	logger.Info("sequence migrate task process",
 		zap.String("task_name", st.Task.TaskName),
@@ -607,18 +629,71 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("start_time", startTime.String()))
-	sequences, err := databaseS.GetDatabaseSequence(st.SchemaNameS)
+
+	// filter database table
+	seqs, err := model.GetIMigrateTaskSequenceRW().FindMigrateTaskSequence(st.Ctx, &rule.MigrateTaskSequence{
+		TaskName:    st.Task.TaskName,
+		SchemaNameS: st.SchemaNameS,
+	})
+
+	if len(seqs) == 0 {
+		// skip sequence migrate
+		return nil
+	}
+
+	var (
+		includeSeqs []string
+		excludeSeqs []string
+	)
+	// rule case field
+	for _, s := range seqs {
+		// the according target case field rule convert
+		if strings.EqualFold(st.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+			if strings.EqualFold(s.IsExclude, constant.MigrateTaskTableIsNotExclude) {
+				includeSeqs = append(includeSeqs, stringutil.StringLower(s.SequenceNameS))
+			}
+			if strings.EqualFold(s.IsExclude, constant.MigrateTaskTableIsExclude) {
+				excludeSeqs = append(excludeSeqs, stringutil.StringLower(s.SequenceNameS))
+			}
+		}
+		if strings.EqualFold(st.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+			if strings.EqualFold(s.IsExclude, constant.MigrateTaskTableIsNotExclude) {
+				includeSeqs = append(includeSeqs, stringutil.StringUpper(s.SequenceNameS))
+			}
+			if strings.EqualFold(s.IsExclude, constant.MigrateTaskTableIsExclude) {
+				excludeSeqs = append(excludeSeqs, stringutil.StringUpper(s.SequenceNameS))
+			}
+		}
+		if strings.EqualFold(st.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+			if strings.EqualFold(s.IsExclude, constant.MigrateTaskTableIsNotExclude) {
+				includeSeqs = append(includeSeqs, s.SequenceNameS)
+			}
+			if strings.EqualFold(s.IsExclude, constant.MigrateTaskTableIsExclude) {
+				excludeSeqs = append(excludeSeqs, s.SequenceNameS)
+			}
+		}
+	}
+
+	seqObjs, err := st.DatabaseS.FilterDatabaseSequence(st.SchemaNameS, includeSeqs, excludeSeqs)
 	if err != nil {
 		return err
 	}
 
 	var seqCreates []string
-	for _, seq := range sequences {
-		lastNumber, err := stringutil.StrconvIntBitSize(seq["LAST_NUMBER"], 64)
+
+	for _, s := range seqObjs.SequenceNames {
+		seqRes, err := st.DatabaseS.GetDatabaseSequenceName(st.SchemaNameS, s)
 		if err != nil {
 			return err
 		}
-		cacheSize, err := stringutil.StrconvIntBitSize(seq["CACHE_SIZE"], 64)
+		if len(seqRes) == 0 {
+			return fmt.Errorf("the database schema_name_s [%s] sequence_name_s [%s] not exist", st.SchemaNameS, s)
+		}
+		lastNumber, err := stringutil.StrconvIntBitSize(seqRes[0]["LAST_NUMBER"], 64)
+		if err != nil {
+			return err
+		}
+		cacheSize, err := stringutil.StrconvIntBitSize(seqRes[0]["CACHE_SIZE"], 64)
 		if err != nil {
 			return err
 		}
@@ -631,10 +706,16 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 
 		switch st.Task.TaskFlow {
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
-			if st.TaskParams.CreateIfNotExist {
-				seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seq["SEQUENCE_NAME"], lastNumber, seq["INCREMENT_BY"], seq["MIN_VALUE"], seq["MAX_VALUE"], seq["CACHE_SIZE"], seq["CYCLE_FLAG"]))
+			var cycleFlag string
+			if strings.EqualFold(seqRes[0]["CYCLE_FLAG"], "N") {
+				cycleFlag = "NOCYCLE"
 			} else {
-				seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seq["SEQUENCE_NAME"], lastNumber, seq["INCREMENT_BY"], seq["MIN_VALUE"], seq["MAX_VALUE"], seq["CACHE_SIZE"], seq["CYCLE_FLAG"]))
+				cycleFlag = "CYCLE"
+			}
+			if st.TaskParams.CreateIfNotExist {
+				seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], seqRes[0]["MAX_VALUE"], seqRes[0]["CACHE_SIZE"], cycleFlag))
+			} else {
+				seqCreates = append(seqCreates, fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], seqRes[0]["MAX_VALUE"], seqRes[0]["CACHE_SIZE"], cycleFlag))
 			}
 		default:
 			return fmt.Errorf("the task [%v] task_flow [%v] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskFlow)
@@ -643,7 +724,7 @@ func (st *StructMigrateTask) sequenceMigrateStart(databaseS, databaseT database.
 
 	writerTime := time.Now()
 	var w database.ISequenceMigrateDatabaseWriter
-	w = NewSequenceMigrateDatabase(st.Ctx, st.Task.TaskName, st.Task.TaskFlow, st.SchemaNameS, st.SchemaNameT, databaseT, startTime, seqCreates)
+	w = NewSequenceMigrateDatabase(st.Ctx, st.Task.TaskName, st.Task.TaskFlow, st.SchemaNameS, st.SchemaNameT, st.DatabaseT, startTime, seqCreates)
 
 	if st.TaskParams.EnableDirectCreate {
 		err = w.SyncSequenceDatabase()

@@ -61,7 +61,60 @@ where
 	return tables, nil
 }
 
-func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, error) {
+func (d *Database) GetDatabaseSequences(schemaName string) ([]string, error) {
+	_, res, err := d.GeneralQuery(`SELECT VERSION() AS VERSION`)
+	if err != nil {
+		return nil, err
+	}
+
+	var sqlStr string
+	if strings.Contains(res[0]["VERSION"], constant.DatabaseTypeTiDB) {
+		var version string
+		if strings.Contains(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter) {
+			version = strings.Split(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter)[0]
+		} else {
+			version = res[0]["VERSION"]
+		}
+
+		if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.TIDBDatabaseSequenceSupportVersion) {
+			sqlStr = fmt.Sprintf(`SELECT
+	SEQUENCE_NAME
+FROM INFORMATION_SCHEMA.SEQUENCES
+WHERE
+    TABLE_CATALOG = '%s'`, schemaName)
+		}
+	} else {
+		var version string
+		if strings.Contains(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter) {
+			version = strings.Split(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter)[0]
+		} else {
+			version = res[0]["VERSION"]
+		}
+
+		if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.MYSQLDatabaseSequenceSupportVersion) {
+			sqlStr = fmt.Sprintf(`SELECT
+	SEQUENCE_NAME
+FROM INFORMATION_SCHEMA.SEQUENCES
+WHERE
+    TABLE_CATALOG = '%s'`, schemaName)
+		}
+	}
+	if strings.EqualFold(sqlStr, "") {
+		return nil, nil
+	}
+
+	_, res, err = d.GeneralQuery(sqlStr)
+	if err != nil {
+		return nil, err
+	}
+	var seqNames []string
+	for _, r := range res {
+		seqNames = append(seqNames, r["SEQUENCE_NAME"])
+	}
+	return seqNames, nil
+}
+
+func (d *Database) GetDatabaseSequenceName(schemaName string, seqName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(`SELECT VERSION() AS VERSION`)
 	if err != nil {
 		return nil, err
@@ -88,7 +141,8 @@ func (d *Database) GetDatabaseSequence(schemaName string) ([]map[string]string, 
 	START AS LAST_NUMBER
 FROM INFORMATION_SCHEMA.SEQUENCES
 WHERE
-    TABLE_CATALOG = '%s'`, schemaName)
+    TABLE_CATALOG = '%s'
+AND SEQUENCE_NAME = '%s'`, schemaName, seqName)
 		}
 	} else {
 		var version string
@@ -110,7 +164,8 @@ WHERE
 	START AS LAST_NUMBER
 FROM INFORMATION_SCHEMA.SEQUENCES
 WHERE
-    TABLE_CATALOG = '%s'`, schemaName)
+    TABLE_CATALOG = '%s'
+AND SEQUENCE_NAME = '%s'`, schemaName, seqName)
 		}
 	}
 

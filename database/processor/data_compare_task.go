@@ -325,10 +325,6 @@ func (dmt *DataCompareTask) Init() error {
 			zap.Error(err))
 		return err
 	}
-	_, err = model.GetITaskRW().UpdateTask(dmt.Ctx, &task.Task{TaskName: dmt.Task.TaskName}, map[string]interface{}{"TaskInit": constant.TaskInitStatusFinished})
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

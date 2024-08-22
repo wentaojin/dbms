@@ -102,7 +102,7 @@ func (t *Table) CompareTableComment() string {
 		zap.String("table_comment_t", t.Target.TableComment))
 
 	var b strings.Builder
-	if !strings.EqualFold(t.Source.TableComment, t.Target.TableComment) {
+	if t.Source.TableComment != t.Target.TableComment {
 		b.WriteString("/*\n")
 		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table comment is different\n", t.TaskName, t.TaskFlow))
 
@@ -149,7 +149,7 @@ func (t *Table) CompareTableCharsetCollation() string {
 
 	var b strings.Builder
 
-	if !strings.EqualFold(t.Target.TableCharset, dbCharsetT) || !strings.EqualFold(t.Target.TableCollation, dbCollationT) {
+	if t.Target.TableCharset != dbCharsetT || t.Target.TableCollation != dbCollationT {
 		b.WriteString("/*\n")
 		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table charset or collation is different\n", t.TaskName, t.TaskFlow))
 
@@ -201,9 +201,9 @@ func (t *Table) CompareTableColumnCharsetCollation() string {
 	modifyColumnMap := make(map[string]structure.NewColumn)
 
 	for colName, colInfo := range t.Target.NewColumns {
-		if colInfoS, ok := t.Source.NewColumns[stringutil.StringUpper(colName)]; ok {
-			if !strings.EqualFold(colInfo.Charset, "UNKNOWN") || !strings.EqualFold(colInfo.Collation, "UNKNOWN") {
-				if !strings.EqualFold(colInfo.Charset, colInfoS.Charset) || !strings.EqualFold(colInfo.Collation, colInfoS.Collation) {
+		if colInfoS, ok := t.Source.NewColumns[colName]; ok {
+			if colInfo.Charset != "UNKNOWN" || colInfo.Collation != "UNKNOWN" {
+				if colInfo.Charset != colInfoS.Charset || colInfo.Collation != colInfoS.Collation {
 					modifyColumnMap[colName] = colInfo
 				}
 			}
@@ -228,7 +228,7 @@ func (t *Table) CompareTableColumnCharsetCollation() string {
 
 			switch {
 			case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
-				sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s MODIFY %s %s CHARACTER SET %s COLLATE %s;", t.Target.SchemaName, t.Target.TableName, colName, colInfo.Datatype, strings.ToLower(colInfo.Charset), strings.ToLower(colInfo.Collation)))
+				sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s MODIFY %s %s CHARACTER SET %s COLLATE %s;", t.Target.SchemaName, t.Target.TableName, colName, colInfo.Datatype, colInfo.Charset, colInfo.Collation))
 			}
 		}
 
@@ -262,41 +262,25 @@ func (t *Table) CompareTableColumnCounts() string {
 
 	var b strings.Builder
 
-	addColumnMap := make(map[string]structure.NewColumn)
-	delColumnMap := make(map[string]structure.NewColumn)
-
-	for colName, colInfo := range t.Target.NewColumns {
-		if _, ok := t.Source.NewColumns[colName]; !ok {
-			delColumnMap[colName] = colInfo
-		}
-	}
-
-	if len(delColumnMap) > 0 {
+	columnCountsS := len(t.Source.NewColumns)
+	columnCountsT := len(t.Target.NewColumns)
+	if columnCountsS != columnCountsT {
 		b.WriteString("/*\n")
 		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table column counts source lack and target drop column\n", t.TaskName, t.TaskFlow))
 
 		tw := table.NewWriter()
 		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"CATEGORY", "SOURCE", "TARGET", "COLUMN_CURRENT_T", "SUGGEST"})
+		tw.AppendHeader(table.Row{"CATEGORY", "SOURCE", "COLUMN_COUNT_S", "TARGET", "COLUMN_COUNT_T", "SUGGEST"})
 
-		var sqlStrs []string
-		for colName, colInfo := range delColumnMap {
-			tw.AppendRow(table.Row{"COLUMN COUNTS",
-				fmt.Sprintf("%s.%s", t.Source.SchemaName, t.Source.TableName),
-				fmt.Sprintf("%s.%s", t.Target.SchemaName, t.Target.TableName),
-				fmt.Sprintf("%s %s", colName, colInfo.Datatype),
-				"Manual Drop Table Column"})
-
-			switch {
-			case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
-				sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s DROP COLUMN %s;", t.Target.SchemaName, t.Target.TableName, colName))
-			}
-		}
+		tw.AppendRow(table.Row{"COLUMN COUNTS",
+			fmt.Sprintf("%s.%s", t.Source.SchemaName, t.Source.TableName),
+			columnCountsS,
+			fmt.Sprintf("%s.%s", t.Target.SchemaName, t.Target.TableName),
+			columnCountsT,
+			"View Column Detail Compare"})
 
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
 		b.WriteString("*/\n")
-		b.WriteString(strings.Join(sqlStrs, "\n") + "\n\n")
-
 		logger.Warn("compare table column counts isn't equal",
 			zap.String("task_name", t.TaskName),
 			zap.String("task_flow", t.TaskFlow),
@@ -308,55 +292,6 @@ func (t *Table) CompareTableColumnCounts() string {
 			zap.String("table_column_t", t.Target.String(constant.StructCompareColumnsStructureJSONFormat)),
 			zap.String("action", "drop"))
 	}
-
-	for colName, colInfo := range t.Source.NewColumns {
-		if _, ok := t.Target.NewColumns[colName]; !ok {
-			addColumnMap[colName] = colInfo
-		}
-	}
-
-	if len(addColumnMap) > 0 {
-		b.WriteString("/*\n")
-		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table column counts target lack and target add column\n", t.TaskName, t.TaskFlow))
-
-		tw := table.NewWriter()
-		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"CATEGORY", "SOURCE", "TARGET", "COLUMN_EXPECT_T", "SUGGEST"})
-
-		var sqlStrs []string
-		for colName, colInfo := range addColumnMap {
-			tw.AppendRow(table.Row{"COLUMN COUNTS",
-				fmt.Sprintf("%s.%s", t.Source.SchemaName, t.Source.TableName),
-				fmt.Sprintf("%s.%s", t.Target.SchemaName, t.Target.TableName),
-				fmt.Sprintf("%s %s", colName, colInfo.Datatype),
-				"Manual Add Table Column"})
-
-			switch {
-			case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
-				if !strings.EqualFold(colInfo.Charset, "UNKNOWN") || !strings.EqualFold(colInfo.Collation, "UNKNOWN") {
-					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD COLUMN %s %s CHARACTER SET %s COLLATE %s;", t.Target.SchemaName, t.Target.TableName, colName, colInfo.Datatype, colInfo.Charset, colInfo.Collation))
-				} else {
-					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD COLUMN %s %s;", t.Target.SchemaName, t.Target.TableName, colName, colInfo.Datatype))
-				}
-			}
-		}
-
-		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
-		b.WriteString("*/\n")
-		b.WriteString(strings.Join(sqlStrs, "\n") + "\n\n")
-
-		logger.Warn("compare table column counts isn't equal",
-			zap.String("task_name", t.TaskName),
-			zap.String("task_flow", t.TaskFlow),
-			zap.String("schema_name_s", t.Source.SchemaName),
-			zap.String("table_name_s", t.Source.TableName),
-			zap.String("table_column_s", t.Source.String(constant.StructCompareColumnsStructureJSONFormat)),
-			zap.String("schema_name_t", t.Target.SchemaName),
-			zap.String("table_name_t", t.Target.TableName),
-			zap.String("table_column_t", t.Target.String(constant.StructCompareColumnsStructureJSONFormat)),
-			zap.String("action", "modify"))
-	}
-
 	return b.String()
 }
 
@@ -572,13 +507,13 @@ func (t *Table) CompareTableForeignConstraint() (string, error) {
 
 				switch {
 				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
-					if !strings.EqualFold(val.DeleteRule, "") {
+					if val.DeleteRule != "" {
 						sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD FOREIGN KEY (%s) REFERENCES %s.%s(%s) ON DELETE %s;\n", t.Target.SchemaName, t.Target.TableName, consName, val.ReferencedTableSchema, val.ReferencedTableName, val.ReferencedColumnName, val.DeleteRule))
 					}
-					if !strings.EqualFold(val.UpdateRule, "") {
+					if val.UpdateRule != "" {
 						sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD FOREIGN KEY (%s) REFERENCES %s.%s(%s) ON UPDATE %s;\n", t.Target.SchemaName, t.Target.TableName, consName, val.ReferencedTableSchema, val.ReferencedTableName, val.ReferencedColumnName, val.UpdateRule))
 					}
-					if strings.EqualFold(val.DeleteRule, "") && strings.EqualFold(val.UpdateRule, "") {
+					if val.DeleteRule == "" && val.UpdateRule == "" {
 						sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD FOREIGN KEY (%s) REFERENCES %s.%s(%s);\n", t.Target.SchemaName, t.Target.TableName, consName, val.ReferencedTableSchema, val.ReferencedTableName, val.ReferencedColumnName))
 					}
 				}
@@ -980,7 +915,7 @@ func (t *Table) genAlterTableColumnDetail(newColumn structure.NewColumn) string 
 	var sqlSuffix string
 	switch {
 	case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
-		if strings.EqualFold(newColumn.Charset, "UNKNOWN") && strings.EqualFold(newColumn.Collation, "UNKNOWN") {
+		if newColumn.Charset == "UNKNOWN" && newColumn.Collation == "UNKNOWN" {
 			sqlSuffix = fmt.Sprintf("%s %s", newColumn.Datatype, t.genTableColumnDefaultCommentMeta(newColumn.NULLABLE, newColumn.Comment, newColumn.DataDefault))
 		} else {
 			sqlSuffix = fmt.Sprintf("%s CHARACTER SET %s COLLATE %s %s", newColumn.Datatype, newColumn.Charset, newColumn.Collation, t.genTableColumnDefaultCommentMeta(newColumn.NULLABLE, newColumn.Comment, newColumn.DataDefault))

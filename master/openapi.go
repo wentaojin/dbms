@@ -381,9 +381,10 @@ func (s *Server) upsertStructCompareTask(ctx context.Context, req openapi.APIPut
 		},
 		SchemaRouteRule: migrateSchemaRs,
 		StructCompareParam: &pb.StructCompareParam{
-			CompareThread:    *req.StructCompareParam.CompareThread,
-			EnableCheckpoint: *req.StructCompareParam.EnableCheckpoint,
-			CallTimeout:      *req.StructCompareParam.CallTimeout,
+			CompareThread:     *req.StructCompareParam.CompareThread,
+			EnableCheckpoint:  *req.StructCompareParam.EnableCheckpoint,
+			CallTimeout:       *req.StructCompareParam.CallTimeout,
+			IgnoreCaseCompare: *req.StructCompareParam.IgnoreCaseCompare,
 		},
 		StructCompareRule: &pb.StructCompareRule{
 			TaskStructRules:   taskLevelRules,

@@ -36,6 +36,15 @@ type MigrateTaskTable struct {
 	IsExclude   string `gorm:"type:varchar(5);not null;comment:source schema table is whether exclude" json:"isExclude"`
 }
 
+// MigrateTaskSequence used for configure includeSequence and excludeSequence
+type MigrateTaskSequence struct {
+	ID            uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName      string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_sequence_name;comment:migrate task name" json:"taskName"`
+	SchemaNameS   string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_sequence_name;comment:source schema name" json:"schemaNameS"`
+	SequenceNameS string `gorm:"type:varchar(120);not null;uniqueIndex:uniq_schema_sequence_name;comment:source schema sequence list" json:"sequenceNameS"`
+	IsExclude     string `gorm:"type:varchar(5);not null;comment:source schema table is whether exclude" json:"isExclude"`
+}
+
 type TableRouteRule struct {
 	ID          uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
 	TaskName    string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name;comment:migrate task name" json:"taskName"`

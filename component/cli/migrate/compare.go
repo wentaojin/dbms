@@ -40,9 +40,10 @@ type StructCompareConfig struct {
 }
 
 type StructCompareParam struct {
-	CompareThread    int64  `toml:"compare-thread" json:"compareThread"`
-	EnableCheckpoint bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
-	CallTimeout      uint64 `toml:"call-timeout" json:"callTimeout"`
+	CompareThread     int64  `toml:"compare-thread" json:"compareThread"`
+	EnableCheckpoint  bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
+	CallTimeout       uint64 `toml:"call-timeout" json:"callTimeout"`
+	IgnoreCaseCompare bool   `toml:"ignore-case-compare" json:"ignoreCaseCompare"`
 }
 
 type StructCompareRule struct {

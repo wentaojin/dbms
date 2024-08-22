@@ -69,6 +69,7 @@ type database struct {
 	migrateTableRuleRW            rule.IDataMigrateRule
 	migrateSqlRuleRW              rule.ISqlMigrateRule
 	migrateTaskTableRW            rule.IMigrateTaskTable
+	migrateTaskSeqRW              rule.IMigrateTaskSequence
 	taskRW                        task.ITask
 	taskLogRW                     task.ILog
 	paramsRW                      params.IParams
@@ -227,6 +228,7 @@ func (d *database) initReaderWriters() {
 	DefaultDB.migrateTableRouteRW = rule.NewTableRouteRuleRW(d.base)
 	DefaultDB.migrateColumnRouteRW = rule.NewColumnRouteRuleRW(d.base)
 	DefaultDB.migrateTaskTableRW = rule.NewMigrateTaskTableRW(d.base)
+	DefaultDB.migrateTaskSeqRW = rule.NewMigrateTaskSequenceRW(d.base)
 	DefaultDB.migrateTableRuleRW = rule.NewDataMigrateRuleRW(d.base)
 	DefaultDB.migrateSqlRuleRW = rule.NewSqlMigrateRuleRW(d.base)
 	DefaultDB.taskRW = task.NewTaskRW(d.base)
@@ -272,6 +274,7 @@ func (d *database) migrateTables() (err error) {
 	return d.migrateStream(
 		new(datasource.Datasource),
 		new(rule.MigrateTaskTable),
+		new(rule.MigrateTaskSequence),
 		new(rule.SchemaRouteRule),
 		new(rule.TableRouteRule),
 		new(rule.ColumnRouteRule),
@@ -484,6 +487,10 @@ func GetIMigrateSchemaRouteRW() rule.ISchemaRouteRule {
 
 func GetIMigrateTaskTableRW() rule.IMigrateTaskTable {
 	return DefaultDB.migrateTaskTableRW
+}
+
+func GetIMigrateTaskSequenceRW() rule.IMigrateTaskSequence {
+	return DefaultDB.migrateTaskSeqRW
 }
 
 func GetIMigrateTableRouteRW() rule.ITableRouteRule {

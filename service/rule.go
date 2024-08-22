@@ -42,17 +42,35 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 	}
 
 	// exclude table and include table is whether conflict
-	var sourceSchemas string
+	var (
+		sourceSchemas string
+		sourceIncls   []string
+		sourceExcls   []string
+	)
 	if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
 		sourceSchemas = schemaRouteRule.SchemaNameS
+		sourceIncls = schemaRouteRule.IncludeTableS
+		sourceExcls = schemaRouteRule.ExcludeTableS
 	}
 	if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameUpper) {
 		sourceSchemas = stringutil.StringUpper(schemaRouteRule.SchemaNameS)
+		for _, t := range schemaRouteRule.IncludeTableS {
+			sourceIncls = append(sourceIncls, stringutil.StringUpper(t))
+		}
+		for _, t := range schemaRouteRule.ExcludeTableS {
+			sourceExcls = append(sourceExcls, stringutil.StringUpper(t))
+		}
 	}
 	if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameLower) {
 		sourceSchemas = stringutil.StringLower(schemaRouteRule.SchemaNameS)
+		for _, t := range schemaRouteRule.IncludeTableS {
+			sourceIncls = append(sourceIncls, stringutil.StringLower(t))
+		}
+		for _, t := range schemaRouteRule.ExcludeTableS {
+			sourceExcls = append(sourceExcls, stringutil.StringLower(t))
+		}
 	}
-	interSection := stringutil.StringItemsFilterIntersection(schemaRouteRule.IncludeTableS, schemaRouteRule.ExcludeTableS)
+	interSection := stringutil.StringItemsFilterIntersection(sourceIncls, sourceExcls)
 	if len(interSection) > 0 {
 		return fmt.Errorf("there is the same table within source include and exclude table, please check and remove")
 	}
@@ -89,11 +107,15 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 				targetSchema  string
 				includeTableS []string
 				excludeTableS []string
+				includeSeqS   []string
+				excludeSeqS   []string
 			)
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleS, constant.ParamValueRuleCaseFieldNameOrigin) {
 				sourceSchema = schemaRouteRule.SchemaNameS
 				includeTableS = schemaRouteRule.IncludeTableS
 				excludeTableS = schemaRouteRule.ExcludeTableS
+				includeSeqS = schemaRouteRule.IncludeSequenceS
+				excludeSeqS = schemaRouteRule.ExcludeSequenceS
 			}
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameOrigin) {
 				targetSchema = schemaRouteRule.SchemaNameT
@@ -106,6 +128,12 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 				for _, t := range schemaRouteRule.ExcludeTableS {
 					excludeTableS = append(excludeTableS, stringutil.StringUpper(t))
 				}
+				for _, t := range schemaRouteRule.IncludeSequenceS {
+					includeSeqS = append(includeSeqS, stringutil.StringUpper(t))
+				}
+				for _, t := range schemaRouteRule.ExcludeSequenceS {
+					excludeSeqS = append(excludeSeqS, stringutil.StringUpper(t))
+				}
 			}
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameUpper) {
 				targetSchema = stringutil.StringUpper(schemaRouteRule.SchemaNameT)
@@ -117,6 +145,12 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 				}
 				for _, t := range schemaRouteRule.ExcludeTableS {
 					excludeTableS = append(excludeTableS, stringutil.StringLower(t))
+				}
+				for _, t := range schemaRouteRule.IncludeSequenceS {
+					includeSeqS = append(includeSeqS, stringutil.StringLower(t))
+				}
+				for _, t := range schemaRouteRule.ExcludeSequenceS {
+					excludeSeqS = append(excludeSeqS, stringutil.StringLower(t))
 				}
 			}
 			if strings.EqualFold(caseFieldRule.CaseFieldRuleT, constant.ParamValueRuleCaseFieldNameLower) {
@@ -162,6 +196,40 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 					SchemaNameS: sourceSchema,
 					TableNameS:  t,
 					IsExclude:   constant.MigrateTaskTableIsExclude,
+				})
+			}
+			if len(includeSeqS) == 0 {
+				err = model.GetIMigrateTaskSequenceRW().DeleteMigrateTaskSequenceByTaskIsExclude(txnCtx, &rule.MigrateTaskSequence{
+					TaskName:  taskName,
+					IsExclude: constant.MigrateTaskTableIsNotExclude,
+				})
+				if err != nil {
+					return err
+				}
+			}
+			for _, t := range includeSeqS {
+				_, err = model.GetIMigrateTaskSequenceRW().CreateMigrateTaskSequence(txnCtx, &rule.MigrateTaskSequence{
+					TaskName:      taskName,
+					SchemaNameS:   sourceSchema,
+					SequenceNameS: t,
+					IsExclude:     constant.MigrateTaskTableIsNotExclude,
+				})
+			}
+			if len(excludeSeqS) == 0 {
+				err = model.GetIMigrateTaskSequenceRW().DeleteMigrateTaskSequenceByTaskIsExclude(txnCtx, &rule.MigrateTaskSequence{
+					TaskName:  taskName,
+					IsExclude: constant.MigrateTaskTableIsExclude,
+				})
+				if err != nil {
+					return err
+				}
+			}
+			for _, t := range excludeSeqS {
+				_, err = model.GetIMigrateTaskSequenceRW().CreateMigrateTaskSequence(txnCtx, &rule.MigrateTaskSequence{
+					TaskName:      taskName,
+					SchemaNameS:   sourceSchema,
+					SequenceNameS: t,
+					IsExclude:     constant.MigrateTaskTableIsExclude,
 				})
 			}
 
@@ -377,6 +445,11 @@ func DeleteSchemaRouteRule(ctx context.Context, taskName []string) error {
 			return err
 		}
 
+		err = model.GetIMigrateTaskSequenceRW().DeleteMigrateTaskSequence(txnCtx, taskName)
+		if err != nil {
+			return err
+		}
+
 		err = model.GetIMigrateTableRouteRW().DeleteTableRouteRule(txnCtx, taskName)
 		if err != nil {
 			return err
@@ -406,6 +479,11 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 		return opSchemaRules, opTableRules, opCompareRules, err
 	}
 
+	seqs, err := model.GetIMigrateTaskSequenceRW().FindMigrateTaskSequence(ctx, &rule.MigrateTaskSequence{TaskName: taskName})
+	if err != nil {
+		return opSchemaRules, opTableRules, opCompareRules, err
+	}
+
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		sr, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(txnCtx, &rule.SchemaRouteRule{TaskName: taskName})
 		if err != nil {
@@ -417,6 +495,8 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 
 			includeTables []string
 			excludeTables []string
+			includeSeqs   []string
+			excludeSeqs   []string
 		)
 		opSchemaRule := &pb.SchemaRouteRule{}
 		opColumnRule := &pb.TableRouteRule{}
@@ -433,8 +513,19 @@ func ShowSchemaRouteRule(ctx context.Context, taskName string) (*pb.SchemaRouteR
 			}
 		}
 
+		for _, s := range seqs {
+			if s.SchemaNameS == sr.SchemaNameS && s.IsExclude == constant.MigrateTaskTableIsNotExclude {
+				includeSeqs = append(includeSeqs, s.SequenceNameS)
+			}
+			if s.SchemaNameS == sr.SchemaNameS && s.IsExclude != constant.MigrateTaskTableIsExclude {
+				excludeSeqs = append(excludeSeqs, s.SequenceNameS)
+			}
+		}
+
 		opSchemaRule.IncludeTableS = includeTables
 		opSchemaRule.ExcludeTableS = excludeTables
+		opSchemaRule.IncludeSequenceS = includeSeqs
+		opSchemaRule.ExcludeSequenceS = excludeSeqs
 
 		tableRules, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(txnCtx, &rule.TableRouteRule{TaskName: taskName, SchemaNameS: sr.SchemaNameS})
 		if err != nil {

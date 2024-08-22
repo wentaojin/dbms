@@ -196,6 +196,7 @@ func (st *StructMigrateTask) Start() error {
 		BuildInDatatypeRules:     buildInDatatypeRules,
 		BuildInDefaultValueRules: buildInDefaultValueRules,
 		TaskParams:               st.TaskParams,
+		ReadyInit:                make(chan bool, 1),
 	})
 	if err != nil {
 		return err

@@ -439,9 +439,10 @@ const (
 
 // struct compare parameters
 const (
-	ParamNameStructCompareCompareThread    = "compareThread"
-	ParamNameStructCompareEnableCheckpoint = "enableCheckpoint"
-	ParamNameStructCompareCallTimeout      = "callTimeout"
+	ParamNameStructCompareCompareThread     = "compareThread"
+	ParamNameStructCompareEnableCheckpoint  = "enableCheckpoint"
+	ParamNameStructCompareCallTimeout       = "callTimeout"
+	ParamNameStructCompareIgnoreCaseCompare = "ignoreCaseCompare"
 
 	// ParamValueStructCompareCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

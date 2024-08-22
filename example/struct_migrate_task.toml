@@ -26,8 +26,12 @@ case-field-rule-t = "0"
 [schema-route-rule]
 schema-name-s = "SCOTT"
 schema-name-t = "MARVIN"
-include-table-s = []
+# include-table-s 迁移所有表需指定 *，特定表写具体表名
+include-table-s = ["*"]
 exclude-table-s = []
+# sequence 设置空代表不迁移 sequence
+include-sequence-s = []
+exclude-sequence-s = []
 
 [[schema-route-rule.table-route-rules]]
 table-name-s = "MARVIN00"

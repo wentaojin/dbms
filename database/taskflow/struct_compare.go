@@ -114,6 +114,7 @@ func (dmt *StructCompareTask) Start() error {
 		BuildInDefaultValueRulesS: buildInDefaultValueRulesS,
 		BuildInDatatypeRulesT:     buildInDatatypeRulesT,
 		BuildInDefaultValueRulesT: buildInDefaultValueRulesT,
+		ReadyInit:                 make(chan bool, 1),
 	})
 	if err != nil {
 		return err

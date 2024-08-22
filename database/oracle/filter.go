@@ -44,7 +44,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 	case len(includeTableS) != 0 && len(excludeTableS) == 0:
 		f, err := filter.Parse(includeTableS)
 		if err != nil {
-			return nil, fmt.Errorf("oracle schema filter include tables failed, error: [%v]", err)
+			return nil, fmt.Errorf("the schema filter include tables failed, error: [%v]", err)
 		}
 
 		for _, t := range allTables {
@@ -55,7 +55,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 	case len(includeTableS) == 0 && len(excludeTableS) != 0:
 		f, err := filter.Parse(excludeTableS)
 		if err != nil {
-			return nil, fmt.Errorf("oracle schema filter exclude tables failed, error: [%v]", err)
+			return nil, fmt.Errorf("the schema filter exclude tables failed, error: [%v]", err)
 		}
 
 		for _, t := range allTables {
@@ -66,8 +66,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 		exporterTableSlice = stringutil.StringItemsFilterDifference(allTables, excludeTableSlice)
 
 	case len(includeTableS) == 0 && len(excludeTableS) == 0:
-		exporterTableSlice = allTables
-
+		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot be null at the same time")
 	default:
 		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
 	}
@@ -77,7 +76,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 	}
 
 	endTime := time.Now()
-	zap.L().Info("filter oracle database table",
+	zap.L().Info("filter the database table",
 		zap.String("schema", sourceSchema),
 		zap.Strings("exporter tables list", exporterTableSlice),
 		zap.Int("include table counts", len(exporterTableSlice)),
@@ -88,36 +87,105 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 	return d.FilterDatabaseIncompatibleTable(sourceSchema, exporterTableSlice)
 }
 
+func (d *Database) FilterDatabaseSequence(sourceSchema string, includeSequenceS, excludeSequenceS []string) (*structure.SequenceObjects, error) {
+	startTime := time.Now()
+	var (
+		exporterSeqSlice []string
+		excludeSeqSlice  []string
+		err              error
+	)
+
+	allSeqs, err := d.GetDatabaseSequences(sourceSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	switch {
+	case len(includeSequenceS) != 0 && len(excludeSequenceS) == 0:
+		f, err := filter.Parse(includeSequenceS)
+		if err != nil {
+			return nil, fmt.Errorf("the schema filter include tables failed, error: [%v]", err)
+		}
+
+		for _, s := range allSeqs {
+			if f.MatchTable(s) {
+				exporterSeqSlice = append(exporterSeqSlice, s)
+			}
+		}
+	case len(includeSequenceS) == 0 && len(excludeSequenceS) != 0:
+		f, err := filter.Parse(excludeSequenceS)
+		if err != nil {
+			return nil, fmt.Errorf("the schema filter exclude tables failed, error: [%v]", err)
+		}
+
+		for _, t := range allSeqs {
+			if f.MatchTable(t) {
+				excludeSeqSlice = append(excludeSeqSlice, t)
+			}
+		}
+		exporterSeqSlice = stringutil.StringItemsFilterDifference(allSeqs, excludeSeqSlice)
+
+	case len(includeSequenceS) == 0 && len(excludeSequenceS) == 0:
+		zap.L().Warn("ignore the database sequence",
+			zap.String("schema", sourceSchema),
+			zap.Strings("exporter sequence list", exporterSeqSlice),
+			zap.Int("include sequence counts", len(exporterSeqSlice)),
+			zap.Int("exclude sequence counts", len(excludeSeqSlice)),
+			zap.Int("all sequence counts", len(allSeqs)),
+			zap.String("cost", time.Now().Sub(startTime).String()))
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
+	}
+
+	if len(exporterSeqSlice) == 0 {
+		return nil, fmt.Errorf("exporter tables aren't exist, please check config params include-table-s/exclude-table-s")
+	}
+
+	endTime := time.Now()
+	zap.L().Info("filter the database sequence",
+		zap.String("schema", sourceSchema),
+		zap.Strings("exporter sequence list", exporterSeqSlice),
+		zap.Int("include sequence counts", len(exporterSeqSlice)),
+		zap.Int("exclude sequence counts", len(excludeSeqSlice)),
+		zap.Int("all sequence counts", len(allSeqs)),
+		zap.String("cost", endTime.Sub(startTime).String()))
+
+	return &structure.SequenceObjects{
+		SequenceNames: exporterSeqSlice,
+	}, nil
+}
+
 func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) (*structure.TableObjects, error) {
-	partitionTables, err := d.filterOraclePartitionTable(sourceSchema, exporters)
+	partitionTables, err := d.filterthePartitionTable(sourceSchema, exporters)
 	if err != nil {
-		return nil, fmt.Errorf("error on filter oracle compatible database partition table: %v", err)
+		return nil, fmt.Errorf("error on filter the compatible database partition table: %v", err)
 	}
-	temporaryTables, err := d.filterOracleTemporaryTable(sourceSchema, exporters)
+	temporaryTables, err := d.filtertheTemporaryTable(sourceSchema, exporters)
 	if err != nil {
-		return nil, fmt.Errorf("error on filter oracle compatible database temporary table: %v", err)
+		return nil, fmt.Errorf("error on filter the compatible database temporary table: %v", err)
 
 	}
-	clusteredTables, err := d.filterOracleClusteredTable(sourceSchema, exporters)
+	clusteredTables, err := d.filtertheClusteredTable(sourceSchema, exporters)
 	if err != nil {
-		return nil, fmt.Errorf("error on filter oracle compatible database clustered table: %v", err)
+		return nil, fmt.Errorf("error on filter the compatible database clustered table: %v", err)
 
 	}
-	materializedView, err := d.filterOracleMaterializedView(sourceSchema, exporters)
+	materializedView, err := d.filtertheMaterializedView(sourceSchema, exporters)
 	if err != nil {
-		return nil, fmt.Errorf("error on filter oracle compatible database materialized view: %v", err)
+		return nil, fmt.Errorf("error on filter the compatible database materialized view: %v", err)
 	}
-	externalTables, err := d.filterOracleExternalTable(sourceSchema, exporters)
+	externalTables, err := d.filtertheExternalTable(sourceSchema, exporters)
 	if err != nil {
-		return nil, fmt.Errorf("error on filter oracle compatible database external table: %v", err)
+		return nil, fmt.Errorf("error on filter the compatible database external table: %v", err)
 	}
-	normalViews, err := d.filterOracleNormalView(sourceSchema, exporters)
+	normalViews, err := d.filtertheNormalView(sourceSchema, exporters)
 	if err != nil {
-		return nil, fmt.Errorf("error on filter oracle compatible database normal view: %v", err)
+		return nil, fmt.Errorf("error on filter the compatible database normal view: %v", err)
 	}
-	compositeTables, err := d.filterOracleCompositeTypeTable(sourceSchema, exporters)
+	compositeTables, err := d.filtertheCompositeTypeTable(sourceSchema, exporters)
 	if err != nil {
-		return nil, fmt.Errorf("error on filter oracle compatible database composity table: %v", err)
+		return nil, fmt.Errorf("error on filter the compatible database composity table: %v", err)
 	}
 
 	if len(partitionTables) != 0 {
@@ -185,7 +253,7 @@ func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporter
 	}, nil
 }
 
-func (d *Database) filterOraclePartitionTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filterthePartitionTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabasePartitionTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -193,7 +261,7 @@ func (d *Database) filterOraclePartitionTable(sourceSchema string, exporters []s
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filterOracleTemporaryTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filtertheTemporaryTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseTemporaryTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -201,7 +269,7 @@ func (d *Database) filterOracleTemporaryTable(sourceSchema string, exporters []s
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filterOracleClusteredTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filtertheClusteredTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseClusteredTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -209,7 +277,7 @@ func (d *Database) filterOracleClusteredTable(sourceSchema string, exporters []s
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filterOracleMaterializedView(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filtertheMaterializedView(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseMaterializedView(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -217,7 +285,7 @@ func (d *Database) filterOracleMaterializedView(sourceSchema string, exporters [
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filterOracleNormalView(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filtertheNormalView(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseNormalView(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -225,7 +293,7 @@ func (d *Database) filterOracleNormalView(sourceSchema string, exporters []strin
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filterOracleExternalTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filtertheExternalTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseExternalTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -233,7 +301,7 @@ func (d *Database) filterOracleExternalTable(sourceSchema string, exporters []st
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filterOracleCompositeTypeTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filtertheCompositeTypeTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseCompositeTypeTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err

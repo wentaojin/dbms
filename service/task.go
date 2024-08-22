@@ -256,7 +256,7 @@ func DeleteTask(ctx context.Context, cli *clientv3.Client, req *pb.OperateTaskRe
 			}}, err
 		}
 		if len(keyResp.Kvs) == 0 || len(keyResp.Kvs) > 1 {
-			errMsg := fmt.Errorf("the task [%v] is not exist or the worker state over one, current worker nums [%d]", req.TaskName, len(keyResp.Kvs))
+			errMsg := fmt.Errorf("the task [%v] is not exist or the worker [%s] state over one, current worker nums [%d]", req.TaskName, t.WorkerAddr, len(keyResp.Kvs))
 			return &pb.OperateTaskResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
 				Message: errMsg.Error(),

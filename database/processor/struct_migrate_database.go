@@ -112,7 +112,7 @@ func (s *StructMigrateDatabase) SyncStructDatabase() error {
 			ddl := strings.ReplaceAll(d, "\n", "")
 			_, err = s.DatasourceT.ExecContext(txnCtx, ddl)
 			if err != nil {
-				return fmt.Errorf("the datasource exec ddl sql [%v] failed: [%v]", ddl, err)
+				return fmt.Errorf("the datasource sync ddl sql [%v] failed: [%v]", ddl, err)
 			}
 		}
 		duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
@@ -543,7 +543,7 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 		for _, seq := range strings.Split(seqDigest, "\n") {
 			_, err = s.DatasourceT.ExecContext(s.Ctx, seq)
 			if err != nil {
-				return fmt.Errorf("the datasource exec ddl sql [%v] failed: [%v]", seq, err)
+				return fmt.Errorf("the datasource sync sequence [%v] failed: [%v]", seq, err)
 			}
 		}
 		err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
@@ -625,7 +625,7 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 		for _, seq := range strings.Split(seqDigest, "\n") {
 			_, err = s.DatasourceT.ExecContext(s.Ctx, seq)
 			if err != nil {
-				return fmt.Errorf("the datasource exec ddl sql [%v] failed: [%v]", seq, err)
+				return fmt.Errorf("the datasource exec sync sequence [%v] failed: [%v]", seq, err)
 			}
 		}
 		err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {

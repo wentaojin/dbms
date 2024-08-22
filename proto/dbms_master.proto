@@ -526,8 +526,10 @@ message SchemaRouteRule{
   string schemaNameT = 2;
   repeated string includeTableS = 3;
   repeated string excludeTableS = 4;
+  repeated string includeSequenceS = 5;
+  repeated string excludeSequenceS = 6;
 
-  repeated TableRouteRule tableRouteRules = 5;
+  repeated TableRouteRule tableRouteRules = 7;
 }
 
 message CaseFieldRule {
@@ -567,6 +569,7 @@ message StructCompareParam {
   uint64 compareThread = 1;
   bool enableCheckpoint = 2;
   uint64 callTimeout = 3;
+  bool ignoreCaseCompare = 4;
 }
 
 message StructCompareRule {

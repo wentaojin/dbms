@@ -123,7 +123,7 @@ func (t *StructMigrateTable) GenTablePrimaryKey() (string, error) {
 		}
 		columnList = stringutil.BytesToString(convertUtf8Raw)
 
-		primaryColumns = strings.Split(columnList, ",")
+		primaryColumns = strings.Split(columnList, constant.StringSeparatorComplexSymbol)
 
 		switch t.TaskFlow {
 		case constant.TaskFlowOracleToTiDB:
@@ -194,7 +194,7 @@ func (t *StructMigrateTable) GenTablePrimaryKey() (string, error) {
 
 			primaryKey = fmt.Sprintf("PRIMARY KEY (%s)", pkColumnStr)
 		default:
-			return primaryKey, fmt.Errorf("[GenTablePrimaryKey] oracle current taskflow [%s] isn't support, please contact author or reselect", t.TaskFlow)
+			return primaryKey, fmt.Errorf("[GenTablePrimaryKey] the upstream database schema [%v] table [%v] taskflow [%s] isn't support, please contact author or reselect", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, t.TaskFlow)
 		}
 	}
 	return primaryKey, nil

@@ -51,9 +51,13 @@ type StructCompareTask struct {
 	BuildInDefaultValueRulesS []*buildin.BuildinDefaultvalRule
 	BuildInDatatypeRulesT     []*buildin.BuildinDatatypeRule
 	BuildInDefaultValueRulesT []*buildin.BuildinDefaultvalRule
+
+	ReadyInit chan bool
 }
 
 func (dmt *StructCompareTask) Init() error {
+	defer close(dmt.ReadyInit)
+
 	logger.Info("struct compare task init table",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 
@@ -92,6 +96,8 @@ func (dmt *StructCompareTask) Init() error {
 		if err != nil {
 			return err
 		}
+	} else {
+		dmt.ReadyInit <- true
 	}
 
 	// filter database table
@@ -103,9 +109,10 @@ func (dmt *StructCompareTask) Init() error {
 		return err
 	}
 	var (
-		includeTables      []string
-		excludeTables      []string
-		databaseTaskTables []string // task tables
+		includeTables         []string
+		excludeTables         []string
+		databaseTaskTableSliS []string // task tables
+		databaseTaskTableSliT []string
 	)
 	databaseTableTypeMap := make(map[string]string)
 	taskTablesMap := make(map[string]struct{})
@@ -124,23 +131,50 @@ func (dmt *StructCompareTask) Init() error {
 		return err
 	}
 
+	tableRouteRuleS := make(map[string]string)
+	tableRouteRuleT := make(map[string]string)
+
 	// rule case field
+	ruleStart := time.Now()
 	for _, t := range tableObjs.TaskTables {
-		var tabName string
+		var (
+			tabNameS string
+			tabNameT string
+		)
 		// the according target case field rule convert
 		if strings.EqualFold(dmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleLower) {
-			tabName = stringutil.StringLower(t)
+			tabNameS = stringutil.StringLower(t)
 		}
 		if strings.EqualFold(dmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
-			tabName = stringutil.StringUpper(t)
+			tabNameS = stringutil.StringUpper(t)
 		}
 		if strings.EqualFold(dmt.Task.CaseFieldRuleS, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
-			tabName = t
+			tabNameS = t
 		}
-		databaseTaskTables = append(databaseTaskTables, tabName)
-		taskTablesMap[tabName] = struct{}{}
+		if strings.EqualFold(dmt.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
+			tabNameT = stringutil.StringLower(t)
+		}
+		if strings.EqualFold(dmt.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleUpper) {
+			tabNameT = stringutil.StringUpper(t)
+		}
+		if strings.EqualFold(dmt.Task.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleOrigin) {
+			tabNameT = t
+		}
+		databaseTaskTableSliS = append(databaseTaskTableSliS, tabNameS)
+		databaseTaskTableSliT = append(databaseTaskTableSliT, tabNameT)
+
+		taskTablesMap[tabNameS] = struct{}{}
+
+		tableRouteRuleS[tabNameS] = tabNameT
+		tableRouteRuleT[tabNameT] = tabNameS
 	}
 
+	logger.Info("struct compare task rule case",
+		zap.Any("table_route_rule_s", tableRouteRuleS),
+		zap.Any("table_route_rule_t", tableRouteRuleT),
+		zap.String("cost", time.Now().Sub(ruleStart).String()))
+
+	routeStart := time.Now()
 	databaseTableTypeMap, err = dmt.DatabaseS.GetDatabaseTableType(dmt.SchemaNameS)
 	if err != nil {
 		return err
@@ -151,33 +185,42 @@ func (dmt *StructCompareTask) Init() error {
 		return err
 	}
 	// get table route rule
-	tableRouteRule := make(map[string]string)
-	tableRouteRuleT := make(map[string]string)
-
 	tableRoutes, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(dmt.Ctx, &rule.TableRouteRule{
 		TaskName:    dmt.Task.TaskName,
 		SchemaNameS: dmt.SchemaNameS,
 	})
-	for _, tr := range tableRoutes {
-		tableRouteRule[tr.TableNameS] = tr.TableNameT
-		tableRouteRuleT[tr.TableNameT] = tr.TableNameS
+	if len(tableRoutes) > 0 {
+		for _, tr := range tableRoutes {
+			if val, ok := tableRouteRuleS[tr.TableNameS]; ok {
+				tableRouteRuleS[tr.TableNameS] = tr.TableNameT
+			} else {
+				return fmt.Errorf("the database table_name_s [%s] route table_name_t [%s] rule not exist, current case field rule table_name_t value is [%s] ", tr.TableNameS, tr.TableNameT, val)
+			}
+			if val, ok := tableRouteRuleT[tr.TableNameT]; ok {
+				tableRouteRuleT[tr.TableNameT] = tr.TableNameS
+			} else {
+				return fmt.Errorf("the database table_name_t [%s] route table_name_s [%s] rule not exist, current case field rule table_name_s value is [%s] ", tr.TableNameT, tr.TableNameS, val)
+			}
+		}
 	}
 
 	tableRouteRuleTNew := make(map[string]string)
 	for _, t := range allTablesT {
-		if v, ok := tableRouteRuleT[t]; ok {
-			tableRouteRuleTNew[v] = t
-		} else {
-			tableRouteRuleTNew[t] = t
-		}
+		tableRouteRuleTNew[t] = t
 	}
 
 	var panicTables []string
-	for _, t := range databaseTaskTables {
-		if _, ok := tableRouteRuleTNew[t]; !ok {
-			panicTables = append(panicTables, t)
+	for tab, _ := range tableRouteRuleT {
+		if _, ok := tableRouteRuleTNew[tab]; !ok {
+			panicTables = append(panicTables, tab)
 		}
 	}
+
+	logger.Info("struct compare task route rule",
+		zap.Any("table_route_rule_s", tableRouteRuleS),
+		zap.Any("table_route_rule_t", tableRouteRuleT),
+		zap.String("cost", time.Now().Sub(routeStart).String()))
+
 	if len(panicTables) > 0 {
 		return fmt.Errorf("the task [%v] task_flow [%v] task_mode [%v] source database tables aren't existed in the target database, please create the tables [%v]", dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, stringutil.StringJoin(panicTables, constant.StringSeparatorComma))
 	}
@@ -211,7 +254,7 @@ func (dmt *StructCompareTask) Init() error {
 	// database tables
 	// init database table
 	// get table column route rule
-	for _, sourceTable := range databaseTaskTables {
+	for _, sourceTable := range databaseTaskTableSliS {
 		// if the table is existed, then skip init
 		if _, ok := repeatInitTableMap[sourceTable]; ok {
 			continue
@@ -219,7 +262,7 @@ func (dmt *StructCompareTask) Init() error {
 		var (
 			targetTable string
 		)
-		if val, ok := tableRouteRule[sourceTable]; ok {
+		if val, ok := tableRouteRuleS[sourceTable]; ok {
 			targetTable = val
 		} else {
 			// the according target case field rule convert
@@ -252,17 +295,37 @@ func (dmt *StructCompareTask) Init() error {
 		&task.StructCompareSummary{
 			TaskName:    dmt.Task.TaskName,
 			SchemaNameS: dmt.SchemaNameS,
-			TableTotals: uint64(len(databaseTaskTables)),
+			TableTotals: uint64(len(databaseTaskTableSliS)),
 			InitFlag:    constant.TaskInitStatusFinished,
 			CompareFlag: constant.TaskCompareStatusNotFinished,
 		})
 	if err != nil {
 		return err
 	}
+
+	dmt.ReadyInit <- true
 	return nil
 }
 
 func (dmt *StructCompareTask) Run() error {
+	for ready := range dmt.ReadyInit {
+		if ready {
+			err := dmt.Process()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (dmt *StructCompareTask) Resume() error {
+	logger.Info("struct compare task resume table",
+		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+	return nil
+}
+
+func (dmt *StructCompareTask) Process() error {
 	logger.Info("struct compare task run table",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 	s, err := model.GetIStructCompareSummaryRW().GetStructCompareSummary(dmt.Ctx, &task.StructCompareSummary{TaskName: dmt.Task.TaskName, SchemaNameS: dmt.SchemaNameS})
@@ -291,7 +354,7 @@ func (dmt *StructCompareTask) Run() error {
 		}
 		return nil
 	}
-	logger.Info("struct compare task process table",
+	logger.Info("struct compare task get tables",
 		zap.String("task_name", dmt.Task.TaskName),
 		zap.String("task_mode", dmt.Task.TaskMode),
 		zap.String("task_flow", dmt.Task.TaskFlow),
@@ -342,7 +405,7 @@ func (dmt *StructCompareTask) Run() error {
 		return err
 	}
 
-	logger.Info("struct compare task process chunks",
+	logger.Info("struct compare task process table",
 		zap.String("task_name", dmt.Task.TaskName),
 		zap.String("task_mode", dmt.Task.TaskMode),
 		zap.String("task_flow", dmt.Task.TaskFlow),
@@ -354,6 +417,12 @@ func (dmt *StructCompareTask) Run() error {
 		gTime := time.Now()
 		g.Go(j, gTime, func(j interface{}) error {
 			dt := j.(*task.StructCompareTask)
+			logger.Info("struct compare task process table",
+				zap.String("task_name", dmt.Task.TaskName),
+				zap.String("task_mode", dmt.Task.TaskMode),
+				zap.String("task_flow", dmt.Task.TaskFlow),
+				zap.String("schema_name_s", dmt.SchemaNameS),
+				zap.String("table_name_s", dt.TableNameS))
 			errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
 				_, err = model.GetIStructCompareTaskRW().UpdateStructCompareTask(txnCtx,
 					&task.StructCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS},
@@ -386,6 +455,7 @@ func (dmt *StructCompareTask) Run() error {
 
 			switch {
 			case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
+				upProcTime := time.Now()
 				oracleProcessor, err := database.IStructCompareProcessor(&OracleProcessor{
 					Ctx:                      dmt.Ctx,
 					TaskName:                 dmt.Task.TaskName,
@@ -398,12 +468,19 @@ func (dmt *StructCompareTask) Run() error {
 					BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesS,
 					ColumnRouteRules:         make(map[string]string),
 					IsBaseline:               true,
-				})
+				}, dmt.TaskParams.IgnoreCaseCompare)
 				if err != nil {
 					return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeS, err)
 				}
+				logger.Info("struct compare task processor",
+					zap.String("task_name", dmt.Task.TaskName),
+					zap.String("task_mode", dmt.Task.TaskMode),
+					zap.String("task_flow", dmt.Task.TaskFlow),
+					zap.Any("upstream", oracleProcessor),
+					zap.String("cost", time.Now().Sub(upProcTime).String()))
 
 				// oracle baseline, mysql not configure task and not configure rules
+				downProcTime := time.Now()
 				mysqlProcessor, err := database.IStructCompareProcessor(&MySQLProcessor{
 					Ctx:                      dmt.Ctx,
 					TaskName:                 dmt.Task.TaskName,
@@ -416,10 +493,17 @@ func (dmt *StructCompareTask) Run() error {
 					BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesT,
 					ColumnRouteRules:         make(map[string]string),
 					IsBaseline:               false,
-				})
+				}, dmt.TaskParams.IgnoreCaseCompare)
 				if err != nil {
 					return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeT, err)
 				}
+
+				logger.Info("struct compare task processor",
+					zap.String("task_name", dmt.Task.TaskName),
+					zap.String("task_mode", dmt.Task.TaskMode),
+					zap.String("task_flow", dmt.Task.TaskFlow),
+					zap.Any("downstream", mysqlProcessor),
+					zap.String("cost", time.Now().Sub(downProcTime).String()))
 
 				compareDetail, err := database.IStructCompareTable(&Table{
 					TaskName: dmt.Task.TaskName,
@@ -643,8 +727,8 @@ func (dmt *StructCompareTask) Run() error {
 			}
 		}
 
-		_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(txnCtx,
-			&task.StructMigrateSummary{
+		_, err = model.GetIStructCompareSummaryRW().UpdateStructCompareSummary(txnCtx,
+			&task.StructCompareSummary{
 				TaskName:    dmt.Task.TaskName,
 				SchemaNameS: dmt.SchemaNameS},
 			map[string]interface{}{
@@ -659,12 +743,5 @@ func (dmt *StructCompareTask) Run() error {
 	if err != nil {
 		return err
 	}
-
-	return nil
-}
-
-func (dmt *StructCompareTask) Resume() error {
-	logger.Info("struct compare task resume table",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 	return nil
 }

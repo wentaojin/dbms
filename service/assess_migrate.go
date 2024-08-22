@@ -307,7 +307,7 @@ func StartAssessMigrateTask(ctx context.Context, taskName, workerAddr string) er
 			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
 			zap.String("cost", time.Now().Sub(taskTime).String()))
 	} else {
-		return fmt.Errorf("current assess migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
+		return fmt.Errorf("the assess migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}
 
 	endTime := time.Now()

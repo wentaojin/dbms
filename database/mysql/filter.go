@@ -62,12 +62,10 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 			}
 		}
 		exporterTableSlice = stringutil.StringItemsFilterDifference(allTables, excludeTableSlice)
-
 	case len(includeTableS) == 0 && len(excludeTableS) == 0:
-		exporterTableSlice = allTables
-
+		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot be null at the same time")
 	default:
-		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot exist at the same time")
+		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot be exist at the same time")
 	}
 
 	if len(exporterTableSlice) == 0 {
@@ -84,6 +82,11 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 		zap.String("cost", endTime.Sub(startTime).String()))
 
 	return d.FilterDatabaseIncompatibleTable(sourceSchema, exporterTableSlice)
+}
+
+func (d *Database) FilterDatabaseSequence(sourceSchema string, includeSequenceS, excludeSequenceS []string) (*structure.SequenceObjects, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) (*structure.TableObjects, error) {

@@ -532,6 +532,43 @@ func GetOutBoundIP() (string, error) {
 	return ip, nil
 }
 
+// UppercaseMap recursively converts all string keys and values within a map to uppercase.
+// It also handles slices of structures by converting their fields to uppercase.
+func UppercaseMap(m interface{}) interface{} {
+	val := reflect.ValueOf(m)
+
+	switch val.Kind() {
+	case reflect.Map:
+		result := reflect.MakeMap(val.Type())
+		for _, key := range val.MapKeys() {
+			upperKey := UppercaseMap(key.Interface())
+			if strKey, ok := upperKey.(string); ok {
+				upperKey = strings.ToUpper(strKey)
+			}
+			upperVal := UppercaseMap(val.MapIndex(key).Interface())
+			result.SetMapIndex(reflect.ValueOf(upperKey), reflect.ValueOf(upperVal))
+		}
+		return result.Interface()
+	case reflect.Slice:
+		result := reflect.MakeSlice(val.Type(), val.Len(), val.Cap())
+		for i := 0; i < val.Len(); i++ {
+			result.Index(i).Set(reflect.ValueOf(UppercaseMap(val.Index(i).Interface())))
+		}
+		return result.Interface()
+	case reflect.Struct:
+		result := reflect.New(val.Type()).Elem()
+		for i := 0; i < val.NumField(); i++ {
+			field := val.Field(i)
+			result.Field(i).Set(reflect.ValueOf(UppercaseMap(field.Interface())))
+		}
+		return result.Interface()
+	case reflect.String:
+		return strings.ToUpper(val.String())
+	default:
+		return m
+	}
+}
+
 // VersionOrdinal used for the database version comparison
 func VersionOrdinal(version string) string {
 	// ISO/IEC 14651:2011

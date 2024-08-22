@@ -65,7 +65,7 @@ type ServerConfig struct {
 }
 
 type GlobalOptions struct {
-	User        string      `yaml:"user,omitempty" default:"tidb"`
+	User        string      `yaml:"user,omitempty" default:"dbms"`
 	Group       string      `yaml:"group,omitempty"`
 	SSHPort     int         `yaml:"ssh_port,omitempty" default:"22" validate:"ssh_port:editable"`
 	SSHType     string      `yaml:"ssh_type,omitempty" default:"builtin"`

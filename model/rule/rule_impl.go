@@ -165,6 +165,83 @@ func (rw *RWMigrateTaskTable) FindMigrateTaskTable(ctx context.Context, rule *Mi
 	return dataS, nil
 }
 
+type RWMigrateTaskSequence struct {
+	common.GormDB
+}
+
+func NewMigrateTaskSequenceRW(db *gorm.DB) *RWMigrateTaskSequence {
+	m := &RWMigrateTaskSequence{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWMigrateTaskSequence) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(MigrateTaskSequence{}).Name())
+}
+
+func (rw *RWMigrateTaskSequence) CreateMigrateTaskSequence(ctx context.Context, rule *MigrateTaskSequence) (*MigrateTaskSequence, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "sequence_name_s"}},
+		UpdateAll: true,
+	}).Create(rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWMigrateTaskSequence) UpdateMigrateTaskSequence(ctx context.Context, rule *MigrateTaskSequence) (*MigrateTaskSequence, error) {
+	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_name = ? AND schema_name_s = ? AND sequence_name_s = ?", rule.TaskName, rule.SchemaNameS, rule.SequenceNameS).Save(&rule).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return rule, nil
+}
+
+func (rw *RWMigrateTaskSequence) GetMigrateTaskSequence(ctx context.Context, rule *MigrateTaskSequence) (*MigrateTaskSequence, error) {
+	var dataS *MigrateTaskSequence
+	err := rw.DB(ctx).Model(&SchemaRouteRule{}).Where("task_name = ? AND schema_name_s = ? AND sequence_name_s = ?", rule.TaskName, rule.SchemaNameS, rule.SequenceNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWMigrateTaskSequence) ListMigrateTaskSequence(ctx context.Context, page uint64, pageSize uint64) ([]*MigrateTaskSequence, error) {
+	var dataS []*MigrateTaskSequence
+	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&MigrateTaskSequence{}).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("list table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWMigrateTaskSequence) DeleteMigrateTaskSequence(ctx context.Context, taskName []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&MigrateTaskSequence{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWMigrateTaskSequence) DeleteMigrateTaskSequenceByTaskIsExclude(ctx context.Context, rule *MigrateTaskSequence) error {
+	err := rw.DB(ctx).Where("task_name = ? AND is_exclude = ?", rule.TaskName, rule.IsExclude).Delete(&MigrateTaskSequence{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] task and exclude record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWMigrateTaskSequence) FindMigrateTaskSequence(ctx context.Context, rule *MigrateTaskSequence) ([]*MigrateTaskSequence, error) {
+	var dataS []*MigrateTaskSequence
+	err := rw.DB(ctx).Model(&MigrateTaskSequence{}).Where("task_name = ? AND schema_name_s = ?", rule.TaskName, rule.SchemaNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 type RWTableRouteRule struct {
 	common.GormDB
 }

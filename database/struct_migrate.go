@@ -46,7 +46,8 @@ type IDatabaseStructMigrate interface {
 }
 
 type IDatabaseSequenceMigrate interface {
-	GetDatabaseSequence(schemaName string) ([]map[string]string, error)
+	GetDatabaseSequences(schemaName string) ([]string, error)
+	GetDatabaseSequenceName(schemaName string, seqName string) ([]map[string]string, error)
 }
 
 // IStructMigrateAttributesReader used for database table attributes

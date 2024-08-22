@@ -21,3 +21,8 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 	//TODO implement me
 	panic("implement me")
 }
+
+func (d *Database) FilterDatabaseSequence(sourceSchema string, includeSequenceS, excludeSequenceS []string) (*structure.SequenceObjects, error) {
+	//TODO implement me
+	panic("implement me")
+}

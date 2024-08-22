@@ -13,19 +13,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package structure
+package main
 
-type TableObjects struct {
-	PartitionTables   []string
-	TemporaryTables   []string
-	ClusteredTables   []string
-	MaterializedViews []string
-	ExternalTables    []string
-	NormalViews       []string
-	CompositeTables   []string
-	TaskTables        []string // the database support migrate task table list
-}
+import (
+	"fmt"
+	"github.com/wentaojin/dbms/utils/filter"
+)
 
-type SequenceObjects struct {
-	SequenceNames []string
+func main() {
+	f, err := filter.Parse([]string{"*"})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, ts := range []string{"A", "c", "ANC", "Abk", "您好"} {
+		if f.MatchTable(ts) {
+			fmt.Println(ts)
+		}
+	}
+
 }

@@ -367,7 +367,7 @@ func (a *AppDeploy) Deploy(clusterName, clusterVersion, topoFile string, gOpt *o
 			mg.Logger).
 		ParallelStep("+ Initialize target host environments", false, envInitTasks...).
 		ParallelStep("+ Deploy target host instantClients", false, deployInstantClientTasks...).
-		ParallelStep("+ Deploy TiDB instance", false, deployCompTasks...).
+		ParallelStep("+ Deploy dbms instance", false, deployCompTasks...).
 		ParallelStep("+ Init instance configs", gOpt.Force, refreshConfigTasks...).Build()
 
 	if err = bf.Execute(ctxt.New(context.Background(), gOpt.Concurrency, mg.Logger)); err != nil {

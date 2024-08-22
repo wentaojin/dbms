@@ -284,7 +284,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 		}
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] and the task_mode [%v] sending operation [%v] in the worker [%v] success, the task_name has [%s],please query the task status", t.TaskName, stringutil.StringLower(req.Operate), stringutil.StringLower(t.TaskMode), stringutil.StringLower(req.Operate), s.WorkerOptions.WorkerAddr),
+			Message: fmt.Sprintf("the task [%v] and the task_mode [%v] sending operation [%v] in the worker [%v] success, the task_name has [%s], please query the task status", t.TaskName, stringutil.StringLower(t.TaskMode), stringutil.StringLower(req.Operate), stringutil.StringLower(s.WorkerOptions.WorkerAddr), stringutil.StringLower(req.Operate)),
 		}}, nil
 	case constant.TaskOperationDelete:
 		if strings.EqualFold(t.TaskStatus, constant.TaskDatabaseStatusRunning) {
@@ -315,7 +315,7 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 		}
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusSuccess,
-			Message: fmt.Sprintf("the task [%v] and the task_mode [%v] sending operation [%v] in the worker [%v] success, the task_name has [%s],please query the task status", t.TaskName, stringutil.StringLower(req.Operate), stringutil.StringLower(t.TaskMode), stringutil.StringLower(req.Operate), s.WorkerOptions.WorkerAddr),
+			Message: fmt.Sprintf("the task [%v] and the task_mode [%v] sending operation [%v] in the worker [%v] success, the task_name has [%s], please query the task status", t.TaskName, stringutil.StringLower(t.TaskMode), stringutil.StringLower(req.Operate), stringutil.StringLower(s.WorkerOptions.WorkerAddr), stringutil.StringLower(req.Operate)),
 		}}, nil
 	default:
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
@@ -571,6 +571,7 @@ func (s *Server) handlePanicRecover(ctx context.Context, t *task.Task) {
 
 		logger.Error("the worker running task panic",
 			zap.String("task_name", t.TaskName),
+			zap.String("worker_addr", s.WorkerOptions.WorkerAddr),
 			zap.Any("panic", r),
 			zap.Any("stack", stringutil.BytesToString(debug.Stack())),
 			zap.Any("errorTxn", errTxn),

@@ -21,10 +21,12 @@ type CaseFieldRule struct {
 }
 
 type SchemaRouteRule struct {
-	SchemaNameS   string   `toml:"schema-name-s" json:"schemaNameS"`
-	SchemaNameT   string   `toml:"schema-name-t" json:"schemaNameT"`
-	IncludeTableS []string `toml:"include-table-s" json:"includeTableS"`
-	ExcludeTableS []string `toml:"exclude-table-s" json:"excludeTableS"`
+	SchemaNameS      string   `toml:"schema-name-s" json:"schemaNameS"`
+	SchemaNameT      string   `toml:"schema-name-t" json:"schemaNameT"`
+	IncludeTableS    []string `toml:"include-table-s" json:"includeTableS"`
+	ExcludeTableS    []string `toml:"exclude-table-s" json:"excludeTableS"`
+	IncludeSequenceS []string `toml:"include-sequence-s" json:"includeSequenceS"`
+	ExcludeSequenceS []string `toml:"exclude-sequence-s" json:"excludeSequenceS"`
 
 	TableRouteRules []TableRouteRule `toml:"table-route-rules" json:"tableRouteRules"`
 }

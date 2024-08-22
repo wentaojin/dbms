@@ -311,9 +311,9 @@ func FormatInstanceStatus(status string) string {
 		return color.HiGreenString(status)
 	case startsWith("up", "healthy", "free", "bound"):
 		return color.GreenString(status)
-	case startsWith("down", "err", "inactive"): // down, down|ui
+	case startsWith("down", "err", "inactive", "failed"): // down, down|ui
 		return color.RedString(status)
-	case startsWith("tombstone", "disconnected", "n/a"), strings.Contains(strings.ToLower(status), "offline"):
+	case startsWith("tombstone", "disconnected", "n/a", "stopped"), strings.Contains(strings.ToLower(status), "offline"):
 		return color.YellowString(status)
 	default:
 		return status

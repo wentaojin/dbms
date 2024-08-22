@@ -35,6 +35,16 @@ type IMigrateTaskTable interface {
 	FindMigrateTaskTable(ctx context.Context, rule *MigrateTaskTable) ([]*MigrateTaskTable, error)
 }
 
+type IMigrateTaskSequence interface {
+	CreateMigrateTaskSequence(ctx context.Context, rule *MigrateTaskSequence) (*MigrateTaskSequence, error)
+	UpdateMigrateTaskSequence(ctx context.Context, rule *MigrateTaskSequence) (*MigrateTaskSequence, error)
+	GetMigrateTaskSequence(ctx context.Context, rule *MigrateTaskSequence) (*MigrateTaskSequence, error)
+	ListMigrateTaskSequence(ctx context.Context, page uint64, pageSize uint64) ([]*MigrateTaskSequence, error)
+	DeleteMigrateTaskSequence(ctx context.Context, taskNames []string) error
+	DeleteMigrateTaskSequenceByTaskIsExclude(ctx context.Context, rule *MigrateTaskSequence) error
+	FindMigrateTaskSequence(ctx context.Context, rule *MigrateTaskSequence) ([]*MigrateTaskSequence, error)
+}
+
 type ITableRouteRule interface {
 	CreateTableRouteRule(ctx context.Context, rule *TableRouteRule) (*TableRouteRule, error)
 	CreateInBatchTableRouteRule(ctx context.Context, rule []*TableRouteRule, thread, batchSize int) ([]*TableRouteRule, error)

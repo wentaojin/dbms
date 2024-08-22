@@ -421,11 +421,16 @@ func ShowStructCompareTask(ctx context.Context, req *pb.ShowStructCompareTaskReq
 		if err != nil {
 			return err
 		}
+		ignoreCaseCompare, err := strconv.ParseBool(paramMap[constant.ParamNameStructCompareIgnoreCaseCompare])
+		if err != nil {
+			return err
+		}
 
 		param = &pb.StructCompareParam{
-			CompareThread:    uint64(compareThread),
-			EnableCheckpoint: enableCheckpoints,
-			CallTimeout:      callTimeout,
+			CompareThread:     uint64(compareThread),
+			EnableCheckpoint:  enableCheckpoints,
+			CallTimeout:       callTimeout,
+			IgnoreCaseCompare: ignoreCaseCompare,
 		}
 
 		taskRules, err := model.GetIStructMigrateTaskRuleRW().QueryTaskStructRule(txnCtx, &migrate.TaskStructRule{TaskName: req.TaskName})
@@ -850,6 +855,14 @@ func getStructCompareTasKParams(ctx context.Context, taskName string) (*pb.Struc
 				return nil, err
 			}
 			taskParam.EnableCheckpoint = enableCheckpoint
+		}
+
+		if strings.EqualFold(p.ParamName, constant.ParamNameStructCompareIgnoreCaseCompare) {
+			ignoreCaseCompare, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return nil, err
+			}
+			taskParam.IgnoreCaseCompare = ignoreCaseCompare
 		}
 
 		if strings.EqualFold(p.ParamName, constant.ParamNameStructCompareCallTimeout) {
