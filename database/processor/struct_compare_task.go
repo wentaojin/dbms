@@ -325,6 +325,12 @@ func (dmt *StructCompareTask) Resume() error {
 	return nil
 }
 
+func (dmt *StructCompareTask) Last() error {
+	logger.Info("struct compare task last table",
+		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+	return nil
+}
+
 func (dmt *StructCompareTask) Process() error {
 	logger.Info("struct compare task run table",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))

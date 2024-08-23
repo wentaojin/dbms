@@ -291,6 +291,12 @@ func (st *StructMigrateTask) Resume() error {
 	return nil
 }
 
+func (st *StructMigrateTask) Last() error {
+	logger.Info("struct migrate task last table",
+		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	return nil
+}
+
 func (st *StructMigrateTask) Process() error {
 	logger.Info("struct migrate task run table",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))

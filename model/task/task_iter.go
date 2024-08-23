@@ -124,6 +124,7 @@ type IDataMigrateSummary interface {
 	CreateDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) (*DataMigrateSummary, error)
 	GetDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) (*DataMigrateSummary, error)
 	UpdateDataMigrateSummary(ctx context.Context, task *DataMigrateSummary, updates map[string]interface{}) (*DataMigrateSummary, error)
+	QueryDataMigrateSummaryFlag(ctx context.Context, task *DataMigrateSummary) ([]*DataMigrateSummary, error)
 	FindDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) ([]*DataMigrateSummary, error)
 	DeleteDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) error
 	DeleteDataMigrateSummaryName(ctx context.Context, taskName []string) error
@@ -153,6 +154,7 @@ type IDataCompareSummary interface {
 	FindDataCompareSummary(ctx context.Context, task *DataCompareSummary) ([]*DataCompareSummary, error)
 	DeleteDataCompareSummary(ctx context.Context, task *DataCompareSummary) error
 	DeleteDataCompareSummaryName(ctx context.Context, taskName []string) error
+	QueryDataCompareSummaryFlag(ctx context.Context, task *DataCompareSummary) ([]*DataCompareSummary, error)
 }
 
 type IDataCompareTask interface {
@@ -204,6 +206,7 @@ type IDataScanSummary interface {
 	CreateDataScanSummary(ctx context.Context, task *DataScanSummary) (*DataScanSummary, error)
 	GetDataScanSummary(ctx context.Context, task *DataScanSummary) (*DataScanSummary, error)
 	UpdateDataScanSummary(ctx context.Context, task *DataScanSummary, updates map[string]interface{}) (*DataScanSummary, error)
+	QueryDataScanSummaryFlag(ctx context.Context, task *DataScanSummary) ([]*DataScanSummary, error)
 	DeleteDataScanSummary(ctx context.Context, task *DataScanSummary) error
 	DeleteDataScanSummaryName(ctx context.Context, taskName []string) error
 	FindDataScanSummary(ctx context.Context, task *DataScanSummary) ([]*DataScanSummary, error)

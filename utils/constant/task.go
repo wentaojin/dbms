@@ -69,16 +69,23 @@ const (
 )
 
 const (
-	TaskInitStatusFinished       = "Y"
-	TaskInitStatusNotFinished    = "N"
+	TaskInitStatusFinished    = "Y"
+	TaskInitStatusNotFinished = "N"
+
 	TaskMigrateStatusFinished    = "Y"
 	TaskMigrateStatusNotFinished = "N"
-	TaskScanStatusFinished       = "Y"
-	TaskScanStatusNotFinished    = "N"
+	TaskMigrateStatusSkipped     = "S"
+
+	TaskScanStatusFinished    = "Y"
+	TaskScanStatusNotFinished = "N"
+	TaskScanStatusSkipped     = "S"
+
 	TaskCompareStatusFinished    = "Y"
 	TaskCompareStatusNotFinished = "N"
-	TaskAssessStatusFinished     = "Y"
-	TaskAssessStatusNotFinished  = "N"
+	TaskCompareStatusSkipped     = "S"
+
+	TaskAssessStatusFinished    = "Y"
+	TaskAssessStatusNotFinished = "N"
 )
 
 // ServiceDatabaseSqlQueryCallTimeout represent package service database request sql query timeout, uint: seconds

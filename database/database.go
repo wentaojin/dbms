@@ -64,6 +64,7 @@ type IDatabaseRunner interface {
 	Init() error
 	Run() error
 	Resume() error
+	Last() error
 }
 
 func IDatabaseRun(ctx context.Context, i IDatabaseRunner) error {
@@ -93,6 +94,11 @@ func IDatabaseRun(ctx context.Context, i IDatabaseRunner) error {
 	})
 
 	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	err := i.Last()
+	if err != nil {
 		return err
 	}
 	return nil

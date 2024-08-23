@@ -249,6 +249,12 @@ func (dmt *DataCompareTask) Init() error {
 				return gCtx.Err()
 			default:
 				startTime := time.Now()
+				logger.Info("data compare task init table start",
+					zap.String("task_name", dmt.Task.TaskName),
+					zap.String("task_mode", dmt.Task.TaskMode),
+					zap.String("task_flow", dmt.Task.TaskFlow),
+					zap.String("schema_name_s", dmt.SchemaNameS),
+					zap.String("table_name_s", sourceTable))
 				s, err := model.GetIDataCompareSummaryRW().GetDataCompareSummary(gCtx, &task.DataCompareSummary{
 					TaskName:    dmt.Task.TaskName,
 					SchemaNameS: dmt.SchemaNameS,
@@ -259,10 +265,35 @@ func (dmt *DataCompareTask) Init() error {
 				}
 				if strings.EqualFold(s.InitFlag, constant.TaskInitStatusFinished) {
 					// the database task has init flag,skip
-					dmt.ResumeC <- &WaitingRecs{
+					select {
+					case dmt.ResumeC <- &WaitingRecs{
 						TaskName:    s.TaskName,
 						SchemaNameS: s.SchemaNameS,
 						TableNameS:  s.TableNameS,
+					}:
+						logger.Info("data compare task resume send",
+							zap.String("task_name", dmt.Task.TaskName),
+							zap.String("task_mode", dmt.Task.TaskMode),
+							zap.String("task_flow", dmt.Task.TaskFlow),
+							zap.String("schema_name_s", dmt.SchemaNameS),
+							zap.String("table_name_s", sourceTable))
+					default:
+						_, err = model.GetIDataCompareSummaryRW().UpdateDataCompareSummary(gCtx, &task.DataCompareSummary{
+							TaskName:    dmt.Task.TaskName,
+							SchemaNameS: dmt.SchemaNameS,
+							TableNameS:  sourceTable}, map[string]interface{}{
+							"CompareFlag": constant.TaskCompareStatusSkipped,
+						})
+						if err != nil {
+							return err
+						}
+						logger.Warn("data compare task resume channel full",
+							zap.String("task_name", dmt.Task.TaskName),
+							zap.String("task_mode", dmt.Task.TaskMode),
+							zap.String("task_flow", dmt.Task.TaskFlow),
+							zap.String("schema_name_s", dmt.SchemaNameS),
+							zap.String("table_name_s", sourceTable),
+							zap.String("action", "skip send"))
 					}
 					return nil
 				}
@@ -301,13 +332,6 @@ func (dmt *DataCompareTask) Init() error {
 				if err != nil {
 					return err
 				}
-
-				logger.Info("data compare task init table start",
-					zap.String("task_name", dmt.Task.TaskName),
-					zap.String("task_mode", dmt.Task.TaskMode),
-					zap.String("task_flow", dmt.Task.TaskFlow),
-					zap.String("schema_name_s", attsRule.SchemaNameS),
-					zap.String("table_name_s", attsRule.TableNameS))
 
 				err = dmt.ProcessStatisticsScan(
 					gCtx,
@@ -365,6 +389,32 @@ func (dmt *DataCompareTask) Resume() error {
 
 	for s := range dmt.ResumeC {
 		err := dmt.Process(s)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (dmt *DataCompareTask) Last() error {
+	logger.Info("data compare task last table",
+		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+	flags, err := model.GetIDataCompareSummaryRW().QueryDataCompareSummaryFlag(dmt.Ctx, &task.DataCompareSummary{
+		TaskName:    dmt.Task.TaskName,
+		SchemaNameS: dmt.SchemaNameS,
+		InitFlag:    constant.TaskInitStatusFinished,
+		CompareFlag: constant.TaskCompareStatusSkipped,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, f := range flags {
+		err = dmt.Process(&WaitingRecs{
+			TaskName:    f.TaskName,
+			SchemaNameS: f.SchemaNameS,
+			TableNameS:  f.TableNameS,
+		})
 		if err != nil {
 			return err
 		}
@@ -718,7 +768,7 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		zap.Any("origin upstream bucket", h))
 
 	if h == nil {
-		err = dmt.ProcessTableScan(ctx, attsRule.SchemaNameS, attsRule.TableNameS, globalScnS, globalScnT, tableRows, tableSize, attsRule)
+		err = dmt.ProcessTableScan(ctx, globalScnS, globalScnT, tableRows, tableSize, attsRule)
 		if err != nil {
 			return err
 		}
@@ -809,7 +859,7 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		}
 
 		if totalChunks == 0 {
-			err := dmt.ProcessTableScan(ctx, attsRule.SchemaNameS, attsRule.TableNameS, globalScnS, globalScnT, tableRows, tableSize, attsRule)
+			err := dmt.ProcessTableScan(ctx, globalScnS, globalScnT, tableRows, tableSize, attsRule)
 			if err != nil {
 				return err
 			}
@@ -838,15 +888,41 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 	if err = g.Wait(); err != nil {
 		return err
 	}
-	dmt.WaiterC <- &WaitingRecs{
+
+	select {
+	case dmt.WaiterC <- &WaitingRecs{
 		TaskName:    dmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
 		TableNameS:  attsRule.TableNameS,
+	}:
+		logger.Info("data compare task process send",
+			zap.String("task_name", dmt.Task.TaskName),
+			zap.String("task_mode", dmt.Task.TaskMode),
+			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("schema_name_s", dmt.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS))
+	default:
+		_, err = model.GetIDataCompareSummaryRW().UpdateDataCompareSummary(ctx, &task.DataCompareSummary{
+			TaskName:    dmt.Task.TaskName,
+			SchemaNameS: attsRule.SchemaNameS,
+			TableNameS:  attsRule.TableNameS}, map[string]interface{}{
+			"CompareFlag": constant.TaskCompareStatusSkipped,
+		})
+		if err != nil {
+			return err
+		}
+		logger.Warn("data compare task wait channel full",
+			zap.String("task_name", dmt.Task.TaskName),
+			zap.String("task_mode", dmt.Task.TaskMode),
+			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("schema_name_s", dmt.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("action", "skip send"))
 	}
 	return nil
 }
 
-func (dmt *DataCompareTask) ProcessTableScan(ctx context.Context, schemaNameS, tableNameS, globalScnS, globalScnT string, tableRows uint64, tableSize float64, attsRule *database.DataCompareAttributesRule) error {
+func (dmt *DataCompareTask) ProcessTableScan(ctx context.Context, globalScnS, globalScnT string, tableRows uint64, tableSize float64, attsRule *database.DataCompareAttributesRule) error {
 	var encChunkS, encChunkT []byte
 	if !strings.EqualFold(attsRule.CompareConditionRangeS, "") {
 		encChunkS = snappy.Encode(nil, []byte(attsRule.CompareConditionRangeS))
@@ -926,10 +1002,35 @@ func (dmt *DataCompareTask) ProcessTableScan(ctx context.Context, schemaNameS, t
 		return err
 	}
 
-	dmt.WaiterC <- &WaitingRecs{
+	select {
+	case dmt.WaiterC <- &WaitingRecs{
 		TaskName:    dmt.Task.TaskName,
-		SchemaNameS: schemaNameS,
-		TableNameS:  tableNameS,
+		SchemaNameS: attsRule.SchemaNameS,
+		TableNameS:  attsRule.TableNameS,
+	}:
+		logger.Info("data compare task wait send",
+			zap.String("task_name", dmt.Task.TaskName),
+			zap.String("task_mode", dmt.Task.TaskMode),
+			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("schema_name_s", dmt.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS))
+	default:
+		_, err = model.GetIDataCompareSummaryRW().UpdateDataCompareSummary(ctx, &task.DataCompareSummary{
+			TaskName:    dmt.Task.TaskName,
+			SchemaNameS: attsRule.SchemaNameS,
+			TableNameS:  attsRule.TableNameS}, map[string]interface{}{
+			"CompareFlag": constant.TaskCompareStatusSkipped,
+		})
+		if err != nil {
+			return err
+		}
+		logger.Warn("data compare task wait channel full",
+			zap.String("task_name", dmt.Task.TaskName),
+			zap.String("task_mode", dmt.Task.TaskMode),
+			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("schema_name_s", dmt.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("action", "skip send"))
 	}
 	return nil
 }

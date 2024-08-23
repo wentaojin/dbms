@@ -192,10 +192,35 @@ func (dst *DataScanTask) Init() error {
 				}
 				if strings.EqualFold(s.InitFlag, constant.TaskInitStatusFinished) {
 					// the database task has init flag,skip
-					dst.ResumeC <- &WaitingRecs{
-						TaskName:    s.TaskName,
-						SchemaNameS: s.SchemaNameS,
-						TableNameS:  s.TableNameS,
+					select {
+					case dst.ResumeC <- &WaitingRecs{
+						TaskName:    dst.Task.TaskName,
+						SchemaNameS: dst.SchemaNameS,
+						TableNameS:  sourceTable,
+					}:
+						logger.Info("data scan task resume send",
+							zap.String("task_name", dst.Task.TaskName),
+							zap.String("task_mode", dst.Task.TaskMode),
+							zap.String("task_flow", dst.Task.TaskFlow),
+							zap.String("schema_name_s", dst.SchemaNameS),
+							zap.String("table_name_s", sourceTable))
+					default:
+						_, err = model.GetIDataScanSummaryRW().UpdateDataScanSummary(gCtx, &task.DataScanSummary{
+							TaskName:    dst.Task.TaskName,
+							SchemaNameS: dst.SchemaNameS,
+							TableNameS:  sourceTable}, map[string]interface{}{
+							"ScanFlag": constant.TaskMigrateStatusSkipped,
+						})
+						if err != nil {
+							return err
+						}
+						logger.Warn("data scan task resume channel full",
+							zap.String("task_name", dst.Task.TaskName),
+							zap.String("task_mode", dst.Task.TaskMode),
+							zap.String("task_flow", dst.Task.TaskFlow),
+							zap.String("schema_name_s", dst.SchemaNameS),
+							zap.String("table_name_s", sourceTable),
+							zap.String("action", "skip send"))
 					}
 					return nil
 				}
@@ -305,8 +330,6 @@ func (dst *DataScanTask) Init() error {
 					err = dst.ProcessStatisticsScan(
 						gCtx,
 						dbTypeS,
-						dst.SchemaNameS,
-						sourceTable,
 						globalScn,
 						tableRows,
 						tableSize,
@@ -372,6 +395,32 @@ func (dst *DataScanTask) Resume() error {
 	return nil
 }
 
+func (dst *DataScanTask) Last() error {
+	logger.Info("data scan task last table",
+		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
+	flags, err := model.GetIDataScanSummaryRW().QueryDataScanSummaryFlag(dst.Ctx, &task.DataScanSummary{
+		TaskName:    dst.Task.TaskName,
+		SchemaNameS: dst.SchemaNameS,
+		InitFlag:    constant.TaskInitStatusFinished,
+		ScanFlag:    constant.TaskScanStatusSkipped,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, f := range flags {
+		err = dst.Process(&WaitingRecs{
+			TaskName:    f.TaskName,
+			SchemaNameS: f.SchemaNameS,
+			TableNameS:  f.TableNameS,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (dst *DataScanTask) Process(s *WaitingRecs) error {
 	startTableTime := time.Now()
 	summary, err := model.GetIDataScanSummaryRW().GetDataScanSummary(dst.Ctx, &task.DataScanSummary{
@@ -383,7 +432,7 @@ func (dst *DataScanTask) Process(s *WaitingRecs) error {
 		return err
 	}
 	if strings.EqualFold(summary.ScanFlag, constant.TaskScanStatusFinished) {
-		logger.Warn("data migrate task init",
+		logger.Warn("data scan task init",
 			zap.String("task_name", dst.Task.TaskName),
 			zap.String("task_mode", dst.Task.TaskMode),
 			zap.String("task_flow", dst.Task.TaskFlow),
@@ -684,7 +733,7 @@ func (dst *DataScanTask) Process(s *WaitingRecs) error {
 	return nil
 }
 
-func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, schemaNameS, tableNameS, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataScanAttributesRule) error {
+func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataScanAttributesRule) error {
 	h, err := dst.DatabaseS.GetDatabaseTableHighestSelectivityIndex(
 		attsRule.SchemaNameS,
 		attsRule.TableNameS,
@@ -694,7 +743,7 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, sch
 		return err
 	}
 	if h == nil {
-		err = dst.ProcessTableScan(ctx, schemaNameS, tableNameS, globalScn, tableRows, tableSize, attsRule)
+		err = dst.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 		if err != nil {
 			return err
 		}
@@ -725,8 +774,8 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, sch
 	d := &Divide{
 		DBTypeS:     dbTypeS,
 		DBCharsetS:  stringutil.StringUpper(dst.DBCharsetS),
-		SchemaNameS: schemaNameS,
-		TableNameS:  tableNameS,
+		SchemaNameS: attsRule.SchemaNameS,
+		TableNameS:  attsRule.TableNameS,
 		ChunkSize:   int64(dst.TaskParams.ChunkSize),
 		DatabaseS:   dst.DatabaseS,
 		Cons:        h,
@@ -761,7 +810,7 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, sch
 		}
 
 		if totalChunks == 0 {
-			err := dst.ProcessTableScan(ctx, schemaNameS, tableNameS, globalScn, tableRows, tableSize, attsRule)
+			err := dst.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 			if err != nil {
 				return err
 			}
@@ -785,15 +834,40 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, sch
 		return nil
 	})
 
-	dst.WaiterC <- &WaitingRecs{
+	select {
+	case dst.WaiterC <- &WaitingRecs{
 		TaskName:    dst.Task.TaskName,
-		SchemaNameS: schemaNameS,
-		TableNameS:  tableNameS,
+		SchemaNameS: attsRule.SchemaNameS,
+		TableNameS:  attsRule.TableNameS,
+	}:
+		logger.Info("data scan task wait send",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
+			zap.String("schema_name_s", dst.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS))
+	default:
+		_, err = model.GetIDataScanSummaryRW().UpdateDataScanSummary(ctx, &task.DataScanSummary{
+			TaskName:    dst.Task.TaskName,
+			SchemaNameS: attsRule.SchemaNameS,
+			TableNameS:  attsRule.TableNameS}, map[string]interface{}{
+			"ScanFlag": constant.TaskMigrateStatusSkipped,
+		})
+		if err != nil {
+			return err
+		}
+		logger.Warn("data scan task wait channel full",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
+			zap.String("schema_name_s", attsRule.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("action", "skip send"))
 	}
 	return nil
 }
 
-func (dst *DataScanTask) ProcessTableScan(ctx context.Context, schemaNameS, tableNameS, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataScanAttributesRule) error {
+func (dst *DataScanTask) ProcessTableScan(ctx context.Context, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataScanAttributesRule) error {
 	var whereRange string
 	whereRange = `1 = 1`
 
@@ -844,10 +918,35 @@ func (dst *DataScanTask) ProcessTableScan(ctx context.Context, schemaNameS, tabl
 		return err
 	}
 
-	dst.WaiterC <- &WaitingRecs{
+	select {
+	case dst.WaiterC <- &WaitingRecs{
 		TaskName:    dst.Task.TaskName,
-		SchemaNameS: schemaNameS,
-		TableNameS:  tableNameS,
+		SchemaNameS: attsRule.SchemaNameS,
+		TableNameS:  attsRule.TableNameS,
+	}:
+		logger.Info("data scan task wait send",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
+			zap.String("schema_name_s", dst.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS))
+	default:
+		_, err = model.GetIDataScanSummaryRW().UpdateDataScanSummary(ctx, &task.DataScanSummary{
+			TaskName:    dst.Task.TaskName,
+			SchemaNameS: attsRule.SchemaNameS,
+			TableNameS:  attsRule.TableNameS}, map[string]interface{}{
+			"ScanFlag": constant.TaskMigrateStatusSkipped,
+		})
+		if err != nil {
+			return err
+		}
+		logger.Warn("data scan task wait channel full",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
+			zap.String("schema_name_s", attsRule.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("action", "skip send"))
 	}
 	return nil
 }
@@ -912,7 +1011,7 @@ func (dst *DataScanTask) ProcessChunkScan(ctx context.Context, schemaNameS, tabl
 		}
 
 		if totalChunkRecs == 0 {
-			err := dst.ProcessTableScan(ctx, schemaNameS, tableNameS, globalScn, tableRows, tableSize, attsRule)
+			err := dst.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 			if err != nil {
 				return err
 			}
@@ -941,10 +1040,35 @@ func (dst *DataScanTask) ProcessChunkScan(ctx context.Context, schemaNameS, tabl
 		return err
 	}
 
-	dst.WaiterC <- &WaitingRecs{
+	select {
+	case dst.WaiterC <- &WaitingRecs{
 		TaskName:    dst.Task.TaskName,
-		SchemaNameS: schemaNameS,
-		TableNameS:  tableNameS,
+		SchemaNameS: attsRule.SchemaNameS,
+		TableNameS:  attsRule.TableNameS,
+	}:
+		logger.Info("data scan task wait send",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
+			zap.String("schema_name_s", dst.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS))
+	default:
+		_, err = model.GetIDataScanSummaryRW().UpdateDataScanSummary(ctx, &task.DataScanSummary{
+			TaskName:    dst.Task.TaskName,
+			SchemaNameS: attsRule.SchemaNameS,
+			TableNameS:  attsRule.TableNameS}, map[string]interface{}{
+			"ScanFlag": constant.TaskMigrateStatusSkipped,
+		})
+		if err != nil {
+			return err
+		}
+		logger.Warn("data scan task wait channel full",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
+			zap.String("schema_name_s", attsRule.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("action", "skip send"))
 	}
 	return nil
 }

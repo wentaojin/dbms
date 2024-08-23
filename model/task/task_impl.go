@@ -912,6 +912,15 @@ func (rw *RWDataMigrateSummary) FindDataMigrateSummary(ctx context.Context, task
 	return dataS, nil
 }
 
+func (rw *RWDataMigrateSummary) QueryDataMigrateSummaryFlag(ctx context.Context, task *DataMigrateSummary) ([]*DataMigrateSummary, error) {
+	var dataS []*DataMigrateSummary
+	err := rw.DB(ctx).Model(&DataMigrateSummary{}).Where("task_name = ? AND schema_name_s = ? AND init_flag = ? AND migrate_flag = ?", task.TaskName, task.SchemaNameS, task.InitFlag, task.MigrateFlag).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 func (rw *RWDataMigrateSummary) DeleteDataMigrateSummary(ctx context.Context, task *DataMigrateSummary) error {
 	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Delete(&DataMigrateSummary{}).Error
 	if err != nil {
@@ -1294,6 +1303,15 @@ func (rw *RWDataCompareSummary) GetDataCompareSummary(ctx context.Context, task 
 	return dataS, nil
 }
 
+func (rw *RWDataCompareSummary) QueryDataCompareSummaryFlag(ctx context.Context, task *DataCompareSummary) ([]*DataCompareSummary, error) {
+	var dataS []*DataCompareSummary
+	err := rw.DB(ctx).Model(&DataCompareSummary{}).Where("task_name = ? AND schema_name_s = ? AND init_flag = ? AND compare_flag = ?", task.TaskName, task.SchemaNameS, task.InitFlag, task.CompareFlag).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 func (rw *RWDataCompareSummary) UpdateDataCompareSummary(ctx context.Context, task *DataCompareSummary, updates map[string]interface{}) (*DataCompareSummary, error) {
 	err := rw.DB(ctx).Model(&DataCompareSummary{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Updates(updates).Error
 	if err != nil {
@@ -1579,6 +1597,15 @@ func (rw *RWDataScanSummary) GetDataScanSummary(ctx context.Context, task *DataS
 func (rw *RWDataScanSummary) FindDataScanSummary(ctx context.Context, task *DataScanSummary) ([]*DataScanSummary, error) {
 	var dataS []*DataScanSummary
 	err := rw.DB(ctx).Model(&DataScanSummary{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataScanSummary) QueryDataScanSummaryFlag(ctx context.Context, task *DataScanSummary) ([]*DataScanSummary, error) {
+	var dataS []*DataScanSummary
+	err := rw.DB(ctx).Model(&DataScanSummary{}).Where("task_name = ? AND schema_name_s = ? AND init_flag = ? AND scan_flag = ?", task.TaskName, task.SchemaNameS, task.InitFlag, task.ScanFlag).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

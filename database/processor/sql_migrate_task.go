@@ -203,6 +203,12 @@ func (smt *SqlMigrateTask) Resume() error {
 	return nil
 }
 
+func (smt *SqlMigrateTask) Last() error {
+	logger.Info("sql migrate task last table",
+		zap.String("task_name", smt.Task.TaskName), zap.String("task_mode", smt.Task.TaskMode), zap.String("task_flow", smt.Task.TaskFlow))
+	return nil
+}
+
 func (smt *SqlMigrateTask) Process() error {
 	startTime := time.Now()
 	s, err := model.GetISqlMigrateSummaryRW().GetSqlMigrateSummary(smt.Ctx, &task.SqlMigrateSummary{TaskName: smt.Task.TaskName})
