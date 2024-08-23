@@ -154,21 +154,6 @@ func (st *StructMigrateTask) Start() error {
 		return err
 	}
 
-	// schema create failed, return
-	_, err = model.GetIStructMigrateTaskRW().CreateStructMigrateTask(st.Ctx, &task.StructMigrateTask{
-		TaskName:        st.Task.TaskName,
-		SchemaNameS:     st.SchemaNameS,
-		TableTypeS:      constant.DatabaseStructMigrateSqlSchemaCategory,
-		SchemaNameT:     st.SchemaNameT,
-		TaskStatus:      constant.TaskDatabaseStatusSuccess,
-		TargetSqlDigest: encryptCreateSchema,
-		Category:        constant.DatabaseStructMigrateSqlSchemaCategory,
-		Duration:        time.Now().Sub(schemaCreateTime).Seconds(),
-	})
-	if err != nil {
-		return err
-	}
-
 	// direct write database -> schema
 	if st.TaskParams.EnableDirectCreate {
 		_, err = databaseT.ExecContext(st.Ctx, createSchema)
@@ -176,6 +161,27 @@ func (st *StructMigrateTask) Start() error {
 			return err
 		}
 	}
+
+	// schema create failed, return
+	_, err = model.GetISchemaMigrateTaskRW().CreateSchemaMigrateTask(st.Ctx, &task.SchemaMigrateTask{
+		TaskName:        st.Task.TaskName,
+		SchemaNameS:     st.SchemaNameS,
+		SchemaNameT:     st.SchemaNameT,
+		TaskStatus:      constant.TaskDatabaseStatusSuccess,
+		TargetSqlDigest: encryptCreateSchema,
+		Duration:        time.Now().Sub(schemaCreateTime).Seconds(),
+	})
+	if err != nil {
+		return err
+	}
+
+	logger.Info("struct migrate task process schema",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("create_schema_sql", createSchema))
 
 	logger.Info("struct migrate task process table",
 		zap.String("task_name", st.Task.TaskName),

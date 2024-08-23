@@ -65,9 +65,8 @@ const (
 	PostgresqlDatabasePartitionTableSupportVersionRequire = "10.0"
 
 	// struct migrate type
-	DatabaseStructMigrateSqlSchemaCategory   = "SCHEMA"
-	DatabaseStructMigrateSqlTableCategory    = "TABLE"
-	DatabaseStructMigrateSqlSequenceCategory = "SEQUENCE"
+	DatabaseMigrateSequenceCompatible    = "Y"
+	DatabaseMigrateSequenceNotCompatible = "N"
 
 	// struct compare
 	StructCompareColumnsStructureJSONFormat   = "COLUMN"

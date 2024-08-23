@@ -934,7 +934,6 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 				}
 				totalChunks = totalChunks + len(statsRanges)
 			}
-			return nil
 		}
 
 		if totalChunks == 0 {
@@ -962,6 +961,10 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		}
 		return nil
 	})
+
+	if err = g.Wait(); err != nil {
+		return err
+	}
 
 	cmt.WaiterC <- &WaitingRecs{
 		TaskName:    cmt.Task.TaskName,
@@ -1164,8 +1167,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 		return nil
 	})
 
-	err := gC.Wait()
-	if err != nil {
+	if err := gC.Wait(); err != nil {
 		return err
 	}
 

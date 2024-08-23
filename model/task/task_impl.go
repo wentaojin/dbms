@@ -335,7 +335,7 @@ func (rw *RWStructMigrateTask) CreateStructMigrateTask(ctx context.Context, task
 
 func (rw *RWStructMigrateTask) GetStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error) {
 	var dataS []*StructMigrateTask
-	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ? AND category = ?", task.TaskName, task.SchemaNameS, task.TaskStatus, task.Category).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TaskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -370,7 +370,7 @@ func (rw *RWStructMigrateTask) BatchUpdateStructMigrateTask(ctx context.Context,
 
 func (rw *RWStructMigrateTask) QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error) {
 	var dataS []*StructMigrateTask
-	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status = ? AND category = ?", task.TaskName, task.TaskStatus, task.Category).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -423,6 +423,250 @@ func (rw *RWStructMigrateTask) DeleteStructMigrateTask(ctx context.Context, task
 
 func (rw *RWStructMigrateTask) DeleteStructMigrateTaskName(ctx context.Context, taskName []string) error {
 	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&StructMigrateTask{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] task [%v] record failed: %v", rw.TableName(ctx), taskName, err)
+	}
+	return nil
+}
+
+type RWSchemaMigrateTask struct {
+	common.GormDB
+}
+
+func NewSchemaMigrateTaskRW(db *gorm.DB) *RWSchemaMigrateTask {
+	m := &RWSchemaMigrateTask{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWSchemaMigrateTask) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(SchemaMigrateTask{}).Name())
+}
+
+func (rw *RWSchemaMigrateTask) CreateSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) (*SchemaMigrateTask, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}},
+		UpdateAll: true,
+	}).Create(task).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWSchemaMigrateTask) GetSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error) {
+	var dataS []*SchemaMigrateTask
+	err := rw.DB(ctx).Model(&SchemaMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSchemaMigrateTask) UpdateSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask, updates map[string]interface{}) (*SchemaMigrateTask, error) {
+	err := rw.DB(ctx).Model(&SchemaMigrateTask{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWSchemaMigrateTask) GetSchemaMigrateTaskTable(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error) {
+	var dataS []*SchemaMigrateTask
+
+	err := rw.DB(ctx).Model(&SchemaMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] table record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSchemaMigrateTask) BatchUpdateSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask, updates map[string]interface{}) (*SchemaMigrateTask, error) {
+	err := rw.DB(ctx).Model(&SchemaMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWSchemaMigrateTask) QuerySchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error) {
+	var dataS []*SchemaMigrateTask
+	err := rw.DB(ctx).Model(&SchemaMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSchemaMigrateTask) FindSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error) {
+	var dataS []*SchemaMigrateTask
+	err := rw.DB(ctx).Model(&SchemaMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSchemaMigrateTask) FindSchemaMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructGroupStatusResult, error) {
+	var dataS []*StructGroupStatusResult
+	err := rw.DB(ctx).Model(&SchemaMigrateTask{}).Select("task_name,task_status,count(1) as status_counts").Where("task_name = ?", taskName).Group("task_name,task_status").Order("status_counts desc").Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] group by the task_name and task_status record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSchemaMigrateTask) BatchFindSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error) {
+	var dataS []*SchemaMigrateTask
+	err := rw.DB(ctx).Model(&SchemaMigrateTask{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("batch find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSchemaMigrateTask) ListSchemaMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*SchemaMigrateTask, error) {
+	var dataS []*SchemaMigrateTask
+	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&SchemaMigrateTask{}).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("list table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSchemaMigrateTask) DeleteSchemaMigrateTask(ctx context.Context, taskID uint64) error {
+	err := rw.DB(ctx).Where("id = ?", taskID).Delete(&SchemaMigrateTask{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] id [%v] record failed: %v", rw.TableName(ctx), taskID, err)
+	}
+	return nil
+}
+
+func (rw *RWSchemaMigrateTask) DeleteSchemaMigrateTaskName(ctx context.Context, taskName []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&SchemaMigrateTask{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] task [%v] record failed: %v", rw.TableName(ctx), taskName, err)
+	}
+	return nil
+}
+
+type RWSequenceMigrateTask struct {
+	common.GormDB
+}
+
+func NewSequenceMigrateTaskRW(db *gorm.DB) *RWSequenceMigrateTask {
+	m := &RWSequenceMigrateTask{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWSequenceMigrateTask) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(SequenceMigrateTask{}).Name())
+}
+
+func (rw *RWSequenceMigrateTask) CreateSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) (*SequenceMigrateTask, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "sequence_name_s"}},
+		UpdateAll: true,
+	}).Create(task).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWSequenceMigrateTask) GetSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error) {
+	var dataS []*SequenceMigrateTask
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateTask) UpdateSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask, updates map[string]interface{}) (*SequenceMigrateTask, error) {
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND sequence_name_s = ?", task.TaskName, task.SchemaNameS, task.SequenceNameS).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWSequenceMigrateTask) GetSequenceMigrateTaskTable(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error) {
+	var dataS []*SequenceMigrateTask
+
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND sequence_name_s = ?", task.TaskName, task.SchemaNameS, task.SequenceNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] table record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateTask) BatchUpdateSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask, updates map[string]interface{}) (*SequenceMigrateTask, error) {
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWSequenceMigrateTask) QuerySequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error) {
+	var dataS []*SequenceMigrateTask
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateTask) FindSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error) {
+	var dataS []*SequenceMigrateTask
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateTask) FindSequenceMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructGroupStatusResult, error) {
+	var dataS []*StructGroupStatusResult
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Select("task_name,task_status,count(1) as status_counts").Where("task_name = ?", taskName).Group("task_name,task_status").Order("status_counts desc").Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] group by the task_name and task_status record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateTask) BatchFindSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error) {
+	var dataS []*SequenceMigrateTask
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("batch find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateTask) ListSequenceMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*SequenceMigrateTask, error) {
+	var dataS []*SequenceMigrateTask
+	err := rw.DB(ctx).Scopes(common.Paginate(int(page), int(pageSize))).Model(&SequenceMigrateTask{}).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("list table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateTask) DeleteSequenceMigrateTask(ctx context.Context, taskID uint64) error {
+	err := rw.DB(ctx).Where("id = ?", taskID).Delete(&SequenceMigrateTask{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] id [%v] record failed: %v", rw.TableName(ctx), taskID, err)
+	}
+	return nil
+}
+
+func (rw *RWSequenceMigrateTask) DeleteSequenceMigrateTaskName(ctx context.Context, taskName []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&SequenceMigrateTask{}).Error
 	if err != nil {
 		return fmt.Errorf("delete table [%s] task [%v] record failed: %v", rw.TableName(ctx), taskName, err)
 	}
@@ -1272,6 +1516,14 @@ func (rw *RWDataCompareResult) FindDataCompareResult(ctx context.Context, task *
 func (rw *RWDataCompareResult) DeleteDataCompareResult(ctx context.Context, task *DataCompareResult) error {
 	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_id = ?",
 		task.TaskName, task.SchemaNameS, task.TableNameS, task.ChunkID).Delete(&DataCompareResult{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWDataCompareResult) DeleteDataCompareResultTable(ctx context.Context, task *DataCompareResult) error {
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Delete(&DataCompareResult{}).Error
 	if err != nil {
 		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

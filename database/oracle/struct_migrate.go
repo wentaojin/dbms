@@ -1465,11 +1465,12 @@ func (d *Database) GetDatabaseTableOriginStruct(schemaName, tableName, tableType
 		}
 	}
 
-	if err = rows.Close(); err != nil {
-		return ddl, fmt.Errorf("get database schema table origin ddl close failed: %v", err)
-	}
 	if err = rows.Err(); err != nil {
 		return ddl, fmt.Errorf("get database schema table origin ddl Err failed: %v", err)
+	}
+
+	if strings.EqualFold(ddl, "") {
+		return ddl, fmt.Errorf("get database schema [%s] table [%s] type [%s] origin ddl null, please double check", schemaName, tableName, tableType)
 	}
 
 	return ddl, nil

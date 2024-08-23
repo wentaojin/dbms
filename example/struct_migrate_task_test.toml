@@ -1,0 +1,80 @@
+task-name = "smt_33to45"
+datasource-name-s = "o11024"
+datasource-name-t = "test08"
+comment = "测试数据源"
+
+[struct-migrate-param]
+migrate-thread = 10
+create-if-not-exist = true
+enable-direct-create = false
+enable-checkpoint = true
+# calltimeout，单位：秒
+call-timeout = 36000
+
+[case-field-rule]
+# 控制配置文件内所有 *-s 参数配置值（default-value-s 除外）以及 column-route-rules 中的 key 值
+# 1，参数值是 0 代表以当前配置文件为准，与源端对比
+# 2，参数值是 1 代表统一转换值为小写，与源端对比，default-value-s 参数配置始终以参数配置大小为准与源端对比
+# 3，参数值是 2 代表统一转换值为大写，与源端对比，default-value-s 参数配置始终以参数配置大小为准与源端对比
+case-field-rule-s = "0"
+# 控制配置文件 schema-name-t、table-name-t 以及 column-route-rules 中的 value 值，、column-type-t/table-attrs-t 不受控制默认大写
+# 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准，非配置文件配置的以上游为准
+# 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写，default-value-t 参数配置始终以参数配置大小为准与源端对比
+# 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写，default-value-t 参数配置始终以参数配置大小为准与源端对比
+case-field-rule-t = "0"
+
+[schema-route-rule]
+schema-name-s = "SCOTT"
+schema-name-t = "SCOTT"
+# include-table-s 迁移所有表需指定 *，特定表写具体表名
+include-table-s = ["*"]
+exclude-table-s = []
+# sequence 设置空代表不迁移 sequence
+include-sequence-s = []
+exclude-sequence-s = []
+
+[[schema-route-rule.table-route-rules]]
+table-name-s = ""
+table-name-t = ""
+column-route-rules = {}
+
+# 默认值规则设置分为字符类型 OR 数值类型 OR 函数表达式 OR '' 空字符串 OR NULL 字符
+# 字符类型设置需要带单引号
+# 数值类型以及函数表达式设置保持本身即可
+# 对于 N01 VARCHAR2(10) DEFAULT '' 设置映射，以 '' 设置代替
+# 对于 N01 VARCHAR2(10) DEFAULT 'Null' 设置映射，以 'Null' 设置代替
+# 对于 N01 VARCHAR2(10) DEFAULT NULL 设置 NULL 映射，以 NULL 设置代替
+# 对于 N01 VARCHAR2(10) 字段设置 NULL 映射，以 NULLSTRING 设置代替
+[struct-migrate-rule]
+[[struct-migrate-rule.task-struct-rules]]
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
+[[struct-migrate-rule.schema-struct-rules]]
+schema-name-s = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
+[[struct-migrate-rule.table-struct-rules]]
+schema-name-s = ""
+table-name-s = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
+[[struct-migrate-rule.column-struct-rules]]
+schema-name-s = ""
+table-name-s = ""
+column-name-s = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = ""
+[[struct-migrate-rule.table-attrs-rules]]
+schema-name-s = ""
+table-names-s = [""]
+table-attrs-t = ""
+
+

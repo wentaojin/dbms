@@ -67,6 +67,36 @@ type IStructMigrateTask interface {
 	DeleteStructMigrateTaskName(ctx context.Context, taskName []string) error
 }
 
+type ISchemaMigrateTask interface {
+	CreateSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) (*SchemaMigrateTask, error)
+	GetSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error)
+	GetSchemaMigrateTaskTable(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error)
+	UpdateSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask, updates map[string]interface{}) (*SchemaMigrateTask, error)
+	BatchUpdateSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask, updates map[string]interface{}) (*SchemaMigrateTask, error)
+	FindSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error)
+	FindSchemaMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructGroupStatusResult, error)
+	BatchFindSchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error)
+	QuerySchemaMigrateTask(ctx context.Context, task *SchemaMigrateTask) ([]*SchemaMigrateTask, error)
+	ListSchemaMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*SchemaMigrateTask, error)
+	DeleteSchemaMigrateTask(ctx context.Context, id uint64) error
+	DeleteSchemaMigrateTaskName(ctx context.Context, taskName []string) error
+}
+
+type ISequenceMigrateTask interface {
+	CreateSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) (*SequenceMigrateTask, error)
+	GetSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error)
+	GetSequenceMigrateTaskTable(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error)
+	UpdateSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask, updates map[string]interface{}) (*SequenceMigrateTask, error)
+	BatchUpdateSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask, updates map[string]interface{}) (*SequenceMigrateTask, error)
+	FindSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error)
+	FindSequenceMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructGroupStatusResult, error)
+	BatchFindSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error)
+	QuerySequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error)
+	ListSequenceMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*SequenceMigrateTask, error)
+	DeleteSequenceMigrateTask(ctx context.Context, id uint64) error
+	DeleteSequenceMigrateTaskName(ctx context.Context, taskName []string) error
+}
+
 type IStructCompareSummary interface {
 	CreateStructCompareSummary(ctx context.Context, task *StructCompareSummary) (*StructCompareSummary, error)
 	GetStructCompareSummary(ctx context.Context, task *StructCompareSummary) (*StructCompareSummary, error)
@@ -146,6 +176,7 @@ type IDataCompareResult interface {
 	CreateDataCompareResult(ctx context.Context, task *DataCompareResult) (*DataCompareResult, error)
 	FindDataCompareResult(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error)
 	DeleteDataCompareResult(ctx context.Context, task *DataCompareResult) error
+	DeleteDataCompareResultTable(ctx context.Context, task *DataCompareResult) error
 	DeleteDataCompareResultName(ctx context.Context, taskName []string) error
 }
 

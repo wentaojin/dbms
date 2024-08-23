@@ -17,12 +17,13 @@ package constant
 
 // TaskMode represents a certain type of task
 const (
-	TaskModeAssessMigrate = "ASSESS_MIGRATE"
-	TaskModeStructMigrate = "STRUCT_MIGRATE"
-	TaskModeStmtMigrate   = "STMT_MIGRATE"
-	TaskModeSqlMigrate    = "SQL_MIGRATE"
-	TaskModeIncrMigrate   = "INCR_MIGRATE"
-	TaskModeCSVMigrate    = "CSV_MIGRATE"
+	TaskModeAssessMigrate   = "ASSESS_MIGRATE"
+	TaskModeStructMigrate   = "STRUCT_MIGRATE"
+	TaskModeSequenceMigrate = "SEQUENCE_MIGRATE"
+	TaskModeStmtMigrate     = "STMT_MIGRATE"
+	TaskModeSqlMigrate      = "SQL_MIGRATE"
+	TaskModeIncrMigrate     = "INCR_MIGRATE"
+	TaskModeCSVMigrate      = "CSV_MIGRATE"
 
 	TaskModeDataCompare   = "DATA_COMPARE"
 	TaskModeStructCompare = "STRUCT_COMPARE"

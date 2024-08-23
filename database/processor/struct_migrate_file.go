@@ -83,11 +83,10 @@ func (s *StructMigrateFile) SyncStructFile() error {
 		sqlInComp strings.Builder
 	)
 	// schema
-	migrateSchema, err := model.GetIStructMigrateTaskRW().GetStructMigrateTask(s.Ctx, &task.StructMigrateTask{
+	migrateSchema, err := model.GetISchemaMigrateTaskRW().GetSchemaMigrateTaskTable(s.Ctx, &task.SchemaMigrateTask{
 		TaskName:    s.TaskName,
 		SchemaNameS: s.SchemaNameS,
 		TaskStatus:  constant.TaskDatabaseStatusSuccess,
-		Category:    constant.DatabaseStructMigrateSqlSchemaCategory,
 	})
 	if err != nil {
 		return err
@@ -114,7 +113,6 @@ func (s *StructMigrateFile) SyncStructFile() error {
 		TaskName:    s.TaskName,
 		SchemaNameS: s.SchemaNameS,
 		TaskStatus:  constant.TaskDatabaseStatusSuccess,
-		Category:    constant.DatabaseStructMigrateSqlTableCategory,
 	})
 	if err != nil {
 		return err
@@ -153,14 +151,16 @@ func (s *StructMigrateFile) SyncStructFile() error {
 		tableRows = append(tableRows, clusteredTables...)
 		tableRows = append(tableRows, materializedViews...)
 
-		sqlInComp.WriteString("/*\n")
-		sqlInComp.WriteString(" database table maybe has incompatibility, will convert to normal table, if need, please manual process\n")
-		tw := table.NewWriter()
-		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"#", "TABLE TYPE", sourceDBType, targetDBType, "SUGGEST"})
-		tw.AppendRows(tableRows)
-		sqlInComp.WriteString(tw.Render() + "\n")
-		sqlInComp.WriteString("*/\n\n")
+		if len(tableRows) > 0 {
+			sqlInComp.WriteString("/*\n")
+			sqlInComp.WriteString(" database table maybe has incompatibility, will convert to normal table, if need, please manual process\n")
+			tw := table.NewWriter()
+			tw.SetStyle(table.StyleLight)
+			tw.AppendHeader(table.Row{"#", "TABLE TYPE", sourceDBType, targetDBType, "SUGGEST"})
+			tw.AppendRows(tableRows)
+			sqlInComp.WriteString(tw.Render() + "\n")
+			sqlInComp.WriteString("*/\n\n")
+		}
 	default:
 		return fmt.Errorf("current taskflow [%s] isn't support, please contact author or reselect", s.TaskFlow)
 	}
@@ -228,11 +228,10 @@ func (s *StructMigrateFile) SyncStructFile() error {
 
 func (s *StructMigrateFile) SyncSequenceFile() error {
 	// sequence
-	migrateTables, err := model.GetIStructMigrateTaskRW().GetStructMigrateTask(s.Ctx, &task.StructMigrateTask{
+	migrateTables, err := model.GetISequenceMigrateTaskRW().GetSequenceMigrateTask(s.Ctx, &task.SequenceMigrateTask{
 		TaskName:    s.TaskName,
 		SchemaNameS: s.SchemaNameS,
 		TaskStatus:  constant.TaskDatabaseStatusSuccess,
-		Category:    constant.DatabaseStructMigrateSqlSequenceCategory,
 	})
 	if err != nil {
 		return err
@@ -243,23 +242,20 @@ func (s *StructMigrateFile) SyncSequenceFile() error {
 		seqIncompCreates []string
 	)
 	for _, t := range migrateTables {
-		if !strings.EqualFold(t.TargetSqlDigest, "") {
+		if strings.EqualFold(t.IsCompatible, constant.DatabaseMigrateSequenceCompatible) {
 			targetSqls, err := stringutil.Decrypt(t.TargetSqlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
 				return err
 			}
 			seqCreates = append(seqCreates, targetSqls)
-		}
-
-		// incompatible
-		if !strings.EqualFold(t.IncompSqlDigest, "") {
-			incompSqls, err := stringutil.Decrypt(t.IncompSqlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
+		} else {
+			// incompatible
+			incompSqls, err := stringutil.Decrypt(t.TargetSqlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
 			if err != nil {
 				return err
 			}
 			seqIncompCreates = append(seqIncompCreates, incompSqls)
 		}
-
 	}
 
 	if len(seqCreates) > 0 {
@@ -321,7 +317,7 @@ func (s *StructMigrateFile) writeStructIncompatibleFile(str string) (int, error)
 }
 
 func (s *StructMigrateFile) initOutputCompatibleFile() error {
-	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("struct_migrate_compatible_%s.sql", s.SchemaNameS)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	outCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("struct_migrate_compatible_%s.sql", s.TaskName)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
@@ -331,7 +327,7 @@ func (s *StructMigrateFile) initOutputCompatibleFile() error {
 }
 
 func (s *StructMigrateFile) initOutputInCompatibleFile() error {
-	outInCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("struct_migrate_incompatible_%s.sql", s.SchemaNameS)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
+	outInCompFile, err := os.OpenFile(filepath.Join(s.OutputDir, fmt.Sprintf("struct_migrate_incompatible_%s.sql", s.TaskName)), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}

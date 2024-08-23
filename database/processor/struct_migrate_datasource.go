@@ -103,7 +103,8 @@ func (d *Datasource) GetTableCharsetCollation() (string, string, error) {
 }
 
 func (d *Datasource) GetTableOriginStruct() (string, error) {
-	return d.DatabaseS.GetDatabaseTableOriginStruct(d.SchemaNameS, d.TableNameS, d.TableTypeS)
+	// Only Table Type DDL
+	return d.DatabaseS.GetDatabaseTableOriginStruct(d.SchemaNameS, d.TableNameS, "TABLE")
 }
 
 func (d *Datasource) String() string {

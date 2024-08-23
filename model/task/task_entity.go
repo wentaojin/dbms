@@ -77,6 +77,16 @@ type StructMigrateSummary struct {
 	*common.Entity
 }
 
+type SchemaMigrateTask struct {
+	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_task_schema_name;index:idx_task_name;comment:task name" json:"taskName"`
+	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_task_schema_name;comment:source schema name" json:"schemaNameS"`
+	SchemaNameT     string  `gorm:"type:varchar(60);comment:target schema name" json:"schemaNameT"`
+	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
+	TargetSqlDigest string  `gorm:"type:longtext;comment:target sql digest" json:"targetSqlDigest"`
+	Duration        float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+}
+
 type StructMigrateTask struct {
 	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
 	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_table_name;index:idx_task_name;comment:task name" json:"taskName"`
@@ -91,7 +101,21 @@ type StructMigrateTask struct {
 	TargetSqlDigest string  `gorm:"type:longtext;comment:target sql digest" json:"targetSqlDigest"`
 	TableAttrOption string  `gorm:"type:varchar(300);comment:source column datatype" json:"tableAttrOption"`
 	ErrorDetail     string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
-	Category        string  `gorm:"type:varchar(300);comment:create sql category" json:"category"`
+	Duration        float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	*common.Entity
+}
+
+type SequenceMigrateTask struct {
+	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_sequence_name;index:idx_task_name;comment:task name" json:"taskName"`
+	SchemaNameS     string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_sequence_name;comment:source schema name" json:"schemaNameS"`
+	SequenceNameS   string  `gorm:"type:varchar(60);uniqueIndex:uniq_schema_sequence_name;comment:source sequence name" json:"tableNameS"`
+	SchemaNameT     string  `gorm:"type:varchar(60);comment:target schema name" json:"schemaNameT"`
+	TaskStatus      string  `gorm:"type:varchar(50);not null;comment:task run status" json:"taskStatus"`
+	SourceSqlDigest string  `gorm:"type:longtext;comment:origin sql digest" json:"sourceSqlDigest"`
+	TargetSqlDigest string  `gorm:"type:longtext;comment:target sql digest" json:"targetSqlDigest"`
+	IsCompatible    string  `gorm:"type:varchar(1);comment:sql digest compatible" json:"isCompatible"`
+	ErrorDetail     string  `gorm:"type:longtext;comment:error detail" json:"errorDetail"`
 	Duration        float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
 	*common.Entity
 }

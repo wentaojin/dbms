@@ -121,6 +121,10 @@ func IStructMigrateAttributes(t IStructMigrateAttributesReader) (*StructMigrateA
 	if err != nil {
 		return &StructMigrateAttributes{}, err
 	}
+	originDDL, err := t.GetTableOriginStruct()
+	if err != nil {
+		return &StructMigrateAttributes{}, err
+	}
 
 	return &StructMigrateAttributes{
 		TableCharset:   charset,
@@ -134,6 +138,7 @@ func IStructMigrateAttributes(t IStructMigrateAttributesReader) (*StructMigrateA
 		TableComment:   tableComment,
 		TableColumns:   tableColumns,
 		ColumnComment:  columnComment,
+		OriginStruct:   originDDL,
 	}, nil
 }
 

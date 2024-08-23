@@ -63,11 +63,21 @@ func (dmt *DataCompareTask) Init() error {
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 
 	if !dmt.TaskParams.EnableCheckpoint {
-		err := model.GetIDataCompareSummaryRW().DeleteDataCompareSummaryName(dmt.Ctx, []string{dmt.Task.TaskName})
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(dmt.Ctx, []string{dmt.Task.TaskName})
+		err := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+			err := model.GetIDataCompareSummaryRW().DeleteDataCompareSummaryName(txnCtx, []string{dmt.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(txnCtx, []string{dmt.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataCompareResultRW().DeleteDataCompareResultName(txnCtx, []string{dmt.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
@@ -153,6 +163,14 @@ func (dmt *DataCompareTask) Init() error {
 				if err != nil {
 					return err
 				}
+				err = model.GetIDataCompareResultRW().DeleteDataCompareResultTable(txnCtx, &task.DataCompareResult{
+					TaskName:    s.TaskName,
+					SchemaNameS: s.SchemaNameS,
+					TableNameS:  s.TableNameS,
+				})
+				if err != nil {
+					return err
+				}
 				return nil
 			})
 			if err != nil {
@@ -218,7 +236,7 @@ func (dmt *DataCompareTask) Init() error {
 	dbTypeT := dbTypeSli[1]
 
 	logger.Info("data compare task init",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow), zap.Any("tables", databaseTaskTables))
 
 	g, gCtx := errgroup.WithContext(dmt.Ctx)
 	g.SetLimit(int(dmt.TaskParams.TableThread))
@@ -788,7 +806,6 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 				}
 				totalChunks = totalChunks + len(statsRanges)
 			}
-			return nil
 		}
 
 		if totalChunks == 0 {
@@ -818,6 +835,9 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		return nil
 	})
 
+	if err = g.Wait(); err != nil {
+		return err
+	}
 	dmt.WaiterC <- &WaitingRecs{
 		TaskName:    dmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
