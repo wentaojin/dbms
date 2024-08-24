@@ -87,17 +87,17 @@ func CheckClusterDirOverlap(entries []DirEntry) error {
 			if ignore(d1, d2) {
 				continue
 			}
-
-			if stringutil.IsSubDir(d1.dir, d2.dir) || stringutil.IsSubDir(d2.dir, d1.dir) {
+			// exclude the different instance overlap
+			if (strings.EqualFold(d1.instance.InstanceManageHost(), d2.instance.InstanceManageHost()) && stringutil.IsSubDir(d1.dir, d2.dir)) || (strings.EqualFold(d1.instance.InstanceManageHost(), d2.instance.InstanceManageHost()) && stringutil.IsSubDir(d2.dir, d1.dir)) {
 				properties := map[string]string{
 					"ThisDirKind":   d1.dirKind,
 					"ThisDir":       d1.dir,
 					"ThisComponent": d1.instance.ComponentName(),
-					"ThisHost":      d1.instance.InstanceHost(),
+					"ThisHost":      d1.instance.InstanceManageHost(),
 					"ThatDirKind":   d2.dirKind,
 					"ThatDir":       d2.dir,
 					"ThatComponent": d2.instance.ComponentName(),
-					"ThatHost":      d2.instance.InstanceHost(),
+					"ThatHost":      d2.instance.InstanceManageHost(),
 				}
 				zap.L().Info("Meet deploy directory overlap", zap.Any("info", properties))
 				return fmt.Errorf(`deploy directory overlaps to another instance

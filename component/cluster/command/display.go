@@ -100,7 +100,7 @@ func (a *AppDisplay) Display(dOpt *manager.DisplayOption, gOpt *operator.Options
 
 	mg.SetMetadata(metadata)
 
-	clusterInstInfos, err := mg.GetClusterTopology(dOpt, gOpt)
+	clusterInstInfos, workerTaskRefren, err := mg.GetClusterTopology(dOpt, gOpt)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,13 @@ func (a *AppDisplay) Display(dOpt *manager.DisplayOption, gOpt *operator.Options
 		rowHead = append(rowHead, "Numa Node", "Numa Cores")
 	}
 
-	rowHead = append(rowHead, "Data Dir", "Deploy Dir")
+	rowHead = append(rowHead, "Task Name")
+
+	if dOpt.ShowDataDir {
+		rowHead = append(rowHead, "Data Dir")
+	}
+
+	rowHead = append(rowHead, "Deploy Dir")
 	clusterTable = append(clusterTable, rowHead)
 
 	masterActive := make([]string, 0)
@@ -183,7 +189,16 @@ func (a *AppDisplay) Display(dOpt *manager.DisplayOption, gOpt *operator.Options
 			row = append(row, v.NumaNode, v.NumaCores)
 		}
 
-		row = append(row, v.DataDir, v.DeployDir)
+		if val, ok := workerTaskRefren[v.ID]; ok {
+			row = append(row, val)
+		} else {
+			row = append(row, "-")
+		}
+
+		if dOpt.ShowDataDir {
+			row = append(row, v.DataDir)
+		}
+		row = append(row, v.DeployDir)
 		clusterTable = append(clusterTable, row)
 
 		if v.ComponentName != cluster.ComponentDBMSMaster {

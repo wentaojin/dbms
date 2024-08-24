@@ -18,6 +18,9 @@ package manager
 import (
 	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/etcdutil"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"math"
 	"sort"
 	"strings"
@@ -39,6 +42,7 @@ type DisplayOption struct {
 	ShowUptime     bool
 	ShowManageHost bool
 	ShowNuma       bool
+	ShowDataDir    bool
 }
 
 // InstInfo represents an instance info
@@ -74,7 +78,9 @@ type JSONOutput struct {
 	InstanceInfos   []InstInfo      `json:"instances,omitempty"`
 }
 
-func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Options) ([]InstInfo, error) {
+func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Options) ([]InstInfo, map[string]string, error) {
+	workerTaskRefrence := make(map[string]string)
+
 	ctx := ctxt.New(
 		context.Background(),
 		opt.Concurrency,
@@ -85,12 +91,12 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 
 	err := SetSSHKeySet(ctx, c.Path(dopt.ClusterName, "ssh", "id_rsa"), c.Path(dopt.ClusterName, "ssh", "id_rsa.pub"))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = SetClusterSSH(ctx, topo, c.Meta.GetUser(), opt.SSHTimeout, opt.SSHType, executor.SSHType(topo.GlobalOptions.SSHType))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	filterRoles := stringutil.NewStringSet(opt.Roles...)
@@ -103,6 +109,21 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 			host = master.ManageHost
 		}
 		masterList = append(masterList, stringutil.JoinHostPort(host, master.Port))
+	}
+
+	client, err := etcdutil.CreateClient(context.TODO(), masterList, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	keys, err := etcdutil.GetKey(client, constant.DefaultInstanceTaskReferencesPrefixKey, clientv3.WithPrefix())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, v := range keys.Kvs {
+		keySli := stringutil.StringSplit(stringutil.BytesToString(v.Key), constant.StringSeparatorSlash)
+		workerTaskRefrence[stringutil.BytesToString(v.Value)] = keySli[len(keySli)-1]
 	}
 
 	masterActive := make([]string, 0)
@@ -219,7 +240,7 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 		return lhs.Ports < rhs.Ports
 	})
 
-	return clusterInstInfos, nil
+	return clusterInstInfos, workerTaskRefrence, nil
 
 }
 

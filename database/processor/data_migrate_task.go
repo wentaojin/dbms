@@ -225,6 +225,8 @@ func (cmt *DataMigrateTask) Init() error {
 						TaskName:    s.TaskName,
 						SchemaNameS: s.SchemaNameS,
 						TableNameS:  s.TableNameS,
+						SchemaNameT: s.SchemaNameT,
+						TableNameT:  s.TableNameT,
 					}:
 						logger.Info("data migrate task resume send",
 							zap.String("task_name", cmt.Task.TaskName),
@@ -346,6 +348,8 @@ func (cmt *DataMigrateTask) Init() error {
 						TaskName:    s.TaskName,
 						SchemaNameS: s.SchemaNameS,
 						TableNameS:  s.TableNameS,
+						SchemaNameT: s.SchemaNameT,
+						TableNameT:  s.TableNameT,
 					}:
 						logger.Info("data migrate task wait send",
 							zap.String("task_name", cmt.Task.TaskName),
@@ -1037,6 +1041,8 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		TaskName:    cmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
 		TableNameS:  attsRule.TableNameS,
+		SchemaNameT: attsRule.SchemaNameT,
+		TableNameT:  attsRule.TableNameT,
 	}:
 		logger.Info("data migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
@@ -1145,6 +1151,8 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 		TaskName:    cmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
 		TableNameS:  attsRule.TableNameS,
+		SchemaNameT: attsRule.SchemaNameT,
+		TableNameT:  attsRule.TableNameT,
 	}:
 		logger.Info("data migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
@@ -1287,6 +1295,8 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 		TaskName:    cmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
 		TableNameS:  attsRule.TableNameS,
+		SchemaNameT: attsRule.SchemaNameT,
+		TableNameT:  attsRule.TableNameT,
 	}:
 		logger.Info("data migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
