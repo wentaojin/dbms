@@ -187,7 +187,7 @@ func (st *StructMigrateTask) Start() error {
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow))
-	err = database.IDatabaseRun(st.Ctx, &processor.StructMigrateTask{
+	err = database.IDatabaseRun(&processor.StructMigrateTask{
 		Ctx:                      st.Ctx,
 		Task:                     st.Task,
 		SchemaNameS:              st.SchemaNameS,

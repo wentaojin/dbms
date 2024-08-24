@@ -67,8 +67,8 @@ type IDatabaseRunner interface {
 	Last() error
 }
 
-func IDatabaseRun(ctx context.Context, i IDatabaseRunner) error {
-	g, ctx := errgroup.WithContext(ctx)
+func IDatabaseRun(i IDatabaseRunner) error {
+	g := &errgroup.Group{}
 	g.Go(func() error {
 		err := i.Init()
 		if err != nil {

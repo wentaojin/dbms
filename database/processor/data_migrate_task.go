@@ -59,6 +59,7 @@ type DataMigrateTask struct {
 	WriteThread          uint64
 	CallTimeout          uint64
 	SqlThreadS           uint64
+	GlobalSnapshotS      string
 
 	StmtParams *pb.StatementMigrateParam
 	CsvParams  *pb.CsvMigrateParam
@@ -107,7 +108,6 @@ func (cmt *DataMigrateTask) Init() error {
 		includeTables      []string
 		excludeTables      []string
 		databaseTaskTables []string // task tables
-		globalScn          string
 	)
 	databaseTableTypeMap := make(map[string]string)
 	databaseTaskTablesMap := make(map[string]struct{})
@@ -186,12 +186,6 @@ func (cmt *DataMigrateTask) Init() error {
 	if err != nil {
 		return err
 	}
-
-	globalScnS, err := cmt.DatabaseS.GetDatabaseConsistentPos()
-	if err != nil {
-		return err
-	}
-	globalScn = strconv.FormatUint(globalScnS, 10)
 
 	// database tables
 	// init database table
@@ -299,12 +293,7 @@ func (cmt *DataMigrateTask) Init() error {
 
 					var csvFile string
 					if strings.EqualFold(cmt.Task.TaskMode, constant.TaskModeCSVMigrate) {
-						csvDir := filepath.Join(cmt.CsvParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS, uuid.NewString())
-						err = stringutil.PathNotExistOrCreate(csvDir)
-						if err != nil {
-							return err
-						}
-						csvFile = filepath.Join(csvDir, stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`))
+						csvFile = filepath.Join(cmt.CsvParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS, stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`))
 					}
 					migrateTask := &task.DataMigrateTask{
 						TaskName:        cmt.Task.TaskName,
@@ -313,7 +302,7 @@ func (cmt *DataMigrateTask) Init() error {
 						SchemaNameT:     attsRule.SchemaNameT,
 						TableNameT:      attsRule.TableNameT,
 						TableTypeS:      attsRule.TableTypeS,
-						SnapshotPointS:  globalScn,
+						SnapshotPointS:  cmt.GlobalSnapshotS,
 						ColumnDetailO:   attsRule.ColumnDetailO,
 						ColumnDetailS:   attsRule.ColumnDetailS,
 						ColumnDetailT:   attsRule.ColumnDetailT,
@@ -336,7 +325,7 @@ func (cmt *DataMigrateTask) Init() error {
 							TableNameS:     attsRule.TableNameS,
 							SchemaNameT:    attsRule.SchemaNameT,
 							TableNameT:     attsRule.TableNameT,
-							SnapshotPointS: globalScn,
+							SnapshotPointS: cmt.GlobalSnapshotS,
 							TableRowsS:     tableRows,
 							TableSizeS:     tableSize,
 							InitFlag:       constant.TaskInitStatusFinished,
@@ -390,7 +379,7 @@ func (cmt *DataMigrateTask) Init() error {
 					err = cmt.ProcessStatisticsScan(
 						gCtx,
 						dbTypeS,
-						globalScn,
+						cmt.GlobalSnapshotS,
 						tableRows,
 						tableSize,
 						attsRule)
@@ -402,7 +391,7 @@ func (cmt *DataMigrateTask) Init() error {
 
 				err = cmt.ProcessChunkScan(
 					gCtx,
-					globalScn,
+					cmt.GlobalSnapshotS,
 					tableRows,
 					tableSize,
 					attsRule)
@@ -422,7 +411,7 @@ func (cmt *DataMigrateTask) Init() error {
 	}
 
 	if err = g.Wait(); err != nil {
-		logger.Error("data migrate task init table failed",
+		logger.Error("data migrate task init failed",
 			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", cmt.SchemaNameS),
 			zap.Error(err))
@@ -538,10 +527,6 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		sqlTSmt *sql.Stmt
 	)
 	if strings.EqualFold(cmt.Task.TaskMode, constant.TaskModeCSVMigrate) {
-		err = stringutil.PathNotExistOrCreate(filepath.Join(cmt.CsvParams.OutputDir, s.SchemaNameS, s.TableNameS))
-		if err != nil {
-			return err
-		}
 		statfs, err := stringutil.GetDiskUsage(cmt.CsvParams.OutputDir)
 		if err != nil {
 			return err
@@ -581,6 +566,11 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 			}
 			// skip
 			return nil
+		}
+
+		err = stringutil.PathNotExistOrCreate(filepath.Join(cmt.CsvParams.OutputDir, s.SchemaNameS, s.TableNameS))
+		if err != nil {
+			return err
 		}
 
 		logger.Info("data migrate task process table",
@@ -941,7 +931,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		return err
 	}
 	if h == nil {
-		err = cmt.ProcessTableScan(ctx, attsRule.SchemaNameS, attsRule.TableNameS, globalScn, tableRows, tableSize, attsRule)
+		err = cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 		if err != nil {
 			return err
 		}
@@ -1014,7 +1004,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		}
 
 		if totalChunks == 0 {
-			err := cmt.ProcessTableScan(ctx, attsRule.SchemaNameS, attsRule.TableNameS, globalScn, tableRows, tableSize, attsRule)
+			err := cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 			if err != nil {
 				return err
 			}
@@ -1076,7 +1066,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 	return nil
 }
 
-func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, schemaNameS, tableNameS, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
+func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
 	var whereRange string
 	switch {
 	case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
@@ -1103,12 +1093,7 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, schemaNameS, t
 
 	var csvFile string
 	if strings.EqualFold(cmt.Task.TaskMode, constant.TaskModeCSVMigrate) {
-		csvDir := filepath.Join(cmt.CsvParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS, uuid.NewString())
-		err = stringutil.PathNotExistOrCreate(csvDir)
-		if err != nil {
-			return err
-		}
-		csvFile = filepath.Join(csvDir, stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`))
+		csvFile = filepath.Join(cmt.CsvParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS, stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`))
 	}
 	migrateTask := &task.DataMigrateTask{
 		TaskName:        cmt.Task.TaskName,
@@ -1268,7 +1253,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 		}
 
 		if totalChunkRecs == 0 {
-			err := cmt.ProcessTableScan(ctx, attsRule.SchemaNameS, attsRule.TableNameS, globalScn, tableRows, tableSize, attsRule)
+			err := cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 			if err != nil {
 				return err
 			}

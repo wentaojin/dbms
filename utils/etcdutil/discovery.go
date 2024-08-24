@@ -168,6 +168,18 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
+	key, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, taskName))
+	if err != nil {
+		return "", err
+	}
+	resp := len(key.Kvs)
+	if resp > 1 {
+		return "", fmt.Errorf("the current key [%s] has multiple values, the number exceeds 1, which does not meet expectations, please contac author or retry", stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, taskName))
+	} else if resp == 1 {
+		// return worker addr
+		return stringutil.BytesToString(key.Kvs[0].Value), nil
+	}
+
 	// the machine worker statistics, exclude the master role
 	// sort according to the busyness of the machine workers. If the busyness is the same, the original worker registration order will be randomized.
 	var leastBusyMachine string

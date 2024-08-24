@@ -93,7 +93,7 @@ func (stm *StmtMigrateTask) Start() error {
 		return err
 	}
 
-	err = database.IDatabaseRun(stm.Ctx, &processor.DataMigrateTask{
+	err = database.IDatabaseRun(&processor.DataMigrateTask{
 		Ctx:                  stm.Ctx,
 		Task:                 stm.Task,
 		DBRoleS:              dbRoles,

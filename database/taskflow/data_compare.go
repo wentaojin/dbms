@@ -98,7 +98,7 @@ func (dmt *DataCompareTask) Start() error {
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", dmt.Task.TaskName, dmt.Task.TaskMode, dmt.Task.TaskFlow, schemaRoute.SchemaNameS)
 	}
 
-	err = database.IDatabaseRun(dmt.Ctx, &processor.DataCompareTask{
+	err = database.IDatabaseRun(&processor.DataCompareTask{
 		Ctx:         dmt.Ctx,
 		Task:        dmt.Task,
 		DatabaseS:   databaseS,

@@ -18,7 +18,7 @@ case-field-rule-t = "2"
 [schema-route-rule]
 schema-name-s = "SCOTT"
 schema-name-t = "uccis"
-include-table-s =  ["T1","T6"]
+include-table-s =  ["*"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
@@ -70,7 +70,7 @@ chunk-size = 100000
 # 目录格式：/data/${target_dbname}/${table_name}
 output-dir = "/users/marvin/gostore/dbms/data/csv"
 # 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上游表数据，可动态变更
-sql-thread-s = 2
+sql-thread-s = 6
 # 指定分片 chunk sql 查询 hint
 sql-hint-s = "/*+ PARALLEL(8) */"
 # calltimeout，单位：秒

@@ -384,9 +384,12 @@ func (s *Server) OperateStart(ctx context.Context, t *task.Task) {
 			}
 			_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
 			if err != nil {
-				panic(fmt.Errorf("the worker task [%v] success, but the worker status wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
+				panic(fmt.Errorf("the worker task [%v] success, but the worker instance wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
 			}
-
+			_, err = etcdutil.DeleteKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName))
+			if err != nil {
+				panic(fmt.Errorf("the worker task [%v] success, but the worker refrenece delete [%v] value failed: [%v]", t.TaskName, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName), err))
+			}
 			s.cancelFunc()
 		}
 	}
@@ -448,7 +451,6 @@ func (s *Server) OperateStop(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return err
 	}
-
 	logger.Error("the worker task stopped",
 		zap.String("task_name", t.TaskName),
 		zap.String("task_mode", t.TaskMode),
@@ -514,7 +516,10 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return err
 	}
-
+	_, err = etcdutil.DeleteKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName))
+	if err != nil {
+		return err
+	}
 	err = model.GetITaskLogRW().DeleteLog(ctx, []string{t.TaskName})
 	if err != nil {
 		return err

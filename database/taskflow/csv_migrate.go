@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/wentaojin/dbms/database/processor"
+	"strconv"
 	"time"
 
 	"github.com/wentaojin/dbms/database"
@@ -87,8 +88,12 @@ func (cmt *CsvMigrateTask) Start() error {
 	if err != nil {
 		return err
 	}
+	globalScnS, err := databaseS.GetDatabaseConsistentPos()
+	if err != nil {
+		return err
+	}
 
-	err = database.IDatabaseRun(cmt.Ctx, &processor.DataMigrateTask{
+	err = database.IDatabaseRun(&processor.DataMigrateTask{
 		Ctx:                  cmt.Ctx,
 		Task:                 cmt.Task,
 		DBRoleS:              dbRoles,
@@ -107,6 +112,7 @@ func (cmt *CsvMigrateTask) Start() error {
 		WriteThread:          cmt.TaskParams.WriteThread,
 		CallTimeout:          cmt.TaskParams.CallTimeout,
 		SqlThreadS:           cmt.TaskParams.SqlThreadS,
+		GlobalSnapshotS:      strconv.FormatUint(globalScnS, 10),
 		CsvParams:            cmt.TaskParams,
 		WaiterC:              make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 		ResumeC:              make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),

@@ -33,6 +33,7 @@ const (
 
 // Instance
 const (
+	DefaultInstanceTaskReferencesPrefixKey  = "/dbms-instance/reference/"
 	DefaultInstanceServiceRegisterPrefixKey = "/dbms-instance/register/"
 	DefaultInstanceBoundState               = "BOUND"
 	DefaultInstanceFreeState                = "FREE"

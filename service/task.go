@@ -85,6 +85,13 @@ func StartTask(ctx context.Context, cli *clientv3.Client, discoveries *etcdutil.
 			Message: err.Error(),
 		}}, err
 	}
+	_, err = etcdutil.PutKey(cli, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, req.TaskName), workerAddr)
+	if err != nil {
+		return &pb.OperateTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
 	logger.Info("the worker task start",
 		zap.String("task", req.TaskName),
 		zap.String("role", constant.DefaultInstanceRoleWorker),

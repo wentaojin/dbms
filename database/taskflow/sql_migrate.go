@@ -91,7 +91,7 @@ func (smt *SqlMigrateTask) Start() error {
 		return err
 	}
 
-	err = database.IDatabaseRun(smt.Ctx, &processor.SqlMigrateTask{
+	err = database.IDatabaseRun(&processor.SqlMigrateTask{
 		Ctx:        smt.Ctx,
 		Task:       smt.Task,
 		DatabaseS:  databaseS,

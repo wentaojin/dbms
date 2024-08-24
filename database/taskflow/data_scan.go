@@ -82,7 +82,7 @@ func (dst *DataScanTask) Start() error {
 	if err != nil {
 		return err
 	}
-	err = database.IDatabaseRun(dst.Ctx, &processor.DataScanTask{
+	err = database.IDatabaseRun(&processor.DataScanTask{
 		Ctx:         dst.Ctx,
 		Task:        dst.Task,
 		DatabaseS:   databaseS,
