@@ -113,7 +113,7 @@ func (dmt *DataCompareTask) Start() error {
 	if err != nil {
 		return err
 	}
-	
+
 	logger.Info("data compare task",
 		zap.String("task_name", dmt.Task.TaskName),
 		zap.String("task_mode", dmt.Task.TaskMode),

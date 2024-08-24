@@ -168,16 +168,36 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
+	jsonMachines, err := stringutil.MarshalJSON(d.machines)
+	if err != nil {
+		return "", fmt.Errorf("the discovery machine assign marshal json string failed: %v", err)
+	}
+
 	key, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, taskName))
 	if err != nil {
 		return "", err
 	}
 	resp := len(key.Kvs)
 	if resp > 1 {
-		return "", fmt.Errorf("the current key [%s] has multiple values, the number exceeds 1, which does not meet expectations, please contac author or retry", stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, taskName))
+		return "", fmt.Errorf("the current task [%s] key [%s] has multiple values, the number exceeds 1, which does not meet expectations, please contac author or retry", taskName, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, taskName))
 	} else if resp == 1 {
 		// return worker addr
-		return stringutil.BytesToString(key.Kvs[0].Value), nil
+		addr := stringutil.BytesToString(key.Kvs[0].Value)
+		logger.Info("the worker assign task", zap.String("machine", jsonMachines), zap.String("worker", addr))
+		return addr, nil
+	}
+
+	keys, err := GetKey(d.etcdClient, constant.DefaultInstanceTaskReferencesPrefixKey, clientv3.WithPrefix())
+	if err != nil {
+		return "", err
+	}
+
+	workerTaskM := make(map[string]string)
+
+	for _, v := range keys.Kvs {
+		keySli := stringutil.StringSplit(stringutil.BytesToString(v.Key), constant.StringSeparatorSlash)
+		taskW := keySli[len(keySli)-1]
+		workerTaskM[stringutil.BytesToString(v.Value)] = taskW
 	}
 
 	// the machine worker statistics, exclude the master role
@@ -192,10 +212,28 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 			if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
 				switch {
 				case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
+					if t, ok := workerTaskM[w.Addr]; ok {
+						if t == taskName {
+							return w.Addr, nil
+						}
+						return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+					}
 					return w.Addr, nil
 				case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, taskName):
+					if t, ok := workerTaskM[w.Addr]; ok {
+						if t == taskName {
+							return w.Addr, nil
+						}
+						return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+					}
 					return w.Addr, nil
 				case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, taskName):
+					if t, ok := workerTaskM[w.Addr]; ok {
+						if t == taskName {
+							return w.Addr, nil
+						}
+						return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+					}
 					return w.Addr, nil
 				case strings.EqualFold(w.State, constant.DefaultInstanceFreeState) && strings.EqualFold(w.TaskName, ""):
 					usableWorkers++
@@ -229,10 +267,28 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 		if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
 			switch {
 			case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
+				if t, ok := workerTaskM[w.Addr]; ok {
+					if t == taskName {
+						return w.Addr, nil
+					}
+					return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+				}
 				return w.Addr, nil
 			case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, taskName):
+				if t, ok := workerTaskM[w.Addr]; ok {
+					if t == taskName {
+						return w.Addr, nil
+					}
+					return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+				}
 				return w.Addr, nil
 			case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, taskName):
+				if t, ok := workerTaskM[w.Addr]; ok {
+					if t == taskName {
+						return w.Addr, nil
+					}
+					return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+				}
 				return w.Addr, nil
 			case strings.EqualFold(w.State, constant.DefaultInstanceFreeState) && strings.EqualFold(w.TaskName, ""):
 				freeWorkers = append(freeWorkers, w.Addr)
@@ -257,12 +313,13 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 		return "", err
 	}
 
-	jsonMachines, err := stringutil.MarshalJSON(d.machines)
-	if err != nil {
-		panic(fmt.Sprintf("the discovery machine assign marshal json string failed: %v", err))
+	if t, ok := workerTaskM[elem]; ok {
+		if t == taskName {
+			return elem, nil
+		}
+		return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", elem, t, taskName)
 	}
 	logger.Info("the worker assign task", zap.String("machine", jsonMachines), zap.String("worker", elem))
-
 	return elem, nil
 }
 
