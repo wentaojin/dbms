@@ -527,6 +527,10 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		sqlTSmt *sql.Stmt
 	)
 	if strings.EqualFold(cmt.Task.TaskMode, constant.TaskModeCSVMigrate) {
+		err = stringutil.PathNotExistOrCreate(filepath.Join(cmt.CsvParams.OutputDir, s.SchemaNameS, s.TableNameS))
+		if err != nil {
+			return err
+		}
 		statfs, err := stringutil.GetDiskUsage(cmt.CsvParams.OutputDir)
 		if err != nil {
 			return err
@@ -566,11 +570,6 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 			}
 			// skip
 			return nil
-		}
-
-		err = stringutil.PathNotExistOrCreate(filepath.Join(cmt.CsvParams.OutputDir, s.SchemaNameS, s.TableNameS))
-		if err != nil {
-			return err
 		}
 
 		logger.Info("data migrate task process table",
@@ -969,7 +968,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		Cons:        h,
 		RangeC:      rangeC,
 	}
-	g, ctx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		defer close(rangeC)
@@ -995,7 +994,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 			}
 
 			if len(statsRanges) > 0 {
-				err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(ctx, statsRanges, int(cmt.WriteThread), int(cmt.BatchSize))
+				err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(gCtx, statsRanges, int(cmt.WriteThread), int(cmt.BatchSize))
 				if err != nil {
 					return err
 				}
@@ -1010,7 +1009,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 			}
 			return nil
 		}
-		_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{
+		_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
 			TaskName:       cmt.Task.TaskName,
 			SchemaNameS:    attsRule.SchemaNameS,
 			TableNameS:     attsRule.TableNameS,
@@ -1177,7 +1176,7 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
 	chunkCh := make(chan []map[string]string, constant.DefaultMigrateTaskQueueSize)
 
-	gC := errgroup.Group{}
+	gC, gCtx := errgroup.WithContext(ctx)
 
 	gC.Go(func() error {
 		defer close(chunkCh)
@@ -1244,7 +1243,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 
 			chunkRecs := len(metas)
 			if chunkRecs > 0 {
-				err := model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(ctx, metas, int(cmt.WriteThread), int(cmt.BatchSize))
+				err := model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(gCtx, metas, int(cmt.WriteThread), int(cmt.BatchSize))
 				if err != nil {
 					return err
 				}
@@ -1253,14 +1252,14 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 		}
 
 		if totalChunkRecs == 0 {
-			err := cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
+			err := cmt.ProcessTableScan(gCtx, globalScn, tableRows, tableSize, attsRule)
 			if err != nil {
 				return err
 			}
 			return nil
 		}
 
-		_, err := model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(ctx, &task.DataMigrateSummary{
+		_, err := model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
 			TaskName:       cmt.Task.TaskName,
 			SchemaNameS:    attsRule.SchemaNameS,
 			TableNameS:     attsRule.TableNameS,

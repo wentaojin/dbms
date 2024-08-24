@@ -672,7 +672,7 @@ func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsv
 			NullValue:            *req.CsvMigrateParam.NullValue,
 			EscapeBackslash:      *req.CsvMigrateParam.EscapeBackslash,
 			ChunkSize:            *req.CsvMigrateParam.ChunkSize,
-			OutputDir:            *req.CsvMigrateParam.OutputDir,
+			OutputDir:            strings.TrimSpace(*req.CsvMigrateParam.OutputDir),
 			SqlThreadS:           *req.CsvMigrateParam.SqlThreadS,
 			SqlHintS:             *req.CsvMigrateParam.SqlHintS,
 			CallTimeout:          *req.CsvMigrateParam.CallTimeout,

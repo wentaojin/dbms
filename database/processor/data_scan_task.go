@@ -781,7 +781,7 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, glo
 		Cons:        h,
 		RangeC:      rangeC,
 	}
-	g, ctx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		defer close(rangeC)
@@ -800,7 +800,7 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, glo
 				return err
 			}
 			if len(statsRanges) > 0 {
-				err = model.GetIDataScanTaskRW().CreateInBatchDataScanTask(ctx, statsRanges, int(dst.TaskParams.WriteThread), int(dst.TaskParams.BatchSize))
+				err = model.GetIDataScanTaskRW().CreateInBatchDataScanTask(gCtx, statsRanges, int(dst.TaskParams.WriteThread), int(dst.TaskParams.BatchSize))
 				if err != nil {
 					return err
 				}
@@ -810,14 +810,14 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, glo
 		}
 
 		if totalChunks == 0 {
-			err := dst.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
+			err := dst.ProcessTableScan(gCtx, globalScn, tableRows, tableSize, attsRule)
 			if err != nil {
 				return err
 			}
 			return nil
 		}
 
-		_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(ctx, &task.DataScanSummary{
+		_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(gCtx, &task.DataScanSummary{
 			TaskName:       dst.Task.TaskName,
 			SchemaNameS:    attsRule.SchemaNameS,
 			TableNameS:     attsRule.TableNameS,
@@ -833,6 +833,10 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, glo
 		}
 		return nil
 	})
+
+	if err = g.Wait(); err != nil {
+		return err
+	}
 
 	select {
 	case dst.WaiterC <- &WaitingRecs{
@@ -954,7 +958,7 @@ func (dst *DataScanTask) ProcessTableScan(ctx context.Context, globalScn string,
 func (dst *DataScanTask) ProcessChunkScan(ctx context.Context, schemaNameS, tableNameS, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataScanAttributesRule) error {
 	chunkCh := make(chan []map[string]string, constant.DefaultMigrateTaskQueueSize)
 
-	gC := errgroup.Group{}
+	gC, gCtx := errgroup.WithContext(ctx)
 
 	gC.Go(func() error {
 		defer close(chunkCh)
@@ -1002,7 +1006,7 @@ func (dst *DataScanTask) ProcessChunkScan(ctx context.Context, schemaNameS, tabl
 
 			chunkRecs := len(metas)
 			if chunkRecs > 0 {
-				err := model.GetIDataScanTaskRW().CreateInBatchDataScanTask(ctx, metas, int(dst.TaskParams.WriteThread), int(dst.TaskParams.BatchSize))
+				err := model.GetIDataScanTaskRW().CreateInBatchDataScanTask(gCtx, metas, int(dst.TaskParams.WriteThread), int(dst.TaskParams.BatchSize))
 				if err != nil {
 					return err
 				}
@@ -1011,14 +1015,14 @@ func (dst *DataScanTask) ProcessChunkScan(ctx context.Context, schemaNameS, tabl
 		}
 
 		if totalChunkRecs == 0 {
-			err := dst.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
+			err := dst.ProcessTableScan(gCtx, globalScn, tableRows, tableSize, attsRule)
 			if err != nil {
 				return err
 			}
 			return nil
 		}
 
-		_, err := model.GetIDataScanSummaryRW().CreateDataScanSummary(ctx, &task.DataScanSummary{
+		_, err := model.GetIDataScanSummaryRW().CreateDataScanSummary(gCtx, &task.DataScanSummary{
 			TaskName:       dst.Task.TaskName,
 			SchemaNameS:    attsRule.SchemaNameS,
 			TableNameS:     attsRule.TableNameS,

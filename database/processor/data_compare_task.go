@@ -817,7 +817,7 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		Cons:        h,
 		RangeC:      rangeC,
 	}
-	g, ctx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		defer close(rangeC)
@@ -850,7 +850,7 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 				return err
 			}
 			if len(statsRanges) > 0 {
-				err = model.GetIDataCompareTaskRW().CreateInBatchDataCompareTask(ctx, statsRanges, int(dmt.TaskParams.WriteThread), int(dmt.TaskParams.BatchSize))
+				err = model.GetIDataCompareTaskRW().CreateInBatchDataCompareTask(gCtx, statsRanges, int(dmt.TaskParams.WriteThread), int(dmt.TaskParams.BatchSize))
 				if err != nil {
 					return err
 				}
@@ -865,7 +865,7 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 			}
 			return nil
 		}
-		_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(ctx, &task.DataCompareSummary{
+		_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(gCtx, &task.DataCompareSummary{
 			TaskName:       dmt.Task.TaskName,
 			SchemaNameS:    attsRule.SchemaNameS,
 			TableNameS:     attsRule.TableNameS,

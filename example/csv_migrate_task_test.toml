@@ -16,27 +16,27 @@ case-field-rule-s = "0"
 case-field-rule-t = "2"
 
 [schema-route-rule]
-schema-name-s = "SCOTT"
+schema-name-s = "TEST1"
 schema-name-t = "uccis"
-include-table-s =  ["*"]
+include-table-s =  ["HS_JLDXX1"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
 
 [[schema-route-rule.table-route-rules]]
-table-name-s = "MARVIN00"
-table-name-t = "STEVEN00"
-column-route-rules = {"NAME" = "T_NAME00"}
+table-name-s = ""
+table-name-t = ""
+column-route-rules = {}
 
 [[data-migrate-rules]]
-table-name-s = "MARVIN00"
+table-name-s = ""
 # 基于数据切分策略，获取指定数据迁移表的查询范围
 enable-chunk-strategy = false
 # 指定数据迁移表的查询范围
 # 注意自定义数据迁移表之后，对应表将只迁移该部分数据
-where-range = "id = 1"
+where-range = ""
 # 指定分片 chunk sql 查询 hint
-sql-hint-s = "/*+ PARALLEL(8) */"
+sql-hint-s = ""
 
 # 表串行运行，表内并发
 [csv-migrate-param]
@@ -70,7 +70,7 @@ chunk-size = 100000
 # 目录格式：/data/${target_dbname}/${table_name}
 output-dir = "/users/marvin/gostore/dbms/data/csv"
 # 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上游表数据，可动态变更
-sql-thread-s = 6
+sql-thread-s = 32
 # 指定分片 chunk sql 查询 hint
 sql-hint-s = "/*+ PARALLEL(8) */"
 # calltimeout，单位：秒
