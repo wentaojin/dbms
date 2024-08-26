@@ -19,9 +19,7 @@ import "fmt"
 
 func (d *Database) GetDatabaseTablePartitionExpress(schemaName string, tableName string) ([]map[string]string, error) {
 	// dba_tab_partitions、dba_tab_subpartitions
-	sqlStr := fmt.Sprintf(`
-
-SELECT
+	sqlStr := fmt.Sprintf(`SELECT
 	P.OWNER,
 	P.TABLE_NAME,
 	P.PARTITIONING_TYPE,

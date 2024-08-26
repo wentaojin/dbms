@@ -198,6 +198,7 @@ func (p *MySQLProcessor) GenDatabaseTableColumnDetail() (map[string]structure.Ne
 
 			oldColumns[columnNameNew] = map[string]structure.OldColumn{
 				columnName: {
+					Datatype:          stringutil.StringUpper(originColumnType),
 					DatatypeName:      c["DATA_TYPE"],
 					DataLength:        c["DATA_LENGTH"],
 					DataPrecision:     c["DATA_PRECISION"],
@@ -214,7 +215,7 @@ func (p *MySQLProcessor) GenDatabaseTableColumnDetail() (map[string]structure.Ne
 			// task flow
 			switch {
 			case strings.EqualFold(p.TaskFlow, constant.TaskFlowMySQLToOracle) || strings.EqualFold(p.TaskFlow, constant.TaskFlowTiDBToOracle):
-				_, buildInColumnType, err := mapping.MYSQLDatabaseTableColumnMapORACLECompatibleDatatypeRule(&mapping.Column{
+				originColumnType, buildInColumnType, err := mapping.MYSQLDatabaseTableColumnMapORACLECompatibleDatatypeRule(&mapping.Column{
 					ColumnName:        columnName,
 					Datatype:          c["DATA_TYPE"],
 					DataPrecision:     c["DATA_PRECISION"],
@@ -232,7 +233,7 @@ func (p *MySQLProcessor) GenDatabaseTableColumnDetail() (map[string]structure.Ne
 				convertColumnDatatype, convertColumnDefaultValue, err := mapping.MYSQLHandleColumnRuleWithPriority(
 					p.TableName,
 					columnName,
-					c["DATA_TYPE"],
+					originColumnType,
 					buildInColumnType,
 					columnDefaultValue,
 					constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(c["CHARACTER_SET_NAME"])],
@@ -261,6 +262,7 @@ func (p *MySQLProcessor) GenDatabaseTableColumnDetail() (map[string]structure.Ne
 
 				oldColumns[columnNameNew] = map[string]structure.OldColumn{
 					columnName: {
+						Datatype:          stringutil.StringUpper(originColumnType),
 						DatatypeName:      c["DATA_TYPE"],
 						DataLength:        c["DATA_LENGTH"],
 						DataPrecision:     c["DATA_PRECISION"],

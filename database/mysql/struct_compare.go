@@ -23,5 +23,14 @@ func (d *Database) GetDatabaseTablePartitionExpress(schemaName string, tableName
 	if err != nil {
 		return nil, err
 	}
-	return res, nil
+	var result []map[string]string
+	for _, r := range res {
+		if r["PARTITION_EXPRESSION"] == "NULLABLE" && r["PARTITION_METHOD"] == "NULLABLE" && r["SUBPARTITION_EXPRESSION"] == "NULLABLE" && r["SUBPARTITION_METHOD"] == "NULLABLE" {
+			// skip ignore
+			continue
+		} else {
+			result = append(result, r)
+		}
+	}
+	return result, nil
 }

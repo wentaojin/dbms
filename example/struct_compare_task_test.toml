@@ -1,6 +1,6 @@
-task-name = "scmt_33to45"
-datasource-name-s = "o11024"
-datasource-name-t = "test08"
+task-name = "scmt_10to145"
+datasource-name-s = "jem10g"
+datasource-name-t = "tidb145"
 comment = "测试数据源"
 
 [struct-compare-param]
@@ -8,7 +8,6 @@ compare-thread = 10
 enable-checkpoint = true
 # calltimeout，单位：秒
 call-timeout = 36000
-# 忽略表字段、索引名、字段信息、分区信息等大小写对比
 ignore-case-compare = true
 
 [case-field-rule]
@@ -18,18 +17,22 @@ ignore-case-compare = true
 # 3，参数值是 2 代表统一转换值为大写，与源端对比，default-value-s 参数配置始终以参数配置大小为准与源端对比
 case-field-rule-s = "0"
 # 控制配置文件 schema-name-t、table-name-t 以及 column-route-rules 中的 value 值，、column-type-t/table-attrs-t 不受控制默认大写
-# 1，参数值是 0 代表统一转换数据库名、表名、column-route-rules 中的 value 值以当前配置文件为准，非配置文件配置的以上游为准
-# 2，参数值是 1 代表统一转换数据库名、表名、column-route-rules 中的 value 值为小写，default-value-t 参数配置始终以参数配置大小为准
-# 3，参数值是 2 代表统一转换数据库名、表名、column-route-rules 中的 value 值为大写，default-value-t 参数配置始终以参数配置大小为准
+# 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准，非配置文件配置的以上游为准
+# 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写，default-value-t 参数配置始终以参数配置大小为准与源端对比
+# 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写，default-value-t 参数配置始终以参数配置大小为准与源端对比
 case-field-rule-t = "1"
 
+
 [schema-route-rule]
-schema-name-s = "SCOTT"
-schema-name-t = "marvin"
-# include-table-s 迁移所有表需指定 "*"，特定表写具体表名
-include-table-s = ["T1"]
+schema-name-s = "MARVIN"
+schema-name-t = "mfh"
+include-table-s = ["T2_FH","T2_FH"]
 exclude-table-s = []
 
+[[schema-route-rule.table-route-rules]]
+table-name-s = ""
+table-name-t = ""
+column-route-rules = {}
 [[schema-route-rule.table-route-rules]]
 table-name-s = ""
 table-name-t = ""
@@ -69,3 +72,27 @@ column-type-s = ""
 column-type-t = ""
 default-value-s = ""
 default-value-t = ""
+[[struct-compare-rule.column-struct-rules]]
+schema-name-s = ""
+table-name-s = ""
+column-name-s = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = "''"
+default-value-t = "''"
+[[struct-compare-rule.column-struct-rules]]
+schema-name-s = ""
+table-name-s = ""
+column-name-s = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = "''"
+[[struct-compare-rule.column-struct-rules]]
+schema-name-s = ""
+table-name-s = ""
+column-name-s = ""
+column-type-s = ""
+column-type-t = ""
+default-value-s = ""
+default-value-t = "''"

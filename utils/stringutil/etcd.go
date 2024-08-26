@@ -86,7 +86,7 @@ func WrapPrefixIPName(localHost string, prefix string, peerAddr string) string {
 	for _, item := range items {
 		kv := strings.Split(item, ":")
 		if strings.EqualFold(kv[0], localHost) {
-			return fmt.Sprintf("%s-%s", prefix, kv[1])
+			return fmt.Sprintf("%s_%s_%s", prefix, strings.ReplaceAll(kv[0], ".", "-"), kv[1])
 		}
 	}
 	return ""

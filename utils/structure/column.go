@@ -46,6 +46,7 @@ type NewColumn struct {
 }
 
 type OldColumn struct {
+	Datatype          string // complete origin data types, eg: number(20)
 	DatatypeName      string
 	DataLength        string
 	DataPrecision     string

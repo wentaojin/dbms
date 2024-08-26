@@ -47,6 +47,7 @@ type IDatabaseStructCompareTable interface {
 	CompareTableCharsetCollation() string
 	CompareTableColumnCharsetCollation() string
 	CompareTableColumnCounts() string
+	CompareTableIndexCounts() string
 	CompareTablePrimaryConstraint() (string, error)
 	CompareTableUniqueConstraint() (string, error)
 	CompareTableForeignConstraint() (string, error)
@@ -187,6 +188,9 @@ func IStructCompareTable(dsct IDatabaseStructCompareTable) (string, error) {
 	}
 	if !strings.EqualFold(dsct.CompareTableColumnCounts(), "") {
 		b.WriteString(dsct.CompareTableColumnCounts())
+	}
+	if !strings.EqualFold(dsct.CompareTableIndexCounts(), "") {
+		b.WriteString(dsct.CompareTableIndexCounts())
 	}
 	constraintPK, err := dsct.CompareTablePrimaryConstraint()
 	if err != nil {

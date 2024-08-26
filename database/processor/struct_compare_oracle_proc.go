@@ -238,6 +238,7 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 
 			oldColumns[columnNameNew] = map[string]structure.OldColumn{
 				columnName: {
+					Datatype:          stringutil.StringUpper(originColumnType),
 					DatatypeName:      c["DATA_TYPE"],
 					DataLength:        c["DATA_LENGTH"],
 					DataPrecision:     c["DATA_PRECISION"],
@@ -320,6 +321,7 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 
 				oldColumns[columnNameNew] = map[string]structure.OldColumn{
 					columnName: {
+						Datatype:          stringutil.StringUpper(originColumnType),
 						DatatypeName:      c["DATA_TYPE"],
 						DataLength:        c["DATA_LENGTH"],
 						DataPrecision:     c["DATA_PRECISION"],

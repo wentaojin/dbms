@@ -302,18 +302,19 @@ func CompareMapInter(mapSA interface{}, mapTB interface{}) (map[string]interface
 
 	for kA, iterA := range mapA {
 		if iterB, ok := mapB[kA]; !ok {
-			var tmpIters []interface{}
-			for _, valB := range mapB {
-				// the different key but the value is the same, skip
-				addInterB, delInterB := CompareInter(iterA, valB)
-				if len(addInterB) == 0 && len(delInterB) == 0 {
-					tmpIters = append(tmpIters, valB)
-				}
-			}
+			//var tmpIters []interface{}
+			//for _, valB := range mapB {
+			// the different key but the value is the same, skip
+			//	addInterB, delInterB := CompareInter(iterA, valB)
+			//	if len(addInterB) == 0 && len(delInterB) == 0 {
+			//		tmpIters = append(tmpIters, valB)
+			//	}
+			//}
 			// it isn't existed the same value
-			if len(tmpIters) == 0 {
-				addMap[kA] = iterA
-			}
+			//if len(tmpIters) == 0 {
+			//	addMap[kA] = iterA
+			//}
+			addMap[kA] = iterA
 		} else {
 			addInterB, delInterB := CompareInter(iterA, iterB)
 			if len(addInterB) == 0 && len(delInterB) == 0 {
@@ -326,18 +327,19 @@ func CompareMapInter(mapSA interface{}, mapTB interface{}) (map[string]interface
 
 	for kB, iterB := range mapB {
 		if _, ok := mapA[kB]; !ok {
-			var tmpIters []interface{}
-			for _, valA := range mapA {
-				// the different key but the value is the same, skip
-				addInterA, delInterA := CompareInter(iterB, valA)
-				if len(addInterA) == 0 && len(delInterA) == 0 {
-					tmpIters = append(tmpIters, valA)
-				}
-			}
-			// it isn't existed the same value
-			if len(tmpIters) == 0 {
-				delMap[kB] = iterB
-			}
+			//var tmpIters []interface{}
+			//for _, valA := range mapA {
+			// the different key but the value is the same, skip
+			//	addInterA, delInterA := CompareInter(iterB, valA)
+			//	if len(addInterA) == 0 && len(delInterA) == 0 {
+			//		tmpIters = append(tmpIters, valA)
+			//	}
+			//}
+			//// it isn't existed the same value
+			//if len(tmpIters) == 0 {
+			//	delMap[kB] = iterB
+			//}
+			delMap[kB] = iterB
 		}
 	}
 

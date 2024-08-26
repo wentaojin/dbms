@@ -64,8 +64,8 @@ func (t *Table) ComparePartitionTableType() string {
 	}
 
 	if len(t.Source.Partitions) == 0 && len(t.Target.Partitions) > 0 {
-		partS = "YES"
-		partT = "NO"
+		partS = "NO"
+		partT = "YES"
 	}
 
 	if !strings.EqualFold(partS, partT) {
@@ -266,7 +266,7 @@ func (t *Table) CompareTableColumnCounts() string {
 	columnCountsT := len(t.Target.NewColumns)
 	if columnCountsS != columnCountsT {
 		b.WriteString("/*\n")
-		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table column counts source lack and target drop column\n", t.TaskName, t.TaskFlow))
+		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table column counts aren't different\n", t.TaskName, t.TaskFlow))
 
 		tw := table.NewWriter()
 		tw.SetStyle(table.StyleLight)
@@ -290,7 +290,53 @@ func (t *Table) CompareTableColumnCounts() string {
 			zap.String("schema_name_t", t.Target.SchemaName),
 			zap.String("table_name_t", t.Target.TableName),
 			zap.String("table_column_t", t.Target.String(constant.StructCompareColumnsStructureJSONFormat)),
-			zap.String("action", "drop"))
+			zap.String("action", "view"))
+	}
+	return b.String()
+}
+
+func (t *Table) CompareTableIndexCounts() string {
+	logger.Info("compare table index counts",
+		zap.String("task_name", t.TaskName),
+		zap.String("task_flow", t.TaskFlow),
+		zap.String("schema_name_s", t.Source.SchemaName),
+		zap.String("table_name_s", t.Source.TableName),
+		zap.Any("table_index_s", t.Source.Indexes),
+		zap.String("schema_name_t", t.Target.SchemaName),
+		zap.String("table_name_t", t.Target.TableName),
+		zap.Any("table_index_t", t.Target.Indexes))
+
+	var b strings.Builder
+	columnIndexS := len(t.Source.Indexes)
+	columnIndexT := len(t.Target.Indexes)
+
+	if columnIndexS != columnIndexT {
+		b.WriteString("/*\n")
+		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table index counts aren't different\n", t.TaskName, t.TaskFlow))
+
+		tw := table.NewWriter()
+		tw.SetStyle(table.StyleLight)
+		tw.AppendHeader(table.Row{"CATEGORY", "SOURCE", "INDEX_COUNT_S", "TARGET", "INDEX_COUNT_T", "SUGGEST"})
+
+		tw.AppendRow(table.Row{"INDEX COUNTS",
+			fmt.Sprintf("%s.%s", t.Source.SchemaName, t.Source.TableName),
+			columnIndexS,
+			fmt.Sprintf("%s.%s", t.Target.SchemaName, t.Target.TableName),
+			columnIndexT,
+			"View Index Detail Compare"})
+
+		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
+		b.WriteString("*/\n")
+		logger.Warn("compare table table index counts isn't equal",
+			zap.String("task_name", t.TaskName),
+			zap.String("task_flow", t.TaskFlow),
+			zap.String("schema_name_s", t.Source.SchemaName),
+			zap.String("table_name_s", t.Source.TableName),
+			zap.Any("table_index_s", t.Source.Indexes),
+			zap.String("schema_name_t", t.Target.SchemaName),
+			zap.String("table_name_t", t.Target.TableName),
+			zap.Any("table_index_t", t.Target.Indexes),
+			zap.String("action", "view"))
 	}
 	return b.String()
 }
@@ -751,7 +797,7 @@ func (t *Table) CompareTableColumnDetail() (string, error) {
 		oldColumns := make(map[string]string)
 		for _, olds := range t.Source.OldColumns {
 			for k, v := range olds {
-				oldColumns[k] = v.DatatypeName
+				oldColumns[k] = v.Datatype
 			}
 		}
 
