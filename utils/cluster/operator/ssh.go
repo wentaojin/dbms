@@ -162,7 +162,7 @@ func DeleteGlobalDirs(ctx context.Context, host string, options *cluster.GlobalO
 	logger.Infof("\tClean directory %s on instance %s", instantDir, host)
 
 	c := module.ShellModuleConfig{
-		Command:  fmt.Sprintf("rmdir %s > /dev/null 2>&1 || true", instantDir),
+		Command:  fmt.Sprintf("rm -rf %s;", instantDir),
 		Chdir:    "",
 		UseShell: false,
 	}
@@ -194,8 +194,8 @@ func DeleteGlobalDirs(ctx context.Context, host string, options *cluster.GlobalO
 			Chdir:    "",
 			UseShell: false,
 		}
-		shell := module.NewShellModule(c)
-		stdout, stderr, err := shell.Execute(ctx, e)
+		s := module.NewShellModule(c)
+		stdout, stderr, err = s.Execute(ctx, e)
 
 		if len(stdout) > 0 {
 			logger.Infof(string(stdout))
