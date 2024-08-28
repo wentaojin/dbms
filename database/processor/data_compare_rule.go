@@ -405,12 +405,12 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 					columnNameT = stringutil.StringBuilder(`NVL(TO_CHAR("`, val, `",'YYYY-MM-DD HH24:MI:SS'),'0')`)
 				} else {
 					if _, okChar := downstreamOracleCharDatatype[val]; okChar {
-						// check whether the data type of the tidb field is char. If it is char, the data verification oracle needs to trim the spaces.
+						// check whether the data type of the tidb field is char. If it is char, the data verification oracle needs to RTRIM the spaces（Leading spaces are not truncated at Oracle and TIDB/MYSQL）
 						// 1. Oracle char data is written in fixed length. If the length is not enough, spaces are added. For query conditions, spaces are automatically added to the fixed length, and the data is automatically filled with spaces.
 						// 2. Tidb char data is written in fixed length. If the length is not enough, spaces are added. For query conditions, spaces are not automatically added, and the data is not filled with spaces.
 						// 3. Varchar2 vs varchar, both behave the same, no difference
 						if strings.EqualFold(datatypeS, constant.BuildInMySQLDatatypeChar) {
-							columnNameT = fmt.Sprintf("TRIM(%s%s%s)", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+							columnNameT = fmt.Sprintf("RTRIM(%s%s%s)", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
 						} else {
 							columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
 						}
