@@ -37,8 +37,6 @@ func (m *Shell) Execute(ctx context.Context) error {
 		return ErrNoExecutor
 	}
 
-	//ctx.Value(printer.ContextKeyLogger).(*printer.Logger).
-	//	Infof("Run command on %s(sudo:%v): %s", m.host, m.sudo, m.command)
 	stdout, stderr, err := exec.Execute(ctx, m.command, m.sudo)
 	outputID := m.host
 	if m.cmdID != "" {
