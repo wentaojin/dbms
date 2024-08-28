@@ -644,7 +644,7 @@ message StatementMigrateParam {
 
 message CsvMigrateParam{
   uint64 tableThread = 1;
-  uint64 BatchSize = 2;
+  uint64 batchSize = 2;
   bool header = 3;
   string diskUsageFactor = 4;
   string separator = 5;

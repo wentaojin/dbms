@@ -211,27 +211,27 @@ func ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) 
 
 		tableThread, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateTableThread], 10, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("parse table_thread err: %v", err)
 		}
 		writeThread, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateWriteThread], 10, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("parse write_thread err: %v", err)
 		}
 		batchSize, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateBatchSize], 10, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("parse batch_size err: %v", err)
 		}
 		chunkSize, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateChunkSize], 10, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("parse chunk_size err: %v", err)
 		}
 		sqlThreadS, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateSqlThreadS], 10, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("parse sql_thread_s err: %v", err)
 		}
 		callTimeout, err := strconv.ParseUint(paramMap[constant.ParamNameCsvMigrateCallTimeout], 10, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("parse call_timeout err: %v", err)
 		}
 		header, err := strconv.ParseBool(paramMap[constant.ParamNameCsvMigrateHeader])
 		if err != nil {
