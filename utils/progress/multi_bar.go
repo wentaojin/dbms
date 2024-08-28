@@ -75,7 +75,7 @@ func (b *MultiBar) StopRenderLoop() {
 
 func (b *MultiBar) preRender() {
 	// Preserve space for the bar
-	fmt.Println("")
+	fmt.Print("\n")
 }
 
 func (b *MultiBar) render() {
