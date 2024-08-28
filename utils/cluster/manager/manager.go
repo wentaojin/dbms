@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/utils/ctxt"
 	"io"
 	"os"
 	"path/filepath"
@@ -37,6 +36,8 @@ import (
 	"github.com/wentaojin/dbms/utils/cluster/operator"
 
 	"github.com/wentaojin/dbms/logger/printer"
+
+	"github.com/wentaojin/dbms/utils/ctxt"
 
 	"go.uber.org/zap"
 
@@ -537,61 +538,10 @@ func (c *Controller) Path(cluster string, subpath ...string) string {
 
 // FillHostArchOrOS fill full host cpu-arch and kernel-name
 func (c *Controller) FillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, sudo bool) error {
-	archHosts, archTasks, err := c.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullArchType, sudo)
-	if err != nil {
+	if err := c.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullArchType, sudo); err != nil {
 		return err
 	}
-	osHosts, osTasks, err := c.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullOSType, sudo)
-	if err != nil {
-		return err
-	}
-	ctx := ctxt.New(
-		context.Background(),
-		gOpt.Concurrency,
-		c.Logger,
-	)
-	t := task.NewBuilder(c.Logger).
-		ParallelStep(fmt.Sprintf("+ Detect CPU %s Name", string(cluster.FullArchType)), false, archTasks...).
-		ParallelStep(fmt.Sprintf("+ Detect CPU %s Name", string(cluster.FullOSType)), false, osTasks...).
-		Build()
-
-	if err = t.Execute(ctx); err != nil {
-		return fmt.Errorf("failed to fetch cpu-arch or kernel-name, error detail: %v", err)
-	}
-
-	hostArchOutput := make(map[string]string)
-	hostOsOutput := make(map[string]string)
-
-	for host := range archHosts {
-		stdout, _, ok := ctxt.GetInner(ctx).GetOutputs(fmt.Sprintf("%s_%s", host, string(cluster.FullArchType)))
-		if !ok {
-			return fmt.Errorf("no check results found for %s", host)
-		}
-		hostArchOutput[host] = strings.Trim(string(stdout), "\n")
-	}
-
-	for host := range osHosts {
-		stdout, _, ok := ctxt.GetInner(ctx).GetOutputs(fmt.Sprintf("%s_%s", host, string(cluster.FullOSType)))
-		if !ok {
-			return fmt.Errorf("no check results found for %s", host)
-		}
-		hostOsOutput[host] = strings.Trim(string(stdout), "\n")
-	}
-
-	if len(hostArchOutput) == 0 {
-		err = topo.FillHostArchOrOS(hostArchOutput, cluster.FullArchType)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(hostOsOutput) == 0 {
-		err = topo.FillHostArchOrOS(hostOsOutput, cluster.FullOSType)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return c.fillHostArchOrOS(s, p, topo, gOpt, user, cluster.FullOSType, sudo)
 }
 
 // FillTopologyDir fill topology dir
@@ -628,9 +578,9 @@ func (c *Controller) FillTopologyDir(topo *cluster.Topology) {
 }
 
 // fillHostArchOrOS full host cpu-arch or kernel-name
-func (c *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, fullType cluster.FullHostType, sudo bool) (map[string]int, []*task.StepDisplay, error) {
+func (c *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *cluster.Topology, gOpt *operator.Options, user string, fullType cluster.FullHostType, sudo bool) error {
 	globalSSHType := topo.GlobalOptions.SSHType
-	hostArchOrOS := make(map[string]int)
+	hostArchOrOS := map[string]string{}
 	var detectTasks []*task.StepDisplay
 
 	topo.IterInstance(func(inst cluster.Instance) {
@@ -645,13 +595,11 @@ func (c *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *c
 		if _, ok := hostArchOrOS[inst.InstanceHost()]; ok {
 			return
 		}
-		hostArchOrOS[inst.InstanceHost()] = inst.InstanceSshPort()
-	})
+		hostArchOrOS[inst.InstanceHost()] = ""
 
-	for host, port := range hostArchOrOS {
 		tf := task.NewBuilder(c.Logger).RootSSH(
-			host,
-			port,
+			inst.InstanceHost(),
+			inst.InstanceSshPort(),
 			user,
 			s.Password,
 			s.IdentityFile,
@@ -672,12 +620,35 @@ func (c *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *c
 
 		switch fullType {
 		case cluster.FullOSType:
-			tf = tf.Shell(host, "uname -s", fmt.Sprintf("%s_%s", host, string(cluster.FullOSType)), false)
+			tf = tf.Shell(inst.InstanceHost(), "uname -s", "", false)
 		default:
-			tf = tf.Shell(host, "uname -m", fmt.Sprintf("%s_%s", host, string(cluster.FullArchType)), false)
+			tf = tf.Shell(inst.InstanceHost(), "uname -m", "", false)
 		}
-		detectTasks = append(detectTasks, tf.BuildAsStep(fmt.Sprintf("  - Detecting node %s %s info", host, string(fullType))))
+		detectTasks = append(detectTasks, tf.BuildAsStep(fmt.Sprintf("  - Detecting node %s %s info", inst.InstanceHost(), string(fullType))))
+	})
+	if len(detectTasks) == 0 {
+		return nil
 	}
 
-	return hostArchOrOS, detectTasks, nil
+	ctx := ctxt.New(
+		context.Background(),
+		gOpt.Concurrency,
+		c.Logger,
+	)
+	t := task.NewBuilder(c.Logger).
+		ParallelStep(fmt.Sprintf("+ Detect CPU %s Name", string(fullType)), false, detectTasks...).
+		Build()
+
+	if err := t.Execute(ctx); err != nil {
+		return fmt.Errorf("failed to fetch cpu-arch or kernel-name, error detail: %v", err)
+	}
+
+	for host := range hostArchOrOS {
+		stdout, _, ok := ctxt.GetInner(ctx).GetOutputs(host)
+		if !ok {
+			return fmt.Errorf("no check results found for %s", host)
+		}
+		hostArchOrOS[host] = strings.Trim(string(stdout), "\n")
+	}
+	return topo.FillHostArchOrOS(hostArchOrOS, fullType)
 }

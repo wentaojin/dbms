@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/mattn/go-runewidth"
 	"os"
-	"strings"
 )
 
 // MultiBarItem controls a bar item inside MultiBar.
@@ -76,7 +75,7 @@ func (b *MultiBar) StopRenderLoop() {
 
 func (b *MultiBar) preRender() {
 	// Preserve space for the bar
-	fmt.Print(strings.Repeat("\n", len(b.bars)+1))
+	fmt.Print("\n")
 }
 
 func (b *MultiBar) render() {
