@@ -291,6 +291,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 	// find the oracle long/ long raw / bfile datatype, rollback to crc32
 	downstreamOracleDatatypeRollback := make(map[string]string)
 	downstreamOracleDateDatatype := make(map[string]string)
+	downstreamOracleCharDatatype := make(map[string]string)
 	downstreamOracleTimestampDatatype := make(map[string]string)
 	if strings.EqualFold(r.TaskFlow, constant.TaskFlowTiDBToOracle) || strings.EqualFold(r.TaskFlow, constant.TaskFlowMySQLToOracle) {
 		targetColumnInfos, err := r.DatabaseT.GetDatabaseTableColumnInfo(r.SchemaNameT, r.TableNameT)
@@ -300,6 +301,9 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		for _, c := range targetColumnInfos {
 			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeLong) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeLongRAW) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeBfile) {
 				downstreamOracleDatatypeRollback[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+			}
+			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeChar) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeCharacter) {
+				downstreamOracleCharDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
 			}
 			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, c["DATA_TYPE"]) {
 				downstreamOracleDateDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
@@ -385,7 +389,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			switch r.TaskFlow {
 			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
 				columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorBacktick, val, constant.StringSeparatorBacktick)
-			case constant.TaskFlowTiDBToOracle:
+			case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 				if _, rollback := downstreamOracleDatatypeRollback[val]; rollback {
 					isRollbackOracle = true
 				}
@@ -400,7 +404,19 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 				} else if _, okDate := downstreamOracleDateDatatype[val]; okDate {
 					columnNameT = stringutil.StringBuilder(`NVL(TO_CHAR("`, val, `",'YYYY-MM-DD HH24:MI:SS'),'0')`)
 				} else {
-					columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+					if _, okChar := downstreamOracleCharDatatype[val]; okChar {
+						// check whether the data type of the tidb field is char. If it is char, the data verification oracle needs to trim the spaces.
+						// 1. Oracle char data is written in fixed length. If the length is not enough, spaces are added. For query conditions, spaces are automatically added to the fixed length, and the data is automatically filled with spaces.
+						// 2. Tidb char data is written in fixed length. If the length is not enough, spaces are added. For query conditions, spaces are not automatically added, and the data is not filled with spaces.
+						// 3. Varchar2 vs varchar, both behave the same, no difference
+						if strings.EqualFold(datatypeS, constant.BuildInMySQLDatatypeChar) {
+							columnNameT = fmt.Sprintf("TRIM(%s%s%s)", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+						} else {
+							columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+						}
+					} else {
+						columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+					}
 				}
 			default:
 				return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
