@@ -287,14 +287,9 @@ func scaleInDBMSCluster(ctx context.Context, topo *cluster.Topology, gOpt *opera
 				}
 
 				for _, mem := range members.Members {
-					logger.Infof(mem.String())
 					// member name format: master_{ipAddr 10_10_10_21}_{ipPort}
 					ipPorts := stringutil.StringSplit(instance.InstanceName(), ":")
-					logger.Infof(stringutil.WrapPrefixIPName(ipPorts[0], configutil.DefaultMasterNamePrefix, instance.InstanceName()))
-
 					if mem.Name == stringutil.WrapPrefixIPName(ipPorts[0], configutil.DefaultMasterNamePrefix, instance.InstanceName()) {
-						logger.Infof(stringutil.WrapPrefixIPName(ipPorts[0], configutil.DefaultMasterNamePrefix, instance.InstanceName()))
-
 						_, err = etcdutil.RemoveMember(etcdCli, mem.ID)
 						if err != nil {
 							return err
