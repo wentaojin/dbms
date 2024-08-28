@@ -624,7 +624,7 @@ func (c *Controller) fillHostArchOrOS(s, p *operator.SSHConnectionProps, topo *c
 		default:
 			tf = tf.Shell(inst.InstanceHost(), "uname -m", "", false)
 		}
-		detectTasks = append(detectTasks, tf.BuildAsStep(fmt.Sprintf("  - Detecting node %s %s info", inst.InstanceHost(), string(fullType))).SetHidden(true))
+		detectTasks = append(detectTasks, tf.BuildAsStep(fmt.Sprintf("  - Detecting node %s %s info", inst.InstanceHost(), string(fullType))))
 	})
 	if len(detectTasks) == 0 {
 		return nil
