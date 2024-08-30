@@ -47,7 +47,7 @@ func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, 
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
+func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
 	//TODO implement me
 	panic("implement me")
 }

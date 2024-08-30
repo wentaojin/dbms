@@ -1161,6 +1161,9 @@ components:
           type: array
           items:
             type: string
+        separator:
+          type: string
+          format: string
         repairStmtFlow:
           type: string
           format: string

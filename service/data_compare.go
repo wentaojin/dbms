@@ -274,6 +274,7 @@ func ShowDataCompareTask(ctx context.Context, req *pb.ShowDataCompareTaskRequest
 			OnlyCompareRow:         onlyCompareRow,
 			ConsistentReadPointS:   paramMap[constant.ParamNameDataCompareConsistentReadPointS],
 			ConsistentReadPointT:   paramMap[constant.ParamNameDataCompareConsistentReadPointT],
+			Separator:              paramMap[constant.ParamNameDataCompareSeparator],
 			ChunkSize:              chunkSize,
 			RepairStmtFlow:         paramMap[constant.ParamNameDataCompareRepairStmtFlow],
 			IgnoreConditionFields:  stringutil.StringSplit(paramMap[constant.ParamNameDataCompareIgnoreConditionFields], constant.StringSeparatorComma),
@@ -723,6 +724,9 @@ func getDataCompareTasKParams(ctx context.Context, taskName string, caseFieldRul
 				return taskParam, err
 			}
 			taskParam.DisableMd5Checksum = disableMd5Checksum
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareSeparator) {
+			taskParam.Separator = p.ParamValue
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameDataCompareIgnoreConditionFields) {
 			var newFields []string

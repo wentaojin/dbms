@@ -29,7 +29,7 @@ type IDatabaseDataCompare interface {
 	GetDatabaseTableColumnProperties(schemaNameS, tableNameS string, columnNameSli []string) ([]map[string]string, error)
 	GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.Selectivity, error)
 	GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, condArgs []interface{}, limit int, collations []string) ([][]string, error)
-	GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error)
+	GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error)
 }
 
 // IDataCompareRuleInitializer used for database table rule initializer

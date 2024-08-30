@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/service"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/wentaojin/dbms/openapi"
@@ -65,6 +66,7 @@ type DataCompareParam struct {
 	ConsistentReadPointS   string   `toml:"consistent-read-point-s" json:"consistentReadPointS"`
 	ConsistentReadPointT   string   `toml:"consistent-read-point-t" json:"consistentReadPointT"`
 	IgnoreConditionFields  []string `toml:"ignore-condition-fields" json:"ignoreConditionFields"`
+	Separator              string   `toml:"separator" json:"separator"`
 	RepairStmtFlow         string   `toml:"repair-stmt-flow" json:"repairStmtFlow"`
 	EnableCollationSetting bool     `toml:"enable-collation-setting" json:"enableCollationSetting"`
 	DisableMd5Checksum     bool     `toml:"disable-md5-checksum" json:"disableMd5Checksum"`
@@ -80,6 +82,12 @@ func (d *CompareConfig) SetDisableMd5ChecksumDefault() *CompareConfig {
 	return d
 }
 
+func (d *CompareConfig) AdjustConfigDefault() {
+	if strings.EqualFold(d.DataCompareParam.Separator, "") {
+		d.DataCompareParam.Separator = ","
+	}
+}
+
 func UpsertDataCompare(serverAddr string, file string) error {
 	var cfg = &CompareConfig{}
 	cyan := color.New(color.FgCyan, color.Bold)
@@ -93,6 +101,7 @@ func UpsertDataCompare(serverAddr string, file string) error {
 		fmt.Printf("Response:     %s\n", color.RedString("failed decode toml config file %s: %v", file, err))
 		return nil
 	}
+	cfg.AdjustConfigDefault()
 
 	err := service.PromptDataCompareTask(context.TODO(), cfg.TaskName, serverAddr)
 	if err != nil {

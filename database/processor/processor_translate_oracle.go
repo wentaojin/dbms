@@ -68,7 +68,7 @@ func genMYSQLCompatibleDatabasePrepareBindVarStmt(columns, bindVarBatch int) str
 	return exstrings.Join(bindVars, ",")
 }
 
-func GenMYSQLCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString string, columnDataCounts int, safeMode bool) string {
+func GenMYSQLCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int, safeMode bool) string {
 	var (
 		prefixSQL        string
 		columnDetailTSli []string
@@ -93,7 +93,7 @@ func GenMYSQLCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint stri
 
 	var restoreColDatas []string
 	for i := 0; i < columnDataCounts; i++ {
-		restoreColDatas = append(restoreColDatas, columnDataString)
+		restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
 	}
 
 	var suffixVal []string

@@ -538,6 +538,7 @@ const (
 	ParamNameDataCompareRepairStmtFlow         = "repairStmtFlow"
 	ParamNameDataCompareEnableCollationSetting = "enableCollationSetting"
 	ParamNameDataCompareDisableMd5Checksum     = "disableMd5Checksum"
+	ParamNameDataCompareSeparator              = "separator"
 
 	// ParamValueDataCompareCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

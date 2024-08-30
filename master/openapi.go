@@ -581,6 +581,7 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 			RepairStmtFlow:         *req.DataCompareParam.RepairStmtFlow,
 			EnableCollationSetting: *req.DataCompareParam.EnableCollationSetting,
 			DisableMd5Checksum:     *req.DataCompareParam.DisableMd5Checksum,
+			Separator:              *req.DataCompareParam.Separator,
 		},
 	})
 	if err != nil {

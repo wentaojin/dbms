@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-func GenOracleCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString string, columnDataCounts int, safeMode bool) string {
+func GenOracleCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int, safeMode bool) string {
 	var (
 		prefixSQL                     string
 		columnDetailTSli              []string
@@ -48,7 +48,7 @@ func GenOracleCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint str
 			usingQueries    []string
 		)
 		for i := 0; i < columnDataCounts; i++ {
-			restoreColDatas = append(restoreColDatas, columnDataString)
+			restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
 		}
 
 		for _, c := range restoreColDatas {
@@ -79,7 +79,7 @@ WHEN NOT MATCHED THEN
 
 		var restoreColDatas []string
 		for i := 0; i < columnDataCounts; i++ {
-			restoreColDatas = append(restoreColDatas, columnDataString)
+			restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
 		}
 
 		var suffixVal []string

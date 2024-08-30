@@ -408,7 +408,7 @@ ORDER BY
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
+func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
 	var (
 		rowData       []string
 		columnNames   []string
@@ -560,7 +560,7 @@ func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int,
 		}
 
 		// append
-		batchKey := stringutil.StringJoin(rowData, constant.StringSeparatorComma)
+		batchKey := stringutil.StringJoin(rowData, separator)
 
 		crc32Sum = atomic.AddUint32(&crc32Val, crc32.ChecksumIEEE([]byte(batchKey)))
 

@@ -692,6 +692,7 @@ message DataCompareParam{
   string repairStmtFlow = 16;
   bool enableCollationSetting = 17;
   bool disableMd5Checksum = 18;
+  string separator = 19;
 }
 
 message SqlMigrateRule {

@@ -563,6 +563,7 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 				DBCharsetS:     dbCharsetS,
 				DBCharsetT:     dbCharsetT,
 				RepairStmtFlow: dmt.TaskParams.RepairStmtFlow,
+				Separator:      dmt.TaskParams.Separator,
 			})
 			if err != nil {
 				return err
