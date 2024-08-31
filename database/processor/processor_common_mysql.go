@@ -114,7 +114,7 @@ func OptimizerMYSQLCompatibleMigrateOracleDataCompareColumnST(columnNameS, datat
 				return stringutil.StringBuilder(`CAST(`, nvlNullDecimalS, ` AS DECIMAL(`, strconv.Itoa(dataPrecisionV), `,`, strconv.Itoa(dataScaleV), `))`), stringutil.StringBuilder(`TO_CHAR(`, nvlNullDecimalT, `,'FM`, stringutil.PaddingString(toCharPaddingInteger, "9", "0"), `.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), nil
 			}
 		} else {
-			return "", "", fmt.Errorf("the mysql compatible database table column [%s] datatype [%s] data_scale value [%s] cannot less zero, please contact author or reselect", columnNameS, datatypeS, dataScaleV)
+			return "", "", fmt.Errorf("the mysql compatible database table column [%s] datatype [%s] data_scale value [%d] cannot less zero, please contact author or reselect", columnNameS, datatypeS, dataScaleV)
 		}
 	case constant.BuildInMySQLDatatypeBigint,
 		constant.BuildInMySQLDatatypeInt,

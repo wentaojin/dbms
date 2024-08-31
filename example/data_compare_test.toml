@@ -1,6 +1,6 @@
 task-name = "compare-task01"
-datasource-name-s = "test08"
-datasource-name-t = "o11024"
+datasource-name-s = "tidb145"
+datasource-name-t = "ifdbora"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -18,7 +18,7 @@ case-field-rule-t = "2"
 [schema-route-rule]
 schema-name-s = "ucccis"
 schema-name-t = "SCOTT"
-include-table-s =  ["t1","t2","t3","t4","t5","t6"]
+include-table-s =  ["ecif_group_client_risk_rate"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
@@ -80,7 +80,7 @@ consistent-read-point-s = ""
 # consistent-read-point-t 参数 mysql 数据库不支持指定配置，自动忽略配置，tidb 数据库支持
 consistent-read-point-t = ""
 # 字段分隔符，支持一个或多个字符，默认值为 ','
-separator = '|#|'
+separator = ','
 # 修复语句产生流向 upstream or downstream，默认 downstream
 # upstream 产生上游 datasource-name-s 修复语句
 # downstream 产生下游 datasource-name-t 修复语句

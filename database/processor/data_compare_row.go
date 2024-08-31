@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/shopspring/decimal"
-	"maps"
 	"strings"
 	"time"
 
@@ -1852,46 +1851,34 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 
 // Cmp used for the src and dest store key-value pair , and key data row and value data row counts
 func Cmp(src map[string]int64, dest map[string]int64) (map[string]int64, map[string]int64) {
-	// source element map mall
-	columnDataMall := maps.Clone(src) // source and target element map temp malls
-
 	addedSrcSets := make(map[string]int64)
 	delSrcSets := make(map[string]int64)
 
-	// data intersection
-	intersectionSets := make(map[string]int64)
-
-	// data comparison through set operations
-	for dk, dv := range dest {
-		if val, exist := columnDataMall[dk]; exist {
-			if dv == val {
-				intersectionSets[dk] = dv
-			} else if dv < val {
-				// target records is less than source records
-				delSrcSets[dk] = val - dv
-				delete(src, dk)
-				delete(columnDataMall, dk)
-			} else {
-				// target records is more than source records
-				addedSrcSets[dk] = dv - val
-				delete(src, dk)
-				delete(columnDataMall, dk)
+	// Iterate over source keys and calculate differences.
+	for sk, sv := range src {
+		if dv, ok := dest[sk]; ok {
+			if sv != dv {
+				if sv > dv {
+					// src has more records than dest.
+					addedSrcSets[sk] = sv - dv
+				} else {
+					// src has fewer records than dest.
+					delSrcSets[sk] = dv - sv
+				}
 			}
 		} else {
-			columnDataMall[dk] = dv
+			// Key exists only in src.
+			addedSrcSets[sk] = sv
 		}
 	}
 
-	for dk, _ := range intersectionSets {
-		delete(columnDataMall, dk)
-	}
-
-	for dk, dv := range columnDataMall {
-		if _, exist := src[dk]; exist {
+	// Iterate over destination keys and add those not present in src.
+	for dk, dv := range dest {
+		if _, ok := src[dk]; !ok {
+			// Key exists only in dest.
 			delSrcSets[dk] = dv
-		} else {
-			addedSrcSets[dk] = dv
 		}
 	}
+
 	return addedSrcSets, delSrcSets
 }
