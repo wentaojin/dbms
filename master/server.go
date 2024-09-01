@@ -182,10 +182,25 @@ func (s *Server) Start(ctx context.Context) error {
 					return err
 				}
 
-				// leader register
-				_, err = etcdutil.PutKey(s.etcdClient, constant.DefaultMasterLeaderPrefixKey, s.MasterOptions.ClientAddr)
+				// leader cleanup
+				keyResp, err := etcdutil.GetKey(s.etcdClient, etcdutil.DefaultMasterLeaderPrefixKey, clientv3.WithPrefix())
 				if err != nil {
 					return err
+				}
+				for _, kv := range keyResp.Kvs {
+					key := stringutil.BytesToString(kv.Key)
+					value := stringutil.BytesToString(kv.Value)
+					if !strings.EqualFold(value, s.MasterOptions.ClientAddr) {
+						logger.Warn("clean up the remaining key-value",
+							zap.String("remaining key", key),
+							zap.String("remaining value", value),
+							zap.String("leader address", s.MasterOptions.ClientAddr))
+
+						_, err = etcdutil.DeleteKey(s.etcdClient, key)
+						if err != nil {
+							return fmt.Errorf("clean up the remaining master key-value [%s:%s] of dbms-cluster. The current master leader addr is [%s]", key, value, s.MasterOptions.ClientAddr)
+						}
+					}
 				}
 
 				// pending, start receive request
@@ -215,7 +230,7 @@ func (s *Server) Start(ctx context.Context) error {
 				logger.Info("server new leader elected", zap.String("new node identity", identity))
 			},
 		},
-		Prefix:   etcdutil.DefaultLeaderElectionPrefix,
+		Prefix:   etcdutil.DefaultMasterLeaderPrefixKey,
 		Identity: s.MasterOptions.ClientAddr,
 	})
 	if err != nil {

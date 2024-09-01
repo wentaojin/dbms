@@ -22,7 +22,6 @@ const (
 	// DefaultMasterDatabaseDBMSKey is used for saving dbms meta database infos
 	DefaultMasterDatabaseDBMSKey         = "/dbms-master/database"
 	DefaultMasterCrontabExpressPrefixKey = "/dbms-master/crontab/express/"
-	DefaultMasterLeaderPrefixKey         = "/dbms-master/leader"
 )
 
 // Worker

@@ -16,10 +16,10 @@ limitations under the License.
 package cluster
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -84,8 +84,8 @@ type MasterOptions struct {
 	ManageHost       string         `yaml:"manage_host,omitempty" validate:"manage_host:editable"`
 	SSHPort          int            `yaml:"ssh_port,omitempty" validate:"ssh_port:editable"`
 	Patched          bool           `yaml:"patched,omitempty"`
-	Port             int            `yaml:"port,omitempty" default:"8261"`
-	PeerPort         int            `yaml:"peer_port,omitempty" default:"8291"`
+	Port             int            `yaml:"port,omitempty" default:"2379"`
+	PeerPort         int            `yaml:"peer_port,omitempty" default:"2380"`
 	DeployDir        string         `yaml:"deploy_dir,omitempty"`
 	DataDir          string         `yaml:"data_dir,omitempty"`
 	LogDir           string         `yaml:"log_dir,omitempty"`
@@ -123,17 +123,17 @@ func (s *MasterOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ..
 		return "N/A", fmt.Errorf("the cluster master member [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", s.Host, s.Port))
 	}
 
-	leaderResp, err := etcdutil.GetKey(cli, constant.DefaultMasterLeaderPrefixKey)
+	leaderResp, err := etcdutil.GetKey(cli, etcdutil.DefaultMasterLeaderPrefixKey, clientv3.WithPrefix())
 	if err != nil {
 		return "N/A", err
 	}
 	if len(leaderResp.Kvs) == 0 {
-		return "Healthy", nil
+		return "N/A", nil
 	} else if len(leaderResp.Kvs) > 1 {
 		return "N/A", fmt.Errorf("the cluster leader are over than one, please contact author or reselect, detail: %v", leaderResp.Kvs)
 	}
 
-	if bytes.Equal(leaderResp.Kvs[0].Value, keyResp.Kvs[0].Value) {
+	if strings.EqualFold(stringutil.BytesToString(leaderResp.Kvs[0].Value), fmt.Sprintf("%s:%d", s.Host, s.Port)) {
 		return "Healthy|L", nil
 	} else {
 		return "Healthy", nil

@@ -86,7 +86,7 @@ func (e *Etcd) Init(opts ...configutil.MasterOption) (err error) {
 	}
 
 	if strings.EqualFold(e.MasterOptions.Name, "") || strings.EqualFold(e.MasterOptions.Name, configutil.DefaultMasterNamePrefix) {
-		e.MasterOptions.Name = stringutil.WrapPrefixIPName(host, configutil.DefaultMasterNamePrefix, e.MasterOptions.PeerAddr)
+		e.MasterOptions.Name = stringutil.WrapPrefixIPName(host, configutil.DefaultMasterNamePrefix, e.MasterOptions.ClientAddr)
 	}
 	cfg.Name = e.MasterOptions.Name
 

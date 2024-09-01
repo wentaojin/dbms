@@ -281,6 +281,15 @@ func scaleInDBMSCluster(ctx context.Context, topo *cluster.Topology, gOpt *opera
 
 			switch comp.ComponentName() {
 			case cluster.ComponentDBMSMaster:
+				keyResp, err := etcdutil.GetKey(etcdCli, etcdutil.DefaultMasterLeaderPrefixKey, clientv3.WithPrefix())
+				if err != nil {
+					return err
+				}
+				if len(keyResp.Kvs) == 0 && len(keyResp.Kvs) > 1 {
+					return fmt.Errorf("the dbms-cluster can't scale-in dbms-master instance, get leader failed: value shoule be 1, currently is [%v]", len(keyResp.Kvs))
+				}
+				leaderAddr := stringutil.BytesToString(keyResp.Kvs[0].Value)
+
 				members, err := etcdutil.ListMembers(etcdCli)
 				if err != nil {
 					return err
@@ -290,9 +299,20 @@ func scaleInDBMSCluster(ctx context.Context, topo *cluster.Topology, gOpt *opera
 					// member name format: master_{ipAddr 10_10_10_21}_{ipPort}
 					ipPorts := stringutil.StringSplit(instance.InstanceName(), ":")
 					if mem.Name == stringutil.WrapPrefixIPName(ipPorts[0], configutil.DefaultMasterNamePrefix, instance.InstanceName()) {
-						_, err = etcdutil.RemoveMember(etcdCli, mem.ID)
-						if err != nil {
-							return err
+						if instance.InstanceName() == leaderAddr {
+							_, err = etcdutil.MoveLeader(etcdCli, mem.ID)
+							if err != nil {
+								return fmt.Errorf("the dbms-cluster can't scale-in dbms-master leader instance, move the leader failed: %v", err)
+							}
+							_, err = etcdutil.RemoveMember(etcdCli, mem.ID)
+							if err != nil {
+								return fmt.Errorf("the dbms-cluster can't scale-in dbms-master origin leader instance, remove the origin leader instance failed: %v", err)
+							}
+						} else {
+							_, err = etcdutil.RemoveMember(etcdCli, mem.ID)
+							if err != nil {
+								return fmt.Errorf("the dbms-cluster can't scale-in dbms-master instance, remove the instance failed: %v", err)
+							}
 						}
 					}
 				}

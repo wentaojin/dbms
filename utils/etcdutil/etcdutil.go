@@ -60,6 +60,13 @@ func AddMember(client *clientv3.Client, peerAddrs []string) (*clientv3.MemberAdd
 	return client.MemberAdd(ctx, peerAddrs)
 }
 
+// MoveLeader transfer an etcd member leader by the given id.
+func MoveLeader(client *clientv3.Client, id uint64) (*clientv3.MoveLeaderResponse, error) {
+	ctx, cancel := context.WithTimeout(client.Ctx(), DefaultRequestTimeout)
+	defer cancel()
+	return client.MoveLeader(ctx, id)
+}
+
 // RemoveMember removes an etcd member by the given id.
 func RemoveMember(client *clientv3.Client, id uint64) (*clientv3.MemberRemoveResponse, error) {
 	ctx, cancel := context.WithTimeout(client.Ctx(), DefaultRequestTimeout)

@@ -34,8 +34,8 @@ const (
 	// DefaultLeaderElectionTTLSecond is the duration that non-leader candidates will
 	// wait to force acquire leadership
 	DefaultLeaderElectionTTLSecond = 30
-	// DefaultLeaderElectionPrefix is the dbms-master leader election key prefix
-	DefaultLeaderElectionPrefix = "/dbms-master/leader"
+	// DefaultMasterLeaderPrefixKey is the dbms-master leader election key prefix
+	DefaultMasterLeaderPrefixKey = "/dbms-master/leader"
 )
 
 // Election implements the leader election based on etcd
