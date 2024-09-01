@@ -132,7 +132,7 @@ func (s *MasterOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ..
 		return "N/A", fmt.Errorf("the cluster leader are over than one, please contact author or reselect, detail: %v", leaderResp.Kvs)
 	}
 
-	if strings.EqualFold(stringutil.BytesToString(leaderResp.Kvs[0].Value), fmt.Sprintf("%s:%d", s.Host, s.Port)) {
+	if strings.EqualFold(stringutil.BytesToString(leaderResp.Kvs[0].Value), fmt.Sprintf("%s:%d", s.Host, s.PeerPort)) {
 		return "Healthy|L", nil
 	} else {
 		return "Healthy", nil
