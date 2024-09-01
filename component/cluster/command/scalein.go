@@ -263,6 +263,15 @@ func scaleInDBMSCluster(ctx context.Context, topo *cluster.Topology, gOpt *opera
 		return err
 	}
 
+	keyResp, err := etcdutil.GetKey(etcdCli, constant.DefaultMasterLeaderAddressKey)
+	if err != nil {
+		return err
+	}
+	if len(keyResp.Kvs) == 0 && len(keyResp.Kvs) > 1 {
+		return fmt.Errorf("the dbms-cluster can't scale-in dbms-master instance, get leader failed: value shoule be 1, currently is [%v]", len(keyResp.Kvs))
+	}
+	leaderAddr := stringutil.BytesToString(keyResp.Kvs[0].Value)
+
 	// Delete member from cluster
 	for _, comp := range topo.ComponentsByStartOrder() {
 		for _, instance := range comp.Instances() {
@@ -281,15 +290,6 @@ func scaleInDBMSCluster(ctx context.Context, topo *cluster.Topology, gOpt *opera
 
 			switch comp.ComponentName() {
 			case cluster.ComponentDBMSMaster:
-				keyResp, err := etcdutil.GetKey(etcdCli, etcdutil.DefaultMasterLeaderPrefixKey, clientv3.WithPrefix())
-				if err != nil {
-					return err
-				}
-				if len(keyResp.Kvs) == 0 && len(keyResp.Kvs) > 1 {
-					return fmt.Errorf("the dbms-cluster can't scale-in dbms-master instance, get leader failed: value shoule be 1, currently is [%v]", len(keyResp.Kvs))
-				}
-				leaderAddr := stringutil.BytesToString(keyResp.Kvs[0].Value)
-
 				members, err := etcdutil.ListMembers(etcdCli)
 				if err != nil {
 					return err

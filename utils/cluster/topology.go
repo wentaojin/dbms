@@ -19,7 +19,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -120,10 +119,10 @@ func (s *MasterOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ..
 	if len(keyResp.Kvs) == 0 {
 		return "DOWN", nil
 	} else if len(keyResp.Kvs) > 1 {
-		return "N/A", fmt.Errorf("the cluster master member [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", s.Host, s.Port))
+		return "N/A", fmt.Errorf("the cluster instance member [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", s.Host, s.Port))
 	}
 
-	leaderResp, err := etcdutil.GetKey(cli, etcdutil.DefaultMasterLeaderPrefixKey, clientv3.WithPrefix())
+	leaderResp, err := etcdutil.GetKey(cli, constant.DefaultMasterLeaderAddressKey)
 	if err != nil {
 		return "N/A", err
 	}

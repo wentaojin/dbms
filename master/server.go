@@ -182,25 +182,10 @@ func (s *Server) Start(ctx context.Context) error {
 					return err
 				}
 
-				// leader cleanup
-				keyResp, err := etcdutil.GetKey(s.etcdClient, etcdutil.DefaultMasterLeaderPrefixKey, clientv3.WithPrefix())
+				// leader register
+				_, err = etcdutil.PutKey(s.etcdClient, constant.DefaultMasterLeaderAddressKey, s.MasterOptions.PeerAddr)
 				if err != nil {
 					return err
-				}
-				for _, kv := range keyResp.Kvs {
-					key := stringutil.BytesToString(kv.Key)
-					value := stringutil.BytesToString(kv.Value)
-					if !strings.EqualFold(value, s.MasterOptions.PeerAddr) {
-						logger.Warn("clean up the remaining key-value",
-							zap.String("remaining key", key),
-							zap.String("remaining value", value),
-							zap.String("leader address", s.MasterOptions.ClientAddr))
-
-						_, err = etcdutil.DeleteKey(s.etcdClient, key)
-						if err != nil {
-							return fmt.Errorf("clean up the remaining master key-value [%s:%s] of dbms-cluster. The current master leader addr is [%s]", key, value, s.MasterOptions.ClientAddr)
-						}
-					}
 				}
 
 				// pending, start receive request
