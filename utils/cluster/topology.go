@@ -100,7 +100,7 @@ func (s *MasterOptions) InstanceRole() string {
 }
 
 func (s *MasterOptions) InstanceName() string {
-	return stringutil.JoinHostPort(s.Host, s.Port)
+	return stringutil.JoinHostPort(s.Host, s.PeerPort)
 }
 
 // Status queries current status of the instance
@@ -113,7 +113,7 @@ func (s *MasterOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ..
 		return "N/A", err
 	}
 
-	keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, fmt.Sprintf("%s:%d", s.Host, s.Port)))
+	keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, fmt.Sprintf("%s:%d", s.Host, s.PeerPort)))
 	if err != nil {
 		return "N/A", err
 	}
@@ -183,18 +183,8 @@ func (w *WorkerOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ..
 		return "N/A", fmt.Errorf("the cluster worker member [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", w.Host, w.Port))
 	}
 
-	stateResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, fmt.Sprintf("%s:%d", w.Host, w.Port))))
-	if err != nil {
-		return "N/A", err
-	}
-	if len(stateResp.Kvs) == 0 {
-		return "FREE", nil
-	} else if len(stateResp.Kvs) > 1 {
-		return "N/A", fmt.Errorf("the cluster worker state [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", w.Host, w.Port))
-	}
-
 	var ws *etcdutil.Instance
-	err = stringutil.UnmarshalJSON(stateResp.Kvs[0].Value, &ws)
+	err = stringutil.UnmarshalJSON(keyResp.Kvs[0].Value, &ws)
 	if err != nil {
 		return "", err
 	}

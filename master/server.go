@@ -190,7 +190,7 @@ func (s *Server) Start(ctx context.Context) error {
 				for _, kv := range keyResp.Kvs {
 					key := stringutil.BytesToString(kv.Key)
 					value := stringutil.BytesToString(kv.Value)
-					if !strings.EqualFold(value, s.MasterOptions.ClientAddr) {
+					if !strings.EqualFold(value, s.MasterOptions.PeerAddr) {
 						logger.Warn("clean up the remaining key-value",
 							zap.String("remaining key", key),
 							zap.String("remaining value", value),
@@ -224,14 +224,14 @@ func (s *Server) Start(ctx context.Context) error {
 			},
 			OnNewLeader: func(identity string) {
 				// we're notified when new leader elected
-				if strings.EqualFold(s.MasterOptions.ClientAddr, identity) {
+				if strings.EqualFold(s.MasterOptions.PeerAddr, identity) {
 					return
 				}
 				logger.Info("server new leader elected", zap.String("new node identity", identity))
 			},
 		},
 		Prefix:   etcdutil.DefaultMasterLeaderPrefixKey,
-		Identity: s.MasterOptions.ClientAddr,
+		Identity: s.MasterOptions.PeerAddr,
 	})
 	if err != nil {
 		return err
@@ -263,13 +263,13 @@ func (s *Server) serviceDiscovery() error {
 func (s *Server) registerService(ctx context.Context) error {
 	workerState := constant.DefaultInstanceFreeState
 
-	stateKeyResp, err := etcdutil.GetKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.ClientAddr))
+	stateKeyResp, err := etcdutil.GetKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.PeerAddr))
 	if err != nil {
 		return err
 	}
 
 	if len(stateKeyResp.Kvs) > 1 {
-		return fmt.Errorf("the dbms-master instance register service failed: service register records [%s] are [%d], should be one record", stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.ClientAddr), len(stateKeyResp.Kvs))
+		return fmt.Errorf("the dbms-master instance register service failed: service register records [%s] are [%d], should be one record", stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.PeerAddr), len(stateKeyResp.Kvs))
 	}
 
 	for _, ev := range stateKeyResp.Kvs {
@@ -282,14 +282,14 @@ func (s *Server) registerService(ctx context.Context) error {
 	}
 
 	n := &etcdutil.Instance{
-		Addr:  s.MasterOptions.ClientAddr,
+		Addr:  s.MasterOptions.PeerAddr,
 		Role:  constant.DefaultInstanceRoleMaster,
 		State: workerState,
 	}
 
 	r := etcdutil.NewServiceRegister(
 		s.etcdClient, s.MasterOptions.ClientAddr,
-		stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.ClientAddr),
+		stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.MasterOptions.PeerAddr),
 		n.String(), s.MasterOptions.KeepaliveTTL)
 
 	err = r.Register(ctx)
