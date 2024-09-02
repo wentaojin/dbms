@@ -63,7 +63,7 @@ func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, exclu
 		}
 		exporterTableSlice = stringutil.StringItemsFilterDifference(allTables, excludeTableSlice)
 	case len(includeTableS) == 0 && len(excludeTableS) == 0:
-		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot be null at the same time")
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("source config params include-table-s/exclude-table-s cannot be exist at the same time")
 	}
