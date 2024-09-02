@@ -307,6 +307,77 @@ func (rw *RWStructMigrateSummary) DeleteStructMigrateSummaryName(ctx context.Con
 	return nil
 }
 
+type RWSequenceMigrateSummary struct {
+	common.GormDB
+}
+
+func NewSequenceMigrateSummaryRW(db *gorm.DB) *RWSequenceMigrateSummary {
+	m := &RWSequenceMigrateSummary{
+		common.WarpDB(db),
+	}
+	return m
+}
+
+func (rw *RWSequenceMigrateSummary) TableName(ctx context.Context) string {
+	return rw.DB(ctx).NamingStrategy.TableName(reflect.TypeOf(SequenceMigrateSummary{}).Name())
+}
+
+func (rw *RWSequenceMigrateSummary) CreateSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary) (*SequenceMigrateSummary, error) {
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}},
+		UpdateAll: true,
+	}).Create(task).Error
+	if err != nil {
+		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWSequenceMigrateSummary) GetSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary) (*SequenceMigrateSummary, error) {
+	var dataS *SequenceMigrateSummary
+	err := rw.DB(ctx).Model(&SequenceMigrateSummary{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).First(&dataS).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateSummary) UpdateSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary, updates map[string]interface{}) (*SequenceMigrateSummary, error) {
+	err := rw.DB(ctx).Model(&SequenceMigrateSummary{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Updates(updates).Error
+	if err != nil {
+		return nil, fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return task, nil
+}
+
+func (rw *RWSequenceMigrateSummary) FindSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary) ([]*SequenceMigrateSummary, error) {
+	var dataS []*SequenceMigrateSummary
+	err := rw.DB(ctx).Model(&SequenceMigrateSummary{}).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWSequenceMigrateSummary) DeleteSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary) error {
+	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ?", task.TaskName, task.SchemaNameS).Delete(&SequenceMigrateSummary{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWSequenceMigrateSummary) DeleteSequenceMigrateSummaryName(ctx context.Context, taskName []string) error {
+	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&SequenceMigrateSummary{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] task [%v] record failed: %v", rw.TableName(ctx), taskName, err)
+	}
+	return nil
+}
+
 type RWStructMigrateTask struct {
 	common.GormDB
 }
@@ -623,7 +694,7 @@ func (rw *RWSequenceMigrateTask) QuerySequenceMigrateTask(ctx context.Context, t
 
 func (rw *RWSequenceMigrateTask) FindSequenceMigrateTask(ctx context.Context, task *SequenceMigrateTask) ([]*SequenceMigrateTask, error) {
 	var dataS []*SequenceMigrateTask
-	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&SequenceMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TaskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

@@ -287,9 +287,8 @@ func scaleInDBMSCluster(ctx context.Context, topo *cluster.Topology, gOpt *opera
 				}
 
 				for _, mem := range members.Members {
-					// member name format: master_{ipAddr 10_10_10_21}_{ipPort}
-					ipPorts := stringutil.StringSplit(instance.InstanceName(), ":")
-					if mem.Name == stringutil.WrapPrefixIPName(ipPorts[0], configutil.DefaultMasterNamePrefix, instance.InstanceName()) {
+					// member name format: master_{ipAddr 10_10_10_21}_{peerPort}
+					if mem.Name == stringutil.WrapPrefixIPName(instance.InstanceHost(), configutil.DefaultMasterNamePrefix, fmt.Sprintf("%s:%d", instance.InstanceHost(), instance.InstancePeerPort())) {
 						_, err = etcdutil.RemoveMember(etcdCli, mem.ID)
 						if err != nil {
 							return fmt.Errorf("the dbms-cluster can't scale-in dbms-master instance, remove the instance failed: %v", err)

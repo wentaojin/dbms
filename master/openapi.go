@@ -193,11 +193,13 @@ func (s *Server) upsertStructMigrateTask(ctx context.Context, req openapi.APIPut
 		})
 	}
 	migrateSchemaRs = &pb.SchemaRouteRule{
-		SchemaNameS:     *req.SchemaRouteRule.SchemaNameS,
-		SchemaNameT:     *req.SchemaRouteRule.SchemaNameT,
-		IncludeTableS:   *req.SchemaRouteRule.IncludeTableS,
-		ExcludeTableS:   *req.SchemaRouteRule.ExcludeTableS,
-		TableRouteRules: tableRoutes,
+		SchemaNameS:      *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:      *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS:    *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS:    *req.SchemaRouteRule.ExcludeTableS,
+		IncludeSequenceS: *req.SchemaRouteRule.IncludeSequenceS,
+		ExcludeSequenceS: *req.SchemaRouteRule.ExcludeSequenceS,
+		TableRouteRules:  tableRoutes,
 	}
 
 	for _, l := range *req.StructMigrateRule.TaskStructRules {

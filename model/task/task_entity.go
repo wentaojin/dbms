@@ -77,6 +77,22 @@ type StructMigrateSummary struct {
 	*common.Entity
 }
 
+type SequenceMigrateSummary struct {
+	ID          uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
+	TaskName    string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_schema_seq_name_complex;index:idx_task_name;comment:task name" json:"taskName"`
+	SchemaNameS string  `gorm:"type:varchar(60);not null;uniqueIndex:uniq_schema_seq_name_complex;comment:source schema name" json:"schemaNameS"`
+	SeqTotals   uint64  `gorm:"type:int;comment:source seq seq totals" json:"seqTotals"`
+	SeqSuccess  uint64  `gorm:"type:int;comment:source seq seq success" json:"seqSuccess"`
+	SeqFails    uint64  `gorm:"type:int;comment:source seq seq fails" json:"seqFails"`
+	SeqWaits    uint64  `gorm:"type:int;comment:source seq seq waits" json:"seqWaits"`
+	SeqRuns     uint64  `gorm:"type:int;comment:source seq seq runs" json:"seqRuns"`
+	SeqStops    uint64  `gorm:"type:int;comment:source seq seq stops" json:"seqStops"`
+	InitFlag    string  `gorm:"type:char(1);default:N;comment:the task seq init flag" json:"initFlag"`
+	MigrateFlag string  `gorm:"type:char(1);default:N;comment:the task seq migrate finished flag" json:"migrateFlag"`
+	Duration    float64 `gorm:"comment:run duration, size: seconds" json:"duration"`
+	*common.Entity
+}
+
 type SchemaMigrateTask struct {
 	ID              uint64  `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
 	TaskName        string  `gorm:"type:varchar(30);not null;uniqueIndex:uniq_task_schema_name;index:idx_task_name;comment:task name" json:"taskName"`

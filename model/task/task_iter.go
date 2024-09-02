@@ -52,6 +52,15 @@ type IStructMigrateSummary interface {
 	DeleteStructMigrateSummaryName(ctx context.Context, taskName []string) error
 }
 
+type ISequenceMigrateSummary interface {
+	CreateSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary) (*SequenceMigrateSummary, error)
+	GetSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary) (*SequenceMigrateSummary, error)
+	UpdateSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary, updates map[string]interface{}) (*SequenceMigrateSummary, error)
+	FindSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary) ([]*SequenceMigrateSummary, error)
+	DeleteSequenceMigrateSummary(ctx context.Context, task *SequenceMigrateSummary) error
+	DeleteSequenceMigrateSummaryName(ctx context.Context, taskName []string) error
+}
+
 type IStructMigrateTask interface {
 	CreateStructMigrateTask(ctx context.Context, task *StructMigrateTask) (*StructMigrateTask, error)
 	GetStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)

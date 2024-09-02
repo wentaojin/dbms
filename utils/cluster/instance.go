@@ -328,9 +328,6 @@ type BaseInstance struct {
 
 // InstanceName implement Instance interface
 func (b *BaseInstance) InstanceName() string {
-	if strings.EqualFold(b.ComponentRole(), ComponentDBMSMaster) {
-		return stringutil.JoinHostPort(b.Host, b.PeerPort)
-	}
 	return stringutil.JoinHostPort(b.Host, b.Port)
 }
 

@@ -46,6 +46,13 @@ type StructMigrateTask struct {
 
 func (st *StructMigrateTask) Start() error {
 	startTime := time.Now()
+
+	if !st.TaskParams.EnableCheckpoint {
+		err := model.GetISchemaMigrateTaskRW().DeleteSchemaMigrateTaskName(st.Ctx, []string{st.Task.TaskName})
+		if err != nil {
+			return err
+		}
+	}
 	var (
 		databaseS, databaseT database.IDatabase
 		err                  error
@@ -188,7 +195,7 @@ func (st *StructMigrateTask) Start() error {
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow))
 
-	smt := &processor.StructMigrateTask{
+	err = database.IDatabaseRun(&processor.StructMigrateTask{
 		Ctx:                      st.Ctx,
 		Task:                     st.Task,
 		SchemaNameS:              st.SchemaNameS,
@@ -203,16 +210,9 @@ func (st *StructMigrateTask) Start() error {
 		BuildInDatatypeRules:     buildInDatatypeRules,
 		BuildInDefaultValueRules: buildInDefaultValueRules,
 		TaskParams:               st.TaskParams,
-		ReadyInit:                make(chan bool, 1),
-	}
-
-	// sequence migrate exclude struct_migrate_summary compute counts
-	err = smt.SequenceMigrateStart()
-	if err != nil {
-		return err
-	}
-
-	err = database.IDatabaseRun(smt)
+		StructReadyInit:          make(chan bool, 1),
+		SequenceReadyInit:        make(chan bool, 1),
+	})
 	if err != nil {
 		return err
 	}

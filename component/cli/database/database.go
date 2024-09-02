@@ -80,14 +80,14 @@ func Upsert(serverAddr string, file string) error {
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		fmt.Printf("Response:     %s\n", color.RedString("error unmarshal JSON: %v", err))
 		return nil
 	}
 
 	formattedJSON, err := stringutil.MarshalIndentJSON(stringutil.FormatJSONFields(jsonData))
 	if err != nil {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		fmt.Printf("Response:     %s\n", color.RedString("error marshal JSON: %v", err))
 		return nil
 	}
 

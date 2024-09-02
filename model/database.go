@@ -76,6 +76,7 @@ type database struct {
 	structMigrateSummaryRW        task.IStructMigrateSummary
 	structMigrateTaskRW           task.IStructMigrateTask
 	schemaMigrateTaskRW           task.ISchemaMigrateTask
+	seqMigrateSummaryRW           task.ISequenceMigrateSummary
 	seqMigrateTaskRW              task.ISequenceMigrateTask
 	structMigrateTaskRuleRW       migrate.IStructMigrateTaskRule
 	structMigrateSchemaRuleRW     migrate.IStructMigrateSchemaRule
@@ -238,6 +239,7 @@ func (d *database) initReaderWriters() {
 	DefaultDB.paramsRW = params.NewTaskParamsRW(d.base)
 	DefaultDB.structMigrateTaskRW = task.NewStructMigrateTaskRW(d.base)
 	DefaultDB.schemaMigrateTaskRW = task.NewSchemaMigrateTaskRW(d.base)
+	DefaultDB.seqMigrateSummaryRW = task.NewSequenceMigrateSummaryRW(d.base)
 	DefaultDB.seqMigrateTaskRW = task.NewSequenceMigrateTaskRW(d.base)
 	DefaultDB.structMigrateSummaryRW = task.NewStructMigrateSummaryRW(d.base)
 	DefaultDB.structMigrateTaskRuleRW = migrate.NewStructMigrateTaskRuleRW(d.base)
@@ -289,6 +291,7 @@ func (d *database) migrateTables() (err error) {
 		new(task.StructMigrateSummary),
 		new(task.StructMigrateTask),
 		new(task.SchemaMigrateTask),
+		new(task.SequenceMigrateSummary),
 		new(task.SequenceMigrateTask),
 		new(params.TaskDefaultParam),
 		new(params.TaskCustomParam),
@@ -537,6 +540,10 @@ func GetISequenceMigrateTaskRW() task.ISequenceMigrateTask {
 
 func GetIStructMigrateSummaryRW() task.IStructMigrateSummary {
 	return DefaultDB.structMigrateSummaryRW
+}
+
+func GetISequenceMigrateSummaryRW() task.ISequenceMigrateSummary {
+	return DefaultDB.seqMigrateSummaryRW
 }
 
 func GetIStructCompareTaskRW() task.IStructCompareTask {
