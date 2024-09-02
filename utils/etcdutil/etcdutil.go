@@ -29,7 +29,7 @@ const (
 	DefaultDialTimeout = 30 * time.Second
 
 	// DefaultRequestTimeout 10s is long enough for most of etcd clusters.
-	DefaultRequestTimeout = 10 * time.Second
+	DefaultRequestTimeout = 60 * time.Second
 
 	// DefaultAutoSyncIntervalDuration is the auto sync interval duration for etcd
 	DefaultAutoSyncIntervalDuration = 30 * time.Second

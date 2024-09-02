@@ -61,7 +61,7 @@ type Server struct {
 
 	etcdClient *clientv3.Client
 
-	// the embed etcd election information
+	// the embed election information
 	election *etcdutil.Election
 
 	// database connect is whether active, if active , it can service, otherwise disable service

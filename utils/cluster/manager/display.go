@@ -329,7 +329,7 @@ func FormatInstanceStatus(status string) string {
 
 	switch {
 	case startsWith("up|l", "healthy|l"): // up|l, up|l|ui, healthy|l
-		return color.HiGreenString(status)
+		return color.GreenString(status)
 	case startsWith("up", "healthy", "free", "bound"):
 		return color.GreenString(status)
 	case startsWith("down", "err", "inactive", "failed"): // down, down|ui
