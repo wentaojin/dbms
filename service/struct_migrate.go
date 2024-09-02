@@ -838,14 +838,44 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		switch strings.ToUpper(rec.TaskStatus) {
 		case constant.TaskDatabaseStatusFailed:
 			migrateFailedResults = rec.StatusCounts
+			_, err = model.GetISequenceMigrateSummaryRW().UpdateSequenceMigrateSummary(ctx, &task.SequenceMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"SeqFails": rec.StatusCounts,
+			})
 		case constant.TaskDatabaseStatusWaiting:
 			migrateWaitResults = rec.StatusCounts
+			_, err = model.GetISequenceMigrateSummaryRW().UpdateSequenceMigrateSummary(ctx, &task.SequenceMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"SeqWaits": rec.StatusCounts,
+			})
 		case constant.TaskDatabaseStatusStopped:
 			migrateStopResults = rec.StatusCounts
+			_, err = model.GetISequenceMigrateSummaryRW().UpdateSequenceMigrateSummary(ctx, &task.SequenceMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"SeqStops": rec.StatusCounts,
+			})
 		case constant.TaskDatabaseStatusRunning:
 			migrateRunResults = rec.StatusCounts
+			_, err = model.GetISequenceMigrateSummaryRW().UpdateSequenceMigrateSummary(ctx, &task.SequenceMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"SeqRuns": rec.StatusCounts,
+			})
 		case constant.TaskDatabaseStatusSuccess:
 			migrateSuccessResults = rec.StatusCounts
+			_, err = model.GetISequenceMigrateSummaryRW().UpdateSequenceMigrateSummary(ctx, &task.SequenceMigrateSummary{
+				TaskName:    rec.TaskName,
+				SchemaNameS: schemaRoute.SchemaNameS,
+			}, map[string]interface{}{
+				"SeqSuccess": rec.StatusCounts,
+			})
 		default:
 			return fmt.Errorf("the task [%v] task_mode [%v] task_flow [%v] task_status sequence [%v] panic, please contact auhtor or reselect", taskInfo.TaskName, taskInfo.TaskMode, taskInfo.TaskFlow, rec.TaskStatus)
 		}

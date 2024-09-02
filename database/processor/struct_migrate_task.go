@@ -952,6 +952,36 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 		gTime := time.Now()
 		g.Go(job, gTime, func(job interface{}) error {
 			smt := job.(*task.SequenceMigrateTask)
+			err = model.Transaction(st.Ctx, func(txnCtx context.Context) error {
+				_, err = model.GetISequenceMigrateTaskRW().UpdateSequenceMigrateTask(txnCtx, &task.SequenceMigrateTask{
+					TaskName:      smt.TaskName,
+					SchemaNameS:   smt.SchemaNameS,
+					SequenceNameS: smt.SequenceNameS,
+				}, map[string]interface{}{
+					"TaskStatus": constant.TaskDatabaseStatusRunning,
+				})
+				if err != nil {
+					return err
+				}
+				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+					TaskName:    smt.TaskName,
+					SchemaNameS: smt.SchemaNameS,
+					TableNameS:  smt.SequenceNameS,
+					LogDetail: fmt.Sprintf("%v [%v] the struct migrate task [%v] source sequence [%v.%v] starting",
+						stringutil.CurrentTimeFormatString(),
+						stringutil.StringLower(st.Task.TaskMode),
+						smt.TaskName,
+						smt.SchemaNameS,
+						smt.SequenceNameS),
+				})
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 
 			seqRes, err := st.DatabaseS.GetDatabaseSequenceName(st.SchemaNameS, smt.SequenceNameS)
 			if err != nil {
