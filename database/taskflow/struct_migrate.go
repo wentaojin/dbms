@@ -187,7 +187,8 @@ func (st *StructMigrateTask) Start() error {
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow))
-	err = database.IDatabaseRun(&processor.StructMigrateTask{
+
+	smt := &processor.StructMigrateTask{
 		Ctx:                      st.Ctx,
 		Task:                     st.Task,
 		SchemaNameS:              st.SchemaNameS,
@@ -203,7 +204,15 @@ func (st *StructMigrateTask) Start() error {
 		BuildInDefaultValueRules: buildInDefaultValueRules,
 		TaskParams:               st.TaskParams,
 		ReadyInit:                make(chan bool, 1),
-	})
+	}
+
+	// sequence migrate exclude struct_migrate_summary compute counts
+	err = smt.SequenceMigrateStart()
+	if err != nil {
+		return err
+	}
+
+	err = database.IDatabaseRun(smt)
 	if err != nil {
 		return err
 	}

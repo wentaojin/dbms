@@ -440,12 +440,6 @@ func (st *StructMigrateTask) Process() error {
 		}
 	}
 
-	// sequence migrate exclude struct_migrate_summary compute counts
-	err = st.sequenceMigrateStart()
-	if err != nil {
-		return err
-	}
-
 	s, err = model.GetIStructMigrateSummaryRW().GetStructMigrateSummary(st.Ctx, &task.StructMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
 	if err != nil {
 		return err
@@ -655,7 +649,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 	return nil
 }
 
-func (st *StructMigrateTask) sequenceMigrateStart() error {
+func (st *StructMigrateTask) SequenceMigrateStart() error {
 	startTime := time.Now()
 	logger.Info("sequence migrate task process",
 		zap.String("task_name", st.Task.TaskName),
@@ -672,6 +666,13 @@ func (st *StructMigrateTask) sequenceMigrateStart() error {
 
 	if len(seqs) == 0 {
 		// skip sequence migrate
+		logger.Warn("sequence migrate task process",
+			zap.String("task_name", st.Task.TaskName),
+			zap.String("task_mode", st.Task.TaskMode),
+			zap.String("task_flow", st.Task.TaskFlow),
+			zap.String("schema_name_s", st.SchemaNameS),
+			zap.String("task_stage", "skip migrate"),
+			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
 	}
 
