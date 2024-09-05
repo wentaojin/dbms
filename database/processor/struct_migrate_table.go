@@ -1073,6 +1073,13 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 			}
 			dataDefault = stringutil.BytesToString(convertTargetRaw)
 
+			// oracle null and '' is same,but mysql compatible database null and '' is different,
+			// so for MySQL compatible databases, null and '' are converted to null.
+			// 20240905 https://github.com/wentaojin/dbms/issues/59
+			if strings.EqualFold(dataDefault, "''") {
+				dataDefault = constant.OracleDatabaseTableColumnDefaultValueWithNULL
+			}
+
 			if strings.EqualFold(nullable, "NULL") {
 				switch {
 				case columnCollation != "" && comment != "":
