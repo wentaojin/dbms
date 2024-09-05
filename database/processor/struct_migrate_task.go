@@ -1007,18 +1007,33 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 
 			switch st.Task.TaskFlow {
 			case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
-				var cycleFlag string
+				var (
+					cycleFlag string
+					cacheFlag string
+					maxValue  string
+				)
 				if strings.EqualFold(seqRes[0]["CYCLE_FLAG"], "N") {
 					cycleFlag = "NOCYCLE"
 				} else {
 					cycleFlag = "CYCLE"
 				}
-				if st.TaskParams.CreateIfNotExist {
-					smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], seqRes[0]["MAX_VALUE"], seqRes[0]["CACHE_SIZE"], seqRes[0]["CYCLE_FLAG"])
-					smt.TargetSqlDigest = fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], seqRes[0]["MAX_VALUE"], seqRes[0]["CACHE_SIZE"], cycleFlag)
+				if cacheSize == 0 {
+					cacheFlag = "NOCACHE"
 				} else {
-					smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], seqRes[0]["MAX_VALUE"], seqRes[0]["CACHE_SIZE"], seqRes[0]["CYCLE_FLAG"])
-					smt.TargetSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v MAXVALUE %v CACHE %v CYCLE %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], seqRes[0]["MAX_VALUE"], seqRes[0]["CACHE_SIZE"], cycleFlag)
+					cacheFlag = fmt.Sprintf("CACHE %v", seqRes[0]["CACHE_SIZE"])
+				}
+				if seqRes[0]["MAX_VALUE"] == "9999999999999999999999999999" {
+					maxValue = "NOMAXVALUE"
+				} else {
+					maxValue = fmt.Sprintf("MAXVALUE %v", seqRes[0]["MAX_VALUE"])
+				}
+
+				if st.TaskParams.CreateIfNotExist {
+					smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
+					smt.TargetSqlDigest = fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
+				} else {
+					smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
+					smt.TargetSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
 				}
 			default:
 				return fmt.Errorf("the task [%v] task_flow [%v] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskFlow)

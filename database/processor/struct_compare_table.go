@@ -366,6 +366,39 @@ func (t *Table) CompareTablePrimaryConstraint() (string, error) {
 		b.WriteString("/*\n")
 		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table primary constraint isn't different\n", t.TaskName, t.TaskFlow))
 
+		// check primary key different, but constraint key same (oracle -> tidb/mysql)
+		switch {
+		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+			var (
+				delKey string
+				addKey string
+			)
+			for _, consCol := range delTCons {
+				if val, ok := consCol.(structure.ConstraintPrimary); ok {
+					delKey = val.ConstraintColumn
+				}
+			}
+			for _, consCol := range addTCons {
+				if val, ok := consCol.(structure.ConstraintPrimary); ok {
+					addKey = val.ConstraintColumn
+				}
+			}
+
+			if delKey == addKey {
+				logger.Warn("compare table primary constraint isn't equal",
+					zap.String("task_name", t.TaskName),
+					zap.String("task_flow", t.TaskFlow),
+					zap.String("schema_name_s", t.Source.SchemaName),
+					zap.String("table_name_s", t.Source.TableName),
+					zap.String("primary_key_s", t.Source.String(constant.StructComparePrimaryStructureJSONFormat)),
+					zap.String("schema_name_t", t.Target.SchemaName),
+					zap.String("table_name_t", t.Target.TableName),
+					zap.String("primary_key_t", t.Target.String(constant.StructComparePrimaryStructureJSONFormat)),
+					zap.String("action", "skip"))
+				return b.String(), nil
+			}
+		}
+
 		for consName, consCol := range delTCons {
 			if val, ok := consCol.(structure.ConstraintPrimary); ok {
 				tw.AppendRow(table.Row{"PRIMARY CONSTRAINT",
