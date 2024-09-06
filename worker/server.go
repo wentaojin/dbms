@@ -471,8 +471,44 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 		if err != nil {
 			return err
 		}
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			err = model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTaskName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetISequenceMigrateSummaryRW().DeleteSequenceMigrateSummaryName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetISequenceMigrateTaskRW().DeleteSequenceMigrateTaskName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	case constant.TaskModeStmtMigrate:
 		_, err := service.DeleteStmtMigrateTask(ctx, &pb.DeleteStmtMigrateTaskRequest{TaskName: []string{t.TaskName}})
+		if err != nil {
+			return err
+		}
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			err = model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
@@ -481,8 +517,36 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 		if err != nil {
 			return err
 		}
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			err = model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	case constant.TaskModeSqlMigrate:
 		_, err := service.DeleteSqlMigrateTask(ctx, &pb.DeleteSqlMigrateTaskRequest{TaskName: []string{t.TaskName}})
+		if err != nil {
+			return err
+		}
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			err = model.GetISqlMigrateSummaryRW().DeleteSqlMigrateSummaryName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetISqlMigrateTaskRW().DeleteSqlMigrateTaskName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
@@ -491,13 +555,59 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 		if err != nil {
 			return err
 		}
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			err = model.GetIDataCompareSummaryRW().DeleteDataCompareSummaryName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataCompareResultRW().DeleteDataCompareResultName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	case constant.TaskModeStructCompare:
 		_, err := service.DeleteStructCompareTask(ctx, &pb.DeleteStructCompareTaskRequest{TaskName: []string{t.TaskName}})
 		if err != nil {
 			return err
 		}
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			err = model.GetIStructCompareSummaryRW().DeleteStructCompareSummaryName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIStructCompareTaskRW().DeleteStructCompareTaskName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	case constant.TaskModeDataScan:
 		_, err := service.DeleteDataScanTask(ctx, &pb.DeleteDataScanTaskRequest{TaskName: []string{t.TaskName}})
+		if err != nil {
+			return err
+		}
+		err = model.Transaction(ctx, func(txnCtx context.Context) error {
+			err = model.GetIDataScanSummaryRW().DeleteDataScanSummaryName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataScanTaskRW().DeleteDataScanTaskName(txnCtx, []string{t.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
