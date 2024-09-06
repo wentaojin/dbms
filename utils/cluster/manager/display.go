@@ -111,6 +111,10 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 		masterList = append(masterList, stringutil.JoinHostPort(host, master.Port))
 	}
 
+	if len(masterList) == 0 {
+		return nil, nil, fmt.Errorf("the dbms-matser addr can't be zero, the dbms-cluster topology: [%v]", topo.String())
+	}
+
 	client, err := etcdutil.CreateClient(context.TODO(), masterList, nil)
 	if err != nil {
 		return nil, nil, err
