@@ -104,7 +104,7 @@ func (s *MasterOptions) InstanceName() string {
 
 // Status queries current status of the instance
 func (s *MasterOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ...string) (string, error) {
-	if len(addrs) < 1 {
+	if len(addrs) == 0 {
 		return "N/A", fmt.Errorf("the cluster master instance cannot be zero, please contact author or reselect")
 	}
 	cli, err := etcdutil.CreateClient(ctx, addrs, tlsCfg)
@@ -164,7 +164,7 @@ func (w *WorkerOptions) InstanceName() string {
 
 // Status queries current status of the instance
 func (w *WorkerOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ...string) (string, error) {
-	if len(addrs) < 1 {
+	if len(addrs) == 0 {
 		return "N/A", fmt.Errorf("the cluster master instance cannot be zero, please contact author or reselect")
 	}
 	cli, err := etcdutil.CreateClient(ctx, addrs, tlsCfg)
