@@ -105,31 +105,31 @@ func (s *MasterOptions) InstanceName() string {
 // Status queries current status of the instance
 func (s *MasterOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ...string) (string, error) {
 	if len(addrs) == 0 {
-		return "N/A", fmt.Errorf("the cluster master instance cannot be zero, please contact author or reselect")
+		return "N/A", fmt.Errorf("the dbms-cluster master instance cannot be zero, please contact author or reselect")
 	}
 	cli, err := etcdutil.CreateClient(ctx, addrs, tlsCfg)
 	if err != nil {
-		return "N/A", err
+		return "N/A", fmt.Errorf("the dbms-cluster create service client failed: [%v]", err)
 	}
 
-	keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, fmt.Sprintf("%s:%d", s.Host, s.PeerPort)))
+	keyResp, err := etcdutil.GetKey(cli, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, fmt.Sprintf("%s:%d", s.Host, s.Port)))
 	if err != nil {
-		return "N/A", err
+		return "N/A", fmt.Errorf("the dbms-cluster get master instance service key failed: [%v]", err)
 	}
 	if len(keyResp.Kvs) == 0 {
-		return "DOWN", nil
+		return "DOWN", fmt.Errorf("the dbms-cluster master instance [%s] service registe failed, please check and wait service normal", fmt.Sprintf("%s:%d", s.Host, s.Port))
 	} else if len(keyResp.Kvs) > 1 {
-		return "N/A", fmt.Errorf("the cluster instance member [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", s.Host, s.Port))
+		return "N/A", fmt.Errorf("the dbms-cluster instance member [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", s.Host, s.Port))
 	}
 
 	leaderResp, err := etcdutil.GetKey(cli, constant.DefaultMasterLeaderAddressKey)
 	if err != nil {
-		return "N/A", err
+		return "N/A", fmt.Errorf("the dbms-cluster get master leader addr key failed: [%v]", err)
 	}
 	if len(leaderResp.Kvs) == 0 {
-		return "N/A", nil
+		return "NotReady", fmt.Errorf("the dbms-cluster master leader election has not completed, the service is disabled, please wait server ready")
 	} else if len(leaderResp.Kvs) > 1 {
-		return "N/A", fmt.Errorf("the cluster leader are over than one, please contact author or reselect, detail: %v", leaderResp.Kvs)
+		return "N/A", fmt.Errorf("the dbms-cluster leader are over than one, please contact author or reselect, detail: %v", leaderResp.Kvs)
 	}
 
 	if strings.EqualFold(stringutil.BytesToString(leaderResp.Kvs[0].Value), fmt.Sprintf("%s:%d", s.Host, s.Port)) {
@@ -165,7 +165,7 @@ func (w *WorkerOptions) InstanceName() string {
 // Status queries current status of the instance
 func (w *WorkerOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ...string) (string, error) {
 	if len(addrs) == 0 {
-		return "N/A", fmt.Errorf("the cluster master instance cannot be zero, please contact author or reselect")
+		return "N/A", fmt.Errorf("the dbms-cluster master instance cannot be zero, please contact author or reselect")
 	}
 	cli, err := etcdutil.CreateClient(ctx, addrs, tlsCfg)
 	if err != nil {
@@ -179,7 +179,7 @@ func (w *WorkerOptions) Status(ctx context.Context, tlsCfg *tls.Config, addrs ..
 	if len(keyResp.Kvs) == 0 {
 		return "DOWN", nil
 	} else if len(keyResp.Kvs) > 1 {
-		return "N/A", fmt.Errorf("the cluster worker member [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", w.Host, w.Port))
+		return "N/A", fmt.Errorf("the dbms-cluster worker member [%s] are over than one, please contact author or reselect", fmt.Sprintf("%s:%d", w.Host, w.Port))
 	}
 
 	var ws *etcdutil.Instance
@@ -263,7 +263,7 @@ func (t *Topology) FillHostArchOrOS(hostArch map[string]string, fullType FullHos
 	return nil
 }
 
-// CountDir counts for dir paths used by any instance in the cluster with the same
+// CountDir counts for dir paths used by any instance in the dbms-cluster with the same
 // prefix, useful to find potential path conflicts
 func (t *Topology) CountDir(targetHost, dirPrefix string) int {
 	dirTypes := []string{

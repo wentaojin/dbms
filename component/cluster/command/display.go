@@ -204,7 +204,7 @@ func (a *AppDisplay) Display(dOpt *manager.DisplayOption, gOpt *operator.Options
 		if v.ComponentName != cluster.ComponentDBMSMaster {
 			continue
 		}
-		if strings.HasPrefix(v.Status, "Up") || strings.HasPrefix(v.Status, "Healthy") {
+		if strings.HasPrefix(v.Status, "NotReady") || strings.HasPrefix(v.Status, "Healthy") {
 			instAddr := stringutil.JoinHostPort(v.ManageHost, v.Port)
 			masterActive = append(masterActive, instAddr)
 		}

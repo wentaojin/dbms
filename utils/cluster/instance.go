@@ -320,7 +320,7 @@ type BaseInstance struct {
 	OSVersion string
 	OSArch    string
 
-	StatusFn func(ctx context.Context, tlsCfg *tls.Config, pdHosts ...string) (string, error)
+	StatusFn func(ctx context.Context, tlsCfg *tls.Config, masterAddrs ...string) (string, error)
 
 	Config    map[string]any
 	Component Component

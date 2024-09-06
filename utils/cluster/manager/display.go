@@ -112,7 +112,7 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 	}
 
 	if len(masterList) == 0 {
-		return nil, nil, fmt.Errorf("the dbms-matser addr can't be zero, the dbms-cluster topology: [%v]", topo.String())
+		return nil, nil, fmt.Errorf("the dbms-cluster master instance can't be zero, the dbms-cluster topology: [%v]", topo.String())
 	}
 
 	client, err := etcdutil.CreateClient(context.TODO(), masterList, nil)
@@ -141,7 +141,7 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 
 		status, err := ins.Status(ctx, nil, masterList...)
 		if err != nil {
-			c.Logger.Errorf("get instance %s status failed: %v", ins.InstanceName(), err)
+			c.Logger.Errorf("the dbms-cluster get master instance %s status failed: %v", ins.InstanceName(), err)
 			masterStatus[ins.InstanceName()] = status
 			return
 		}
@@ -182,7 +182,7 @@ func (c *Controller) GetClusterTopology(dopt *DisplayOption, opt *operator.Optio
 		default:
 			status, err = ins.Status(ctx, nil, masterActive...)
 			if err != nil {
-				c.Logger.Errorf("get instance %s status failed: %v", ins.InstanceName(), err)
+				c.Logger.Errorf("the dbms-cluster get worker instance %s status failed: %v", ins.InstanceName(), err)
 			}
 		}
 
@@ -332,13 +332,13 @@ func FormatInstanceStatus(status string) string {
 	}
 
 	switch {
-	case startsWith("up|l", "healthy|l"): // up|l, up|l|ui, healthy|l
+	case startsWith("healthy|l"):
 		return color.GreenString(status)
-	case startsWith("up", "healthy", "free", "bound"):
+	case startsWith("healthy", "free", "bound"):
 		return color.GreenString(status)
-	case startsWith("down", "err", "inactive", "failed"): // down, down|ui
+	case startsWith("down", "err", "inactive", "failed"):
 		return color.RedString(status)
-	case startsWith("tombstone", "disconnected", "n/a", "stopped"), strings.Contains(strings.ToLower(status), "offline"):
+	case startsWith("notready", "disconnected", "n/a", "stopped"), strings.Contains(strings.ToLower(status), "offline"):
 		return color.YellowString(status)
 	default:
 		return status
