@@ -230,7 +230,7 @@ func (t *StructMigrateTable) GenTableUniqueKey() ([]string, error) {
 
 			var ukColumns []string
 
-			for _, s := range strings.Split(columnList, ",") {
+			for _, s := range strings.Split(columnList, constant.StringSeparatorComplexSymbol) {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
 					convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
 					if err != nil {
@@ -307,7 +307,7 @@ func (t *StructMigrateTable) GenTableForeignKey() ([]string, error) {
 				fkColumns  []string
 				rfkColumns []string
 			)
-			for _, s := range strings.Split(columnList, ",") {
+			for _, s := range strings.Split(columnList, constant.StringSeparatorComplexSymbol) {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
 					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
 					if err != nil {
@@ -319,9 +319,9 @@ func (t *StructMigrateTable) GenTableForeignKey() ([]string, error) {
 					return nil, fmt.Errorf("[GenTableForeignKey] the upstream database schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 				}
 			}
-			columnList = strings.Join(fkColumns, ",")
+			columnList = strings.Join(fkColumns, constant.StringSeparatorComma)
 
-			for _, s := range strings.Split(rColumnList, ",") {
+			for _, s := range strings.Split(rColumnList, constant.StringSeparatorComplexSymbol) {
 				if val, ok := t.TableAttributesRule.ColumnNameRule[s]; ok {
 					convertTargetRaw, err := stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
 					if err != nil {
@@ -332,7 +332,7 @@ func (t *StructMigrateTable) GenTableForeignKey() ([]string, error) {
 					return nil, fmt.Errorf("[GenTableForeignKey] the upstream database schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, s)
 				}
 			}
-			rColumnList = strings.Join(rfkColumns, ",")
+			rColumnList = strings.Join(rfkColumns, constant.StringSeparatorComma)
 
 			convertTargetRaw, err := stringutil.CharsetConvert([]byte(rOwner), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
 			if err != nil {
@@ -597,7 +597,7 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 			indexName = stringutil.BytesToString(convertTargetRaw)
 
 			// Function Index: SUBSTR("NAME8",1,8)|+|NAME9
-			ukColumns := strings.Split(columnList, "|+|")
+			ukColumns := strings.Split(columnList, constant.StringSeparatorComplexSymbol)
 			for i, s := range ukColumns {
 				// SUBSTR("NAME8",1,8) OR NAME9
 				brackets := stringutil.StringExtractorWithinBrackets(s)
@@ -787,7 +787,7 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 			itypName = stringutil.BytesToString(convertTargetRaw)
 
 			// Function Index: SUBSTR("NAME8",1,8)|+|NAME9
-			normalIndex := strings.Split(columnList, "|+|")
+			normalIndex := strings.Split(columnList, constant.StringSeparatorComplexSymbol)
 			for i, col := range normalIndex {
 				// SUBSTR("NAME8",1,8) OR NAME9
 				brackets := stringutil.StringExtractorWithinBrackets(col)

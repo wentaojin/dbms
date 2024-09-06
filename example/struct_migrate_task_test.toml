@@ -27,10 +27,10 @@ case-field-rule-t = "1"
 schema-name-s = "SCOTT"
 schema-name-t = "ucccis"
 # include-table-s 迁移所有表需指定 *，特定表写具体表名
-include-table-s = []
+include-table-s = ["T52"]
 exclude-table-s = []
 # sequence 设置空代表不迁移 sequence
-include-sequence-s = ["S2","S5","S6"]
+include-sequence-s = []
 exclude-sequence-s = []
 
 [[schema-route-rule.table-route-rules]]
