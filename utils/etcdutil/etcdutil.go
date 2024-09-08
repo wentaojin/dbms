@@ -18,6 +18,10 @@ package etcdutil
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
+	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/stringutil"
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -34,6 +38,8 @@ const (
 	// DefaultAutoSyncIntervalDuration is the auto sync interval duration for etcd
 	DefaultAutoSyncIntervalDuration = 30 * time.Second
 )
+
+var NotFoundLeader = errors.New("not found leader")
 
 // CreateClient creates an etcd client with some default config items.
 func CreateClient(ctx context.Context, endpoints []string, tlsCfg *tls.Config) (*clientv3.Client, error) {
@@ -65,6 +71,50 @@ func MoveLeader(client *clientv3.Client, id uint64) (*clientv3.MoveLeaderRespons
 	ctx, cancel := context.WithTimeout(client.Ctx(), DefaultRequestTimeout)
 	defer cancel()
 	return client.MoveLeader(ctx, id)
+}
+
+// StatusMember get an etcd member status
+func StatusMember(client *clientv3.Client) (*clientv3.StatusResponse, error) {
+	ctx, cancel := context.WithTimeout(client.Ctx(), DefaultRequestTimeout)
+	defer cancel()
+
+	for i, endpoint := range client.Endpoints() {
+		status, err := client.Status(ctx, endpoint)
+		if err != nil {
+			// traversing endpoints
+			if i != len(client.Endpoints())-1 {
+				continue
+			} else {
+				return nil, err
+			}
+		} else {
+			return status, nil
+		}
+	}
+	return nil, fmt.Errorf("the cluster member get failed: the endpoints [%v] aren't active, please check cluster master healthy status", stringutil.StringJoin(client.Endpoints(), constant.StringSeparatorComma))
+}
+
+// GetClusterLeader get an etcd leader addr
+func GetClusterLeader(client *clientv3.Client) (string, error) {
+	members, err := ListMembers(client)
+	if err != nil {
+		return "", err
+	}
+	status, err := StatusMember(client)
+	if err != nil {
+		return "", err
+	}
+
+	for _, m := range members.Members {
+		if status.Leader == m.ID {
+			if len(m.ClientURLs) > 1 {
+				return "", fmt.Errorf("the cluster leader client urls has over one, currrntly values are [%v], should be one, please check cluster master healthy status", stringutil.StringJoin(m.ClientURLs, constant.StringSeparatorComma))
+			}
+			return m.ClientURLs[0], nil
+		}
+	}
+
+	return "", NotFoundLeader
 }
 
 // RemoveMember removes an etcd member by the given id.
