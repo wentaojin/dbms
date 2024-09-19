@@ -1150,7 +1150,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 		zap.String("cost", endTime.Sub(startTime).String()))
 
 	compareTime := time.Now()
-	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
+	addDestSets, delDestSets := Cmp(columnDataSM, columnDataTM)
 
 	logger.Info("data compare task chunk compare rows detail",
 		zap.String("task_name", r.Dmt.TaskName),
@@ -1615,7 +1615,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 	columnNameT := <-columnNameTC
 
 	compareTime := time.Now()
-	addDestSets, delDestSets := Cmp(columnDataTM, columnDataSM)
+	addDestSets, delDestSets := Cmp(columnDataSM, columnDataTM)
 	logger.Info("data compare task chunk compare rows detail",
 		zap.String("task_name", r.Dmt.TaskName),
 		zap.String("task_mode", r.TaskMode),
