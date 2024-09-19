@@ -1224,6 +1224,14 @@ components:
           type: boolean
         enableConsistentRead:
           type: boolean
+        enableImportFeature:
+          type: boolean
+        csvImportParams:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+            format: string
     SchemaRouteRule:
       type: object
       properties:

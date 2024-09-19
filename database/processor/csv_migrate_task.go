@@ -17,7 +17,7 @@ package processor
 
 import (
 	"context"
-	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/snappy"
 	"github.com/google/uuid"
@@ -33,12 +33,13 @@ import (
 	"github.com/wentaojin/dbms/utils/structure"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type DataMigrateTask struct {
+type CsvMigrateTask struct {
 	Ctx             context.Context
 	Task            *task.Task
 	DBRoleS         string
@@ -48,40 +49,26 @@ type DataMigrateTask struct {
 	DatabaseS       database.IDatabase
 	DatabaseT       database.IDatabase
 	SchemaNameS     string
+	SchemaNameT     string
 	GlobalSnapshotS string
-	StmtParams      *pb.StatementMigrateParam
+
+	CsvParams *pb.CsvMigrateParam
 
 	WaiterC chan *WaitingRecs
 	ResumeC chan *WaitingRecs
 }
 
-func (cmt *DataMigrateTask) Init() error {
+func (cmt *CsvMigrateTask) Init() error {
 	defer func() {
 		close(cmt.WaiterC)
 		close(cmt.ResumeC)
 	}()
 	startTime := time.Now()
-	logger.Info("data migrate task init start",
+	logger.Info("csv migrate task init start",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
 		zap.String("startTime", startTime.String()))
-
-	if !cmt.StmtParams.EnableCheckpoint {
-		err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(cmt.Ctx, []string{cmt.Task.TaskName})
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(cmt.Ctx, []string{cmt.Task.TaskName})
-		if err != nil {
-			return err
-		}
-	}
-	logger.Warn("data migrate task checkpoint skip",
-		zap.String("task_name", cmt.Task.TaskName),
-		zap.String("task_mode", cmt.Task.TaskMode),
-		zap.String("task_flow", cmt.Task.TaskFlow),
-		zap.Bool("enable_checkpoint", cmt.StmtParams.EnableCheckpoint))
 
 	// filter database table
 	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(cmt.Ctx, &rule.MigrateTaskTable{
@@ -130,7 +117,32 @@ func (cmt *DataMigrateTask) Init() error {
 		databaseTaskTablesMap[tabName] = struct{}{}
 	}
 
-	logger.Info("data migrate task compare table",
+	if !cmt.CsvParams.EnableCheckpoint {
+		err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(cmt.Ctx, []string{cmt.Task.TaskName})
+		if err != nil {
+			return err
+		}
+		err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(cmt.Ctx, []string{cmt.Task.TaskName})
+		if err != nil {
+			return err
+		}
+
+		if cmt.CsvParams.EnableImportFeature {
+			for _, t := range databaseTaskTables {
+				_, err = cmt.DatabaseT.ExecContext(cmt.Ctx, fmt.Sprintf(`TRUNCATE TABLE %s.%s`, cmt.SchemaNameT, t))
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	logger.Warn("csv migrate task checkpoint skip",
+		zap.String("task_name", cmt.Task.TaskName),
+		zap.String("task_mode", cmt.Task.TaskMode),
+		zap.String("task_flow", cmt.Task.TaskFlow),
+		zap.Bool("enable_checkpoint", cmt.CsvParams.EnableCheckpoint))
+
+	logger.Info("csv migrate task compare table",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow))
@@ -180,13 +192,13 @@ func (cmt *DataMigrateTask) Init() error {
 	dbTypeS := dbTypeSli[0]
 
 	initTable := time.Now()
-	logger.Info("data migrate task init table",
+	logger.Info("csv migrate task init table",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
 		zap.String("startTime", initTable.String()))
 	g, gCtx := errgroup.WithContext(cmt.Ctx)
-	g.SetLimit(int(cmt.StmtParams.TableThread))
+	g.SetLimit(int(cmt.CsvParams.TableThread))
 
 	for _, taskJob := range databaseTaskTables {
 		sourceTable := taskJob
@@ -206,7 +218,6 @@ func (cmt *DataMigrateTask) Init() error {
 				}
 				if strings.EqualFold(s.InitFlag, constant.TaskInitStatusFinished) {
 					// the database task has init flag,skip
-					// the database task has init flag,skip
 					select {
 					case cmt.ResumeC <- &WaitingRecs{
 						TaskName:    s.TaskName,
@@ -215,7 +226,7 @@ func (cmt *DataMigrateTask) Init() error {
 						SchemaNameT: s.SchemaNameT,
 						TableNameT:  s.TableNameT,
 					}:
-						logger.Info("data migrate task resume send",
+						logger.Info("csv migrate task resume send",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
@@ -231,7 +242,7 @@ func (cmt *DataMigrateTask) Init() error {
 						if err != nil {
 							return err
 						}
-						logger.Warn("data migrate task resume channel full",
+						logger.Warn("csv migrate task resume channel full",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
@@ -263,7 +274,7 @@ func (cmt *DataMigrateTask) Init() error {
 					DBCharsetS:     cmt.DBCharsetS,
 					CaseFieldRuleS: cmt.Task.CaseFieldRuleS,
 					CaseFieldRuleT: cmt.Task.CaseFieldRuleT,
-					GlobalSqlHintS: cmt.StmtParams.SqlHintS,
+					GlobalSqlHintS: cmt.CsvParams.SqlHintS,
 				}
 
 				attsRule, err := database.IDataMigrateAttributesRule(dataRule)
@@ -295,8 +306,9 @@ func (cmt *DataMigrateTask) Init() error {
 						ChunkID:         uuid.New().String(),
 						ChunkDetailS:    encryptChunkS,
 						ChunkDetailArgS: "",
-						ConsistentReadS: strconv.FormatBool(cmt.StmtParams.EnableConsistentRead),
+						ConsistentReadS: strconv.FormatBool(cmt.CsvParams.EnableConsistentRead),
 						TaskStatus:      constant.TaskDatabaseStatusWaiting,
+						CsvFile:         filepath.Join(cmt.CsvParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS, stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`)),
 					}
 					err = model.Transaction(gCtx, func(txnCtx context.Context) error {
 						_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, migrateTask)
@@ -333,7 +345,7 @@ func (cmt *DataMigrateTask) Init() error {
 						SchemaNameT: s.SchemaNameT,
 						TableNameT:  s.TableNameT,
 					}:
-						logger.Info("data migrate task wait send",
+						logger.Info("csv migrate task wait send",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
@@ -349,7 +361,7 @@ func (cmt *DataMigrateTask) Init() error {
 						if err != nil {
 							return err
 						}
-						logger.Warn("data migrate task wait channel full",
+						logger.Warn("csv migrate task wait channel full",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
@@ -389,7 +401,7 @@ func (cmt *DataMigrateTask) Init() error {
 				if err != nil {
 					return err
 				}
-				logger.Info("data migrate task init table finished",
+				logger.Info("csv migrate task init table finished",
 					zap.String("task_name", cmt.Task.TaskName),
 					zap.String("task_mode", cmt.Task.TaskMode),
 					zap.String("task_flow", cmt.Task.TaskFlow),
@@ -402,19 +414,19 @@ func (cmt *DataMigrateTask) Init() error {
 	}
 
 	if err = g.Wait(); err != nil {
-		logger.Error("data migrate task init failed",
+		logger.Error("csv migrate task init failed",
 			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", cmt.SchemaNameS),
 			zap.Error(err))
 		return err
 	}
-	logger.Info("data migrate task init table",
+	logger.Info("csv migrate task init table",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
 		zap.String("cost", time.Now().Sub(initTable).String()))
 
-	logger.Info("data migrate task init success",
+	logger.Info("csv migrate task init success",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
@@ -422,9 +434,9 @@ func (cmt *DataMigrateTask) Init() error {
 	return nil
 }
 
-func (cmt *DataMigrateTask) Run() error {
+func (cmt *CsvMigrateTask) Run() error {
 	startTime := time.Now()
-	logger.Info("data migrate task run starting",
+	logger.Info("csv migrate task run starting",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 
 	for s := range cmt.WaiterC {
@@ -434,7 +446,7 @@ func (cmt *DataMigrateTask) Run() error {
 		}
 	}
 
-	logger.Info("data migrate task run success",
+	logger.Info("csv migrate task run success",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
@@ -442,9 +454,9 @@ func (cmt *DataMigrateTask) Run() error {
 	return nil
 }
 
-func (cmt *DataMigrateTask) Resume() error {
+func (cmt *CsvMigrateTask) Resume() error {
 	startTime := time.Now()
-	logger.Info("data migrate task resume starting",
+	logger.Info("csv migrate task resume starting",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 
 	for s := range cmt.ResumeC {
@@ -453,7 +465,7 @@ func (cmt *DataMigrateTask) Resume() error {
 			return err
 		}
 	}
-	logger.Info("data migrate task resume success",
+	logger.Info("csv migrate task resume success",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
@@ -461,8 +473,8 @@ func (cmt *DataMigrateTask) Resume() error {
 	return nil
 }
 
-func (cmt *DataMigrateTask) Last() error {
-	logger.Info("data migrate task last table",
+func (cmt *CsvMigrateTask) Last() error {
+	logger.Info("csv migrate task last table",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 	flags, err := model.GetIDataMigrateSummaryRW().QueryDataMigrateSummaryFlag(cmt.Ctx, &task.DataMigrateSummary{
 		TaskName:    cmt.Task.TaskName,
@@ -487,7 +499,7 @@ func (cmt *DataMigrateTask) Last() error {
 	return nil
 }
 
-func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
+func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 	startTableTime := time.Now()
 
 	summary, err := model.GetIDataMigrateSummaryRW().GetDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{
@@ -499,7 +511,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		return err
 	}
 	if strings.EqualFold(summary.MigrateFlag, constant.TaskMigrateStatusFinished) {
-		logger.Warn("data migrate task process",
+		logger.Warn("csv migrate task process",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -514,192 +526,224 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] table_name_s [%s] init status not finished, disabled migrate", s.TableNameS, cmt.Task.TaskMode, cmt.Task.TaskFlow, s.SchemaNameS, s.TableNameS)
 	}
 
-	var sqlTSmt *sql.Stmt
-
-	logger.Info("data migrate task process table",
-		zap.String("task_name", cmt.Task.TaskName),
-		zap.String("task_mode", cmt.Task.TaskMode),
-		zap.String("task_flow", cmt.Task.TaskFlow),
-		zap.String("schema_name_s", s.SchemaNameS),
-		zap.String("table_name_s", s.TableNameS),
-		zap.String("startTime", startTableTime.String()))
-
-	switch cmt.Task.TaskFlow {
-	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
-		limitOne, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(cmt.Ctx, &task.DataMigrateTask{
-			TaskName:    s.TaskName,
-			SchemaNameS: s.SchemaNameS,
-			TableNameS:  s.TableNameS})
+	// if the task table migrate status is importing, then it represent the task table has exported, but it isn't imported or importing failed
+	if !strings.EqualFold(summary.MigrateFlag, constant.TaskMigrateStatusImporting) {
+		err = stringutil.PathNotExistOrCreate(filepath.Join(cmt.CsvParams.OutputDir, s.SchemaNameS, s.TableNameS))
 		if err != nil {
 			return err
 		}
-		sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, cmt.StmtParams.SqlHintT, limitOne.ColumnDetailT, int(cmt.StmtParams.BatchSize), true)
-		sqlTSmt, err = cmt.DatabaseT.PrepareContext(cmt.Ctx, sqlStr)
+		statfs, err := stringutil.GetDiskUsage(cmt.CsvParams.OutputDir)
 		if err != nil {
 			return err
 		}
-	default:
-		return fmt.Errorf("the task_name [%s] schema [%s] task_mode [%s] task_flow [%s] prepare isn't support, please contact author", cmt.Task.TaskName, s.SchemaNameS, cmt.Task.TaskMode, cmt.Task.TaskFlow)
-	}
+		// MB
+		diskFactor, err := stringutil.StrconvFloatBitSize(cmt.CsvParams.DiskUsageFactor, 64)
+		if err != nil {
+			return err
+		}
+		estmTableSizeMB := summary.TableSizeS * diskFactor
 
-	var migrateTasks []*task.DataMigrateTask
-	migrateTasks, err = model.GetIDataMigrateTaskRW().FindDataMigrateTaskTableStatus(cmt.Ctx,
-		s.TaskName,
-		s.SchemaNameS,
-		s.TableNameS,
-		[]string{constant.TaskDatabaseStatusWaiting, constant.TaskDatabaseStatusFailed, constant.TaskDatabaseStatusRunning, constant.TaskDatabaseStatusStopped},
-	)
-	if err != nil {
-		return err
-	}
+		totalSpace := statfs.Blocks * uint64(statfs.Bsize) / 1024 / 1024
+		freeSpace := statfs.Bfree * uint64(statfs.Bsize) / 1024 / 1024
+		usedSpace := totalSpace - freeSpace
 
-	logger.Info("data migrate task process chunks",
-		zap.String("task_name", cmt.Task.TaskName),
-		zap.String("task_mode", cmt.Task.TaskMode),
-		zap.String("task_flow", cmt.Task.TaskFlow),
-		zap.String("schema_name_s", s.SchemaNameS),
-		zap.String("table_name_s", s.TableNameS))
-
-	g := errconcurrent.NewGroup()
-	g.SetLimit(int(cmt.StmtParams.SqlThreadS))
-
-	for _, j := range migrateTasks {
-		gTime := time.Now()
-		g.Go(j, gTime, func(j interface{}) error {
-			dt := j.(*task.DataMigrateTask)
-			errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-				_, err := model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-					&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus": constant.TaskDatabaseStatusRunning,
-					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    dt.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(cmt.Task.TaskMode),
-						dt.TaskName,
-						cmt.Task.TaskFlow,
-						dt.SchemaNameS,
-						dt.TableNameS,
-						dt.ChunkDetailS),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
-			}
-
-			err = database.IDataMigrateProcess(&StmtMigrateRow{
-				Ctx:           cmt.Ctx,
-				TaskMode:      cmt.Task.TaskMode,
-				TaskFlow:      cmt.Task.TaskFlow,
-				Dmt:           dt,
-				DatabaseS:     cmt.DatabaseS,
-				DatabaseT:     cmt.DatabaseT,
-				DatabaseTStmt: sqlTSmt,
-				DBCharsetS:    constant.MigrateOracleCharsetStringConvertMapping[cmt.DBCharsetS],
-				DBCharsetT:    stringutil.StringUpper(cmt.DBCharsetT),
-				SqlThreadT:    int(cmt.StmtParams.SqlThreadT),
-				BatchSize:     int(cmt.StmtParams.BatchSize),
-				CallTimeout:   int(cmt.StmtParams.CallTimeout),
-				SafeMode:      cmt.StmtParams.EnableSafeMode,
-				ReadChan:      make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
-				WriteChan:     make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+		if freeSpace < uint64(estmTableSizeMB) {
+			logger.Warn("csv migrate task disk usage",
+				zap.String("task_name", cmt.Task.TaskName),
+				zap.String("task_mode", cmt.Task.TaskMode),
+				zap.String("task_flow", cmt.Task.TaskFlow),
+				zap.String("schema_name_s", s.SchemaNameS),
+				zap.String("table_name_s", s.TableNameS),
+				zap.String("output_dir", cmt.CsvParams.OutputDir),
+				zap.Uint64("disk total space(MB)", totalSpace),
+				zap.Uint64("disk used space(MB)", usedSpace),
+				zap.Uint64("disk free space(MB)", freeSpace),
+				zap.Uint64("estimate table space(MB)", uint64(estmTableSizeMB)))
+			_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{
+				TaskName:    s.TaskName,
+				SchemaNameS: s.SchemaNameS,
+				TableNameS:  s.TableNameS,
+			}, map[string]interface{}{
+				"Refused": fmt.Sprintf("the output [%s] current disk quota isn't enough, total space(MB): [%v], used space(MB): [%v], free space(MB): [%v], estimate space(MB): [%v]", cmt.CsvParams.OutputDir, totalSpace, usedSpace, freeSpace, estmTableSizeMB),
 			})
 			if err != nil {
 				return err
 			}
-
-			errW = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-					&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus": constant.TaskDatabaseStatusSuccess,
-						"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
-					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    dt.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(cmt.Task.TaskMode),
-						dt.TaskName,
-						cmt.Task.TaskFlow,
-						dt.SchemaNameS,
-						dt.TableNameS,
-						dt.ChunkDetailS),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
-			}
+			// skip
 			return nil
-		})
-	}
+		}
 
-	for _, r := range g.Wait() {
-		if r.Err != nil {
-			smt := r.Task.(*task.DataMigrateTask)
-			logger.Warn("data migrate task process tables",
-				zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
-				zap.String("schema_name_s", smt.SchemaNameS),
-				zap.String("table_name_s", smt.TableNameS),
-				zap.Error(r.Err))
+		logger.Info("csv migrate task process table",
+			zap.String("task_name", cmt.Task.TaskName),
+			zap.String("task_mode", cmt.Task.TaskMode),
+			zap.String("task_flow", cmt.Task.TaskFlow),
+			zap.String("schema_name_s", s.SchemaNameS),
+			zap.String("table_name_s", s.TableNameS),
+			zap.String("output_dir", cmt.CsvParams.OutputDir),
+			zap.Uint64("disk total space(MB)", totalSpace),
+			zap.Uint64("disk used space(MB)", usedSpace),
+			zap.Uint64("disk free space(MB)", freeSpace),
+			zap.Uint64("estimate table space(MB)", uint64(estmTableSizeMB)),
+			zap.String("startTime", startTableTime.String()))
 
-			errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-					&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus":  constant.TaskDatabaseStatusFailed,
-						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-						"ErrorDetail": r.Err.Error(),
+		var migrateTasks []*task.DataMigrateTask
+		migrateTasks, err = model.GetIDataMigrateTaskRW().FindDataMigrateTaskTableStatus(cmt.Ctx,
+			s.TaskName,
+			s.SchemaNameS,
+			s.TableNameS,
+			[]string{constant.TaskDatabaseStatusWaiting, constant.TaskDatabaseStatusFailed, constant.TaskDatabaseStatusRunning, constant.TaskDatabaseStatusStopped},
+		)
+		if err != nil {
+			return err
+		}
+
+		logger.Info("csv migrate task process chunks",
+			zap.String("task_name", cmt.Task.TaskName),
+			zap.String("task_mode", cmt.Task.TaskMode),
+			zap.String("task_flow", cmt.Task.TaskFlow),
+			zap.String("schema_name_s", s.SchemaNameS),
+			zap.String("table_name_s", s.TableNameS))
+
+		g := errconcurrent.NewGroup()
+		g.SetLimit(int(cmt.CsvParams.SqlThreadS))
+
+		for _, j := range migrateTasks {
+			gTime := time.Now()
+			g.Go(j, gTime, func(j interface{}) error {
+				dt := j.(*task.DataMigrateTask)
+				errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+					_, err := model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+						&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+						map[string]interface{}{
+							"TaskStatus": constant.TaskDatabaseStatusRunning,
+						})
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(cmt.Task.TaskMode),
+							dt.TaskName,
+							cmt.Task.TaskFlow,
+							dt.SchemaNameS,
+							dt.TableNameS,
+							dt.ChunkDetailS),
 					})
-				if err != nil {
-					return err
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+				if errW != nil {
+					return errW
 				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    smt.TaskName,
-					SchemaNameS: smt.SchemaNameS,
-					TableNameS:  smt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(cmt.Task.TaskMode),
-						smt.TaskName,
-						cmt.Task.TaskFlow,
-						smt.SchemaNameS,
-						smt.TableNameS),
+
+				err = database.IDataMigrateProcess(&CsvMigrateRow{
+					Ctx:        cmt.Ctx,
+					TaskMode:   cmt.Task.TaskMode,
+					TaskFlow:   cmt.Task.TaskFlow,
+					BufioSize:  constant.DefaultMigrateTaskBufferIOSize,
+					Dmt:        dt,
+					DatabaseS:  cmt.DatabaseS,
+					DBCharsetS: constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(cmt.DBCharsetS)],
+					DBCharsetT: stringutil.StringUpper(cmt.DBCharsetT),
+					TaskParams: cmt.CsvParams,
+					ReadChan:   make(chan []string, constant.DefaultMigrateTaskQueueSize),
+					WriteChan:  make(chan string, constant.DefaultMigrateTaskQueueSize),
 				})
 				if err != nil {
 					return err
 				}
+
+				errW = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+					_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+						&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+						map[string]interface{}{
+							"TaskStatus": constant.TaskDatabaseStatusSuccess,
+							"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+						})
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(cmt.Task.TaskMode),
+							dt.TaskName,
+							cmt.Task.TaskFlow,
+							dt.SchemaNameS,
+							dt.TableNameS,
+							dt.ChunkDetailS),
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+				if errW != nil {
+					return errW
+				}
 				return nil
 			})
-			if errW != nil {
-				return errW
+		}
+
+		for _, r := range g.Wait() {
+			if r.Err != nil {
+				smt := r.Task.(*task.DataMigrateTask)
+				logger.Warn("csv migrate task process tables",
+					zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
+					zap.String("schema_name_s", smt.SchemaNameS),
+					zap.String("table_name_s", smt.TableNameS),
+					zap.Error(r.Err))
+
+				errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+					_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+						&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
+						map[string]interface{}{
+							"TaskStatus":  constant.TaskDatabaseStatusFailed,
+							"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
+							"ErrorDetail": r.Err.Error(),
+						})
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    smt.TaskName,
+						SchemaNameS: smt.SchemaNameS,
+						TableNameS:  smt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(cmt.Task.TaskMode),
+							smt.TaskName,
+							cmt.Task.TaskFlow,
+							smt.SchemaNameS,
+							smt.TableNameS),
+					})
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+				if errW != nil {
+					return errW
+				}
 			}
 		}
 	}
 
-	endTableTime := time.Now()
+	var (
+		successChunks int64
+		summar        *task.DataMigrateSummary
+	)
+
 	err = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-		var successChunks int64
 		tableStatusRecs, err := model.GetIDataMigrateTaskRW().FindDataMigrateTaskBySchemaTableChunkStatus(txnCtx, &task.DataMigrateTask{
 			TaskName:    s.TaskName,
 			SchemaNameS: s.SchemaNameS,
@@ -771,7 +815,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 			}
 		}
 
-		summar, err := model.GetIDataMigrateSummaryRW().GetDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
+		summar, err = model.GetIDataMigrateSummaryRW().GetDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
 			TaskName:    s.TaskName,
 			SchemaNameS: s.SchemaNameS,
 			TableNameS:  s.TableNameS,
@@ -779,58 +823,172 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		if err != nil {
 			return err
 		}
-
-		logger.Info("data migrate task process summary",
-			zap.String("task_name", cmt.Task.TaskName),
-			zap.String("task_mode", cmt.Task.TaskMode),
-			zap.String("task_flow", cmt.Task.TaskFlow),
-			zap.String("schema_name_s", s.SchemaNameS),
-			zap.String("table_name_s", s.TableNameS),
-			zap.Uint64("chunk_totals", summar.ChunkTotals),
-			zap.Int64("success_chunks", successChunks))
-
-		if int64(summar.ChunkTotals) == successChunks {
-			_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-				TaskName:    s.TaskName,
-				SchemaNameS: s.SchemaNameS,
-				TableNameS:  s.TableNameS,
-			}, map[string]interface{}{
-				"MigrateFlag": constant.TaskMigrateStatusFinished,
-				"Duration":    fmt.Sprintf("%f", time.Now().Sub(startTableTime).Seconds()),
-			})
-			if err != nil {
-				return err
-			}
-		} else {
-			_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
-				TaskName:    s.TaskName,
-				SchemaNameS: s.SchemaNameS,
-				TableNameS:  s.TableNameS,
-			}, map[string]interface{}{
-				"MigrateFlag": constant.TaskMigrateStatusNotFinished,
-				"Duration":    fmt.Sprintf("%f", time.Now().Sub(startTableTime).Seconds()),
-			})
-			if err != nil {
-				return err
-			}
-		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	logger.Info("data migrate task process table",
+	logger.Info("csv migrate task process summary",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
 		zap.String("schema_name_s", s.SchemaNameS),
 		zap.String("table_name_s", s.TableNameS),
-		zap.String("cost", endTableTime.Sub(startTableTime).String()))
+		zap.Uint64("chunk_totals", summar.ChunkTotals),
+		zap.Int64("success_chunks", successChunks))
+
+	if int64(summar.ChunkTotals) == successChunks {
+		logger.Info("csv migrate task process table",
+			zap.String("task_name", cmt.Task.TaskName),
+			zap.String("task_mode", cmt.Task.TaskMode),
+			zap.String("task_flow", cmt.Task.TaskFlow),
+			zap.String("schema_name_s", s.SchemaNameS),
+			zap.String("table_name_s", s.TableNameS),
+			zap.Bool("enable_import_feature", cmt.CsvParams.EnableImportFeature))
+		// the database table export success
+		// enable import feature, only the task migrate status isn't finished, then exec truncate table
+		if cmt.CsvParams.EnableImportFeature {
+			if !strings.EqualFold(summar.MigrateFlag, constant.TaskMigrateStatusFinished) {
+				_, err = cmt.DatabaseT.ExecContext(cmt.Ctx, fmt.Sprintf(`TRUNCATE TABLE %s.%s`, s.SchemaNameT, s.TableNameT))
+				if err != nil {
+					return err
+				}
+			} else if strings.EqualFold(summar.MigrateFlag, constant.TaskMigrateStatusFinished) {
+				logger.Info("csv migrate task process table",
+					zap.String("task_name", cmt.Task.TaskName),
+					zap.String("task_mode", cmt.Task.TaskMode),
+					zap.String("task_flow", cmt.Task.TaskFlow),
+					zap.String("schema_name_s", s.SchemaNameS),
+					zap.String("table_name_s", s.TableNameS),
+					zap.String("import_table_name", "skip import"),
+					zap.Bool("enable_import_feature", cmt.CsvParams.EnableImportFeature),
+					zap.String("cost", time.Now().Sub(startTableTime).String()))
+				return nil
+			}
+			err := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+				_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(txnCtx, &task.DataMigrateSummary{
+					TaskName:    s.TaskName,
+					SchemaNameS: s.SchemaNameS,
+					TableNameS:  s.TableNameS,
+				}, map[string]interface{}{
+					"MigrateFlag": constant.TaskMigrateStatusImporting,
+				})
+				if err != nil {
+					return err
+				}
+				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+					TaskName:    s.TaskName,
+					SchemaNameS: s.SchemaNameS,
+					TableNameS:  s.TableNameS,
+					LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] import start",
+						stringutil.CurrentTimeFormatString(),
+						stringutil.StringLower(cmt.Task.TaskMode),
+						s.TaskName,
+						cmt.Task.TaskFlow,
+						s.SchemaNameS,
+						s.TableNameS),
+				})
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+
+			// import
+			dbTypeSli := stringutil.StringSplit(cmt.Task.TaskFlow, constant.StringSeparatorAite)
+			dbTypeT := dbTypeSli[1]
+			switch stringutil.StringUpper(dbTypeT) {
+			case constant.DatabaseTypeTiDB:
+				var (
+					escape       string
+					importParams ImportTiDBParams
+				)
+				if cmt.CsvParams.EscapeBackslash {
+					escape = "\\"
+				}
+				marshalBytes, err := json.Marshal(cmt.CsvParams.CsvImportParams)
+				if err != nil {
+					return err
+				}
+				err = stringutil.UnmarshalJSON(marshalBytes, &importParams)
+				if err != nil {
+					return err
+				}
+
+				limitOneRec, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(cmt.Ctx, &task.DataMigrateTask{
+					TaskName:    s.TaskName,
+					SchemaNameS: s.SchemaNameS,
+					TableNameS:  s.TableNameS,
+				})
+				if err != nil {
+					return err
+				}
+				importTiDB := &ImportTiDBDatabase{
+					CharsetSet:          cmt.CsvParams.DataCharsetT,
+					FieldsTerminatedBy:  cmt.CsvParams.Separator,
+					FieldsEnclosedBy:    cmt.CsvParams.Delimiter,
+					FieldsEscapedBy:     escape,
+					FieldsDefinedNullBy: cmt.CsvParams.NullValue,
+					LinesTerminatedBy:   cmt.CsvParams.Terminator,
+					SkipRows:            1, // skip csv header
+					ImportTiDBParams:    importParams,
+				}
+				outCsvDir := filepath.Join(cmt.CsvParams.OutputDir, s.SchemaNameS, s.TableNameS)
+
+				if err := importTiDB.Import(cmt.Ctx, cmt.DatabaseT, s.SchemaNameT, s.TableNameT, limitOneRec.ColumnDetailT, outCsvDir); err != nil {
+					return err
+				}
+
+				// clear data dir
+				err = stringutil.RemoveAllDir(outCsvDir)
+				if err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] database type [%s] can't support import, please setting enable-import-feature = false and retry", cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, dbTypeT)
+			}
+		}
+
+		_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{
+			TaskName:    s.TaskName,
+			SchemaNameS: s.SchemaNameS,
+			TableNameS:  s.TableNameS,
+		}, map[string]interface{}{
+			"MigrateFlag": constant.TaskMigrateStatusFinished,
+			"Duration":    fmt.Sprintf("%f", time.Now().Sub(startTableTime).Seconds()),
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{
+			TaskName:    s.TaskName,
+			SchemaNameS: s.SchemaNameS,
+			TableNameS:  s.TableNameS,
+		}, map[string]interface{}{
+			"MigrateFlag": constant.TaskMigrateStatusNotFinished,
+			"Duration":    fmt.Sprintf("%f", time.Now().Sub(startTableTime).Seconds()),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	logger.Info("csv migrate task process table",
+		zap.String("task_name", cmt.Task.TaskName),
+		zap.String("task_mode", cmt.Task.TaskMode),
+		zap.String("task_flow", cmt.Task.TaskFlow),
+		zap.String("schema_name_s", s.SchemaNameS),
+		zap.String("table_name_s", s.TableNameS),
+		zap.String("cost", time.Now().Sub(startTableTime).String()))
 	return nil
 }
 
-func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
+func (cmt *CsvMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
 	h, err := cmt.DatabaseS.GetDatabaseTableHighestSelectivityIndex(
 		attsRule.SchemaNameS,
 		attsRule.TableNameS,
@@ -857,7 +1015,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		return err
 	}
 
-	logger.Warn("data migrate task table",
+	logger.Warn("csv migrate task table",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
@@ -873,7 +1031,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		DBCharsetS:  stringutil.StringUpper(cmt.DBCharsetS),
 		SchemaNameS: attsRule.SchemaNameS,
 		TableNameS:  attsRule.TableNameS,
-		ChunkSize:   int64(cmt.StmtParams.ChunkSize),
+		ChunkSize:   int64(cmt.CsvParams.ChunkSize),
 		DatabaseS:   cmt.DatabaseS,
 		Cons:        h,
 		RangeC:      rangeC,
@@ -904,7 +1062,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 			}
 
 			if len(statsRanges) > 0 {
-				err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(gCtx, statsRanges, int(cmt.StmtParams.WriteThread), int(cmt.StmtParams.BatchSize))
+				err = model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(gCtx, statsRanges, int(cmt.CsvParams.WriteThread), int(cmt.CsvParams.BatchSize))
 				if err != nil {
 					return err
 				}
@@ -950,7 +1108,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		SchemaNameT: attsRule.SchemaNameT,
 		TableNameT:  attsRule.TableNameT,
 	}:
-		logger.Info("data migrate task wait send",
+		logger.Info("csv migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -966,7 +1124,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		if err != nil {
 			return err
 		}
-		logger.Warn("data migrate task wait channel full",
+		logger.Warn("csv migrate task wait channel full",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -977,7 +1135,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 	return nil
 }
 
-func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
+func (cmt *CsvMigrateTask) ProcessTableScan(ctx context.Context, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
 	var whereRange string
 	switch {
 	case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
@@ -985,7 +1143,7 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 	default:
 		whereRange = `1 = 1`
 	}
-	logger.Warn("data migrate task table",
+	logger.Warn("csv migrate task table",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
@@ -1002,6 +1160,8 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 		return err
 	}
 
+	csvFile := filepath.Join(cmt.CsvParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS, stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.0.csv`))
+
 	migrateTask := &task.DataMigrateTask{
 		TaskName:        cmt.Task.TaskName,
 		SchemaNameS:     attsRule.SchemaNameS,
@@ -1017,8 +1177,9 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 		ChunkID:         uuid.New().String(),
 		ChunkDetailS:    encryptChunkS,
 		ChunkDetailArgS: "",
-		ConsistentReadS: strconv.FormatBool(cmt.StmtParams.EnableConsistentRead),
+		ConsistentReadS: strconv.FormatBool(cmt.CsvParams.EnableConsistentRead),
 		TaskStatus:      constant.TaskDatabaseStatusWaiting,
+		CsvFile:         csvFile,
 	}
 	err = model.Transaction(ctx, func(txnCtx context.Context) error {
 		_, err = model.GetIDataMigrateTaskRW().CreateDataMigrateTask(txnCtx, migrateTask)
@@ -1055,7 +1216,7 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 		SchemaNameT: attsRule.SchemaNameT,
 		TableNameT:  attsRule.TableNameT,
 	}:
-		logger.Info("data migrate task wait send",
+		logger.Info("csv migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -1071,7 +1232,7 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 		if err != nil {
 			return err
 		}
-		logger.Warn("data migrate task wait channel full",
+		logger.Warn("csv migrate task wait channel full",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -1082,7 +1243,7 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 	return nil
 }
 
-func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
+func (cmt *CsvMigrateTask) ProcessChunkScan(ctx context.Context, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
 	chunkCh := make(chan []map[string]string, constant.DefaultMigrateTaskQueueSize)
 
 	gC, gCtx := errgroup.WithContext(ctx)
@@ -1090,7 +1251,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 	gC.Go(func() error {
 		defer close(chunkCh)
 		err := cmt.DatabaseS.GetDatabaseTableChunkTask(
-			uuid.New().String(), attsRule.SchemaNameS, attsRule.TableNameS, cmt.StmtParams.ChunkSize, cmt.StmtParams.CallTimeout, int(cmt.StmtParams.BatchSize), chunkCh)
+			uuid.New().String(), attsRule.SchemaNameS, attsRule.TableNameS, cmt.CsvParams.ChunkSize, cmt.CsvParams.CallTimeout, int(cmt.CsvParams.BatchSize), chunkCh)
 		if err != nil {
 			return err
 		}
@@ -1108,6 +1269,8 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 				metas []*task.DataMigrateTask
 			)
 			for _, r := range chunks {
+				csvFile := filepath.Join(cmt.CsvParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS, stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.`, strconv.Itoa(chunkID), `.csv`))
+
 				switch {
 				case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
 					whereRange = stringutil.StringBuilder(r["CMD"], ` AND `, attsRule.WhereRange)
@@ -1137,8 +1300,9 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 					ChunkID:         uuid.New().String(),
 					ChunkDetailS:    encryptChunkS,
 					ChunkDetailArgS: "",
-					ConsistentReadS: strconv.FormatBool(cmt.StmtParams.EnableConsistentRead),
+					ConsistentReadS: strconv.FormatBool(cmt.CsvParams.EnableConsistentRead),
 					TaskStatus:      constant.TaskDatabaseStatusWaiting,
+					CsvFile:         csvFile,
 				})
 
 				chunkID++
@@ -1146,7 +1310,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 
 			chunkRecs := len(metas)
 			if chunkRecs > 0 {
-				err := model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(gCtx, metas, int(cmt.StmtParams.WriteThread), int(cmt.StmtParams.BatchSize))
+				err := model.GetIDataMigrateTaskRW().CreateInBatchDataMigrateTask(gCtx, metas, int(cmt.CsvParams.WriteThread), int(cmt.CsvParams.BatchSize))
 				if err != nil {
 					return err
 				}
@@ -1193,7 +1357,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 		SchemaNameT: attsRule.SchemaNameT,
 		TableNameT:  attsRule.TableNameT,
 	}:
-		logger.Info("data migrate task wait send",
+		logger.Info("csv migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -1209,7 +1373,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 		if err != nil {
 			return err
 		}
-		logger.Warn("data migrate task wait channel full",
+		logger.Warn("csv migrate task wait channel full",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -1220,7 +1384,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 	return nil
 }
 
-func (cmt *DataMigrateTask) PrepareStatisticsRange(globalScn string, attsRule *database.DataMigrateAttributesRule, r *structure.Range, chunkID int) (*task.DataMigrateTask, error) {
+func (cmt *CsvMigrateTask) PrepareStatisticsRange(globalScn string, attsRule *database.DataMigrateAttributesRule, r *structure.Range, chunkID int) (*task.DataMigrateTask, error) {
 	toStringS, toStringSArgs := r.ToString()
 	var (
 		argsS string
@@ -1234,6 +1398,7 @@ func (cmt *DataMigrateTask) PrepareStatisticsRange(globalScn string, attsRule *d
 	}
 	var (
 		whereRange string
+		csvFile    string
 	)
 	switch {
 	case attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, ""):
@@ -1248,6 +1413,8 @@ func (cmt *DataMigrateTask) PrepareStatisticsRange(globalScn string, attsRule *d
 	if err != nil {
 		return nil, err
 	}
+
+	csvFile = filepath.Join(cmt.CsvParams.OutputDir, attsRule.SchemaNameS, attsRule.TableNameS, stringutil.StringBuilder(attsRule.SchemaNameT, `.`, attsRule.TableNameT, `.`, strconv.Itoa(chunkID), `.csv`))
 
 	return &task.DataMigrateTask{
 		TaskName:        cmt.Task.TaskName,
@@ -1264,7 +1431,8 @@ func (cmt *DataMigrateTask) PrepareStatisticsRange(globalScn string, attsRule *d
 		ChunkID:         uuid.New().String(),
 		ChunkDetailS:    encryptChunkS,
 		ChunkDetailArgS: argsS,
-		ConsistentReadS: strconv.FormatBool(cmt.StmtParams.EnableConsistentRead),
+		ConsistentReadS: strconv.FormatBool(cmt.CsvParams.EnableConsistentRead),
 		TaskStatus:      constant.TaskDatabaseStatusWaiting,
+		CsvFile:         csvFile,
 	}, nil
 }

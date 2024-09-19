@@ -66,6 +66,15 @@ func CreateDir(path string) error {
 	return nil
 }
 
+// RemoveAllDir used to remove dir
+func RemoveAllDir(dir string) error {
+	err := os.RemoveAll(dir)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // WriteFile call os.WriteFile, but use max(parent permission,minPerm)
 func WriteFile(name string, data []byte, perm os.FileMode) error {
 	fi, err := os.Stat(filepath.Dir(name))

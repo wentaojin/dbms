@@ -35,11 +35,11 @@ import (
 )
 
 type CsvMigrateTask struct {
-	Ctx         context.Context
-	Task        *task.Task
-	DatasourceS *datasource.Datasource
-	DatasourceT *datasource.Datasource
-	TaskParams  *pb.CsvMigrateParam
+	Ctx           context.Context
+	Task          *task.Task
+	DatasourceS   *datasource.Datasource
+	DatasourceT   *datasource.Datasource
+	MigrateParams *pb.CsvMigrateParam
 }
 
 func (cmt *CsvMigrateTask) Start() error {
@@ -58,13 +58,13 @@ func (cmt *CsvMigrateTask) Start() error {
 		databaseS, databaseT database.IDatabase
 	)
 	switch cmt.Task.TaskFlow {
-	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
-		databaseS, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceS, schemaRoute.SchemaNameS, int64(cmt.TaskParams.CallTimeout))
+	case constant.TaskFlowOracleToTiDB:
+		databaseS, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceS, schemaRoute.SchemaNameS, int64(cmt.MigrateParams.CallTimeout))
 		if err != nil {
 			return err
 		}
 		defer databaseS.Close()
-		databaseT, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceT, "", int64(cmt.TaskParams.CallTimeout))
+		databaseT, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceT, "", int64(cmt.MigrateParams.CallTimeout))
 		if err != nil {
 			return err
 		}
@@ -75,6 +75,39 @@ func (cmt *CsvMigrateTask) Start() error {
 		_, err = processor.InspectOracleMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 		if err != nil {
 			return err
+		}
+
+		if cmt.MigrateParams.EnableImportFeature {
+			dbVersionT, err := databaseT.GetDatabaseVersion()
+			if err != nil {
+				return err
+			}
+			if stringutil.VersionOrdinal(dbVersionT) < stringutil.VersionOrdinal(constant.TIDBDatabaseImportIntoSupportVersion) {
+				return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] database [tidb] version [%v] isn't support, require version [>=%s], please setting enable-import-feature = false and retry", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow, dbVersionT, constant.TIDBDatabaseImportIntoSupportVersion)
+			}
+		}
+
+	case constant.TaskFlowOracleToMySQL:
+		databaseS, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceS, schemaRoute.SchemaNameS, int64(cmt.MigrateParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+		databaseT, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceT, "", int64(cmt.MigrateParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
+
+		logger.Info("data migrate task inspect migrate task",
+			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
+		_, err = processor.InspectOracleMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
+
+		if cmt.MigrateParams.EnableImportFeature {
+			return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] database [mysql] isn't support, please setting enable-import-feature = false and retry", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow)
 		}
 	default:
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow, schemaRoute.SchemaNameS)
@@ -93,29 +126,21 @@ func (cmt *CsvMigrateTask) Start() error {
 		return err
 	}
 
-	err = database.IDatabaseRun(&processor.DataMigrateTask{
-		Ctx:                  cmt.Ctx,
-		Task:                 cmt.Task,
-		DBRoleS:              dbRoles,
-		DBVersionS:           dbVersionS,
-		DBCharsetS:           stringutil.StringUpper(cmt.DatasourceS.ConnectCharset),
-		DBCharsetT:           stringutil.StringUpper(cmt.DatasourceT.ConnectCharset),
-		DatabaseS:            databaseS,
-		DatabaseT:            databaseT,
-		SchemaNameS:          schemaRoute.SchemaNameS,
-		TableThread:          cmt.TaskParams.TableThread,
-		GlobalSqlHintS:       cmt.TaskParams.SqlHintS,
-		EnableCheckpoint:     cmt.TaskParams.EnableCheckpoint,
-		EnableConsistentRead: cmt.TaskParams.EnableConsistentRead,
-		ChunkSize:            cmt.TaskParams.ChunkSize,
-		BatchSize:            cmt.TaskParams.BatchSize,
-		WriteThread:          cmt.TaskParams.WriteThread,
-		CallTimeout:          cmt.TaskParams.CallTimeout,
-		SqlThreadS:           cmt.TaskParams.SqlThreadS,
-		GlobalSnapshotS:      strconv.FormatUint(globalScnS, 10),
-		CsvParams:            cmt.TaskParams,
-		WaiterC:              make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
-		ResumeC:              make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+	err = database.IDatabaseRun(&processor.CsvMigrateTask{
+		Ctx:             cmt.Ctx,
+		Task:            cmt.Task,
+		DBRoleS:         dbRoles,
+		DBVersionS:      dbVersionS,
+		DBCharsetS:      stringutil.StringUpper(cmt.DatasourceS.ConnectCharset),
+		DBCharsetT:      stringutil.StringUpper(cmt.DatasourceT.ConnectCharset),
+		DatabaseS:       databaseS,
+		DatabaseT:       databaseT,
+		SchemaNameS:     schemaRoute.SchemaNameS,
+		SchemaNameT:     schemaRoute.SchemaNameT,
+		GlobalSnapshotS: strconv.FormatUint(globalScnS, 10),
+		CsvParams:       cmt.MigrateParams,
+		WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 	})
 	if err != nil {
 		return err

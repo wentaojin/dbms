@@ -326,18 +326,23 @@ func (dst *DataScanTask) Init() error {
 				}
 
 				// statistic
-				if !strings.EqualFold(dst.DBRoleS, constant.OracleDatabasePrimaryRole) || (strings.EqualFold(dst.DBRoleS, constant.OracleDatabasePrimaryRole) && stringutil.VersionOrdinal(dst.DBVersionS) < stringutil.VersionOrdinal(constant.OracleDatabaseTableMigrateRowidRequireVersion)) {
-					err = dst.ProcessStatisticsScan(
-						gCtx,
-						dbTypeS,
-						globalScn,
-						tableRows,
-						tableSize,
-						attsRule)
-					if err != nil {
-						return err
+				switch stringutil.StringUpper(dbTypeS) {
+				case constant.DatabaseTypeOracle:
+					if !strings.EqualFold(dst.DBRoleS, constant.OracleDatabasePrimaryRole) || (strings.EqualFold(dst.DBRoleS, constant.OracleDatabasePrimaryRole) && stringutil.VersionOrdinal(dst.DBVersionS) < stringutil.VersionOrdinal(constant.OracleDatabaseTableMigrateRowidRequireVersion)) {
+						err = dst.ProcessStatisticsScan(
+							gCtx,
+							dbTypeS,
+							globalScn,
+							tableRows,
+							tableSize,
+							attsRule)
+						if err != nil {
+							return err
+						}
+						return nil
 					}
-					return nil
+				default:
+					return fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] database type [%s] can't support, please contact author or retry", dst.Task.TaskName, dst.Task.TaskFlow, dst.Task.TaskMode, dbTypeS)
 				}
 
 				err = dst.ProcessChunkScan(gCtx, dst.SchemaNameS, sourceTable, globalScn, tableRows, tableSize, attsRule)

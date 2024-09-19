@@ -40,24 +40,26 @@ type CsvConfig struct {
 }
 
 type CsvMigrateParam struct {
-	TableThread          uint64 `toml:"table-thread" json:"tableThread"`
-	BatchSize            uint64 `toml:"batch-size" json:"batchSize"`
-	WriteThread          uint64 `toml:"write-thread" json:"writeThread"`
-	DiskUsageFactor      string `toml:"disk-usage-factor" json:"diskUsageFactor"`
-	Header               bool   `toml:"header" json:"header"`
-	Separator            string `toml:"separator" json:"separator"`
-	Terminator           string `toml:"terminator" json:"terminator"`
-	DataCharsetT         string `toml:"data-charset-t" json:"dataCharsetT"`
-	Delimiter            string `toml:"delimiter" json:"delimiter"`
-	NullValue            string `toml:"null-value" json:"nullValue"`
-	EscapeBackslash      bool   `toml:"escape-backslash" json:"escapeBackslash"`
-	ChunkSize            uint64 `toml:"chunk-size" json:"chunkSize"`
-	OutputDir            string `toml:"output-dir" json:"outputDir"`
-	SqlThreadS           uint64 `toml:"sql-thread-s" json:"sqlThreadS"`
-	SqlHintS             string `toml:"sql-hint-s" json:"sqlHintS"`
-	CallTimeout          uint64 `toml:"call-timeout" json:"callTimeout"`
-	EnableCheckpoint     bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
-	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
+	TableThread          uint64            `toml:"table-thread" json:"tableThread"`
+	BatchSize            uint64            `toml:"batch-size" json:"batchSize"`
+	WriteThread          uint64            `toml:"write-thread" json:"writeThread"`
+	DiskUsageFactor      string            `toml:"disk-usage-factor" json:"diskUsageFactor"`
+	Header               bool              `toml:"header" json:"header"`
+	Separator            string            `toml:"separator" json:"separator"`
+	Terminator           string            `toml:"terminator" json:"terminator"`
+	DataCharsetT         string            `toml:"data-charset-t" json:"dataCharsetT"`
+	Delimiter            string            `toml:"delimiter" json:"delimiter"`
+	NullValue            string            `toml:"null-value" json:"nullValue"`
+	EscapeBackslash      bool              `toml:"escape-backslash" json:"escapeBackslash"`
+	ChunkSize            uint64            `toml:"chunk-size" json:"chunkSize"`
+	OutputDir            string            `toml:"output-dir" json:"outputDir"`
+	SqlThreadS           uint64            `toml:"sql-thread-s" json:"sqlThreadS"`
+	SqlHintS             string            `toml:"sql-hint-s" json:"sqlHintS"`
+	CallTimeout          uint64            `toml:"call-timeout" json:"callTimeout"`
+	EnableCheckpoint     bool              `toml:"enable-checkpoint" json:"enableCheckpoint"`
+	EnableConsistentRead bool              `toml:"enable-consistent-read" json:"enableConsistentRead"`
+	EnableImportFeature  bool              `toml:"enable-import-feature" json:"enableImportFeature"`
+	CsvImportParams      map[string]string `toml:"csv-import-params" json:"csv-importParams"`
 }
 
 func (c *CsvConfig) String() string {

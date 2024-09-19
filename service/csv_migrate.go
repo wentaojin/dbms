@@ -249,6 +249,15 @@ func ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) 
 		if err != nil {
 			return err
 		}
+		enableImportFeature, err := strconv.ParseBool(paramMap[constant.ParamNameCsvMigrateEnableImportFeature])
+		if err != nil {
+			return err
+		}
+		importPars := make(map[string]string)
+		err = json.Unmarshal([]byte(paramMap[constant.ParamNameCsvMigrateImportParams]), &importPars)
+		if err != nil {
+			return err
+		}
 
 		param = &pb.CsvMigrateParam{
 			TableThread:          tableThread,
@@ -269,6 +278,8 @@ func ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) 
 			CallTimeout:          callTimeout,
 			EnableCheckpoint:     enableCheckpoint,
 			EnableConsistentRead: enableConsistentRead,
+			EnableImportFeature:  enableImportFeature,
+			CsvImportParams:      importPars,
 		}
 
 		schemaRouteRule, dataMigrateRules, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -350,12 +361,12 @@ func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error
 
 	logger.Info("csv migrate task get task params",
 		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-	taskParams, err := getCsvMigrateTasKParams(ctx, taskInfo.TaskName)
+	migrateParams, err := getCsvMigrateTasKParams(ctx, taskInfo.TaskName)
 	if err != nil {
 		return err
 	}
 
-	if !taskParams.EnableCheckpoint {
+	if !migrateParams.EnableCheckpoint {
 		logger.Warn("stmt migrate task clear task records",
 			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 		err = model.Transaction(ctx, func(txnCtx context.Context) error {
@@ -376,11 +387,11 @@ func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error
 
 	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
 		dm := &taskflow.CsvMigrateTask{
-			Ctx:         ctx,
-			Task:        taskInfo,
-			DatasourceS: sourceDatasource,
-			DatasourceT: targetDatasource,
-			TaskParams:  taskParams,
+			Ctx:           ctx,
+			Task:          taskInfo,
+			DatasourceS:   sourceDatasource,
+			DatasourceT:   targetDatasource,
+			MigrateParams: migrateParams,
 		}
 		err = dm.Start()
 		if err != nil {
@@ -643,6 +654,21 @@ func getCsvMigrateTasKParams(ctx context.Context, taskName string) (*pb.CsvMigra
 				return taskParam, err
 			}
 			taskParam.EnableConsistentRead = enableConsistentRead
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateEnableImportFeature) {
+			enableImportFeature, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.EnableImportFeature = enableImportFeature
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateImportParams) {
+			importPars := make(map[string]string)
+			err := json.Unmarshal([]byte(p.ParamValue), &importPars)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.CsvImportParams = importPars
 		}
 	}
 	return taskParam, nil

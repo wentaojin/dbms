@@ -75,6 +75,7 @@ const (
 	TaskMigrateStatusFinished    = "Y"
 	TaskMigrateStatusNotFinished = "N"
 	TaskMigrateStatusSkipped     = "S"
+	TaskMigrateStatusImporting   = "I"
 
 	TaskScanStatusFinished    = "Y"
 	TaskScanStatusNotFinished = "N"

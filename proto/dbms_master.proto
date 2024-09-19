@@ -661,7 +661,10 @@ message CsvMigrateParam{
   bool enableCheckpoint = 16;
   bool enableConsistentRead = 17;
   uint64 writeThread = 18;
+  bool enableImportFeature = 19;
+  map<string,string> csvImportParams = 20;
 }
+
 
 message DataCompareRule {
   string tableNameS = 1;

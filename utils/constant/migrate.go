@@ -53,8 +53,9 @@ const (
 	// MYSQL database expression index support version > 8.0.0
 	MYSQLDatabaseExpressionIndexSupportVersion = "8.0.0"
 
-	MYSQLDatabaseSequenceSupportVersion = "8.0"
-	TIDBDatabaseSequenceSupportVersion  = "4.0"
+	MYSQLDatabaseSequenceSupportVersion  = "8.0"
+	TIDBDatabaseSequenceSupportVersion   = "4.0"
+	TIDBDatabaseImportIntoSupportVersion = "7.5"
 
 	// pg's transaction snapshot export function was initially supported in version 9.3
 	// which allows multiple transactions to share a consistent view of the same current database state that has been obtained
@@ -496,6 +497,8 @@ const (
 	ParamNameCsvMigrateCallTimeout          = "callTimeout"
 	ParamNameCsvMigrateEnableCheckpoint     = "enableCheckpoint"
 	ParamNameCsvMigrateEnableConsistentRead = "enableConsistentRead"
+	ParamNameCsvMigrateEnableImportFeature  = "enableImportFeature"
+	ParamNameCsvMigrateImportParams         = "csvImportParams"
 )
 
 // sql migrate parameters

@@ -1076,7 +1076,7 @@ func (rw *RWDataMigrateTask) BatchUpdateDataMigrateTask(ctx context.Context, tas
 
 func (rw *RWDataMigrateTask) GetDataMigrateTask(ctx context.Context, task *DataMigrateTask) (*DataMigrateTask, error) {
 	var dataS *DataMigrateTask
-	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? ", task.TaskName, task.SchemaNameS, task.TableNameS).First(&dataS).Error
+	err := rw.DB(ctx).Model(&DataMigrateTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? ", task.TaskName, task.SchemaNameS, task.TableNameS).Limit(1).First(&dataS).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dataS, nil

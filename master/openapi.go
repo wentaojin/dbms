@@ -681,6 +681,8 @@ func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsv
 			CallTimeout:          *req.CsvMigrateParam.CallTimeout,
 			EnableCheckpoint:     *req.CsvMigrateParam.EnableCheckpoint,
 			EnableConsistentRead: *req.CsvMigrateParam.EnableConsistentRead,
+			EnableImportFeature:  *req.CsvMigrateParam.EnableImportFeature,
+			CsvImportParams:      *req.CsvMigrateParam.CsvImportParams,
 		},
 	})
 	if err != nil {

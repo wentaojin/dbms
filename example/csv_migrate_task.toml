@@ -1,5 +1,9 @@
 task-name = "cmt_33to45"
 datasource-name-s = "o11024"
+# 启用 enable-import-feature 功能（不启用无要求）:
+# 1，目标端连接信息必须直连数据库实例，禁止通过 Proxy 或者 Load Balancer 访问，否则无法导入存储在数据库实例本地数据文件
+# 2，csv 数据迁移任务会自动 bound 对应主机的 dbms-worker 实例，如果主机没 dbms-worker 实例，则报错无法启动任务
+# 3，若下游数据库导入功能有版本要求，不满足版本要求的，则自动报错退出，可设置 enable-import-feature false 只导出 csv 文件
 datasource-name-t = "test08"
 comment = "测试数据源"
 
@@ -78,6 +82,16 @@ call-timeout = 36000
 #   - 若想断点恢复，设置 enable-checkpoint = true,首次一旦运行则 chunk-size 数不能调整，
 #   - 若不想断点恢复或者重新调整 chunk-size 数，设置 enable-checkpoint = false,重新运行全量任务
 #   - 无法断点续传期间，则需要设置 enable-checkpoint = false 重新导入导出
+# Notes: 启用 enable-import-feature 功能之后，设置 enable-checkpoint false 会自动 truncate 下游目标所在表以重新进行 csv 数据导入
 enable-checkpoint = true
 # 是否一致性读 ORA
 enable-consistent-read = false
+# 是否启用导入功能
+# 启用 csv 数据导入功能
+# 1，需要将 dbms-worker 与下游数据库实例部署在同台服务器，并且对应的数据库用户需要具备对应的数据库权限
+# 2，数据导入以表串行机制运行
+# 3，csv 数据文件字符集、字段分隔符、字段定定界符号、NULL 值映射、行分隔符无需单独配置，自动继承 csv-migrate-params 值
+# 4，csv 数据导入所在目标表必须是空表，自动执行 truncate table，否则可能有数据问题
+enable-import-feature = true
+# 参数以 Key-Value 形式配置（具体以下游数据库对应参数配置为准）
+csv-import-params = {}
