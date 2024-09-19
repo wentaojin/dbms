@@ -128,8 +128,24 @@ func UpsertCsvMigrateTask(ctx context.Context, req *pb.UpsertCsvMigrateTaskReque
 			return err
 		}
 
+		paramsInfo, err := model.GetIParamsRW().GetTaskCustomParam(txnCtx, &params.TaskCustomParam{
+			TaskName:  req.TaskName,
+			TaskMode:  constant.TaskModeCSVMigrate,
+			ParamName: constant.ParamNameCsvMigrateEnableImportFeature,
+		})
+		if err != nil {
+			return err
+		}
+
 		fieldInfos := stringutil.GetJSONTagFieldValue(req.CsvMigrateParam)
 		for jsonTag, fieldValue := range fieldInfos {
+			if strings.EqualFold(jsonTag, constant.ParamNameCsvMigrateEnableImportFeature) && !strings.EqualFold(paramsInfo.ParamValue, "") && !strings.EqualFold(paramsInfo.ParamValue, fieldValue) {
+				return fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] can't support modify params [enable-import-feature], please delete the task and recreating or rename the task_name creating",
+					req.TaskName,
+					constant.TaskModeCSVMigrate,
+					stringutil.StringBuilder(stringutil.StringUpper(datasourceS.DbType), constant.StringSeparatorAite, stringutil.StringUpper(datasourceT.DbType)),
+				)
+			}
 			_, err = model.GetIParamsRW().CreateTaskCustomParam(txnCtx, &params.TaskCustomParam{
 				TaskName:   req.TaskName,
 				TaskMode:   constant.TaskModeCSVMigrate,

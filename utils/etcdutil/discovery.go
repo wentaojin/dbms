@@ -16,8 +16,13 @@ limitations under the License.
 package etcdutil
 
 import (
+	"context"
 	"fmt"
+	"github.com/wentaojin/dbms/model"
+	"github.com/wentaojin/dbms/model/params"
+	"github.com/wentaojin/dbms/model/task"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -198,6 +203,110 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 		keySli := stringutil.StringSplit(stringutil.BytesToString(v.Key), constant.StringSeparatorSlash)
 		taskW := keySli[len(keySli)-1]
 		workerTaskM[stringutil.BytesToString(v.Value)] = taskW
+	}
+
+	// the csv migrate task with enable-import-feature need bound the dbms-worker instance, ignore leastBusyMachine scheduler rule
+	ctx := context.Background()
+	getTask, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName})
+	if err != nil {
+		return "", err
+	}
+
+	if strings.EqualFold(getTask.TaskMode, constant.TaskModeCSVMigrate) {
+		paramsInfo, err := model.GetIParamsRW().GetTaskCustomParam(ctx, &params.TaskCustomParam{
+			TaskName:  taskName,
+			TaskMode:  constant.TaskModeCSVMigrate,
+			ParamName: constant.ParamNameCsvMigrateEnableImportFeature,
+		})
+		if err != nil {
+			return "", err
+		}
+
+		enableImportFeature, err := strconv.ParseBool(paramsInfo.ParamValue)
+		if err != nil {
+			return "", err
+		}
+
+		if enableImportFeature {
+			datasourceT, err := model.GetIDatasourceRW().GetDatasource(ctx, getTask.DatasourceNameT)
+			if err != nil {
+				return "", err
+			}
+			var csvFreeWorker []string
+			csvBusyWorkerM := make(map[string]string)
+
+			for m, insts := range d.machines {
+				if strings.EqualFold(datasourceT.Host, m) {
+					for _, w := range insts {
+						if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
+							switch {
+							case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
+								if t, ok := workerTaskM[w.Addr]; ok {
+									if t == taskName {
+										return w.Addr, nil
+									}
+									return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+								}
+								return w.Addr, nil
+							case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, taskName):
+								if t, ok := workerTaskM[w.Addr]; ok {
+									if t == taskName {
+										return w.Addr, nil
+									}
+									return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+								}
+								return w.Addr, nil
+							case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, taskName):
+								if t, ok := workerTaskM[w.Addr]; ok {
+									if t == taskName {
+										return w.Addr, nil
+									}
+									return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
+								}
+								return w.Addr, nil
+							case strings.EqualFold(w.State, constant.DefaultInstanceFreeState) && strings.EqualFold(w.TaskName, ""):
+								csvFreeWorker = append(csvFreeWorker, w.Addr)
+							case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, ""):
+								csvFreeWorker = append(csvFreeWorker, w.Addr)
+							case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, ""):
+								csvFreeWorker = append(csvFreeWorker, w.Addr)
+							case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, ""):
+								csvFreeWorker = append(csvFreeWorker, w.Addr)
+							default:
+								csvBusyWorkerM[w.Addr] = w.TaskName
+							}
+						}
+					}
+				}
+			}
+
+			switch {
+			case len(csvFreeWorker) == 0 && len(csvBusyWorkerM) != 0:
+				jsonStr, err := stringutil.MarshalJSON(csvBusyWorkerM)
+				if err != nil {
+					return "", err
+				}
+				return "", fmt.Errorf("there are not avaliable instance in the datasourceT [%s] machine [%s] currently, the csv migrate task [enable-import-feature] require need bound datasourceT machine worker, please scale-out worker instance or waiting free worker:\n %v",
+					datasourceT.DatasourceName, datasourceT.Host, jsonStr)
+			case len(csvFreeWorker) == 0 && len(csvBusyWorkerM) == 0:
+				return "", fmt.Errorf("there are not avaliable instance in the datasourceT [%s] machine [%s] currently, the csv migrate task [enable-import-feature] require need bound datasourceT machine worker, please scale-out worker instance in the machine [%s]",
+					datasourceT.DatasourceName, datasourceT.Host, datasourceT.Host)
+			default:
+				elem, err := stringutil.GetRandomElem(csvFreeWorker)
+				if err != nil {
+					return "", err
+				}
+
+				if t, ok := workerTaskM[elem]; ok {
+					if t == taskName {
+						return elem, nil
+					}
+					return "", fmt.Errorf("the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. Worker Assign is abnormal. Please contact the author or try again", elem, t, taskName)
+				}
+				logger.Info("the worker assign task", zap.String("machine", jsonMachines), zap.String("worker", elem))
+				return elem, nil
+			}
+		}
 	}
 
 	// the machine worker statistics, exclude the master role

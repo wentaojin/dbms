@@ -28,5 +28,6 @@ type IParams interface {
 	UpdateTaskCustomParam(ctx context.Context, data *TaskCustomParam) (*TaskCustomParam, error)
 	ListTaskCustomParam(ctx context.Context, page uint64, pageSize uint64) ([]*TaskCustomParam, error)
 	QueryTaskCustomParam(ctx context.Context, data *TaskCustomParam) ([]*TaskCustomParam, error)
+	GetTaskCustomParam(ctx context.Context, data *TaskCustomParam) (*TaskCustomParam, error)
 	DeleteTaskCustomParam(ctx context.Context, taskName []string) error
 }

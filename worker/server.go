@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/wentaojin/dbms/model/params"
 	"github.com/wentaojin/dbms/proto/pb"
 	"net"
 	"runtime/debug"
@@ -517,6 +518,8 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 		if err != nil {
 			return err
 		}
+
+		var paramsInfo *params.TaskCustomParam
 		err = model.Transaction(ctx, func(txnCtx context.Context) error {
 			err = model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{t.TaskName})
 			if err != nil {
@@ -526,8 +529,21 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 			if err != nil {
 				return err
 			}
+			paramsInfo, err = model.GetIParamsRW().GetTaskCustomParam(txnCtx, &params.TaskCustomParam{
+				TaskName:  t.TaskName,
+				TaskMode:  constant.TaskModeCSVMigrate,
+				ParamName: constant.ParamNameCsvMigrateOutputDir,
+			})
+			if err != nil {
+				return err
+			}
 			return nil
 		})
+		if err != nil {
+			return err
+		}
+		// clear output dir
+		err = stringutil.RemoveAllDir(paramsInfo.ParamValue)
 		if err != nil {
 			return err
 		}
