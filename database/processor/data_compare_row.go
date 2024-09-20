@@ -1291,7 +1291,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 	}
 
 	if len(addDetails) > 0 {
-		splitCounts := len(delDetails) / r.BatchSize
+		splitCounts := len(addDetails) / r.BatchSize
 		if splitCounts == 0 {
 			splitCounts = 1
 		}
@@ -1755,7 +1755,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 	}
 
 	if len(addDetails) > 0 {
-		splitCounts := len(delDetails) / r.BatchSize
+		splitCounts := len(addDetails) / r.BatchSize
 		if splitCounts == 0 {
 			splitCounts = 1
 		}
