@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/wentaojin/dbms/database"
+	"strconv"
 	"strings"
 )
 
@@ -35,21 +36,21 @@ type ImportTiDBDatabase struct {
 
 type ImportTiDBParams struct {
 	DiskQuota             string `json:"diskQuota"`
-	Thread                int    `json:"thread"`
+	Thread                string `json:"thread"`
 	MaxWriteSpeed         string `json:"maxWriteSpeed"`
 	ChecksumTable         string `json:"checksumTable"`
 	CloudStorageUri       string `json:"cloudStorageUri"`
-	Detached              bool   `json:"detached"`
-	DisableTikvImportMode bool   `json:"disableTikvImportMode"`
-	SplitFile             bool   `json:"splitFile"` // strict-format
+	Detached              string `json:"detached"`
+	DisableTikvImportMode string `json:"disableTikvImportMode"`
+	SplitFile             string `json:"splitFile"` // strict-format
 }
 
-func (p *ImportTiDBParams) Builder() string {
+func (p *ImportTiDBParams) Builder() (string, error) {
 	var bs []string
 	if !strings.EqualFold(p.DiskQuota, "") {
 		bs = append(bs, fmt.Sprintf("DISK_QUOTA='%s'", p.DiskQuota))
 	}
-	if p.Thread != 0 {
+	if !strings.EqualFold(p.Thread, "") {
 		bs = append(bs, fmt.Sprintf("THREAD=%v", p.Thread))
 	}
 	if !strings.EqualFold(p.MaxWriteSpeed, "") {
@@ -58,32 +59,54 @@ func (p *ImportTiDBParams) Builder() string {
 	if !strings.EqualFold(p.ChecksumTable, "") {
 		bs = append(bs, fmt.Sprintf("CHECKSUM_TABLE = '%s'", p.ChecksumTable))
 	}
-	if !p.SplitFile {
-		bs = append(bs, "SPLIT_FILE")
+	if !strings.EqualFold(p.SplitFile, "") {
+		parseBool, err := strconv.ParseBool(p.SplitFile)
+		if err != nil {
+			return "", err
+		}
+		if parseBool {
+			bs = append(bs, "SPLIT_FILE")
+		}
 	}
-	if !p.Detached {
-		bs = append(bs, "DETACHED")
+	if !strings.EqualFold(p.Detached, "") {
+		parseBool, err := strconv.ParseBool(p.Detached)
+		if err != nil {
+			return "", err
+		}
+		if parseBool {
+			bs = append(bs, "DETACHED")
+		}
 	}
-	if !p.DisableTikvImportMode {
-		bs = append(bs, "DISABLE_TIKV_IMPORT_MODE")
+	if !strings.EqualFold(p.DisableTikvImportMode, "") {
+		parseBool, err := strconv.ParseBool(p.DisableTikvImportMode)
+		if err != nil {
+			return "", err
+		}
+		if parseBool {
+			bs = append(bs, "DISABLE_TIKV_IMPORT_MODE")
+		}
 	}
 
 	if len(bs) > 0 {
-		return strings.Join(bs, ",")
+		return strings.Join(bs, ","), nil
 	}
-	return ""
+	return "", nil
 }
 
 func (i *ImportTiDBDatabase) Import(ctx context.Context, db database.IDatabase, schemaNameT, tableNameT, columnNameT, outputCsvDir string) error {
 	var sqlStr string
-	if strings.EqualFold(i.Builder(), "") {
+	bs, err := i.Builder()
+	if err != nil {
+		return err
+	}
+	if strings.EqualFold(bs, "") {
 		sqlStr = fmt.Sprintf("IMPORT INTO `%s`.`%s` (%s) FROM '%s/*.csv' WITH CHARACTER_SET='%s',FIELDS_TERMINATED_BY='%s',FIELDS_ENCLOSED_BY='%s',FIELDS_ESCAPED_BY='%s',FIELDS_DEFINED_NULL_BY='%s',LINES_TERMINATED_BY='%s',SKIP_ROWS=%d",
 			schemaNameT, tableNameT, columnNameT, outputCsvDir, i.CharsetSet, i.FieldsTerminatedBy, i.FieldsEnclosedBy, i.FieldsEscapedBy, i.FieldsDefinedNullBy, i.LinesTerminatedBy, i.SkipRows)
 	} else {
 		sqlStr = fmt.Sprintf("IMPORT INTO `%s`.`%s` (%s) FROM '%s/*.csv' WITH CHARACTER_SET='%s',FIELDS_TERMINATED_BY='%s',FIELDS_ENCLOSED_BY='%s',FIELDS_ESCAPED_BY='%s',FIELDS_DEFINED_NULL_BY='%s',LINES_TERMINATED_BY='%s',SKIP_ROWS=%d,%v",
-			schemaNameT, tableNameT, columnNameT, outputCsvDir, i.CharsetSet, i.FieldsTerminatedBy, i.FieldsEnclosedBy, i.FieldsEscapedBy, i.FieldsDefinedNullBy, i.LinesTerminatedBy, i.SkipRows, i.Builder())
+			schemaNameT, tableNameT, columnNameT, outputCsvDir, i.CharsetSet, i.FieldsTerminatedBy, i.FieldsEnclosedBy, i.FieldsEscapedBy, i.FieldsDefinedNullBy, i.LinesTerminatedBy, i.SkipRows, bs)
 	}
-	_, err := db.ExecContext(ctx, sqlStr)
+	_, err = db.ExecContext(ctx, sqlStr)
 	if err != nil {
 		return err
 	}
