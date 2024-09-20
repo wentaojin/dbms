@@ -200,7 +200,7 @@ func (a *AppVerifyGen) Cmd() *cobra.Command {
 		SilenceUsage:     true,
 	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the data compare task")
-	cmd.Flags().StringVarP(&a.schemaName, "schema", "s", "", "the data compare task schema_name_s")
+	cmd.Flags().StringVarP(&a.schemaName, "schema", "S", "", "the data compare task schema_name_s")
 	cmd.Flags().StringVarP(&a.tableName, "table", "T", "", "the data compare task schema table_name_s")
 	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the data compare task output file dir")
 	cmd.Flags().BoolVarP(&a.force, "force", "f", false, "the data compare task force ignore the task status success check, output fixed file")
