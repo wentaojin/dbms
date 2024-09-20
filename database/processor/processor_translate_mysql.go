@@ -86,7 +86,7 @@ WHEN NOT MATCHED THEN
 		for _, vals := range restoreColDatas {
 			suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
 		}
-		return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma))
+		return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma), constant.StringSeparatorSemicolon)
 	}
 }
 
@@ -110,5 +110,5 @@ func GenOracleCompatibleDatabaseDeleteStmtSQL(schemaName, tableName, sqlHint str
 		}
 	}
 
-	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(columnConds, " AND "), ` LIMIT `, strconv.Itoa(columnDataCounts))
+	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(columnConds, " AND "), ` LIMIT `, strconv.Itoa(columnDataCounts), constant.StringSeparatorSemicolon)
 }

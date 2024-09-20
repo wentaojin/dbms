@@ -185,7 +185,8 @@ type IDataCompareTask interface {
 
 type IDataCompareResult interface {
 	CreateDataCompareResult(ctx context.Context, task *DataCompareResult) (*DataCompareResult, error)
-	FindDataCompareResult(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error)
+	FindDataCompareResultByTask(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error)
+	FindDataCompareResultBySchemaTable(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error)
 	DeleteDataCompareResult(ctx context.Context, task *DataCompareResult) error
 	DeleteDataCompareResultTable(ctx context.Context, task *DataCompareResult) error
 	DeleteDataCompareResultName(ctx context.Context, taskName []string) error

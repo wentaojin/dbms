@@ -101,7 +101,7 @@ func GenMYSQLCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint stri
 		suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
 	}
 
-	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma))
+	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma), constant.StringSeparatorSemicolon)
 }
 
 func GenMYSQLCompatibleDatabaseDeleteStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int) string {
@@ -124,5 +124,5 @@ func GenMYSQLCompatibleDatabaseDeleteStmtSQL(schemaName, tableName, sqlHint stri
 		}
 	}
 
-	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(columnConds, " AND "), ` LIMIT `, strconv.Itoa(columnDataCounts))
+	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(columnConds, " AND "), ` LIMIT `, strconv.Itoa(columnDataCounts), constant.StringSeparatorSemicolon)
 }

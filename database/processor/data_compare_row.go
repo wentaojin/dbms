@@ -1263,7 +1263,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 				case <-gDelCtx.Done():
 					return nil
 				default:
-					encryptDelDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+					encryptDelDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, "\n"), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {
 						return err
 					}
@@ -1307,7 +1307,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 				case <-gAddCtx.Done():
 					return nil
 				default:
-					encryptAddDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+					encryptAddDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, "\n"), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {
 						return err
 					}
@@ -1727,7 +1727,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 				case <-gDelCtx.Done():
 					return nil
 				default:
-					encryptDelDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+					encryptDelDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, "\n"), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {
 						return err
 					}
@@ -1771,7 +1771,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 				case <-gAddCtx.Done():
 					return nil
 				default:
-					encryptAddDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, constant.StringSeparatorSemicolon+"\n"), []byte(constant.DefaultDataEncryptDecryptKey))
+					encryptAddDetails, err := stringutil.Encrypt(stringutil.StringJoin(details, "\n"), []byte(constant.DefaultDataEncryptDecryptKey))
 					if err != nil {
 						return err
 					}

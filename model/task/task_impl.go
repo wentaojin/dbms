@@ -1593,9 +1593,18 @@ func (rw *RWDataCompareResult) CreateDataCompareResult(ctx context.Context, task
 	return task, nil
 }
 
-func (rw *RWDataCompareResult) FindDataCompareResult(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error) {
+func (rw *RWDataCompareResult) FindDataCompareResultByTask(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error) {
 	var dataS []*DataCompareResult
 	err := rw.DB(ctx).Model(&DataCompareResult{}).Where("task_name = ?", task.TaskName).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataCompareResult) FindDataCompareResultBySchemaTable(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error) {
+	var dataS []*DataCompareResult
+	err := rw.DB(ctx).Model(&DataCompareResult{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

@@ -70,19 +70,42 @@ func (s *DataCompareFile) InitFile() error {
 
 func (s *DataCompareFile) SyncFile() error {
 	var (
-		err          error
-		migrateTasks []*task.DataCompareTask
+		err                error
+		migrateTasks       []*task.DataCompareTask
+		migrateTaskResults []*task.DataCompareResult
 	)
 	// get migrate task tables
-	migrateTasks, err = model.GetIDataCompareTaskRW().QueryDataCompareTaskByTaskStatus(s.Ctx, &task.DataCompareTask{
-		TaskName: s.TaskName, TaskStatus: constant.TaskDatabaseStatusNotEqual})
-	if err != nil {
-		return err
-	}
-
-	migrateTaskResults, err := model.GetIDataCompareResultRW().FindDataCompareResult(s.Ctx, &task.DataCompareResult{TaskName: s.TaskName})
-	if err != nil {
-		return err
+	if !strings.EqualFold(s.SchemaNameS, "") && !strings.EqualFold(s.TableNameS, "") {
+		migrateTasks, err = model.GetIDataCompareTaskRW().FindDataCompareTask(s.Ctx, &task.DataCompareTask{
+			TaskName:    s.TaskName,
+			SchemaNameS: s.SchemaNameS,
+			TableNameS:  s.TableNameS,
+			TaskStatus:  constant.TaskDatabaseStatusNotEqual})
+		if err != nil {
+			return err
+		}
+		migrateTaskResults, err = model.GetIDataCompareResultRW().FindDataCompareResultBySchemaTable(s.Ctx, &task.DataCompareResult{
+			TaskName:    s.TaskName,
+			SchemaNameS: s.SchemaNameS,
+			TableNameS:  s.TableNameS,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		migrateTasks, err = model.GetIDataCompareTaskRW().QueryDataCompareTaskByTaskStatus(s.Ctx, &task.DataCompareTask{
+			TaskName:   s.TaskName,
+			TaskStatus: constant.TaskDatabaseStatusNotEqual,
+		})
+		if err != nil {
+			return err
+		}
+		migrateTaskResults, err = model.GetIDataCompareResultRW().FindDataCompareResultByTask(s.Ctx, &task.DataCompareResult{
+			TaskName: s.TaskName,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(migrateTasks) == 0 && len(migrateTaskResults) == 0 {
@@ -99,23 +122,7 @@ func (s *DataCompareFile) SyncFile() error {
 		compareMethodM[originCompose] = mt.CompareMethod
 	}
 
-	// filter configure schema and table
-	taskExportM := make(map[string]string)
-
-	if !strings.EqualFold(s.SchemaNameS, "") && !strings.EqualFold(s.TableNameS, "") {
-		configureSt := stringutil.StringBuilder(s.SchemaNameS, constant.StringSeparatorAite, s.TableNameS)
-		for k, v := range schemaTableTaskM {
-			if strings.EqualFold(k, configureSt) {
-				taskExportM[k] = v
-			}
-		}
-	}
-
-	if len(taskExportM) == 0 {
-		taskExportM = schemaTableTaskM
-	}
-
-	for k, v := range taskExportM {
+	for k, v := range schemaTableTaskM {
 		keySli := stringutil.StringSplit(k, constant.StringSeparatorAite)
 		valSli := stringutil.StringSplit(v, constant.StringSeparatorAite)
 
