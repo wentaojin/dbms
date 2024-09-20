@@ -564,7 +564,7 @@ func StopDataCompareTask(ctx context.Context, taskName string) error {
 	return nil
 }
 
-func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir string, force bool) error {
+func GenDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, tableName, outputDir string, force bool) error {
 	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
 	if err != nil {
 		return err
@@ -603,8 +603,16 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, outputDir str
 		}
 	}
 
+	if !strings.EqualFold(schemaName, "") && strings.EqualFold(tableName, "") {
+		return fmt.Errorf("the [%v] task [%v] flag schema_name_s [%s] has been setted, the flag table_name_s can't be null", stringutil.StringLower(taskInfo.TaskMode),
+			taskInfo.TaskName, schemaName)
+	} else if strings.EqualFold(schemaName, "") && !strings.EqualFold(tableName, "") {
+		return fmt.Errorf("the [%v] task [%v] flag table_name_s [%s] has been setted, the flag schema_name_s can't be null", stringutil.StringLower(taskInfo.TaskMode),
+			taskInfo.TaskName, tableName)
+	}
+
 	var w database.IFileWriter
-	w = processor.NewDataCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, outputDir)
+	w = processor.NewDataCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, schemaName, tableName, outputDir)
 	err = w.InitFile()
 	if err != nil {
 		return err

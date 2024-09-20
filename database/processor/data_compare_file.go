@@ -36,23 +36,27 @@ import (
 )
 
 type DataCompareFile struct {
-	Ctx        context.Context `json:"-"`
-	Mutex      *sync.Mutex     `json:"-"`
-	CompFile   *os.File        `json:"-"`
-	CompWriter *bufio.Writer   `json:"-"`
-	TaskName   string          `json:"taskName"`
-	TaskFlow   string          `json:"taskFlow"`
-	OutputDir  string          `json:"outputDir"`
+	Ctx         context.Context `json:"-"`
+	Mutex       *sync.Mutex     `json:"-"`
+	CompFile    *os.File        `json:"-"`
+	CompWriter  *bufio.Writer   `json:"-"`
+	TaskName    string          `json:"taskName"`
+	TaskFlow    string          `json:"taskFlow"`
+	SchemaNameS string          `json:"schemaNameS"`
+	TableNameS  string          `json:"tableNameS"`
+	OutputDir   string          `json:"outputDir"`
 }
 
 func NewDataCompareFile(ctx context.Context,
-	taskName, taskFlow, outputDir string) *DataCompareFile {
+	taskName, taskFlow, schemaName, tableName, outputDir string) *DataCompareFile {
 	return &DataCompareFile{
-		Ctx:       ctx,
-		TaskName:  taskName,
-		TaskFlow:  taskFlow,
-		OutputDir: outputDir,
-		Mutex:     &sync.Mutex{},
+		Ctx:         ctx,
+		TaskName:    taskName,
+		TaskFlow:    taskFlow,
+		SchemaNameS: schemaName,
+		TableNameS:  tableName,
+		OutputDir:   outputDir,
+		Mutex:       &sync.Mutex{},
 	}
 }
 
@@ -86,14 +90,32 @@ func (s *DataCompareFile) SyncFile() error {
 		return errors.New(constant.TaskDatabaseStatusEqual)
 	}
 
-	tableTaskM := make(map[string]string)
+	schemaTableTaskM := make(map[string]string)
 	compareMethodM := make(map[string]string)
+
 	for _, mt := range migrateTasks {
-		tableTaskM[stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS)] = stringutil.StringBuilder(mt.SchemaNameT, constant.StringSeparatorAite, mt.TableNameT)
-		compareMethodM[stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS)] = mt.CompareMethod
+		originCompose := stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS)
+		schemaTableTaskM[originCompose] = stringutil.StringBuilder(mt.SchemaNameT, constant.StringSeparatorAite, mt.TableNameT)
+		compareMethodM[originCompose] = mt.CompareMethod
 	}
 
-	for k, v := range tableTaskM {
+	// filter configure schema and table
+	taskExportM := make(map[string]string)
+
+	if !strings.EqualFold(s.SchemaNameS, "") && !strings.EqualFold(s.TableNameS, "") {
+		configureSt := stringutil.StringBuilder(s.SchemaNameS, constant.StringSeparatorAite, s.TableNameS)
+		for k, v := range schemaTableTaskM {
+			if strings.EqualFold(k, configureSt) {
+				taskExportM[k] = v
+			}
+		}
+	}
+
+	if len(taskExportM) == 0 {
+		taskExportM = schemaTableTaskM
+	}
+
+	for k, v := range taskExportM {
 		keySli := stringutil.StringSplit(k, constant.StringSeparatorAite)
 		valSli := stringutil.StringSplit(v, constant.StringSeparatorAite)
 
