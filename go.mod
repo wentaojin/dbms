@@ -24,7 +24,6 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/joomcode/errorx v1.1.1
-	github.com/labstack/gommon v0.4.0
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/otiai10/copy v1.14.0
@@ -122,8 +121,6 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/xiang90/probing v0.0.0-20221125231312-a49e3df8f510 // indirect
 	go.etcd.io/bbolt v1.3.10 // indirect

@@ -17,66 +17,25 @@ package main
 
 import (
 	"fmt"
-	"maps"
+	"github.com/wentaojin/dbms/database/processor"
 )
 
 func main() {
 	srcM := map[string]int64{
-		"a": 6,
-		"b": 7,
-		"d": 9,
+		"1|#|'2024-06-12 23:50:10.000000'": 1,
+		"2|#|'2024-06-12 23:50:10.000000'": 1,
+		"3|#|'2024-06-12 23:50:10.123000'": 1,
+		"4|#|'2024-06-12 23:50:10.123456'": 1,
+		"5|#|'2024-06-12 12:12:12.000000'": 1,
 	}
 	destM := map[string]int64{
-		"a": 2,
-		"b": 10,
-		"c": 8,
+		"1|#|'2024-06-12 23:50:10.000000'": 1,
+		"2|#|'2024-06-12 23:50:10.000000'": 1,
+		"3|#|'2024-06-12 23:50:10.123000'": 1,
+		"4|#|'2024-06-12 23:50:10.123456'": 1,
+		"5|#|'2024-06-12 23:50:10.000000'": 1,
 	}
-	added, removed := arrcmp(destM, srcM)
+	added, removed := processor.Cmp(destM, srcM)
+
 	fmt.Printf("add: %v\nrem: %v\n", added, removed)
-}
-
-// src and dest store key-value pair , and key data row and value data row counts
-func arrcmp(src map[string]int64, dest map[string]int64) (map[string]int64, map[string]int64) {
-	// source element map mall
-	columnDataMall := maps.Clone(src) // source and target element map temp malls
-
-	addedSrcSets := make(map[string]int64)
-	delSrcSets := make(map[string]int64)
-
-	// data intersection
-	intersectionSets := make(map[string]int64)
-
-	// data comparison through set operations
-	for dk, dv := range dest {
-		if val, exist := columnDataMall[dk]; exist {
-			if dv == val {
-				intersectionSets[dk] = dv
-			} else if dv < val {
-				// target records is less than source records
-				delSrcSets[dk] = val - dv
-				delete(src, dk)
-				delete(columnDataMall, dk)
-			} else {
-				// target records is more than source records
-				addedSrcSets[dk] = dv - val
-				delete(src, dk)
-				delete(columnDataMall, dk)
-			}
-		} else {
-			columnDataMall[dk] = dv
-		}
-	}
-
-	for dk, _ := range intersectionSets {
-		delete(columnDataMall, dk)
-	}
-
-	for dk, dv := range columnDataMall {
-		if _, exist := src[dk]; exist {
-			delSrcSets[dk] = dv
-		} else {
-			addedSrcSets[dk] = dv
-		}
-	}
-	return addedSrcSets, delSrcSets
 }

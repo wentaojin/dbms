@@ -17,6 +17,7 @@ package params
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -144,8 +145,11 @@ func (rw *RWTaskParams) QueryTaskCustomParam(ctx context.Context, data *TaskCust
 
 func (rw *RWTaskParams) GetTaskCustomParam(ctx context.Context, data *TaskCustomParam) (*TaskCustomParam, error) {
 	var dataS *TaskCustomParam
-	err := rw.DB(ctx).Model(&TaskCustomParam{}).Where("task_name = ? AND task_mode = ? AND param_name = ?", data.TaskName, data.TaskMode, data.ParamName).Limit(1).First(&dataS).Error
+	err := rw.DB(ctx).Model(&TaskCustomParam{}).Where("task_name = ? AND task_mode = ? AND param_name = ?", data.TaskName, data.TaskMode, data.ParamName).First(&dataS).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dataS, nil
+		}
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TaskCustomParamTableName(ctx), err)
 	}
 	return dataS, nil

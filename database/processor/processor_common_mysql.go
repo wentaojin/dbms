@@ -69,7 +69,7 @@ func OptimizerMYSQLCompatibleDataMigrateColumnS(columnName, datatype, datetimePr
 		if datetimeP == 0 {
 			return fmt.Sprintf("IFNULL(DATE_FORMAT(`%s`, '%%Y-%%m-%%d %%H:%%i:%%s'),'0') AS %s", columnName, columnName), nil
 		} else {
-			return fmt.Sprintf("IFNULL(CONCAT(DATE_FORMAT(`%s`, '%%Y-%%m-%%d %%T:'),LPAD(SUBSTRING(TIME_FORMAT(`%s`, '%%f'), 1, %s), %s, '0')),'0') AS `%s`", columnName, columnName, datetimePrecision, datetimePrecision, columnName), nil
+			return fmt.Sprintf("IFNULL(CONCAT(DATE_FORMAT(`%s`, '%%Y-%%m-%%d %%T.'),LPAD(SUBSTRING(TIME_FORMAT(`%s`, '%%f'), 1, %s), %s, '0')),'0') AS `%s`", columnName, columnName, datetimePrecision, datetimePrecision, columnName), nil
 		}
 	case constant.BuildInMySQLDatatypeBit:
 		return stringutil.StringBuilder("`", columnName, "`"), nil

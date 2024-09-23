@@ -6,7 +6,7 @@ event-queue-size = 1024
 
 [log]
 log-level = "info"
-log-file = "/Users/marvin/gostore/dbms/data/dbms-worker-8261.log"
+log-file = "/Users/wentaojin/gostore/dbms/data/dbms-worker-8261.log"
 max-size = 128
 max-days = 7
 max-backups = 30

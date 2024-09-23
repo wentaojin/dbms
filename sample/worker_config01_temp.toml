@@ -5,7 +5,7 @@ keepalive-ttl = 30
 
 [log]
 log-level = "info"
-log-file = "/Users/marvin/gostore/dbms/data/dbms-worker-8361.log"
+log-file = "/Users/wentaojin/gostore/dbms/data/dbms-worker-8361.log"
 max-size = 128
 max-days = 7
 max-backups = 30

@@ -35,7 +35,7 @@ func main() {
 		DbType:         "oracle",
 		Username:       "finpt",
 		Password:       "finpt",
-		Host:           "10.21.10.33",
+		Host:           "192.2.1.33",
 		Port:           1521,
 		ConnectCharset: "zhs16gbk",
 		ServiceName:    "gbk",
@@ -62,7 +62,7 @@ func main() {
 		DbType:   "mysql",
 		Username: "root",
 		Password: "",
-		Host:     "120.92.77.145",
+		Host:     "20.20.98.120",
 		Port:     4000,
 	}, "", 600)
 	if err != nil {
