@@ -361,7 +361,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			}
 			columnNameSilSO = append(columnNameSilSO, columnNameSO)
 		case constant.TaskFlowTiDBToOracle:
-			columnNameSO, err := OptimizerMYSQLCompatibleDataMigrateColumnS(columnNameS, datatypeS, dataScaleS)
+			columnNameSO, err := OptimizerMYSQLCompatibleDataMigrateColumnS(columnNameS, datatypeS, rowCol["DATETIME_PRECISION"])
 			if err != nil {
 				return "", "", "", "", err
 			}
