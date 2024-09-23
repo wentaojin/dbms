@@ -84,7 +84,7 @@ func (d *CompareConfig) SetDisableMd5ChecksumDefault() *CompareConfig {
 
 func (d *CompareConfig) AdjustConfigDefault() {
 	if strings.EqualFold(d.DataCompareParam.Separator, "") {
-		d.DataCompareParam.Separator = ","
+		d.DataCompareParam.Separator = "|#|"
 	}
 }
 

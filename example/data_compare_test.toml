@@ -79,8 +79,8 @@ enable-consistent-read = false
 consistent-read-point-s = ""
 # consistent-read-point-t 参数 mysql 数据库不支持指定配置，自动忽略配置，tidb 数据库支持
 consistent-read-point-t = ""
-# 字段分隔符，支持一个或多个字符，默认值为 ','
-separator = ','
+# 字段分隔符，支持一个或多个字符，默认值为 '|#|'
+separator = '|#|'
 # 修复语句产生流向 upstream or downstream，默认 downstream
 # upstream 产生上游 datasource-name-s 修复语句
 # downstream 产生下游 datasource-name-t 修复语句
