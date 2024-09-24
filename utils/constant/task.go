@@ -51,11 +51,12 @@ const (
 )
 
 const (
-	TaskFlowOracleToMySQL  = "ORACLE@MYSQL"
-	TaskFlowOracleToTiDB   = "ORACLE@TIDB"
-	TaskFlowMySQLToOracle  = "MYSQL@ORACLE"
-	TaskFlowTiDBToOracle   = "TIDB@ORACLE"
-	TaskFlowPostgresToTiDB = "POSTGRES@TIDB"
+	TaskFlowOracleToMySQL   = "ORACLE@MYSQL"
+	TaskFlowOracleToTiDB    = "ORACLE@TIDB"
+	TaskFlowMySQLToOracle   = "MYSQL@ORACLE"
+	TaskFlowTiDBToOracle    = "TIDB@ORACLE"
+	TaskFlowPostgresToTiDB  = "POSTGRES@TIDB"
+	TaskFlowPostgresToMySQL = "POSTGRES@MYSQL"
 )
 
 const (

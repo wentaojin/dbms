@@ -59,7 +59,7 @@ type CsvMigrateParam struct {
 	EnableCheckpoint     bool              `toml:"enable-checkpoint" json:"enableCheckpoint"`
 	EnableConsistentRead bool              `toml:"enable-consistent-read" json:"enableConsistentRead"`
 	EnableImportFeature  bool              `toml:"enable-import-feature" json:"enableImportFeature"`
-	CsvImportParams      map[string]string `toml:"csv-import-params" json:"csv-importParams"`
+	CsvImportParams      map[string]string `toml:"csv-import-params" json:"csvImportParams"`
 }
 
 func (c *CsvConfig) String() string {

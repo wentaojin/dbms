@@ -30,7 +30,7 @@ func InspectOracleMigrateTask(taskName, taskFlow, taskMode string, databaseS dat
 	if strings.EqualFold(taskMode, constant.TaskModeStructMigrate) {
 		dbCharsetMapping := constant.MigrateTableStructureDatabaseCharsetMap[taskFlow][stringutil.StringUpper(connectDBCharsetS)]
 		if !strings.EqualFold(connectDBCharsetT, dbCharsetMapping) {
-			return "", fmt.Errorf("oracle current task [%s] taskflow [%s] charset [%s] mapping [%v] isn't equal with database connect charset [%s], please adjust database connect charset", taskName, taskFlow, connectDBCharsetS, dbCharsetMapping, connectDBCharsetT)
+			return "", fmt.Errorf("the task [%s] taskflow [%s] charset [%s] mapping [%v] isn't equal with database connect charset [%s], please adjust database connect charset", taskName, taskFlow, connectDBCharsetS, dbCharsetMapping, connectDBCharsetT)
 		}
 	}
 
@@ -41,7 +41,7 @@ func InspectOracleMigrateTask(taskName, taskFlow, taskMode string, databaseS dat
 		return "", err
 	}
 	if !strings.EqualFold(connectDBCharsetS, dbCharsetS) {
-		zap.L().Warn("oracle charset and oracle config charset",
+		zap.L().Warn("the database charset and oracle config charset",
 			zap.String("oracle database charset", dbCharsetS),
 			zap.String("oracle config charset", connectDBCharsetS))
 		return "", fmt.Errorf("oracle database charset [%v] and oracle config charset [%v] aren't equal, please adjust oracle config charset", dbCharsetS, connectDBCharsetS)
@@ -58,10 +58,6 @@ func InspectOracleMigrateTask(taskName, taskFlow, taskMode string, databaseS dat
 		if err != nil {
 			return "", err
 		}
-		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)]; !ok {
-			return "", fmt.Errorf("oracle database collation nlssort [%v] isn't support", nlsComp)
-		}
-
 		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(nlsComp)]; !ok {
 			return "", fmt.Errorf("oracle database collation nlscomp [%v] isn't support", nlsComp)
 		}

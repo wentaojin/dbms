@@ -96,7 +96,7 @@ func (st *StructMigrateTask) Init() error {
 	g.SetLimit(2)
 
 	g.Go(func() error {
-		err := st.initStructMigrate()
+		err := st.initSequenceMigrate()
 		if err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func (st *StructMigrateTask) Init() error {
 	})
 
 	g.Go(func() error {
-		err := st.initSequenceMigrate()
+		err := st.initStructMigrate()
 		if err != nil {
 			return err
 		}
@@ -124,9 +124,9 @@ func (st *StructMigrateTask) Run() error {
 	g.SetLimit(2)
 
 	g.Go(func() error {
-		for ready := range st.StructReadyInit {
+		for ready := range st.SequenceReadyInit {
 			if ready {
-				err := st.processStructMigrate()
+				err := st.processSequenceMigrate()
 				if err != nil {
 					return err
 				}
@@ -136,9 +136,9 @@ func (st *StructMigrateTask) Run() error {
 	})
 
 	g.Go(func() error {
-		for ready := range st.SequenceReadyInit {
+		for ready := range st.StructReadyInit {
 			if ready {
-				err := st.processSequenceMigrate()
+				err := st.processStructMigrate()
 				if err != nil {
 					return err
 				}
@@ -1006,7 +1006,7 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 			}
 
 			switch st.Task.TaskFlow {
-			case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 				var (
 					cycleFlag string
 					cacheFlag string

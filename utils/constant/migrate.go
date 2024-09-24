@@ -141,6 +141,12 @@ var MigrateMySQLCompatibleCharsetStringConvertMapping = map[string]string{
 	MYSQLCharsetGB18030: CharsetGB18030,
 }
 
+var MigratePostgreSQLCompatibleCharsetStringConvertMapping = map[string]string{
+	PostgreSQLCharsetEUC_TW: CharsetUTF8MB4,
+	PostgreSQLCharsetUTF8:   CharsetUTF8MB4,
+	PostgreSQLCharsetEUC_CN: CharsetUTF8MB4,
+}
+
 // string data support charset list
 var (
 	MYSQLCharsetUTF8MB4       = "UTF8MB4"
@@ -152,9 +158,16 @@ var (
 	ORACLECharsetZHT16BIG5    = "ZHT16BIG5"
 	ORACLECharsetZHS16GBK     = "ZHS16GBK"
 	ORACLECharsetZHS32GB18030 = "ZHS32GB18030"
+	// the BIG5、GBK and GB18030 charsets aren't support server charset encoding, but can use client charset encoding
+	// detail reference: http://www.postgres.cn/docs/9.5/multibyte.html
+	// EUC_TW -> BIG5
+	// EUC_CN -> EUC_CN、UTF8
+	PostgreSQLCharsetEUC_TW = "EUC_TW"
+	PostgreSQLCharsetUTF8   = "UTF8"
+	PostgreSQLCharsetEUC_CN = "EUC_CN"
 )
 
-// table structure migration and table structure verification character set and sorting rules
+// MigrateTableStructureDatabaseCharsetMap table structure migration and table structure verification character set and sorting rules
 var MigrateTableStructureDatabaseCharsetMap = map[string]map[string]string{
 	TaskFlowOracleToMySQL: {
 		ORACLECharsetAL32UTF8:     MYSQLCharsetUTF8MB4,
@@ -180,6 +193,17 @@ var MigrateTableStructureDatabaseCharsetMap = map[string]map[string]string{
 		MYSQLCharsetUTF8MB4: ORACLECharsetAL32UTF8,
 		MYSQLCharsetUTF8:    ORACLECharsetAL32UTF8,
 		MYSQLCharsetGBK:     ORACLECharsetZHS16GBK,
+	},
+	// MYSQL/TiDB table structure and field attributes use UTF8MB4 character set, which is suitable for p2t and t2p in check, compare and reverse modes.
+	TaskFlowPostgresToTiDB: {
+		PostgreSQLCharsetEUC_TW: MYSQLCharsetUTF8MB4,
+		PostgreSQLCharsetEUC_CN: MYSQLCharsetUTF8MB4,
+		PostgreSQLCharsetUTF8:   MYSQLCharsetUTF8MB4,
+	},
+	TaskFlowPostgresToMySQL: {
+		PostgreSQLCharsetEUC_TW: MYSQLCharsetUTF8MB4,
+		PostgreSQLCharsetEUC_CN: MYSQLCharsetUTF8MB4,
+		PostgreSQLCharsetUTF8:   MYSQLCharsetUTF8MB4,
 	},
 }
 
@@ -410,7 +434,80 @@ var MigrateTableStructureDatabaseCollationMap = map[string]map[string]map[string
 			ORACLECharsetZHS32GB18030: "BINARY/BINARY_CS",
 		},
 	},
-	TaskFlowPostgresToTiDB: {},
+	TaskFlowPostgresToTiDB: {
+		"C": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_BIN",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_BIN",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_BIN",
+		},
+		"POSIX": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_BIN",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_BIN",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_BIN",
+		},
+		"ZH_TW": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+		"ZH_TW.UTF-8": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+		"ZH_CN": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+		"ZH_CN.UTF-8": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+		"EN_US.UTF-8": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+	},
+	TaskFlowPostgresToMySQL: {
+		"C": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_BIN",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_BIN",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_BIN",
+		},
+		"POSIX": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_BIN",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_BIN",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_BIN",
+		},
+		"ZH_TW": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+		"ZH_TW.UTF-8": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+		"ZH_CN": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+		"ZH_CN.UTF-8": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+		"EN_US.UTF-8": {
+			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
+			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		},
+	},
 }
 
 const (

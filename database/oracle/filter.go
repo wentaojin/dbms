@@ -157,33 +157,33 @@ func (d *Database) FilterDatabaseSequence(sourceSchema string, includeSequenceS,
 }
 
 func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporters []string) (*structure.TableObjects, error) {
-	partitionTables, err := d.filterthePartitionTable(sourceSchema, exporters)
+	partitionTables, err := d.filterPartitionTable(sourceSchema, exporters)
 	if err != nil {
 		return nil, fmt.Errorf("error on filter the compatible database partition table: %v", err)
 	}
-	temporaryTables, err := d.filtertheTemporaryTable(sourceSchema, exporters)
+	temporaryTables, err := d.filterTemporaryTable(sourceSchema, exporters)
 	if err != nil {
 		return nil, fmt.Errorf("error on filter the compatible database temporary table: %v", err)
 
 	}
-	clusteredTables, err := d.filtertheClusteredTable(sourceSchema, exporters)
+	clusteredTables, err := d.filterClusteredTable(sourceSchema, exporters)
 	if err != nil {
 		return nil, fmt.Errorf("error on filter the compatible database clustered table: %v", err)
 
 	}
-	materializedView, err := d.filtertheMaterializedView(sourceSchema, exporters)
+	materializedView, err := d.filterMaterializedView(sourceSchema, exporters)
 	if err != nil {
 		return nil, fmt.Errorf("error on filter the compatible database materialized view: %v", err)
 	}
-	externalTables, err := d.filtertheExternalTable(sourceSchema, exporters)
+	externalTables, err := d.filterExternalTable(sourceSchema, exporters)
 	if err != nil {
 		return nil, fmt.Errorf("error on filter the compatible database external table: %v", err)
 	}
-	normalViews, err := d.filtertheNormalView(sourceSchema, exporters)
+	normalViews, err := d.filterNormalView(sourceSchema, exporters)
 	if err != nil {
 		return nil, fmt.Errorf("error on filter the compatible database normal view: %v", err)
 	}
-	compositeTables, err := d.filtertheCompositeTypeTable(sourceSchema, exporters)
+	compositeTables, err := d.filterCompositeTypeTable(sourceSchema, exporters)
 	if err != nil {
 		return nil, fmt.Errorf("error on filter the compatible database composity table: %v", err)
 	}
@@ -253,7 +253,7 @@ func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporter
 	}, nil
 }
 
-func (d *Database) filterthePartitionTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filterPartitionTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabasePartitionTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -261,7 +261,7 @@ func (d *Database) filterthePartitionTable(sourceSchema string, exporters []stri
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filtertheTemporaryTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filterTemporaryTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseTemporaryTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -269,7 +269,7 @@ func (d *Database) filtertheTemporaryTable(sourceSchema string, exporters []stri
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filtertheClusteredTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filterClusteredTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseClusteredTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -277,7 +277,7 @@ func (d *Database) filtertheClusteredTable(sourceSchema string, exporters []stri
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filtertheMaterializedView(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filterMaterializedView(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseMaterializedView(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -285,7 +285,7 @@ func (d *Database) filtertheMaterializedView(sourceSchema string, exporters []st
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filtertheNormalView(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filterNormalView(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseNormalView(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func (d *Database) filtertheNormalView(sourceSchema string, exporters []string) 
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filtertheExternalTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filterExternalTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseExternalTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func (d *Database) filtertheExternalTable(sourceSchema string, exporters []strin
 	return stringutil.StringItemsFilterIntersection(exporters, tables), nil
 }
 
-func (d *Database) filtertheCompositeTypeTable(sourceSchema string, exporters []string) ([]string, error) {
+func (d *Database) filterCompositeTypeTable(sourceSchema string, exporters []string) ([]string, error) {
 	tables, err := d.GetDatabaseCompositeTypeTable(stringutil.StringUpper(sourceSchema))
 	if err != nil {
 		return nil, err

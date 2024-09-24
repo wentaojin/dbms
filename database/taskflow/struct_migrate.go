@@ -71,6 +71,17 @@ func (st *StructMigrateTask) Start() error {
 			return err
 		}
 		defer databaseT.Close()
+	case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+		databaseS, err = database.NewDatabase(st.Ctx, st.DatasourceS, "", int64(st.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+		databaseT, err = database.NewDatabase(st.Ctx, st.DatasourceT, "", int64(st.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
 	default:
 		return fmt.Errorf("the task_name [%v] task_mode [%v] task_flow [%s] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow)
 	}
@@ -146,12 +157,22 @@ func (st *StructMigrateTask) Start() error {
 				createSchema = fmt.Sprintf("CREATE DATABASE `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DatasourceT.ConnectCharset), targetSchemaCollation)
 			}
 		}
-	//case constant.TaskFlowPostgresToTiDB:
-	//TODO
-	//schemaCollationS, err := databaseS.GetDatabaseSchemaCollation(st.SchemaNameS)
-	//if err != nil {
-	//	return err
-	//}
+	case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+		logger.Info("struct migrate task inspect migrate task",
+			zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+		dbCollation, err := processor.InspectPostgresMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, databaseS, stringutil.StringUpper(st.DatasourceS.ConnectCharset), stringutil.StringUpper(st.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
+		targetSchemaCollation, ok := constant.MigrateTableStructureDatabaseCollationMap[st.Task.TaskFlow][stringutil.StringUpper(dbCollation)][stringutil.StringUpper(st.DatasourceT.ConnectCharset)]
+		if !ok {
+			return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema [%s] collation [%s] isn't support", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS, dbCollation)
+		}
+		if st.TaskParams.CreateIfNotExist {
+			createSchema = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DatasourceT.ConnectCharset), targetSchemaCollation)
+		} else {
+			createSchema = fmt.Sprintf("CREATE DATABASE `%s` DEFAULT CHARACTER SET %s COLLATE %s;", st.SchemaNameT, stringutil.StringUpper(st.DatasourceT.ConnectCharset), targetSchemaCollation)
+		}
 	default:
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema [%s] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.SchemaNameS)
 	}

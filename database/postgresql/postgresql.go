@@ -118,11 +118,6 @@ func (d *Database) GeneralQuery(query string, args ...any) ([]string, []map[stri
 
 		row := make(map[string]string)
 		for k, v := range values {
-			// Notes: oracle database NULL and ""
-			//	1, if the return value is NULLABLE, it represents the value is NULL, oracle sql query statement had be required the field NULL judgement, and if the filed is NULL, it returns that the value is NULLABLE
-			//	2, if the return value is nil, it represents the value is NULL
-			//	3, if the return value is "", it represents the value is "" string
-			//	4, if the return value is 'NULL' or 'null', it represents the value is NULL or null string
 			if v == nil {
 				row[columns[k]] = "NULLABLE"
 			} else {
