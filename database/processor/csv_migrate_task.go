@@ -126,15 +126,6 @@ func (cmt *CsvMigrateTask) Init() error {
 		if err != nil {
 			return err
 		}
-
-		if cmt.CsvParams.EnableImportFeature {
-			for _, t := range databaseTaskTables {
-				_, err = cmt.DatabaseT.ExecContext(cmt.Ctx, fmt.Sprintf(`TRUNCATE TABLE %s.%s`, cmt.SchemaNameT, t))
-				if err != nil {
-					return err
-				}
-			}
-		}
 	}
 	logger.Warn("csv migrate task checkpoint skip",
 		zap.String("task_name", cmt.Task.TaskName),
@@ -847,14 +838,9 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 			zap.String("table_name_s", s.TableNameS),
 			zap.Bool("enable_import_feature", cmt.CsvParams.EnableImportFeature))
 		// the database table export success
-		// enable import feature, only the task migrate status isn't finished, then exec truncate table
+		// enable import feature, only the task migrate status isn't finished
 		if cmt.CsvParams.EnableImportFeature {
-			if !strings.EqualFold(summar.MigrateFlag, constant.TaskMigrateStatusFinished) {
-				_, err = cmt.DatabaseT.ExecContext(cmt.Ctx, fmt.Sprintf(`TRUNCATE TABLE %s.%s`, s.SchemaNameT, s.TableNameT))
-				if err != nil {
-					return err
-				}
-			} else if strings.EqualFold(summar.MigrateFlag, constant.TaskMigrateStatusFinished) {
+			if strings.EqualFold(summar.MigrateFlag, constant.TaskMigrateStatusFinished) {
 				logger.Info("csv migrate task process table",
 					zap.String("task_name", cmt.Task.TaskName),
 					zap.String("task_mode", cmt.Task.TaskMode),

@@ -82,7 +82,6 @@ call-timeout = 36000
 #   - 若想断点恢复，设置 enable-checkpoint = true,首次一旦运行则 chunk-size 数不能调整，
 #   - 若不想断点恢复或者重新调整 chunk-size 数，设置 enable-checkpoint = false,重新运行全量任务
 #   - 无法断点续传期间，则需要设置 enable-checkpoint = false 重新导入导出
-# Notes: 启用 enable-import-feature 功能之后，设置 enable-checkpoint false 会自动 truncate 下游目标所在表以重新进行 csv 数据导入
 enable-checkpoint = true
 # 是否一致性读 ORA
 enable-consistent-read = false
@@ -91,7 +90,7 @@ enable-consistent-read = false
 # 1，需要将 dbms-worker 与下游数据库实例部署在同台服务器，并且对应的数据库用户需要具备对应的数据库权限
 # 2，数据导入以表串行机制运行
 # 3，csv 数据文件字符集、字段分隔符、字段定定界符号、NULL 值映射、行分隔符无需单独配置，自动继承 csv-migrate-params 值
-# 4，csv 数据导入所在目标表必须是空表，自动执行 truncate table，否则可能有数据问题
+# 4，csv 数据导入所在目标表必须是空表，若非空表，导入数据报错
 # 5，csv 数据数据导入功能属于有状态任务，enable-import-feature 参数一旦创建，则该参数的修改无法修改，即无法从 false -> true，true -> false，除非是新创建任务重新开始
 enable-import-feature = true
 # 参数以 Key-Value 形式配置（具体以下游数据库对应参数配置为准）
