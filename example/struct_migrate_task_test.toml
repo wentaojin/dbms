@@ -1,6 +1,6 @@
 task-name = "smig-task00"
-datasource-name-s = "ifdbora"
-datasource-name-t = "tidb145"
+datasource-name-s = "oracle151"
+datasource-name-t = "tidb161"
 comment = "测试数据源"
 
 [struct-migrate-param]

@@ -1,6 +1,6 @@
 task-name = "csv-task01"
-datasource-name-s = "jem10g"
-datasource-name-t = "tidb145"
+datasource-name-s = "oracle151"
+datasource-name-t = "tidb161"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -16,9 +16,9 @@ case-field-rule-s = "0"
 case-field-rule-t = "2"
 
 [schema-route-rule]
-schema-name-s = "MARVIN"
+schema-name-s = "SCOTT"
 schema-name-t = "uccis"
-include-table-s =  ["HS_JLDXX1"]
+include-table-s =  ["T8"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
@@ -82,3 +82,13 @@ call-timeout = 36000
 enable-checkpoint = true
 # 是否一致性读 ORA
 enable-consistent-read = false
+# 是否启用导入功能
+# 启用 csv 数据导入功能
+# 1，需要将 dbms-worker 与下游数据库实例部署在同台服务器，并且对应的数据库用户需要具备对应的数据库权限
+# 2，数据导入以表串行机制运行
+# 3，csv 数据文件字符集、字段分隔符、字段定定界符号、NULL 值映射、行分隔符无需单独配置，自动继承 csv-migrate-params 值
+# 4，csv 数据导入所在目标表必须是空表，自动执行 truncate table，否则可能有数据问题
+# 5，csv 数据数据导入功能属于有状态任务，enable-import-feature 参数一旦创建，则该参数的修改无法修改，即无法从 false -> true，true -> false，除非是新创建任务重新开始
+enable-import-feature = true
+# 参数以 Key-Value 形式配置（具体以下游数据库对应参数配置为准）
+csv-import-params = {"disableTikvImportMode"="false", "Thread"="10"}

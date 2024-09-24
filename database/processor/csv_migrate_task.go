@@ -910,15 +910,16 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 				if cmt.CsvParams.EscapeBackslash {
 					escape = "\\"
 				}
-				marshalBytes, err := json.Marshal(cmt.CsvParams.CsvImportParams)
-				if err != nil {
-					return err
+				if len(cmt.CsvParams.CsvImportParams) > 0 {
+					marshalBytes, err := json.Marshal(cmt.CsvParams.CsvImportParams)
+					if err != nil {
+						return err
+					}
+					err = stringutil.UnmarshalJSON(marshalBytes, &importParams)
+					if err != nil {
+						return err
+					}
 				}
-				err = stringutil.UnmarshalJSON(marshalBytes, &importParams)
-				if err != nil {
-					return err
-				}
-
 				limitOneRec, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(cmt.Ctx, &task.DataMigrateTask{
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SchemaNameS,

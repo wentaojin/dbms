@@ -69,6 +69,8 @@ const (
 	DatabaseMigrateSequenceCompatible    = "Y"
 	DatabaseMigrateSequenceNotCompatible = "N"
 
+	DatabaseMigrateTableStructDisabledMaterializedView = "MATERIALIZED VIEW"
+
 	// struct compare
 	StructCompareColumnsStructureJSONFormat   = "COLUMN"
 	StructCompareIndexStructureJSONFormat     = "INDEX"

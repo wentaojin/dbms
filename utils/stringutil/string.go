@@ -518,6 +518,21 @@ func valueToString(value reflect.Value) string {
 			strSlice = append(strSlice, valueToString(value.Index(i)))
 		}
 		return StringJoin(strSlice, constant.StringSeparatorComma)
+	case reflect.Map:
+		result := make(map[string]string)
+		for _, k := range value.MapKeys() {
+			keyStr := valueToString(k)
+			valueStr := valueToString(value.MapIndex(k))
+			result[keyStr] = valueStr
+		}
+		if len(result) > 0 {
+			jsonStr, err := MarshalJSON(result)
+			if err != nil {
+				panic(fmt.Errorf("reflect map type marshal json failed: [%v]", jsonStr))
+			}
+			return jsonStr
+		}
+		return ""
 	default:
 		panic("Unsupported Type")
 	}

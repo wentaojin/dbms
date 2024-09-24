@@ -680,9 +680,11 @@ func getCsvMigrateTasKParams(ctx context.Context, taskName string) (*pb.CsvMigra
 		}
 		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateImportParams) {
 			importPars := make(map[string]string)
-			err := json.Unmarshal([]byte(p.ParamValue), &importPars)
-			if err != nil {
-				return taskParam, err
+			if !strings.EqualFold(p.ParamValue, "") {
+				err := json.Unmarshal([]byte(p.ParamValue), &importPars)
+				if err != nil {
+					return taskParam, err
+				}
 			}
 			taskParam.CsvImportParams = importPars
 		}

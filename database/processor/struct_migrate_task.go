@@ -544,7 +544,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 	}
 	// if the table is MATERIALIZED VIEW, SKIP
 	// MATERIALIZED VIEW isn't support struct migrate
-	if strings.EqualFold(smt.TableTypeS, constant.OracleDatabaseTableTypeMaterializedView) {
+	if strings.EqualFold(smt.TableTypeS, constant.DatabaseMigrateTableStructDisabledMaterializedView) {
 		logger.Warn("struct migrate task process",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
