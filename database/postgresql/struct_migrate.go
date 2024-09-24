@@ -780,8 +780,9 @@ func (d *Database) GetDatabaseSchemaCollation(schemaName string) (string, error)
 }
 
 func (d *Database) GetDatabaseTableOriginStruct(schemaName, tableName, tableType string) (string, error) {
-	//TODO implement me
-	panic("implement me")
+	// TODO implement me
+	// The postgresql database does not have a command to create the table structure, similar to the Oracle dbms_metadata.get_ddl or mysql show create table command output, so just ignore it.
+	return "", nil
 }
 
 func (d *Database) GetDatabaseSequences(schemaName string) ([]string, error) {

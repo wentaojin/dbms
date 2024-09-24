@@ -97,6 +97,16 @@ func (d *Datasource) GetTableCharsetCollation() (string, string, error) {
 			}
 			return charset, nlsComp, nil
 		}
+	case constant.DatabaseTypePostgresql:
+		tableCharset, err := d.DatabaseS.GetDatabaseTableCharset(d.SchemaNameS, d.TableNameS)
+		if err != nil {
+			return "", "", err
+		}
+		tableCollation, err := d.DatabaseS.GetDatabaseTableCollation(d.SchemaNameS, d.TableNameS)
+		if err != nil {
+			return "", "", err
+		}
+		return tableCharset, tableCollation, nil
 	default:
 		return charset, "", fmt.Errorf("the struct migrate task unsupported database type: %s", d.DBTypeS)
 	}

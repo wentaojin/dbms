@@ -908,7 +908,8 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 					importParams ImportTiDBParams
 				)
 				if cmt.CsvParams.EscapeBackslash {
-					escape = "\\"
+					// \ comment
+					escape = "\\\"
 				}
 				if len(cmt.CsvParams.CsvImportParams) > 0 {
 					marshalBytes, err := json.Marshal(cmt.CsvParams.CsvImportParams)
