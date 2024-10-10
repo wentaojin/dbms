@@ -18,8 +18,9 @@ package master
 import (
 	"context"
 	"errors"
-	"github.com/wentaojin/dbms/proto/pb"
 	"strings"
+
+	"github.com/wentaojin/dbms/proto/pb"
 
 	"github.com/wentaojin/dbms/openapi"
 )

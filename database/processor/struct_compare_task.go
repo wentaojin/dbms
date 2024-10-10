@@ -18,6 +18,9 @@ package processor
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/golang/snappy"
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/errconcurrent"
@@ -30,8 +33,6 @@ import (
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"go.uber.org/zap"
-	"strings"
-	"time"
 )
 
 type StructCompareTask struct {

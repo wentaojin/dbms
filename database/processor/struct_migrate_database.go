@@ -18,9 +18,10 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/logger"
 	"strings"
 	"time"
+
+	"github.com/wentaojin/dbms/logger"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/model"
@@ -70,6 +71,7 @@ func (s *StructMigrateDatabase) WriteStructDatabase() error {
 			"TargetSqlDigest": compDigest,
 			"IncompSqlDigest": incompDigest,
 			"Duration":        duration,
+			"ErrorDetail":     "",
 		})
 		if err != nil {
 			return err
@@ -127,6 +129,7 @@ func (s *StructMigrateDatabase) SyncStructDatabase() error {
 			"TargetSqlDigest": compDigest,
 			"IncompSqlDigest": incompDigest,
 			"Duration":        duration,
+			"ErrorDetail":     "",
 		})
 		if err != nil {
 			return err
@@ -181,8 +184,8 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		compatibleSql   []string
 	)
 
-	switch {
-	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToMySQL):
+	switch s.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 		bf.WriteString(fmt.Sprintf("%s `%s`.`%s` (\n", s.TableStruct.TableCreatePrefixT, s.TableStruct.SchemaNameT, s.TableStruct.TableNameT))
 		bf.WriteString(strings.Join(s.TableStruct.TableColumns, ",\n"))
 
@@ -266,7 +269,7 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 		}
 
 		// database tidb isn't support check and foreign constraint, ignore
-		if strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB) {
+		if strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(s.TaskFlow, constant.TaskFlowPostgresToTiDB) {
 			if len(foreignKeySql) > 0 {
 				incompatibleSql = append(incompatibleSql, foreignKeySql...)
 			}
@@ -333,8 +336,8 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 	if err != nil {
 		return err
 	}
-	switch {
-	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB):
+	switch s.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToTiDB:
 		version, err := s.DatasourceT.GetDatabaseVersion()
 		if err != nil {
 			return err
@@ -352,6 +355,7 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 					"TargetSqlDigest": seqDigestT,
 					"IsCompatible":    constant.DatabaseMigrateSequenceNotCompatible,
 					"Duration":        time.Now().Sub(s.TaskStartTime).Seconds(),
+					"ErrorDetail":     "",
 				})
 				if err != nil {
 					return err
@@ -390,6 +394,7 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 				"TargetSqlDigest": seqDigestT,
 				"IsCompatible":    constant.DatabaseMigrateSequenceCompatible,
 				"Duration":        time.Now().Sub(s.TaskStartTime).Seconds(),
+				"ErrorDetail":     "",
 			})
 			if err != nil {
 				return err
@@ -414,7 +419,7 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 			return err
 		}
 		return nil
-	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToMySQL):
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToMySQL:
 		version, err := s.DatasourceT.GetDatabaseVersion()
 		if err != nil {
 			return err
@@ -432,6 +437,7 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 					"TargetSqlDigest": seqDigestT,
 					"IsCompatible":    constant.DatabaseMigrateSequenceNotCompatible,
 					"Duration":        time.Now().Sub(s.TaskStartTime).Seconds(),
+					"ErrorDetail":     "",
 				})
 				if err != nil {
 					return err
@@ -469,6 +475,7 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 				"TargetSqlDigest": seqDigestT,
 				"IsCompatible":    constant.DatabaseMigrateSequenceCompatible,
 				"Duration":        time.Now().Sub(s.TaskStartTime).Seconds(),
+				"ErrorDetail":     "",
 			})
 			if err != nil {
 				return err
@@ -507,8 +514,8 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 	if err != nil {
 		return err
 	}
-	switch {
-	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToTiDB):
+	switch s.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToTiDB:
 		version, err := s.DatasourceT.GetDatabaseVersion()
 		if err != nil {
 			return err
@@ -618,6 +625,7 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 				"TargetSqlDigest": seqDigestT,
 				"IsCompatible":    constant.DatabaseMigrateSequenceCompatible,
 				"Duration":        time.Now().Sub(s.TaskStartTime).Seconds(),
+				"ErrorDetail":     "",
 			})
 			if err != nil {
 				return err
@@ -642,7 +650,7 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 			return err
 		}
 		return nil
-	case strings.EqualFold(s.TaskFlow, constant.TaskFlowOracleToMySQL):
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToMySQL:
 		version, err := s.DatasourceT.GetDatabaseVersion()
 		if err != nil {
 			return err
@@ -750,6 +758,7 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 				"TargetSqlDigest": seqDigestT,
 				"IsCompatible":    constant.DatabaseMigrateSequenceCompatible,
 				"Duration":        time.Now().Sub(s.TaskStartTime).Seconds(),
+				"ErrorDetail":     "",
 			})
 			if err != nil {
 				return err

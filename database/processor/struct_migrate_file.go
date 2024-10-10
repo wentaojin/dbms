@@ -120,7 +120,7 @@ func (s *StructMigrateFile) SyncStructFile() error {
 
 	// incompatible table
 	switch s.TaskFlow {
-	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 		var (
 			tableRows, partitionTables, sessionTemporaryTables, transactionTemporaryTables, clusteredTables, materializedViews []table.Row
 		)

@@ -43,11 +43,13 @@ type StructMigrateRule struct {
 	TablePrimaryAttrs        []map[string]string              `json:"tablePrimaryAttrs"`
 	TableColumnsAttrs        []map[string]string              `json:"tableColumnsAttrs"`
 	TableCommentAttrs        []map[string]string              `json:"tableCommentAttrs"`
+	TableCharsetAttr         string                           `json:"tableCharsetAttr"`
+	TableCollationAttr       string                           `json:"tableCollationAttr"`
 	CaseFieldRuleT           string                           `json:"caseFieldRuleT"`
 	CreateIfNotExist         bool                             `json:"createIfNotExist"`
 	DBVersionS               string                           `json:"dbVersionS"`
-	DBCharsetS               string                           `json:"dbCharsetS"`
-	DBCharsetT               string                           `json:"dbCharsetT"`
+	DBCharsetS               string                           `json:"dbCharsetS"` // the string data charset conversation
+	DBCharsetT               string                           `json:"dbCharsetT"` // the string data charset conversation
 	BuildinDatatypeRules     []*buildin.BuildinDatatypeRule   `json:"-"`
 	BuildinDefaultValueRules []*buildin.BuildinDefaultvalRule `json:"-"`
 }
@@ -210,14 +212,14 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], err)
+				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], err)
 			}
 
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c["COLUMN_NAME"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], err)
+				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], err)
 			}
 
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
@@ -245,25 +247,25 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			defaultValUtf8Raw, err := stringutil.CharsetConvert([]byte(c["DATA_DEFAULT"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] default value [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["DATA_DEFAULT"], err)
+				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] default value [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["DATA_DEFAULT"], err)
 			}
 			columnDefaultValues = stringutil.BytesToString(defaultValUtf8Raw)
 
 			commentUtf8Raw, err := stringutil.CharsetConvert([]byte(c["COMMENTS"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] comment [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["COMMENTS"], err)
+				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] comment [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["COMMENTS"], err)
 			}
 			columnComment = stringutil.BytesToString(commentUtf8Raw)
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 			defaultValUtf8Raw, err := stringutil.CharsetConvert([]byte(c["DATA_DEFAULT"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] default value [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["DATA_DEFAULT"], err)
+				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] default value [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["DATA_DEFAULT"], err)
 			}
 			columnDefaultValues = stringutil.BytesToString(defaultValUtf8Raw)
 
 			commentUtf8Raw, err := stringutil.CharsetConvert([]byte(c["COMMENTS"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] comment [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["COMMENTS"], err)
+				return columnRules, columnDatatypeRules, columnDefaultValueRules, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] column [%s] comment [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.DBCharsetS, c["COLUMN_NAME"], c["COMMENTS"], err)
 			}
 			columnComment = stringutil.BytesToString(commentUtf8Raw)
 		default:
@@ -315,7 +317,42 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 			columnDatatypeRules[columnName] = stringutil.StringUpper(convertColumnDatatype)
 			columnDefaultValueRules[columnName] = convertColumnDefaultValue
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
-			//TODO
+			originColumnType, buildInColumnType, err = mapping.PostgresDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(
+				r.TaskFlow,
+				&mapping.Column{
+					ColumnName:        c["COLUMN_NAME"],
+					Datatype:          c["DATA_TYPE"],
+					CharLength:        c["CHAR_LENGTH"],
+					DataPrecision:     c["DATA_PRECISION"],
+					DataScale:         c["DATA_SCALE"],
+					DataDefault:       columnDefaultValues,
+					Nullable:          c["NULLABLE"],
+					DatetimePrecision: c["DATETIME_PRECISION"],
+					Comment:           columnComment,
+				}, r.BuildinDatatypeRules)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			// priority, return target database table column datatype
+			convertColumnDatatype, convertColumnDefaultValue, err := mapping.PostgresHandleColumnRuleWithPriority(
+				r.TableNameS,
+				c["COLUMN_NAME"],
+				originColumnType,
+				buildInColumnType,
+				columnDefaultValues,
+				constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)],
+				constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetT)],
+				r.BuildinDefaultValueRules,
+				structTaskRules,
+				structSchemaRules,
+				structTableRules,
+				structColumnRules)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			// column datatype upper case field rule
+			columnDatatypeRules[columnName] = stringutil.StringUpper(convertColumnDatatype)
+			columnDefaultValueRules[columnName] = convertColumnDefaultValue
 		default:
 			return nil, nil, nil, fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TaskFlow)
 		}
@@ -339,17 +376,17 @@ func (r *StructMigrateRule) GetTableAttributesRule() (string, error) {
 		return "", err
 	}
 
-	if !strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) {
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToTiDB:
+		return attr.TableAttrT, nil
+	default:
 		logger.Warn("get table rule",
 			zap.String("task_name", r.TableNameS),
 			zap.String("task_flow", r.TaskFlow),
-			zap.String("task_notes",
-				fmt.Sprintf("oracle current task [%s] schema [%s] taskflow [%s] attributes rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)),
+			zap.String("task_notes", fmt.Sprintf("the task_name [%s] schema_name_s [%s] taskflow [%s] attributes rule isn't support, only the downstream tidb database is support,skip operator", r.TaskName, r.SchemaNameS, r.TaskFlow)),
 			zap.String("operator", "ignore"))
 		return "", nil
 	}
-
-	return attr.TableAttrT, nil
 }
 
 func (r *StructMigrateRule) GetTableCommentRule() (string, error) {
@@ -361,11 +398,18 @@ func (r *StructMigrateRule) GetTableCommentRule() (string, error) {
 		return tableComment, nil
 	}
 
-	switch {
-	case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
 		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableCommentAttrs[0]["COMMENTS"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
-			return tableComment, fmt.Errorf("[GetTableColumnRule] the upstream database schema [%s] table [%s] comments [%s] charset [%v] convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.TableCommentAttrs[0]["COMMENTS"], r.DBCharsetS, err)
+			return tableComment, fmt.Errorf("[GetTableCommentRule] the upstream database schema [%s] table [%s] comments [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.TableCommentAttrs[0]["COMMENTS"], r.DBCharsetS, err)
+		}
+		tableComment = stringutil.BytesToString(convertUtf8Raw)
+		return tableComment, nil
+	case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableCommentAttrs[0]["COMMENTS"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return tableComment, fmt.Errorf("[GetTableCommentRule] the upstream database schema [%s] table [%s] comments [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.TableCommentAttrs[0]["COMMENTS"], r.DBCharsetS, err)
 		}
 		tableComment = stringutil.BytesToString(convertUtf8Raw)
 		return tableComment, nil
@@ -374,33 +418,139 @@ func (r *StructMigrateRule) GetTableCommentRule() (string, error) {
 	}
 }
 
+func (r *StructMigrateRule) GetTableCharsetRule() (string, error) {
+	if val, ok := constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][stringutil.StringUpper(r.TableCharsetAttr)]; ok {
+		return val, nil
+	}
+	return "", fmt.Errorf("[GetTableCharsetRule] the upstream database schema [%s] table [%s] charset [%s] mapping failed, please checking", r.SchemaNameS, r.TableNameS, r.TableCharsetAttr)
+}
+
+func (r *StructMigrateRule) GetTableCollationRule() (string, error) {
+	if val, ok := constant.MigrateTableStructureDatabaseCollationMap[r.TaskFlow][stringutil.StringUpper(r.TableCollationAttr)][constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][stringutil.StringUpper(r.TableCharsetAttr)]]; ok {
+		return val, nil
+	}
+	return "", fmt.Errorf("[GetTableCharsetRule] the upstream database schema [%s] table [%s] collation [%s] mapping failed, please checking", r.SchemaNameS, r.TableNameS, r.TableCollationAttr)
+}
+
+func (r *StructMigrateRule) GetTableColumnCharsetRule() (map[string]string, error) {
+	columnCharsetMap := make(map[string]string)
+	for _, rowCol := range r.TableColumnsAttrs {
+		var (
+			columnName    string
+			columnCharset string
+		)
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
+			if stringutil.IsContainedStringIgnoreCase(constant.OracleCompatibleDatabaseTableColumnSupportCharsetCollationDatatype, rowCol["DATA_TYPE"]) {
+				// oracle database isnot setting column charset
+				tableCharset, err := r.GetTableCharsetRule()
+				if err != nil {
+					return nil, err
+				}
+				columnCharset = tableCharset
+			} else {
+				columnCharset = ""
+			}
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return columnCharsetMap, fmt.Errorf("[GetTableColumnCharsetRule] the upstream database schema [%s] table [%s] column [%s] charset convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+			// postgres support collation version >= 9.1
+			// check column sort collation
+			if stringutil.IsContainedStringIgnoreCase(constant.PostgresDatabaseTableColumnSupportCharsetCollationDatatype, rowCol["DATA_TYPE"]) {
+				if val, ok := constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][stringutil.StringUpper(rowCol["CHARSET"])]; ok {
+					columnCharset = val
+				} else {
+					if strings.EqualFold(stringutil.StringUpper(rowCol["CHARSET"]), "UNKNOWN") {
+						// return the table charset
+						tableCharset, err := r.GetTableCharsetRule()
+						if err != nil {
+							return nil, err
+						}
+						columnCharset = tableCharset
+					} else {
+						return columnCharsetMap, fmt.Errorf("[GetTableColumnCharsetRule] the upstream database schema [%s] table [%s] column [%s] datatype [%s] charset [%s] mapping failed, please checking", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], rowCol["DATA_TYPE"], rowCol["CHARSET"])
+					}
+				}
+			} else {
+				columnCharset = ""
+			}
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return columnCharsetMap, fmt.Errorf("[GetTableColumnCollationRule] the upstream database schema [%s] table [%s] column [%s] charset convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		default:
+			return nil, fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
+		}
+
+		columnCharsetMap[columnName] = columnCharset
+	}
+	return columnCharsetMap, nil
+}
+
 func (r *StructMigrateRule) GetTableColumnCollationRule() (map[string]string, error) {
 	columnCollationMap := make(map[string]string)
 	for _, rowCol := range r.TableColumnsAttrs {
-		var columnCollation string
-		// the oracle 12.2 and the above version support column collation
-		if stringutil.VersionOrdinal(r.DBVersionS) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+		var (
+			columnName      string
+			columnCollation string
+		)
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
+			// the oracle 12.2 and the above version support column collation
+			// the oracle 12.2 and the below version isn't support column collation, and set ""
 			// check column sort collation
-			if val, ok := constant.MigrateTableStructureDatabaseCollationMap[r.TaskFlow][strings.ToUpper(rowCol["COLLATION"])][constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][stringutil.StringUpper(r.DBCharsetS)]]; ok {
-				columnCollation = val
+			if stringutil.IsContainedStringIgnoreCase(constant.OracleCompatibleDatabaseTableColumnSupportCharsetCollationDatatype, rowCol["DATA_TYPE"]) {
+				if stringutil.VersionOrdinal(r.DBVersionS) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnSupportVersion) {
+					if val, ok := constant.MigrateTableStructureDatabaseCollationMap[r.TaskFlow][stringutil.StringUpper(rowCol["COLLATION"])][constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][stringutil.StringUpper(r.TableCharsetAttr)]]; ok {
+						columnCollation = val
+					} else {
+						return columnCollationMap, fmt.Errorf("the upstream database schema [%s] table [%s] column [%s] datatype [%s] charset [%s] collation [%s] mapping failed, please checking", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], rowCol["DATA_TYPE"], r.TableCharsetAttr, rowCol["COLLATION"])
+					}
+				} else {
+					// return the table charset collation
+					tableCollation, err := r.GetTableCollationRule()
+					if err != nil {
+						return nil, err
+					}
+					columnCollation = tableCollation
+				}
 			} else {
 				// exclude the column with the integer datatype
-				if !strings.EqualFold(rowCol["COLLATION"], "") {
-					return columnCollationMap, fmt.Errorf("the upstream database schema [%s] table [%s] column [%s] charset [%v] collation [%s] check failed", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], r.DBCharsetS, rowCol["COLLATION"])
-				}
 				columnCollation = ""
 			}
-		} else {
-			// the oracle 12.2 and the below version isn't support column collation, and set ""
-			columnCollation = ""
-		}
-
-		var columnName string
-		switch {
-		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return columnCollationMap, fmt.Errorf("[GetTableColumnCollationRule] the upstream database schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], err)
+				return columnCollationMap, fmt.Errorf("[GetTableColumnCollationRule] the upstream database schema [%s] table [%s] column [%s] charset convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+			// postgres support collation version >= 9.1
+			// check column sort collation
+			if stringutil.IsContainedStringIgnoreCase(constant.PostgresDatabaseTableColumnSupportCharsetCollationDatatype, rowCol["DATA_TYPE"]) {
+				if val, ok := constant.MigrateTableStructureDatabaseCollationMap[r.TaskFlow][stringutil.StringUpper(rowCol["COLLATION"])][constant.MigrateTableStructureDatabaseCharsetMap[r.TaskFlow][stringutil.StringUpper(r.TableCharsetAttr)]]; ok {
+					columnCollation = val
+				} else {
+					if strings.EqualFold(stringutil.StringUpper(rowCol["CHARSET"]), "UNKNOWN") {
+						// return the table charset collation
+						tableCollation, err := r.GetTableCollationRule()
+						if err != nil {
+							return nil, err
+						}
+						columnCollation = tableCollation
+					} else {
+						return columnCollationMap, fmt.Errorf("[GetTableColumnCollationRule] the upstream database schema [%s] table [%s] column [%s] datatype [%s] charset [%s] collation [%s] mapping failed, please checking", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], rowCol["DATA_TYPE"], r.TableCharsetAttr, rowCol["COLLATION"])
+					}
+				}
+			} else {
+				columnCollation = ""
+			}
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return columnCollationMap, fmt.Errorf("[GetTableColumnCollationRule] the upstream database schema [%s] table [%s] column [%s] charset convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], err)
 			}
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 		default:
@@ -415,15 +565,28 @@ func (r *StructMigrateRule) GetTableColumnCommentRule() (map[string]string, erro
 	columnCommentMap := make(map[string]string)
 	for _, rowCol := range r.TableColumnsAttrs {
 		var columnName, columnComment string
-		switch {
-		case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return columnCommentMap, fmt.Errorf("[GetTableColumnCommentRule] the upstream database schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], err)
+				return columnCommentMap, fmt.Errorf("[GetTableColumnCommentRule] the upstream database schema [%s] table [%s] column [%s] charset convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], err)
 			}
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 
 			commentUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COMMENTS"]), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return columnCommentMap, fmt.Errorf("[GetTableColumnCommentRule] the upstream database schema [%s] table [%s] column [%s] comment [%s] charset convert failed, %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], rowCol["COMMENTS"], err)
+			}
+
+			columnComment = stringutil.BytesToString(commentUtf8Raw)
+		case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return columnCommentMap, fmt.Errorf("[GetTableColumnCommentRule] the upstream database schema [%s] table [%s] column [%s] charset convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+
+			commentUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COMMENTS"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return columnCommentMap, fmt.Errorf("[GetTableColumnCommentRule] the upstream database schema [%s] table [%s] column [%s] comment [%s] charset convert failed, %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], rowCol["COMMENTS"], err)
 			}

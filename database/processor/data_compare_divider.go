@@ -17,13 +17,14 @@ package processor
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"github.com/wentaojin/dbms/utils/structure"
 	"go.uber.org/zap"
-	"strings"
 )
 
 type Divide struct {
@@ -86,9 +87,9 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 		var chunkRange *structure.Range
 		switch stringutil.StringUpper(d.DBTypeS) {
 		case constant.DatabaseTypeOracle:
-			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.BuildInOracleCharsetAL32UTF8)
+			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.ORACLECharsetAL32UTF8)
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.BuildInMYSQLCharsetUTF8MB4)
+			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.MYSQLCharsetUTF8MB4)
 		default:
 			return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", d.DBTypeS)
 		}
@@ -159,9 +160,9 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 	var chunkRange *structure.Range
 	switch stringutil.StringUpper(d.DBTypeS) {
 	case constant.DatabaseTypeOracle:
-		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.BuildInOracleCharsetAL32UTF8)
+		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.ORACLECharsetAL32UTF8)
 	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
-		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.BuildInMYSQLCharsetUTF8MB4)
+		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.MYSQLCharsetUTF8MB4)
 	default:
 		return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", d.DBTypeS)
 	}
@@ -244,7 +245,7 @@ func ProcessDownstreamStatisticsBucket(dbTypeT, dbCharsetT string, bs []*structu
 			ranges = append(ranges, &structure.Range{
 				DBType:        dbTypeT,
 				DBCharsetFrom: dbCharsetT,
-				DBCharsetDest: constant.BuildInOracleCharsetAL32UTF8,
+				DBCharsetDest: constant.ORACLECharsetAL32UTF8,
 				Bounds:        bounds,
 				BoundOffset:   newBoundOffset,
 			})
@@ -252,7 +253,7 @@ func ProcessDownstreamStatisticsBucket(dbTypeT, dbCharsetT string, bs []*structu
 			ranges = append(ranges, &structure.Range{
 				DBType:        dbTypeT,
 				DBCharsetFrom: dbCharsetT,
-				DBCharsetDest: constant.BuildInMYSQLCharsetUTF8MB4,
+				DBCharsetDest: constant.MYSQLCharsetUTF8MB4,
 				Bounds:        bounds,
 				BoundOffset:   newBoundOffset,
 			})

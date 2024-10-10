@@ -6,7 +6,6 @@ toolchain go1.22.3
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/ScaleFT/sshkeys v1.2.0
 	github.com/appleboy/easyssh-proxy v1.5.0
 	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef
@@ -19,7 +18,6 @@ require (
 	github.com/godror/godror v0.44.1
 	github.com/golang/snappy v0.0.4
 	github.com/google/uuid v1.6.0
-	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
 	github.com/greatcloak/decimal v1.4.4
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
@@ -35,7 +33,6 @@ require (
 	github.com/sergi/go-diff v1.3.1
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/cobra v1.8.0
-	github.com/thanhpk/randstr v1.0.6
 	github.com/thinkeridea/go-extend v1.3.2
 	go.etcd.io/etcd/api/v3 v3.5.13
 	go.etcd.io/etcd/client/pkg/v3 v3.5.13

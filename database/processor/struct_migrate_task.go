@@ -18,11 +18,12 @@ package processor
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/model/rule"
 	"golang.org/x/sync/errgroup"
-	"strings"
-	"time"
 
 	"github.com/wentaojin/dbms/model/buildin"
 
@@ -92,18 +93,22 @@ func (st *StructMigrateTask) Init() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.Bool("enable_checkpoint", st.TaskParams.EnableCheckpoint))
 
-	g := &errgroup.Group{}
-	g.SetLimit(2)
+	gSeq := &errgroup.Group{}
 
-	g.Go(func() error {
+	gSeq.Go(func() error {
 		err := st.initSequenceMigrate()
 		if err != nil {
 			return err
 		}
 		return nil
 	})
+	if err := gSeq.Wait(); err != nil {
+		return err
+	}
 
-	g.Go(func() error {
+	gStru := &errgroup.Group{}
+
+	gStru.Go(func() error {
 		err := st.initStructMigrate()
 		if err != nil {
 			return err
@@ -111,7 +116,7 @@ func (st *StructMigrateTask) Init() error {
 		return nil
 	})
 
-	if err := g.Wait(); err != nil {
+	if err := gStru.Wait(); err != nil {
 		return err
 	}
 	return nil
@@ -120,10 +125,9 @@ func (st *StructMigrateTask) Init() error {
 func (st *StructMigrateTask) Run() error {
 	logger.Info("struct migrate task run table",
 		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
-	g := &errgroup.Group{}
-	g.SetLimit(2)
+	gSeq := &errgroup.Group{}
 
-	g.Go(func() error {
+	gSeq.Go(func() error {
 		for ready := range st.SequenceReadyInit {
 			if ready {
 				err := st.processSequenceMigrate()
@@ -135,7 +139,13 @@ func (st *StructMigrateTask) Run() error {
 		return nil
 	})
 
-	g.Go(func() error {
+	if err := gSeq.Wait(); err != nil {
+		return err
+	}
+
+	gStru := &errgroup.Group{}
+
+	gStru.Go(func() error {
 		for ready := range st.StructReadyInit {
 			if ready {
 				err := st.processStructMigrate()
@@ -147,7 +157,7 @@ func (st *StructMigrateTask) Run() error {
 		return nil
 	})
 
-	if err := g.Wait(); err != nil {
+	if err := gStru.Wait(); err != nil {
 		return err
 	}
 	return nil
@@ -618,6 +628,8 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		TaskFlow:                 st.Task.TaskFlow,
 		SchemaNameS:              smt.SchemaNameS,
 		TableNameS:               smt.TableNameS,
+		TableCharsetAttr:         attrs.TableCharset,
+		TableCollationAttr:       attrs.TableCollation,
 		TablePrimaryAttrs:        attrs.PrimaryKey,
 		TableColumnsAttrs:        attrs.TableColumns,
 		TableCommentAttrs:        attrs.TableComment,
@@ -988,7 +1000,7 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 				return err
 			}
 			if len(seqRes) == 0 {
-				return fmt.Errorf("the database schema_name_s [%s] sequence_name_s [%s] not exist", st.SchemaNameS, s)
+				return fmt.Errorf("the database schema_name_s [%s] sequence_name_s [%s] not exist", st.SchemaNameS, smt.SequenceNameS)
 			}
 			lastNumber, err := stringutil.StrconvIntBitSize(seqRes[0]["LAST_NUMBER"], 64)
 			if err != nil {

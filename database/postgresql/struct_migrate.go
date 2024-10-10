@@ -17,10 +17,11 @@ package postgresql
 
 import (
 	"fmt"
-	"github.com/wentaojin/dbms/utils/constant"
-	"github.com/wentaojin/dbms/utils/stringutil"
 	"strconv"
 	"strings"
+
+	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
 func (d *Database) GetDatabaseSchema() ([]string, error) {
@@ -281,9 +282,9 @@ func (d *Database) GetDatabaseTableType(schemaName string) (map[string]string, e
     CASE
 	WHEN cls.relkind = 'r' THEN 'HEAP'
     WHEN cls.relkind = 'v' THEN 'VIEW'
-    WHEN cls.relkink = 'm' THEN 'MATERIALIZED VIEW'
-    WHEN cls.relkink = 'c' THEN 'USER DEFINE TYPE TABLE'
-    WHEN cls.relkink = 'f' THEN 'EXTERNAL TABLE'
+    WHEN cls.relkind = 'm' THEN 'MATERIALIZED VIEW'
+    WHEN cls.relkind = 'c' THEN 'USER DEFINE TYPE TABLE'
+    WHEN cls.relkind = 'f' THEN 'EXTERNAL TABLE'
  	ELSE
  		'UNKNOWN'
  	END AS table_type
@@ -293,7 +294,7 @@ JOIN
     pg_namespace nsp ON cls.relnamespace = nsp.oid
 WHERE 
     nsp.nspname = '%s'
-    and cls.relkink not in ('i','s','t') -- exclude index、sequence、TOAST`, schemaName))
+    and cls.relkind not in ('i','s','t') -- exclude index、sequence、TOAST`, schemaName))
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +303,7 @@ WHERE
 		if len(r) > 2 || len(r) == 0 || len(r) == 1 {
 			return tableTypeMap, fmt.Errorf("postgresql schema [%s] table type values should be 2, result: %v", schemaName, r)
 		}
-		tableTypeMap[r["TABLE_NAME"]] = r["TABLE_TYPE"]
+		tableTypeMap[r["table_name"]] = r["table_type"]
 	}
 
 	tables, err := d.GetDatabasePartitionTable(schemaName)
@@ -339,54 +340,52 @@ WHERE
 }
 
 func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName string) ([]map[string]string, error) {
-	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
-	col.table_schema,
-	col.table_name,
-	col.column_name,
-	col.data_type,
-	col.character_maximum_length AS char_length,
-	col.numeric_precision AS data_precision,
-	col.numeric_scale AS data_scale,
-	col.datetime_precision,
-	CASE
-		col.is_nullable WHEN 'YES' THEN 'Y'
-		WHEN 'NO' THEN 'N'
-		ELSE 'UNKNOWN'
-	END AS nullable,
-	col.column_default AS data_default,
-	col.character_set_name AS charset,
-	col.collation_name AS collation,
-	temp.column_comment AS comment
-FROM
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`select
+	col.table_schema AS "TABLE_OWNER",
+	col.table_name AS "TABLE_NAME",
+	col.column_name AS "COLUMN_NAME",
+	col.data_type AS "DATA_TYPE",
+	COALESCE(col.character_maximum_length,0) AS "CHAR_LENGTH",
+	COALESCE(col.numeric_precision,0) AS "DATA_PRECISION",
+	COALESCE(col.numeric_scale,0) AS "DATA_SCALE",
+	COALESCE(col.datetime_precision,0) AS "DATETIME_PRECISION",
+	case
+		col.is_nullable when 'YES' then 'Y'
+		when 'NO' then 'N'
+		else 'UNKNOWN'
+	end AS "NULLABLE",
+	COALESCE(col.column_default,'NULLSTRING') AS "DATA_DEFAULT",
+	COALESCE(col.character_set_name,'UNKNOWN') AS "CHARSET",
+	COALESCE(col.collation_name,'UNKNOWN') AS "COLLATION",
+	temp.column_comment as "COMMENT"
+from
 	information_schema.columns col
-JOIN (
-	SELECT
-		a.attname AS column_name,
-		d.description AS column_comment
-	FROM
+join (
+	select
+		a.attname as column_name,
+		d.description as column_comment
+	from
 		pg_attribute a
-	LEFT JOIN pg_description d ON
-		a.attrelid = d.classoid
-	WHERE
-		a.attrelid = (
-		SELECT
-			c.oid
-		FROM
-			pg_class c
-		JOIN pg_namespace n ON
-			n.oid = c.relnamespace
-		WHERE
-			n.nspname = '%s'
-			AND c.relname = '%s'
-    )
-		AND a.attnum > 0
-		AND not a.attisdropped
-) temp ON
+	join pg_class c on
+		c.oid = a.attrelid
+	join pg_namespace n on n.oid = c.relnamespace
+	left join pg_description d on
+		d.objoid = a.attrelid
+		and d.objsubid = a.attnum
+		and d.classoid = 'pg_class'::regclass
+	where
+		n.nspname = '%s'
+		and c.relname = '%s'
+		and a.attnum > 0
+		and not a.attisdropped
+	order by
+		a.attnum
+) temp on
 	col.column_name = temp.column_name
-WHERE
+where
 	col.table_schema = '%s'
-	AND col.table_name = '%s'
-ORDER BY
+	and col.table_name = '%s'
+order by
 	col.ordinal_position`, schemaName, tableName, schemaName, tableName))
 	if err != nil {
 		return nil, err
@@ -396,8 +395,8 @@ ORDER BY
 
 func (d *Database) GetDatabaseTablePrimaryKey(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
-    conname AS constraint_name,
-    string_agg(a.attname, '|+|') AS column_list
+    conname AS "CONSTRAINT_NAME",
+    string_agg(a.attname, '|+|') AS "COLUMN_LIST"
 FROM 
     pg_constraint cons
 JOIN 
@@ -420,8 +419,8 @@ GROUP BY
 
 func (d *Database) GetDatabaseTableUniqueKey(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
-    conname AS constraint_name,
-    string_agg(a.attname, '|+|') AS column_list
+    conname AS "CONSTRAINT_NAME",
+    string_agg(a.attname, '|+|') AS "COLUMN_LIST"
 FROM 
     pg_constraint cons
 JOIN 
@@ -444,13 +443,13 @@ GROUP BY
 
 func (d *Database) GetDatabaseTableForeignKey(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
-    conname AS constraint_name,
-    string_agg(a.attname, '|+|') AS column_list,
-    string_agg(b.attname, '|+|') AS rcolumn_list,
-    split_part(confrelid::regclass::text, '.', 1) AS rowner,
-    split_part(confrelid::regclass::text, '.', 2) AS rtable_name,
-    case confupdtype when 'a' then 'NO ACTION' when 'r' then 'RESTRICT' when 'c' then 'CASCADE' when 'n' then 'SET NULL' when 'd' then 'SET DEFAULT' else 'UNKNOWN' end AS update_rule,
-    case confdeltype when 'a' then 'NO ACTION' when 'r' then 'RESTRICT' when 'c' then 'CASCADE' when 'n' then 'SET NULL' when 'd' then 'SET DEFAULT' else 'UNKNOWN' end AS delete_rule
+    conname AS "CONSTRAINT_NAME",
+    string_agg(a.attname, '|+|') AS "COLUMN_LIST",
+    string_agg(b.attname, '|+|') AS "RCOLUMN_LIST",
+    split_part(confrelid::regclass::text, '.', 1) AS "ROWNER",
+    split_part(confrelid::regclass::text, '.', 2) AS "RTABLE_NAME",
+    case confupdtype when 'a' then 'NO ACTION' when 'r' then 'RESTRICT' when 'c' then 'CASCADE' when 'n' then 'SET NULL' when 'd' then 'SET DEFAULT' else 'UNKNOWN' end AS "UPDATE_RULE",
+    case confdeltype when 'a' then 'NO ACTION' when 'r' then 'RESTRICT' when 'c' then 'CASCADE' when 'n' then 'SET NULL' when 'd' then 'SET DEFAULT' else 'UNKNOWN' end AS "DELETE_RULE"
 FROM 
     pg_constraint cons
 JOIN 
@@ -475,9 +474,9 @@ GROUP BY
 
 func (d *Database) GetDatabaseTableCheckKey(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
-    conname AS constraint_name,
-    pg_get_constraintdef(cons.oid) AS definition,
-    string_agg(att.attname, '|+|') AS involved_columns
+    conname AS "CONSTRAINT_NAME",
+    pg_get_constraintdef(cons.oid) AS "SEARCH_CONDITION",
+    string_agg(att.attname, '|+|') AS "COLUMN_LIST"
 FROM 
     pg_constraint cons
 JOIN 
@@ -566,13 +565,13 @@ all_columns AS (
     SELECT * FROM expr_columns
 )
 SELECT 
-    nmsp_table.nspname AS table_schema,
-    tbl.relname AS table_name,
-    nmsp_index.nspname AS index_schema,
-    idx_class.relname AS index_name,
-    idxd.column_lists,
-    idxd.indisunique AS is_unique,
-    am.amname AS index_type
+    nmsp_table.nspname AS "TABLE_OWNER",
+    tbl.relname AS "TABLE_NAME",
+    nmsp_index.nspname AS "INDEX_OWNER",
+    idx_class.relname AS "INDEX_NAME",
+    idxd.column_lists AS "COLUMN_LIST",
+    idxd.indisunique AS "UNIQUENESS",
+    am.amname AS "INDEX_TYPE"
 FROM 
     all_columns idxd
 JOIN 
@@ -659,13 +658,13 @@ all_columns AS (
     SELECT * FROM expr_columns
 )
 SELECT 
-    nmsp_table.nspname AS table_schema,
-    tbl.relname AS table_name,
-    nmsp_index.nspname AS index_schema,
-    idx_class.relname AS index_name,
-    idxd.column_lists,
-    idxd.indisunique AS is_unique,
-    am.amname AS index_type
+    nmsp_table.nspname AS "TABLE_OWNER",
+    tbl.relname AS "TABLE_NAME",
+    nmsp_index.nspname AS "INDEX_OWNER",
+    idx_class.relname AS "INDEX_NAME",
+    idxd.column_lists AS "COLUMN_LIST",
+    idxd.indisunique AS "UNIQUENESS",
+    am.amname AS "INDEX_TYPE"
 FROM 
     all_columns idxd
 JOIN 
@@ -686,8 +685,8 @@ JOIN
 
 func (d *Database) GetDatabaseTableComment(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
-    c.relname AS table_name,
-    d.description AS comments
+    c.relname AS "TABLE_NAME",
+    d.description AS "COMMENTS"
 FROM 
     pg_description d
 JOIN 
@@ -712,8 +711,8 @@ WHERE
 
 func (d *Database) GetDatabaseTableColumnComment(schemaName string, tableName string) ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT 
-    a.attname AS column_name,
-    d.description AS column_description
+    a.attname AS "COLUMN_NAME",
+    d.description AS "COMMENTS"
 FROM 
     pg_attribute a
 JOIN 
@@ -727,7 +726,7 @@ WHERE
     c.relname = '%s' AND 
     a.attnum > 0 AND NOT a.attisdropped
 ORDER BY 
-    a.attnum;`, schemaName, tableName))
+    a.attnum`, schemaName, tableName))
 	if err != nil {
 		return res, fmt.Errorf("get database table column comment failed: %v", err)
 	}
@@ -796,7 +795,7 @@ func (d *Database) GetDatabaseSequences(schemaName string) ([]string, error) {
 	)
 	if stringutil.VersionOrdinal(version) > stringutil.VersionOrdinal("10") {
 		queryStr = fmt.Sprintf(`SELECT
-	sequencename AS sequence_name
+	sequencename AS "SEQUENCE_NAME"
 FROM pg_sequences
 WHERE
     sequenceowner = '%s'`, schemaName)
@@ -805,12 +804,12 @@ WHERE
 			return nil, err
 		}
 		for _, r := range res {
-			seqNames = append(seqNames, r["sequence_name"])
+			seqNames = append(seqNames, r["SEQUENCE_NAME"])
 		}
 		return seqNames, nil
 	} else {
 		queryStr = fmt.Sprintf(`SELECT
-	sequence_name AS sequence_name
+	sequence_name AS "SEQUENCE_NAME"
 FROM information_schema.sequences
 WHERE
     sequence_schema = '%s'`, schemaName)
@@ -819,7 +818,7 @@ WHERE
 			return nil, err
 		}
 		for _, r := range res {
-			seqNames = append(seqNames, r["sequence_name"])
+			seqNames = append(seqNames, r["SEQUENCE_NAME"])
 		}
 		return seqNames, nil
 	}
@@ -833,14 +832,14 @@ func (d *Database) GetDatabaseSequenceName(schemaName string, seqName string) ([
 	var queryStr string
 	if stringutil.VersionOrdinal(version) > stringutil.VersionOrdinal("10") {
 		queryStr = fmt.Sprintf(`SELECT
-	sequenceowner AS sequence_owner,
-	sequencename AS sequence_name,
-	min_value,
-	max_value,
-	increment_by,
-	cycle AS cycle_flag
-	cache_size,
-	last_value
+	sequenceowner AS "SEQUENCE_OWNER",
+	sequencename AS "SEQUENCE_NAME",
+	minimum_value AS "MIN_VALUE",
+	maximum_value AS "MAX_VALUE",
+	increment AS "INCREMENT_BY",
+	cycle_option AS "CYCLE_FLAG"
+	cache_size AS "CACHE_SIZE",
+	last_value AS "LAST_VALUE"
 FROM pg_sequences
 WHERE
     sequenceowner = '%s'
@@ -852,12 +851,12 @@ AND sequencename = '%s'`, schemaName, seqName)
 		return res, nil
 	} else {
 		queryStr = fmt.Sprintf(`SELECT
-	sequence_schema AS sequence_schema,
-	sequence_name AS sequence_name,
-	minimum_value AS min_value,
-	maximum_value AS max_value,
-	increment AS increment_by,
-	cycle_option AS cycle_flag
+	sequence_schema AS "SEQUENCE_OWNER",
+	sequencename AS "SEQUENCE_NAME",
+	minimum_value AS "MIN_VALUE",
+	maximum_value AS "MAX_VALUE",
+	increment AS "INCREMENT_BY",
+	cycle_option AS "CYCLE_FLAG"
 FROM information_schema.sequences
 WHERE
     sequence_schema = '%s'
@@ -872,8 +871,8 @@ AND sequence_name = '%s'`, schemaName, seqName)
 			if err != nil {
 				return nil, err
 			}
-			r["last_value"] = seqs[0]["cache_value"]
-			r["cache_size"] = seqs[0]["cache_value"]
+			r["LAST_VALUE"] = seqs[0]["cache_value"]
+			r["CACHE_SIZE"] = seqs[0]["cache_value"]
 		}
 		return res, nil
 	}

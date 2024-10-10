@@ -74,7 +74,7 @@ func (rw *RWBuildinDatatypeRule) TableName(ctx context.Context) string {
 }
 
 func (rw *RWBuildinDatatypeRule) CreateBuildInDatatypeRule(ctx context.Context, rec []*BuildinDatatypeRule) ([]*BuildinDatatypeRule, error) {
-	err := rw.DB(ctx).Clauses().Create(rec).Error
+	err := rw.DB(ctx).Clauses(clause.Insert{Modifier: "IGNORE"}).Create(rec).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

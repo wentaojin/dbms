@@ -17,8 +17,9 @@ package processor
 
 import (
 	"fmt"
-	"github.com/wentaojin/dbms/utils/constant"
 	"strings"
+
+	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -87,15 +88,15 @@ func (d *Datasource) GetTableCharsetCollation() (string, string, error) {
 				if err != nil {
 					return "", "", err
 				}
-				return charset, schemaCollation, nil
+				return stringutil.StringUpper(charset), stringutil.StringUpper(schemaCollation), nil
 			}
-			return charset, tableCollation, nil
+			return stringutil.StringUpper(charset), stringutil.StringUpper(tableCollation), nil
 		} else {
 			nlsComp, err := d.DatabaseS.GetDatabaseCollation()
 			if err != nil {
 				return "", "", err
 			}
-			return charset, nlsComp, nil
+			return stringutil.StringUpper(charset), stringutil.StringUpper(nlsComp), nil
 		}
 	case constant.DatabaseTypePostgresql:
 		tableCharset, err := d.DatabaseS.GetDatabaseTableCharset(d.SchemaNameS, d.TableNameS)
@@ -106,7 +107,7 @@ func (d *Datasource) GetTableCharsetCollation() (string, string, error) {
 		if err != nil {
 			return "", "", err
 		}
-		return tableCharset, tableCollation, nil
+		return stringutil.StringUpper(tableCharset), stringutil.StringUpper(tableCollation), nil
 	default:
 		return charset, "", fmt.Errorf("the struct migrate task unsupported database type: %s", d.DBTypeS)
 	}

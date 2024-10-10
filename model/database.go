@@ -20,9 +20,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
 
@@ -333,6 +334,8 @@ func (d *database) initDatatypeRule(ctx context.Context, thread int) error {
 			slis = append(slis, buildin.InitO2TBuildinDatatypeRule()...)
 			slis = append(slis, buildin.InitM2OBuildinDatatypeRule()...)
 			slis = append(slis, buildin.InitT2OBuildinDatatypeRule()...)
+			slis = append(slis, buildin.InitP2MBuildinDatatypeRule()...)
+			slis = append(slis, buildin.InitP2TBuildinDatatypeRule()...)
 
 			splitCounts := len(slis) / initDefaultBatchSize
 			if splitCounts == 0 {

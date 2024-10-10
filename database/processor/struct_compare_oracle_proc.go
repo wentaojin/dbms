@@ -18,8 +18,9 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/model/rule"
 	"strings"
+
+	"github.com/wentaojin/dbms/model/rule"
 
 	"github.com/wentaojin/dbms/database/mapping"
 
@@ -306,7 +307,7 @@ func (p *OracleProcessor) GenDatabaseTableColumnDetail() (map[string]structure.N
 				originColumnCharset, originColumnCollation := p.genOracleMappingMYSQLCompatibleDatabaseTableColumnCharsetCollationByOldColumn(c["DATA_TYPE"], columnCollation)
 
 				// MYSQL compatible database integer column datatype exclude decimal "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT"
-				if val, ok := constant.MYSQLCompatibleDatabaseTableIntegerColumnDatatypeExcludeDecimal[convertColumnDatatype]; ok {
+				if val, ok := constant.MYSQLCompatibleDatabaseTableIntegerColumnDatatypeWidthExcludeDecimal[convertColumnDatatype]; ok {
 					convertColumnDatatype = stringutil.StringBuilder(convertColumnDatatype, `(`, val, `)`)
 				}
 

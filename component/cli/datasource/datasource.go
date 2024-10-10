@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/service"
 
@@ -85,7 +86,6 @@ func Upsert(serverAddr string, file string) error {
 		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
 		return nil
 	}
-
 	var jsonData map[string]interface{}
 	err = stringutil.UnmarshalJSON(resp, &jsonData)
 	if err != nil {

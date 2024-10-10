@@ -1,12 +1,12 @@
 task-name = "smig-task00"
-datasource-name-s = "oracle151"
+datasource-name-s = "pg117"
 datasource-name-t = "tidb161"
 comment = "测试数据源"
 
 [struct-migrate-param]
 migrate-thread = 10
 create-if-not-exist = true
-enable-direct-create = true
+enable-direct-create = false
 enable-checkpoint = true
 # calltimeout，单位：秒
 call-timeout = 36000
@@ -24,10 +24,10 @@ case-field-rule-s = "0"
 case-field-rule-t = "1"
 
 [schema-route-rule]
-schema-name-s = "SCOTT"
+schema-name-s = "marvin"
 schema-name-t = "ucccis"
 # include-table-s 迁移所有表需指定 *，特定表写具体表名
-include-table-s = ["T52"]
+include-table-s = ["*"]
 exclude-table-s = []
 # sequence 设置空代表不迁移 sequence
 include-sequence-s = []

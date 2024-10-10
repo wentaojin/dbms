@@ -1291,6 +1291,446 @@ func InitT2OBuildinDatatypeRule() []*BuildinDatatypeRule {
 	return buildinDataTypeR
 }
 
+func InitP2MBuildinDatatypeRule() []*BuildinDatatypeRule {
+	var buildinDataTypeR []*BuildinDatatypeRule
+	/*
+		P2M Build-IN Compatible Rule
+	*/
+	// postgres column datatype name
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeInteger,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeInteger],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeSmallInt,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeSmallInt],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBigInt,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBigInt],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBit,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBit],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBoolean,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBoolean],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeReal,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeReal],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeDoublePrecision,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeDoublePrecision],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeNumeric,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeNumeric],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeDecimal,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeDecimal],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeMoney,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeMoney],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeCharacter,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeCharacter],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeCharacterVarying,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeCharacterVarying],
+	})
+
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeDate,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeDate],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTimeWithoutTimeZone,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTimeWithoutTimeZone],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTimestampWithoutTimeZone,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTimestampWithoutTimeZone],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeInterval,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeInterval],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBytea,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBytea],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeText,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeText],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeCidr,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeCidr],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeInet,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeInet],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeMacaddr,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeMacaddr],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeUuid,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeUuid],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeXml,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeXml],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeJson,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeJson],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTsvector,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTsvector],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTsquery,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTsquery],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeArray,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeArray],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypePoint,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypePoint],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeLine,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeLine],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeLseg,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeLseg],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBox,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBox],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypePath,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypePath],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypePolygon,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypePolygon],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeCircle,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeCircle],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeMySQL,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTxidSnapshot,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTxidSnapshot],
+	})
+	return buildinDataTypeR
+}
+
+func InitP2TBuildinDatatypeRule() []*BuildinDatatypeRule {
+	var buildinDataTypeR []*BuildinDatatypeRule
+	/*
+		P2M Build-IN Compatible Rule
+	*/
+	// postgres column datatype name
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeInteger,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeInteger],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeSmallInt,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeSmallInt],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBigInt,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBigInt],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBit,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBit],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBoolean,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBoolean],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeReal,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeReal],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeDoublePrecision,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeDoublePrecision],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeNumeric,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeNumeric],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeDecimal,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeDecimal],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeMoney,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeMoney],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeCharacter,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeCharacter],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeCharacterVarying,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeCharacterVarying],
+	})
+
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeDate,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeDate],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTimeWithoutTimeZone,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTimeWithoutTimeZone],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTimestampWithoutTimeZone,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTimestampWithoutTimeZone],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeInterval,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeInterval],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBytea,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBytea],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeText,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeText],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeCidr,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeCidr],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeInet,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeInet],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeMacaddr,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeMacaddr],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeUuid,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeUuid],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeXml,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeXml],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeJson,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeJson],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTsvector,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTsvector],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTsquery,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTsquery],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeArray,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeArray],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypePoint,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypePoint],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeLine,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeLine],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeLseg,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeLseg],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeBox,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeBox],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypePath,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypePath],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypePolygon,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypePolygon],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeCircle,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeCircle],
+	})
+	buildinDataTypeR = append(buildinDataTypeR, &BuildinDatatypeRule{
+		DBTypeS:       constant.DatabaseTypePostgresql,
+		DBTypeT:       constant.DatabaseTypeTiDB,
+		DatatypeNameS: constant.BuildInPostgresDatatypeTxidSnapshot,
+		DatatypeNameT: constant.BuildInPostgresP2MDatatypeNameMap[constant.BuildInPostgresDatatypeTxidSnapshot],
+	})
+	return buildinDataTypeR
+}
+
 // DatatypeSliceSplit used for the according to splitCounts, split slice
 func DatatypeSliceSplit(items []*BuildinDatatypeRule, splitCounts int) [][]*BuildinDatatypeRule {
 	subArraySize := len(items) / splitCounts

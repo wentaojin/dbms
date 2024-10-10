@@ -20,7 +20,7 @@ const (
 	DatabaseTypeOracle     = "ORACLE"
 	DatabaseTypeMySQL      = "MYSQL"
 	DatabaseTypeTiDB       = "TIDB"
-	DatabaseTypePostgresql = "POSTGRESQL"
+	DatabaseTypePostgresql = "POSTGRES"
 )
 
 // DefaultRecordCreateBatchSize Model Create Record Default Batch Size

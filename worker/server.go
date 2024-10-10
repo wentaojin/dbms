@@ -19,13 +19,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/wentaojin/dbms/model/params"
-	"github.com/wentaojin/dbms/proto/pb"
 	"net"
 	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wentaojin/dbms/model/params"
+	"github.com/wentaojin/dbms/proto/pb"
 
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/task"
@@ -385,11 +386,19 @@ func (s *Server) OperateStart(ctx context.Context, t *task.Task) {
 			}
 			_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
 			if err != nil {
-				panic(fmt.Errorf("the worker task [%v] success, but the worker instance wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
+				panic(fmt.Errorf("the worker task [%v] finished, but the worker instance wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
 			}
-			_, err = etcdutil.DeleteKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName))
+
+			// task status double check
+			newTask, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: t.TaskName})
 			if err != nil {
-				panic(fmt.Errorf("the worker task [%v] success, but the worker refrenece delete [%v] value failed: [%v]", t.TaskName, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName), err))
+				panic(fmt.Errorf("the worker task [%v] finished, but the query worker task the database task_status failed: [%v]", t.TaskName, err))
+			}
+			if strings.EqualFold(newTask.TaskStatus, constant.TaskDatabaseStatusSuccess) {
+				_, err = etcdutil.DeleteKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName))
+				if err != nil {
+					panic(fmt.Errorf("the worker task [%v] success, but the worker refrenece delete [%v] value failed: [%v]", t.TaskName, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName), err))
+				}
 			}
 			s.cancelFunc()
 		}

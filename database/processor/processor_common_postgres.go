@@ -17,11 +17,12 @@ package processor
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"go.uber.org/zap"
-	"strings"
 )
 
 func InspectPostgresMigrateTask(taskName, taskFlow, taskMode string, databaseS database.IDatabase, connectDBCharsetS, connectDBCharsetT string) (string, error) {
@@ -55,7 +56,7 @@ func InspectPostgresMigrateTask(taskName, taskFlow, taskMode string, databaseS d
 			return "", err
 		}
 		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(dbCollation)]; !ok {
-			return "", fmt.Errorf("postgres database collation [%v] isn't support", dbCollation)
+			return "", fmt.Errorf("postgres database collation [%v] isn't support, only support collation [c,posix,zh_TW,zh_TW.utf8,zh_CN,zh_CN.utf8,en_US.utf8]", dbCollation)
 		}
 
 		return dbCollation, nil

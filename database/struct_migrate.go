@@ -150,7 +150,10 @@ type IStructMigrateAttributesRuleReader interface {
 	GetTableColumnRule() (map[string]string, map[string]string, map[string]string, error)
 	GetTableAttributesRule() (string, error)
 	GetTableCommentRule() (string, error)
+	GetTableCharsetRule() (string, error)
+	GetTableCollationRule() (string, error)
 	GetTableColumnCollationRule() (map[string]string, error)
+	GetTableColumnCharsetRule() (map[string]string, error)
 	GetTableColumnCommentRule() (map[string]string, error)
 }
 
@@ -162,8 +165,11 @@ type StructMigrateAttributesRule struct {
 	ColumnNameRule         map[string]string `json:"columnNameRule"`
 	ColumnDatatypeRule     map[string]string `json:"columnDatatypeRule"`
 	ColumnDefaultValueRule map[string]string `json:"columnDefaultValueRule"`
+	ColumnCharsetRule      map[string]string `json:"columnCharsetRule"`
 	ColumnCollationRule    map[string]string `json:"columnCollationRule"`
 	ColumnCommentRule      map[string]string `json:"columnCommentRule"`
+	TableCharsetRule       string            `json:"tableCharsetRule"`
+	TableCollationRule     string            `json:"tableCollationRule"`
 	TableAttrRule          string            `json:"tableAttrRule"`
 	TableCommentRule       string            `json:"tableCommentRule"`
 }
@@ -193,7 +199,19 @@ func IStructMigrateAttributesRule(t IStructMigrateAttributesRuleReader) (*Struct
 	if err != nil {
 		return &StructMigrateAttributesRule{}, err
 	}
+	charsetRule, err := t.GetTableColumnCharsetRule()
+	if err != nil {
+		return &StructMigrateAttributesRule{}, err
+	}
 	commentRule, err := t.GetTableColumnCommentRule()
+	if err != nil {
+		return &StructMigrateAttributesRule{}, err
+	}
+	tableCharset, err := t.GetTableCharsetRule()
+	if err != nil {
+		return &StructMigrateAttributesRule{}, err
+	}
+	tableCollation, err := t.GetTableCollationRule()
 	if err != nil {
 		return &StructMigrateAttributesRule{}, err
 	}
@@ -206,7 +224,10 @@ func IStructMigrateAttributesRule(t IStructMigrateAttributesRuleReader) (*Struct
 			ColumnDatatypeRule:     datatypeRule,
 			ColumnDefaultValueRule: defaultValRule,
 			ColumnCollationRule:    collationRule,
+			ColumnCharsetRule:      charsetRule,
 			ColumnCommentRule:      commentRule,
+			TableCharsetRule:       tableCharset,
+			TableCollationRule:     tableCollation,
 			TableAttrRule:          attr,
 			TableCommentRule:       rule,
 		},

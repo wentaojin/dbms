@@ -15,10 +15,62 @@ limitations under the License.
 */
 package constant
 
-// MYSQL Charset
 const (
-	BuildInMYSQLCharsetUTF8MB4 = "UTF8MB4"
+	// MYSQL database check constraint support version > 8.0.15
+	MYSQLDatabaseCheckConstraintSupportVersion = "8.0.15"
+	TIDBDatabaseCheckConstraintSupportVersion  = "7.2.0"
+
+	MYSQLDatabaseTableColumnDefaultValueWithEmptyString = ""
+	MYSQLDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
+	MYSQLDatabaseTableColumnDefaultValueWithNULL        = "NULL"
+
+	PostgresDatabaseTableColumnDefaultValueWithEmptyString = ""
+	PostgresDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
+	PostgresDatabaseTableColumnDefaultValueWithNULL        = "NULL"
+
+	PostgresDatabaseColumnDatatypeMatchRuleNotFound = "NOT FOUND"
+
+	MYSQLCompatibleDatabaseVersionDelimiter = "-"
+
+	// MYSQL database expression index support version > 8.0.0
+	MYSQLDatabaseExpressionIndexSupportVersion = "8.0.0"
+
+	MYSQLDatabaseSequenceSupportVersion  = "8.0"
+	TIDBDatabaseSequenceSupportVersion   = "4.0"
+	TIDBDatabaseImportIntoSupportVersion = "7.5"
 )
+
+// TiDB database integer primary key menu
+var TiDBDatabaseIntegerColumnDatatypePrimaryKey = []string{"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT", "DECIMAL"}
+
+// The default value of mysql is not differentiated between character data and numerical data.
+// It is used to match the default value of mysql string and determine whether single quotes are required.
+// 1, The default value uuid() matches the end of xxx() brackets, no single quotes are required
+// 2, The default value CURRENT_TIMESTAMP does not require parentheses and is converted to ORACLE SYSDATE built-in
+// 3, Default value skp or 1 requires single quotes
+var MYSQLCompatibleDatabaseTableColumnDatatypeStringDefaultValueApostrophe = []string{"TIME",
+	"DATE",
+	"DATETIME",
+	"TIMESTAMP",
+	"CHAR",
+	"VARCHAR",
+	"TINYTEXT",
+	"TEXT", "MEDIUMTEX", "LONGTEXT", "BIT", "BINARY", "VARBINARY", "TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB"}
+
+// MYSQL compatibe database table datatype reverse oracle CLOB or NCLOB configure collation error, need configure columnCollation = ""
+// ORA-43912: invalid collation specified for a CLOB or NCLOB value
+var MYSQLCompatibleDatabaseTableBigTextColumnCollation = []string{"TINYTEXT",
+	"TEXT",
+	"MEDIUMTEXT",
+	"LONGTEXT"}
+
+var MYSQLCompatibleDatabaseTableIntegerColumnDatatypeWidthExcludeDecimal = map[string]string{
+	"TINYINT":   "4",
+	"SMALLINT":  "6",
+	"MEDIUMINT": "9",
+	"INT":       "11",
+	"BIGINT":    "20",
+}
 
 // MYSQL datatype
 const (

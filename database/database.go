@@ -18,10 +18,12 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
+
 	"github.com/wentaojin/dbms/database/postgresql"
 	"github.com/wentaojin/dbms/utils/structure"
 	"golang.org/x/sync/errgroup"
-	"strings"
 
 	"github.com/wentaojin/dbms/database/mysql"
 
@@ -125,6 +127,8 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, migrate
 		if err != nil {
 			return database, err
 		}
+	default:
+		return database, fmt.Errorf("the datasource db-type [%s] cannot support, please concat author or reselect", datasource.DbType)
 	}
 
 	return database, nil

@@ -435,7 +435,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			if err != nil {
 				return "", "", "", "", err
 			}
-			columnNameSC, columnNameTC, err := OptimizerOracleMigrateMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS, stringutil.Min(charLenC, dataLenC), dataPrecisionS, dataScaleS, stringutil.StringUpper(r.DBCharsetS), constant.BuildInOracleCharsetAL32UTF8, columnNameT, constant.BuildInMYSQLCharsetUTF8MB4)
+			columnNameSC, columnNameTC, err := OptimizerOracleMigrateMYSQLCompatibleDataCompareColumnST(columnNameS, datatypeS, stringutil.Min(charLenC, dataLenC), dataPrecisionS, dataScaleS, stringutil.StringUpper(r.DBCharsetS), constant.ORACLECharsetAL32UTF8, columnNameT, constant.MYSQLCharsetUTF8MB4)
 			if err != nil {
 				return "", "", "", "", err
 			}
@@ -452,7 +452,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			if err != nil {
 				return "", "", "", "", err
 			}
-			columnNameSC, columnNameTC, err := OptimizerMYSQLCompatibleMigrateOracleDataCompareColumnST(columnNameS, datatypeS, datetimePrecisionS, dataLenC, dataPrecisionS, dataScaleS, constant.BuildInMYSQLCharsetUTF8MB4, columnNameT, stringutil.StringUpper(r.DBCharsetT), constant.BuildInOracleCharsetAL32UTF8)
+			columnNameSC, columnNameTC, err := OptimizerMYSQLCompatibleMigrateOracleDataCompareColumnST(columnNameS, datatypeS, datetimePrecisionS, dataLenC, dataPrecisionS, dataScaleS, constant.MYSQLCharsetUTF8MB4, columnNameT, stringutil.StringUpper(r.DBCharsetT), constant.ORACLECharsetAL32UTF8)
 			if err != nil {
 				return "", "", "", "", err
 			}

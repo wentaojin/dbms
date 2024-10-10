@@ -15,6 +15,48 @@ limitations under the License.
 */
 package constant
 
+var (
+	OracleCompatibleDatabaseIsNotSupportMYSQLCompatibleDatabaseTableColumnDatatype = []string{"ENUM", "SET"}
+
+	/*
+		Oracle support the table column charset and collation datatype
+	*/
+	OracleCompatibleDatabaseTableColumnSupportCharsetCollationDatatype = []string{
+		BuildInOracleDatatypeChar,
+		BuildInOracleDatatypeCharacter,
+		BuildInOracleDatatypeNchar,
+		BuildInOracleDatatypeNcharVarying,
+		BuildInOracleDatatypeVarchar2,
+		BuildInOracleDatatypeVarchar,
+	}
+)
+
+const (
+	// Allow Oracle database role PRIMARY、LOGICAL STANDBY、PHYSICAL STANDBY
+	OracleDatabasePrimaryRole = "PRIMARY"
+	// Allow Oracle table migrate rowid require version
+	OracleDatabaseTableMigrateRowidRequireVersion = "11"
+	// Allow Oracle table, field Collation, requires oracle 12.2g and above
+	OracleDatabaseTableAndColumnSupportVersion = "12.2"
+
+	// Oracle database table type
+	OracleDatabaseTableTypeHeapTable                 = "HEAP"
+	OracleDatabaseTableTypePartitionTable            = "PARTITIONED"
+	OracleDatabaseTableTypeSessionTemporaryTable     = "SESSION TEMPORARY"
+	OracleDatabaseTableTypeTransactionTemporaryTable = "TRANSACTION TEMPORARY"
+	OracleDatabaseTableTypeClusteredTable            = "CLUSTERED"
+	OracleDatabaseTableTypeMaterializedView          = "MATERIALIZED VIEW"
+
+	// specify processing for oracle table attr null、nullstring() and ""
+	// nullstring -> n01 varchar2(10)
+	// null -> n02 varcahr2 default null
+	OracleDatabaseTableColumnDefaultValueWithNULL        = "NULL"
+	OracleDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
+	OracleDatabaseTableColumnDefaultValueWithEmptyString = ""
+
+	OracleDatabaseColumnDatatypeMatchRuleNotFound = "NOT FOUND"
+)
+
 /*
 Database init
 */

@@ -19,12 +19,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/wentaojin/dbms/database/processor"
-	"github.com/wentaojin/dbms/database/taskflow"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/database/processor"
+	"github.com/wentaojin/dbms/database/taskflow"
 
 	"github.com/wentaojin/dbms/model/common"
 
@@ -729,8 +730,8 @@ func StartStructMigrateTask(ctx context.Context, taskName, workerAddr string) er
 		return err
 	}
 
-	switch {
-	case strings.EqualFold(taskInfo.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskInfo.TaskFlow, constant.TaskFlowOracleToMySQL):
+	switch taskInfo.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 		logger.Info("struct migrate task process migrate task",
 			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 		taskTime := time.Now()

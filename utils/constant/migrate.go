@@ -16,55 +16,6 @@ limitations under the License.
 package constant
 
 const (
-	// Allow Oracle database role PRIMARY、LOGICAL STANDBY、PHYSICAL STANDBY
-	OracleDatabasePrimaryRole = "PRIMARY"
-	// Allow Oracle table migrate rowid require version
-	OracleDatabaseTableMigrateRowidRequireVersion = "11"
-	// Allow Oracle table, field Collation, requires oracle 12.2g and above
-	OracleDatabaseTableAndColumnSupportVersion = "12.2"
-
-	// Oracle database table type
-	OracleDatabaseTableTypeHeapTable                 = "HEAP"
-	OracleDatabaseTableTypePartitionTable            = "PARTITIONED"
-	OracleDatabaseTableTypeSessionTemporaryTable     = "SESSION TEMPORARY"
-	OracleDatabaseTableTypeTransactionTemporaryTable = "TRANSACTION TEMPORARY"
-	OracleDatabaseTableTypeClusteredTable            = "CLUSTERED"
-	OracleDatabaseTableTypeMaterializedView          = "MATERIALIZED VIEW"
-
-	// specify processing for oracle table attr null、nullstring() and ""
-	// nullstring -> n01 varchar2(10)
-	// null -> n02 varcahr2 default null
-	OracleDatabaseTableColumnDefaultValueWithNULL        = "NULL"
-	OracleDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
-	OracleDatabaseTableColumnDefaultValueWithEmptyString = ""
-
-	OracleDatabaseColumnDatatypeMatchRuleNotFound = "NOT FOUND"
-
-	// MYSQL database check constraint support version > 8.0.15
-	MYSQLDatabaseCheckConstraintSupportVersion = "8.0.15"
-	TIDBDatabaseCheckConstraintSupportVersion  = "7.2.0"
-
-	MYSQLDatabaseTableColumnDefaultValueWithEmptyString = ""
-	MYSQLDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
-	MYSQLDatabaseTableColumnDefaultValueWithNULL        = "NULL"
-
-	MYSQLCompatibleDatabaseVersionDelimiter = "-"
-
-	// MYSQL database expression index support version > 8.0.0
-	MYSQLDatabaseExpressionIndexSupportVersion = "8.0.0"
-
-	MYSQLDatabaseSequenceSupportVersion  = "8.0"
-	TIDBDatabaseSequenceSupportVersion   = "4.0"
-	TIDBDatabaseImportIntoSupportVersion = "7.5"
-
-	// pg's transaction snapshot export function was initially supported in version 9.3
-	// which allows multiple transactions to share a consistent view of the same current database state that has been obtained
-	// but pg 9.5 begins to support insert on conflict update syntax, similar to mysql replace into, so unified version requirements pg 9.5
-	// PostgresqlDatabaseSnapshotReadSupportVersion = "9.3"
-	PostgresqlDatabaseSupportVersionRequire = "9.5"
-
-	PostgresqlDatabasePartitionTableSupportVersionRequire = "10.0"
-
 	// struct migrate type
 	DatabaseMigrateSequenceCompatible    = "Y"
 	DatabaseMigrateSequenceNotCompatible = "N"
@@ -80,40 +31,6 @@ const (
 	StructCompareCheckStructureJSONFormat     = "CK"
 	StructComparePartitionStructureJSONFormat = "PARTITION"
 )
-
-// TiDB database integer primary key menu
-var TiDBDatabaseIntegerColumnDatatypePrimaryKey = []string{"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT", "DECIMAL"}
-
-// The default value of mysql is not differentiated between character data and numerical data.
-// It is used to match the default value of mysql string and determine whether single quotes are required.
-// 1, The default value uuid() matches the end of xxx() brackets, no single quotes are required
-// 2, The default value CURRENT_TIMESTAMP does not require parentheses and is converted to ORACLE SYSDATE built-in
-// 3, Default value skp or 1 requires single quotes
-var MYSQLCompatibleDatabaseTableColumnDatatypeStringDefaultValueApostrophe = []string{"TIME",
-	"DATE",
-	"DATETIME",
-	"TIMESTAMP",
-	"CHAR",
-	"VARCHAR",
-	"TINYTEXT",
-	"TEXT", "MEDIUMTEX", "LONGTEXT", "BIT", "BINARY", "VARBINARY", "TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB"}
-
-// MYSQL compatibe database table datatype reverse oracle CLOB or NCLOB configure collation error, need configure columnCollation = ""
-// ORA-43912: invalid collation specified for a CLOB or NCLOB value
-var MYSQLCompatibleDatabaseTableBigTextColumnCollation = []string{"TINYTEXT",
-	"TEXT",
-	"MEDIUMTEXT",
-	"LONGTEXT"}
-
-var MYSQLCompatibleDatabaseTableIntegerColumnDatatypeExcludeDecimal = map[string]string{
-	"TINYINT":   "4",
-	"SMALLINT":  "6",
-	"MEDIUMINT": "9",
-	"INT":       "11",
-	"BIGINT":    "20",
-}
-
-var OracleCompatibleDatabaseIsNotSupportMYSQLCompatibleDatabaseTableColumnDatatype = []string{"ENUM", "SET"}
 
 // Data migration, data verification, table structure default values, comments
 // Character type data mapping rules
@@ -438,252 +355,54 @@ var MigrateTableStructureDatabaseCollationMap = map[string]map[string]map[string
 	},
 	TaskFlowPostgresToTiDB: {
 		"C": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_BIN",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_BIN",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_BIN",
+			MYSQLCharsetUTF8MB4: "UTF8MB4_BIN",
 		},
 		"POSIX": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_BIN",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_BIN",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_BIN",
+			MYSQLCharsetUTF8MB4: "UTF8MB4_BIN",
 		},
 		"ZH_TW": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
-		"ZH_TW.UTF-8": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		"ZH_TW.UTF8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 		"ZH_CN": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
-		"ZH_CN.UTF-8": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		"ZH_CN.UTF8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
-		"EN_US.UTF-8": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		"EN_US": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
+		},
+		"EN_US.UTF8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 	},
 	TaskFlowPostgresToMySQL: {
 		"C": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_BIN",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_BIN",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_BIN",
+			MYSQLCharsetUTF8MB4: "UTF8MB4_BIN",
 		},
 		"POSIX": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_BIN",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_BIN",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_BIN",
+			MYSQLCharsetUTF8MB4: "UTF8MB4_BIN",
 		},
 		"ZH_TW": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
-		"ZH_TW.UTF-8": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		"ZH_TW.UTF8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 		"ZH_CN": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
-		"ZH_CN.UTF-8": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		"ZH_CN.UTF8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
-		"EN_US.UTF-8": {
-			PostgreSQLCharsetEUC_TW: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetEUC_CN: "UTF8MB4_0900_AI_CI",
-			PostgreSQLCharsetUTF8:   "UTF8MB4_0900_AI_CI",
+		"EN_US": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
+		},
+		"EN_US.UTF8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 	},
 }
-
-const (
-	ParamValueRuleCaseFieldNameOrigin = "0"
-	ParamValueRuleCaseFieldNameLower  = "1"
-	ParamValueRuleCaseFieldNameUpper  = "2"
-)
-
-// migrate parameters
-// struct migrate parameters
-const (
-	ParamNameStructMigrateMigrateThread      = "migrateThread"
-	ParamNameStructMigrateCreateIfNotExist   = "createIfNotExist"
-	ParamNameStructMigrateEnableDirectCreate = "enableDirectCreate"
-	ParamNameStructMigrateEnableCheckpoint   = "enableCheckpoint"
-	ParamNameStructMigrateCallTimeout        = "callTimeout"
-
-	// ParamValueStructMigrateCaseFieldRuleOrigin case-field-name params value
-	// - 0 represent keeping origin
-	// - 1 represent keeping lower
-	// - 2 represent keeping upper
-	ParamValueStructMigrateCaseFieldRuleOrigin = "0"
-	ParamValueStructMigrateCaseFieldRuleLower  = "1"
-	ParamValueStructMigrateCaseFieldRuleUpper  = "2"
-)
-
-// struct compare parameters
-const (
-	ParamNameStructCompareCompareThread     = "compareThread"
-	ParamNameStructCompareEnableCheckpoint  = "enableCheckpoint"
-	ParamNameStructCompareCallTimeout       = "callTimeout"
-	ParamNameStructCompareIgnoreCaseCompare = "ignoreCaseCompare"
-
-	// ParamValueStructCompareCaseFieldRuleOrigin case-field-name params value
-	// - 0 represent keeping origin
-	// - 1 represent keeping lower
-	// - 2 represent keeping upper
-	ParamValueStructCompareCaseFieldRuleOrigin = "0"
-	ParamValueStructCompareCaseFieldRuleLower  = "1"
-	ParamValueStructCompareCaseFieldRuleUpper  = "2"
-)
-
-// statement migrate parameters
-const (
-	ParamNameStmtMigrateTableThread          = "tableThread"
-	ParamNameStmtMigrateWriteThread          = "writeThread"
-	ParamNameStmtMigrateBatchSize            = "batchSize"
-	ParamNameStmtMigrateChunkSize            = "chunkSize"
-	ParamNameStmtMigrateSqlThreadS           = "sqlThreadS"
-	ParamNameStmtMigrateSqlHintS             = "sqlHintS"
-	ParamNameStmtMigrateSqlThreadT           = "sqlThreadT"
-	ParamNameStmtMigrateSqlHintT             = "sqlHintT"
-	ParamNameStmtMigrateCallTimeout          = "callTimeout"
-	ParamNameStmtMigrateEnableCheckpoint     = "enableCheckpoint"
-	ParamNameStmtMigrateEnableConsistentRead = "enableConsistentRead"
-	ParamNameStmtMigrateEnableSafeMode       = "enableSafeMode"
-
-	// ParamValueDataMigrateCaseFieldRuleOrigin case-field-name params value
-	// - 0 represent keeping origin
-	// - 1 represent keeping lower
-	// - 2 represent keeping upper
-	ParamValueDataMigrateCaseFieldRuleOrigin = "0"
-	ParamValueDataMigrateCaseFieldRuleLower  = "1"
-	ParamValueDataMigrateCaseFieldRuleUpper  = "2"
-)
-
-// csv migrate parameters
-const (
-	ParamNameCsvMigrateTableThread          = "tableThread"
-	ParamNameCsvMigrateWriteThread          = "writeThread"
-	ParamNameCsvMigrateBatchSize            = "batchSize"
-	ParamNameCsvMigrateDiskUsageFactor      = "diskUsageFactor"
-	ParamNameCsvMigrateHeader               = "header"
-	ParamNameCsvMigrateSeparator            = "separator"
-	ParamNameCsvMigrateTerminator           = "terminator"
-	ParamNameCsvMigrateDataCharsetT         = "dataCharsetT"
-	ParamNameCsvMigrateDelimiter            = "delimiter"
-	ParamNameCsvMigrateNullValue            = "nullValue"
-	ParamNameCsvMigrateEscapeBackslash      = "escapeBackslash"
-	ParamNameCsvMigrateChunkSize            = "chunkSize"
-	ParamNameCsvMigrateOutputDir            = "outputDir"
-	ParamNameCsvMigrateSqlThreadS           = "sqlThreadS"
-	ParamNameCsvMigrateSqlHintS             = "sqlHintS"
-	ParamNameCsvMigrateCallTimeout          = "callTimeout"
-	ParamNameCsvMigrateEnableCheckpoint     = "enableCheckpoint"
-	ParamNameCsvMigrateEnableConsistentRead = "enableConsistentRead"
-	ParamNameCsvMigrateEnableImportFeature  = "enableImportFeature"
-	ParamNameCsvMigrateImportParams         = "csvImportParams"
-)
-
-// sql migrate parameters
-const (
-	ParamNameSqlMigrateBatchSize            = "batchSize"
-	ParamNameSqlMigrateWriteThread          = "writeThread"
-	ParamNameSqlMigrateSqlThreadS           = "sqlThreadS"
-	ParamNameSqlMigrateSqlThreadT           = "sqlThreadT"
-	ParamNameSqlMigrateSqlHintT             = "sqlHintT"
-	ParamNameSqlMigrateCallTimeout          = "callTimeout"
-	ParamNameSqlMigrateEnableConsistentRead = "enableConsistentRead"
-	ParamNameSqlMigrateEnableSafeMode       = "enableSafeMode"
-	ParamNameSqlMigrateEnableCheckpoint     = "enableCheckpoint"
-
-	// ParamValueSqlMigrateCaseFieldRuleOrigin case-field-name params value
-	// - 0 represent keeping origin
-	// - 1 represent keeping lower
-	// - 2 represent keeping upper
-	ParamValueSqlMigrateCaseFieldRuleOrigin = "0"
-	ParamValueSqlMigrateCaseFieldRuleLower  = "1"
-	ParamValueSqlMigrateCaseFieldRuleUpper  = "2"
-)
-
-// data compare parameters
-const (
-	ParamNameDataCompareTableThread            = "tableThread"
-	ParamNameDataCompareBatchSize              = "batchSize"
-	ParamNameDataCompareSqlThread              = "sqlThread"
-	ParamNameDataCompareWriteThread            = "writeThread"
-	ParamNameDataCompareSqlHintS               = "sqlHintS"
-	ParamNameDataCompareSqlHintT               = "sqlHintT"
-	ParamNameDataCompareCallTimeout            = "callTimeout"
-	ParamNameDataCompareEnableCheckpoint       = "enableCheckpoint"
-	ParamNameDataCompareEnableConsistentRead   = "enableConsistentRead"
-	ParamNameDataCompareOnlyCompareRow         = "onlyCompareRow"
-	ParamNameDataCompareConsistentReadPointS   = "consistentReadPointS"
-	ParamNameDataCompareConsistentReadPointT   = "consistentReadPointT"
-	ParamNameDataCompareChunkSize              = "chunkSize"
-	ParamNameDataCompareIgnoreConditionFields  = "ignoreConditionFields"
-	ParamNameDataCompareRepairStmtFlow         = "repairStmtFlow"
-	ParamNameDataCompareEnableCollationSetting = "enableCollationSetting"
-	ParamNameDataCompareDisableMd5Checksum     = "disableMd5Checksum"
-	ParamNameDataCompareSeparator              = "separator"
-
-	// ParamValueDataCompareCaseFieldRuleOrigin case-field-name params value
-	// - 0 represent keeping origin
-	// - 1 represent keeping lower
-	// - 2 represent keeping upper
-	ParamValueDataCompareCaseFieldRuleOrigin = "0"
-	ParamValueDataCompareCaseFieldRuleLower  = "1"
-	ParamValueDataCompareCaseFieldRuleUpper  = "2"
-)
-
-// assess migrate parameters
-const (
-	ParamNameAssessMigrateCaseFieldRuleS = "caseFieldRuleS"
-	ParamNameAssessMigrateSchemaNameS    = "schemaNameS"
-	ParamNameAssessMigrateCallTimeout    = "callTimeout"
-
-	// ParamValueAssessMigrateCaseFieldRuleOrigin case-field-name params value
-	// - 0 represent keeping origin
-	// - 1 represent keeping lower
-	// - 2 represent keeping upper
-	ParamValueAssessMigrateCaseFieldRuleOrigin = "0"
-	ParamValueAssessMigrateCaseFieldRuleLower  = "1"
-	ParamValueAssessMigrateCaseFieldRuleUpper  = "2"
-)
-
-// data scan parameters
-const (
-	ParamNameDataScanTableThread          = "tableThread"
-	ParamNameDataScanWriteThread          = "writeThread"
-	ParamNameDataScanBatchSize            = "batchSize"
-	ParamNameDataScanChunkSize            = "chunkSize"
-	ParamNameDataScanSqlThreadS           = "sqlThreadS"
-	ParamNameDataScanSqlHintS             = "sqlHintS"
-	ParamNameDataScanCallTimeout          = "callTimeout"
-	ParamNameDataScanTableSamplerateS     = "tableSamplerateS"
-	ParamNameDataScanEnableCheckpoint     = "enableCheckpoint"
-	ParamNameDataScanEnableConsistentRead = "enableConsistentRead"
-
-	// ParamValueDataScanCaseFieldRuleOrigin case-field-name params value
-	// - 0 represent keeping origin
-	// - 1 represent keeping lower
-	// - 2 represent keeping upper
-	ParamValueDataScanCaseFieldRuleOrigin = "0"
-	ParamValueDataScanCaseFieldRuleLower  = "1"
-	ParamValueDataScanCaseFieldRuleUpper  = "2"
-)

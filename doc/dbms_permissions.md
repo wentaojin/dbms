@@ -178,6 +178,38 @@ SELECT * FROM DBA_LOG_GROUPS WHERE UPPER(OWNER) = UPPER('MARVIN');
 ```
 -------
 
+### Postgres Compatible Database
+Postgres 兼容性数据库用于数据同步，DBMS 数据库分布式迁移服务平台所需的用户权限
+
+```sql
+-- create user
+CREATE USER dbmsadmin WITH PASSWORD 'dbmsadmin';
+
+-- create role
+CREATE ROLE dbms_privs_role WITH CREATEDB;
+
+-- grant system view permission
+GRANT USAGE ON SCHEMA pg_catalog TO dbms_privs_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA pg_catalog TO dbms_privs_role;
+
+GRANT USAGE ON SCHEMA information_schema TO dbms_privs_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA information_schema TO dbms_privs_role;
+
+-- grant database permission (connect,create schema privs)
+\c ${database_name};
+
+GRANT CONNECT,CREATE ON DATABASE ${database_name} TO dbms_privs_role;
+
+-- grant database schema permission
+GRANT USAGE ON SCHEMA ${schema_name} TO dbms_privs_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA ${schema_name} TO dbms_privs_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema_name} GRANT SELECT ON TABLES TO dbms_privs_role;
+
+-- grant role to user
+GRANT dbms_privs_role TO dbmsadmin;
+```
+
 ### MYSQL Compatible Database
 MySQL 兼容性数据库用于数据同步，DBMS 数据库分布式迁移服务平台所需的用户权限
 
