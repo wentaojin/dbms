@@ -7,7 +7,7 @@ comment = "测试数据源"
 migrate-thread = 10
 create-if-not-exist = true
 enable-direct-create = false
-enable-checkpoint = true
+enable-checkpoint = false
 # calltimeout，单位：秒
 call-timeout = 36000
 

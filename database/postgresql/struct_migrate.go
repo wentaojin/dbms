@@ -529,7 +529,8 @@ regular_columns AS (
         idxd.table_oid,
         idxd.index_oid,
         idxd.indisunique,
-    	string_agg(quote_ident(att.attname), '|+|') AS column_lists
+    	string_agg(quote_ident(att.attname), '|+|') AS column_lists,
+    	'N'::text AS is_expr_index
     FROM 
         index_details idxd
     JOIN 
@@ -547,7 +548,8 @@ expr_columns AS (
         idxd.table_oid,
         idxd.index_oid,
         idxd.indisunique,
-        replace(pg_get_expr(idxd.indexprs, idxd.table_oid),',','|+|') AS column_lists
+        replace(pg_get_expr(idxd.indexprs, idxd.table_oid),',','|+|') AS column_lists,
+    	'Y'::text AS is_expr_index
     FROM 
         index_details idxd
     WHERE 
@@ -571,7 +573,8 @@ SELECT
     idx_class.relname AS "INDEX_NAME",
     idxd.column_lists AS "COLUMN_LIST",
     idxd.indisunique AS "UNIQUENESS",
-    am.amname AS "INDEX_TYPE"
+    am.amname AS "INDEX_TYPE",
+	idxd.is_expr_index AS "IS_EXPR_INDEX"
 FROM 
     all_columns idxd
 JOIN 
@@ -622,7 +625,8 @@ regular_columns AS (
         idxd.table_oid,
         idxd.index_oid,
         idxd.indisunique,
-    	string_agg(quote_ident(att.attname), '|+|') AS column_lists
+    	string_agg(quote_ident(att.attname), '|+|') AS column_lists,
+		'N'::text AS is_expr_index
     FROM 
         index_details idxd
     JOIN 
@@ -640,7 +644,8 @@ expr_columns AS (
         idxd.table_oid,
         idxd.index_oid,
         idxd.indisunique,
-        replace(pg_get_expr(idxd.indexprs, idxd.table_oid),',','|+|') AS column_lists
+        replace(pg_get_expr(idxd.indexprs, idxd.table_oid),',','|+|') AS column_lists,
+    	'Y'::text AS is_expr_index
     FROM 
         index_details idxd
     WHERE 
@@ -664,7 +669,8 @@ SELECT
     idx_class.relname AS "INDEX_NAME",
     idxd.column_lists AS "COLUMN_LIST",
     idxd.indisunique AS "UNIQUENESS",
-    am.amname AS "INDEX_TYPE"
+    am.amname AS "INDEX_TYPE",
+	idxd.is_expr_index AS "IS_EXPR_INDEX"
 FROM 
     all_columns idxd
 JOIN 

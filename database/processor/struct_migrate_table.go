@@ -56,14 +56,6 @@ func (t *StructMigrateTable) GenTableCreatePrefixT() string {
 	return t.TableAttributesRule.CreatePrefixRule
 }
 
-func (t *StructMigrateTable) GenTableCharsetT() string {
-	return t.TableAttributes.TableCharset
-}
-
-func (t *StructMigrateTable) GenTableCollationT() string {
-	return t.TableAttributes.TableCollation
-}
-
 func (t *StructMigrateTable) GenSchemaNameT() (string, error) {
 	var schemaName string
 	if val, ok := t.TableAttributesRule.SchemaNameRule[t.DatasourceS.SchemaNameS]; ok {
@@ -775,7 +767,8 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 				// oracle compatible database index_type normal、FUNCTION-BASED NORMAL、NORMAL/REV
 				// postgres compatible database index_type btree、hash、gist、spgist、gin
 				switch stringutil.StringUpper(idxMeta["INDEX_TYPE"]) {
-				case "NORMAL", "BTREE":
+				// oracle
+				case "NORMAL":
 					uniqueIndexes = append(uniqueIndexes, fmt.Sprintf("UNIQUE INDEX `%s` (%s)", indexName, columnList))
 					continue
 
@@ -810,6 +803,26 @@ func (t *StructMigrateTable) GenTableUniqueIndex() ([]string, []string, error) {
 						zap.String("warn", "database not support"))
 					continue
 				// postgres
+				case "BTREE":
+					if strings.EqualFold(idxMeta["IS_EXPR_INDEX"], "Y") {
+						sqlStr := fmt.Sprintf("CREATE UNIQUE INDEX `%s` ON %s.%s (%s);", indexName, schemaName, tableName, columnList)
+						compatibilityIndexSql = append(compatibilityIndexSql, sqlStr)
+
+						logger.Warn("reverse unique key",
+							zap.String("task_name", t.TaskName),
+							zap.String("task_flow", t.TaskFlow),
+							zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
+							zap.String("table_name_s", idxMeta["TABLE_NAME"]),
+							zap.String("index_name_s", idxMeta["INDEX_NAME"]),
+							zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
+							zap.String("index_column_list_s", idxMeta["COLUMN_LIST"]),
+							zap.String("is_expr_index", idxMeta["IS_EXPR_INDEX"]),
+							zap.String("create_sql", sqlStr),
+							zap.String("warn", "database not support"))
+						continue
+					}
+					uniqueIndexes = append(uniqueIndexes, fmt.Sprintf("UNIQUE INDEX `%s` (%s)", indexName, columnList))
+					continue
 				case "HASH":
 					sqlStr := fmt.Sprintf("CREATE UNIQUE INDEX `%s` ON %s.%s USING HASH(%s);", indexName, schemaName, tableName, columnList)
 					compatibilityIndexSql = append(compatibilityIndexSql, sqlStr)
@@ -1074,7 +1087,8 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 				// oracle compatible database index_type normal index【normal index、function index、bit-map index、domain index】
 				// postgres compatible database index_type btree、hash、gist、spgist、gin
 				switch stringutil.StringUpper(idxMeta["INDEX_TYPE"]) {
-				case "NORMAL", "BTREE":
+				// oracle
+				case "NORMAL":
 					keyIndex := fmt.Sprintf("KEY %s (%s)", indexName, columnList)
 					normalIndexes = append(normalIndexes, keyIndex)
 					continue
@@ -1183,6 +1197,27 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 					continue
 
 				// postgres
+				case "BTREE":
+					if strings.EqualFold(idxMeta["IS_EXPR_INDEX"], "Y") {
+						sqlStr := fmt.Sprintf("CREATE INDEX `%s` ON %s.%s (%s);", indexName, schemaName, tableName, columnList)
+						compatibilityIndexSql = append(compatibilityIndexSql, sqlStr)
+
+						logger.Warn("reverse normal index",
+							zap.String("task_name", t.TaskName),
+							zap.String("task_flow", t.TaskFlow),
+							zap.String("schema_name_s", t.DatasourceS.SchemaNameS),
+							zap.String("table_name_s", idxMeta["TABLE_NAME"]),
+							zap.String("index_name_s", idxMeta["INDEX_NAME"]),
+							zap.String("index_type_s", idxMeta["INDEX_TYPE"]),
+							zap.String("index_column_list_s", idxMeta["COLUMN_LIST"]),
+							zap.String("is_expr_index", idxMeta["IS_EXPR_INDEX"]),
+							zap.String("create_sql", sqlStr),
+							zap.String("warn", "database not support"))
+						continue
+					}
+					keyIndex := fmt.Sprintf("KEY %s (%s)", indexName, columnList)
+					normalIndexes = append(normalIndexes, keyIndex)
+					continue
 				case "HASH":
 					sqlStr := fmt.Sprintf("CREATE INDEX `%s` ON %s.%s USING HASH(%s);", indexName, schemaName, tableName, columnList)
 					compatibilityIndexSql = append(compatibilityIndexSql, sqlStr)
@@ -1304,13 +1339,14 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 	var tableColumns []string
 	for _, rowCol := range t.TableAttributes.TableColumns {
 		var (
-			columnName      string
-			columnCharset   string
-			columnCollation string
-			nullable        string
-			comment         string
-			dataDefault     string
-			columnType      string
+			columnName             string
+			columnCharsetCollation string
+			columnCharset          string
+			columnCollation        string
+			nullable               string
+			comment                string
+			dataDefault            string
+			columnType             string
 		)
 
 		// column collation
@@ -1348,6 +1384,24 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 		// The field character set and collation must either be empty or have a value. One cannot be empty and the other cannot have a value.
 		if (!strings.EqualFold(columnCollation, "") && strings.EqualFold(columnCharset, "")) || (strings.EqualFold(columnCollation, "") && !strings.EqualFold(columnCharset, "")) {
 			return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] charset [%s] and collation [%s] must either be empty or have a value. One cannot be empty and the other cannot have a value, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCharset, columnCollation)
+		}
+
+		// determine whether the field character set and sorting rules are the same as those at the table level. If they are the same, reset them and do not display them.
+		if strings.EqualFold(columnCharset, t.TableAttributesRule.TableCharsetRule) {
+			columnCharset = ""
+		}
+		if strings.EqualFold(columnCollation, t.TableAttributesRule.TableCollationRule) {
+			columnCollation = ""
+		}
+		switch {
+		case columnCharset != "" && columnCollation == "":
+			columnCharsetCollation = fmt.Sprintf("CHARACTER SET %s", columnCharset)
+		case columnCharset == "" && columnCollation != "":
+			columnCharsetCollation = fmt.Sprintf("COLLATE %s", columnCollation)
+		case columnCharset != "" && columnCollation != "":
+			columnCharsetCollation = fmt.Sprintf("CHARACTER SET %s COLLATE %s", columnCharset, columnCollation)
+		default:
+			columnCharsetCollation = ""
 		}
 
 		// column datatype
@@ -1421,69 +1475,68 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 
 			if strings.EqualFold(nullable, "NULL") {
 				switch {
-				case columnCollation != "" && comment != "":
+				case columnCharsetCollation != "" && comment != "":
 					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s COMMENT '%s'", columnName, columnType, columnCharset, columnCollation, comment))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s COMMENT '%s'", columnName, columnType, columnCharsetCollation, comment))
 					} else {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCharset, columnCollation, dataDefault, comment))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCharsetCollation, dataDefault, comment))
 					}
-				case columnCollation != "" && comment == "":
+				case columnCharsetCollation != "" && comment == "":
 					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s", columnName, columnType, columnCharset, columnCollation))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s", columnName, columnType, columnCharsetCollation))
 					} else {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s DEFAULT %s", columnName, columnType, columnCharset, columnCollation, dataDefault))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s", columnName, columnType, columnCharsetCollation, dataDefault))
 					}
-				case columnCollation == "" && comment != "":
+				case columnCharsetCollation == "" && comment != "":
 					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COMMENT '%s'", columnName, columnType, comment))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s DEFAULT %s COMMENT '%s'", columnName, columnType, dataDefault, comment))
 					}
-				case columnCollation == "" && comment == "":
+				case columnCharsetCollation == "" && comment == "":
 					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s", columnName, columnType))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s DEFAULT %s", columnName, columnType, dataDefault))
 					}
 				default:
-					return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] nulllable [NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCollation, comment)
+					return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] nulllable [NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCharsetCollation, comment)
 				}
 			}
 
 			if strings.EqualFold(nullable, "NOT NULL") {
 				switch {
-				case columnCollation != "" && comment != "":
+				case columnCharsetCollation != "" && comment != "":
 					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s %s COMMENT '%s'", columnName, columnType, columnCharset, columnCollation, nullable, comment))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s %s COMMENT '%s'", columnName, columnType, columnCharsetCollation, nullable, comment))
 					} else {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCharset, columnCollation, nullable, dataDefault, comment))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCharsetCollation, nullable, dataDefault, comment))
 					}
-				case columnCollation != "" && comment == "":
+				case columnCharsetCollation != "" && comment == "":
 					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s %s", columnName, columnType, columnCharset, columnCollation, nullable))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s %s", columnName, columnType, columnCharsetCollation, nullable))
 					} else {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s %s DEFAULT %s", columnName, columnType, columnCharset, columnCollation, nullable, dataDefault))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s %s DEFAULT %s", columnName, columnType, columnCharsetCollation, nullable, dataDefault))
 					}
-				case columnCollation == "" && comment != "":
+				case columnCharsetCollation == "" && comment != "":
 					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s COMMENT '%s'", columnName, columnType, nullable, comment))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, nullable, dataDefault, comment))
 					}
-				case columnCollation == "" && comment == "":
+				case columnCharsetCollation == "" && comment == "":
 					if strings.EqualFold(dataDefault, constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s", columnName, columnType, nullable))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s", columnName, columnType, nullable, dataDefault))
 					}
 				default:
-					return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] nulllable [NOT NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCollation, comment)
+					return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] nulllable [NOT NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCharsetCollation, comment)
 				}
 			}
 
 		case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 			// column name
-
 			if strings.EqualFold(t.TableAttributesRule.CaseFieldRuleT, constant.ParamValueStructMigrateCaseFieldRuleLower) {
 				columnName = strings.ToLower(columnName)
 			}
@@ -1512,63 +1565,63 @@ func (t *StructMigrateTable) GenTableColumns() ([]string, error) {
 
 			if strings.EqualFold(nullable, "NULL") {
 				switch {
-				case columnCollation != "" && comment != "":
+				case columnCharsetCollation != "" && comment != "":
 					if strings.EqualFold(dataDefault, constant.PostgresDatabaseTableColumnDefaultValueWithNULL) {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s COMMENT '%s'", columnName, columnType, columnCharset, columnCollation, comment))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s COMMENT '%s'", columnName, columnType, columnCharsetCollation, comment))
 					} else {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCharset, columnCollation, dataDefault, comment))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCharsetCollation, dataDefault, comment))
 					}
-				case columnCollation != "" && comment == "":
+				case columnCharsetCollation != "" && comment == "":
 					if strings.EqualFold(dataDefault, constant.PostgresDatabaseTableColumnDefaultValueWithNULL) {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s", columnName, columnType, columnCharset, columnCollation))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s", columnName, columnType, columnCharsetCollation))
 					} else {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s DEFAULT %s", columnName, columnType, columnCharset, columnCollation, dataDefault))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s", columnName, columnType, columnCharsetCollation, dataDefault))
 					}
-				case columnCollation == "" && comment != "":
+				case columnCharsetCollation == "" && comment != "":
 					if strings.EqualFold(dataDefault, constant.PostgresDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s COMMENT '%s'", columnName, columnType, comment))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s DEFAULT %s COMMENT '%s'", columnName, columnType, dataDefault, comment))
 					}
-				case columnCollation == "" && comment == "":
+				case columnCharsetCollation == "" && comment == "":
 					if strings.EqualFold(dataDefault, constant.PostgresDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s", columnName, columnType))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s DEFAULT %s", columnName, columnType, dataDefault))
 					}
 				default:
-					return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] nulllable [NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCollation, comment)
+					return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] nulllable [NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCharsetCollation, comment)
 				}
 			}
 
 			if strings.EqualFold(nullable, "NOT NULL") {
 				switch {
-				case columnCollation != "" && comment != "":
+				case columnCharsetCollation != "" && comment != "":
 					if strings.EqualFold(dataDefault, constant.PostgresDatabaseTableColumnDefaultValueWithNULL) {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s %s COMMENT '%s'", columnName, columnType, columnCharset, columnCollation, nullable, comment))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s %s COMMENT '%s'", columnName, columnType, columnCharsetCollation, nullable, comment))
 					} else {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCharset, columnCollation, nullable, dataDefault, comment))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, columnCharsetCollation, nullable, dataDefault, comment))
 					}
-				case columnCollation != "" && comment == "":
+				case columnCharsetCollation != "" && comment == "":
 					if strings.EqualFold(dataDefault, constant.PostgresDatabaseTableColumnDefaultValueWithNULL) {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s %s", columnName, columnType, columnCharset, columnCollation, nullable))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s %s", columnName, columnType, columnCharsetCollation, nullable))
 					} else {
-						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s CHARACTER SET %s COLLATE %s %s DEFAULT %s", columnName, columnType, columnCharset, columnCollation, nullable, dataDefault))
+						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s %s DEFAULT %s", columnName, columnType, columnCharsetCollation, nullable, dataDefault))
 					}
-				case columnCollation == "" && comment != "":
+				case columnCharsetCollation == "" && comment != "":
 					if strings.EqualFold(dataDefault, constant.PostgresDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s COMMENT '%s'", columnName, columnType, nullable, comment))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s COMMENT '%s'", columnName, columnType, nullable, dataDefault, comment))
 					}
-				case columnCollation == "" && comment == "":
+				case columnCharsetCollation == "" && comment == "":
 					if strings.EqualFold(dataDefault, constant.PostgresDatabaseTableColumnDefaultValueWithNULL) {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s", columnName, columnType, nullable))
 					} else {
 						tableColumns = append(tableColumns, fmt.Sprintf("`%s` %s %s DEFAULT %s", columnName, columnType, nullable, dataDefault))
 					}
 				default:
-					return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] nulllable [NOT NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCollation, comment)
+					return tableColumns, fmt.Errorf("[GenTableColumns] the database table [%s.%s] column [%s] nulllable [NOT NULL] panic, collation [%s] comment [%s]", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, columnName, columnCharsetCollation, comment)
 				}
 			}
 		default:

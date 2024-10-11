@@ -87,7 +87,7 @@ func (st *StructMigrateTask) Init() error {
 			return err
 		}
 	}
-	logger.Warn("struct migrate task checkpoint skip",
+	logger.Warn("struct migrate task checkpoint action",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
