@@ -23,6 +23,15 @@ const (
 	PostgresqlDatabaseSupportVersionRequire = "9.5"
 
 	PostgresqlDatabasePartitionTableSupportVersionRequire = "10.0"
+
+	PostgresDatabaseTableColumnDefaultValueWithEmptyString = ""
+	PostgresDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
+	PostgresDatabaseTableColumnDefaultValueWithNULL        = "NULL"
+
+	PostgresDatabaseColumnDatatypeMatchRuleNotFound = "NOT FOUND"
+
+	// Allow Postgres database role PRIMARY、STANDBY
+	PostgresDatabasePrimaryRole = "PRIMARY"
 )
 
 /*

@@ -745,6 +745,33 @@ func PaddingString(padNums int, padStr string, lastPadStr string) string {
 	return str.String()
 }
 
+// ReplaceQuestionPlacholders replaces ? marks with support placeholders.
+func ReplaceQuestionPlacholders(qry string, replacePlacs, newPlacs byte) string {
+	n := strings.Count(qry, string(replacePlacs))
+	if n == 0 {
+		return qry
+	}
+	nLog10, x := 1, 10
+	for n > x {
+		nLog10++
+		x *= 10
+	}
+	num := make([]byte, 0, nLog10)
+	var buf strings.Builder
+	buf.Grow(len(qry) + n*(nLog10))
+	var idx int64
+	for i := strings.IndexByte(qry, replacePlacs); i >= 0; i = strings.IndexByte(qry, replacePlacs) {
+		buf.WriteString(qry[:i])
+		qry = qry[i+1:]
+		buf.WriteByte(newPlacs)
+		idx++
+		num = strconv.AppendInt(num[:0], idx, 10)
+		buf.Write(num)
+	}
+	buf.WriteString(qry)
+	return buf.String()
+}
+
 // BytesToString used for bytes to string, reduce memory
 // https://segmentfault.com/a/1190000037679588
 func BytesToString(b []byte) string {

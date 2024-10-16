@@ -24,12 +24,6 @@ const (
 	MYSQLDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
 	MYSQLDatabaseTableColumnDefaultValueWithNULL        = "NULL"
 
-	PostgresDatabaseTableColumnDefaultValueWithEmptyString = ""
-	PostgresDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"
-	PostgresDatabaseTableColumnDefaultValueWithNULL        = "NULL"
-
-	PostgresDatabaseColumnDatatypeMatchRuleNotFound = "NOT FOUND"
-
 	MYSQLCompatibleDatabaseVersionDelimiter = "-"
 
 	// MYSQL database expression index support version > 8.0.0

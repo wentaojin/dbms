@@ -17,13 +17,15 @@ package processor
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/wentaojin/dbms/errconcurrent"
-	"github.com/wentaojin/dbms/utils/structure"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/wentaojin/dbms/errconcurrent"
+	"github.com/wentaojin/dbms/utils/structure"
 
 	"github.com/golang/snappy"
 
@@ -186,13 +188,21 @@ func (dmt *DataCompareTask) Init() error {
 
 	switch dmt.Task.TaskFlow {
 	case constant.TaskFlowOracleToTiDB:
-		globalScn, err := dmt.DatabaseS.GetDatabaseConsistentPos()
-		if err != nil {
+		var globalScn string
+		if err := dmt.DatabaseS.Transaction(dmt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+			func(ctx context.Context, tx *sql.Tx) error {
+				globalScn, err = dmt.DatabaseS.GetDatabaseConsistentPos(ctx, tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}); err != nil {
 			return err
 		}
 
 		if dmt.TaskParams.EnableConsistentRead {
-			globalScnS = strconv.FormatUint(globalScn, 10)
+			globalScnS = globalScn
 		}
 		if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
 			globalScnS = dmt.TaskParams.ConsistentReadPointS
@@ -201,13 +211,21 @@ func (dmt *DataCompareTask) Init() error {
 			globalScnT = dmt.TaskParams.ConsistentReadPointT
 		}
 	case constant.TaskFlowOracleToMySQL:
-		globalScn, err := dmt.DatabaseS.GetDatabaseConsistentPos()
-		if err != nil {
+		var globalScn string
+		if err := dmt.DatabaseS.Transaction(dmt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+			func(ctx context.Context, tx *sql.Tx) error {
+				globalScn, err = dmt.DatabaseS.GetDatabaseConsistentPos(ctx, tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}); err != nil {
 			return err
 		}
 
 		if dmt.TaskParams.EnableConsistentRead {
-			globalScnS = strconv.FormatUint(globalScn, 10)
+			globalScnS = globalScn
 		}
 		if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
 			globalScnS = dmt.TaskParams.ConsistentReadPointS
@@ -769,6 +787,14 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		zap.Any("origin upstream bucket", h))
 
 	if h == nil {
+		logger.Warn("data migrate task table",
+			zap.String("task_name", dmt.Task.TaskName),
+			zap.String("task_mode", dmt.Task.TaskMode),
+			zap.String("task_flow", dmt.Task.TaskFlow),
+			zap.String("schema_name_s", attsRule.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("seletivity", "selectivity is null, skip statistics"),
+			zap.String("migrate_method", "scan"))
 		err = dmt.ProcessTableScan(ctx, globalScnS, globalScnT, tableRows, tableSize, attsRule)
 		if err != nil {
 			return err
@@ -808,6 +834,8 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		zap.Any("new upstream bucket", h))
 
 	rangeC := make(chan []*structure.Range, constant.DefaultMigrateTaskQueueSize)
+	chunksC := make(chan int, 1)
+
 	d := &Divide{
 		DBTypeS:     dbTypeS,
 		DBCharsetS:  dmt.DBCharsetS,
@@ -818,6 +846,7 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		Cons:        h,
 		RangeC:      rangeC,
 	}
+
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -858,35 +887,37 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 				totalChunks = totalChunks + len(statsRanges)
 			}
 		}
-
-		if totalChunks == 0 {
-			err := dmt.ProcessTableScan(ctx, globalScnS, globalScnT, tableRows, tableSize, attsRule)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(gCtx, &task.DataCompareSummary{
-			TaskName:       dmt.Task.TaskName,
-			SchemaNameS:    attsRule.SchemaNameS,
-			TableNameS:     attsRule.TableNameS,
-			SchemaNameT:    attsRule.SchemaNameT,
-			TableNameT:     attsRule.TableNameT,
-			SnapshotPointS: globalScnS,
-			SnapshotPointT: globalScnT,
-			TableRowsS:     tableRows,
-			TableSizeS:     tableSize,
-			ChunkTotals:    uint64(totalChunks),
-			InitFlag:       constant.TaskInitStatusFinished,
-			CompareFlag:    constant.TaskCompareStatusNotFinished,
-		})
-		if err != nil {
-			return err
-		}
+		chunksC <- totalChunks
 		return nil
 	})
 
 	if err = g.Wait(); err != nil {
+		return err
+	}
+
+	totalChunks := <-chunksC
+	if totalChunks == 0 {
+		err := dmt.ProcessTableScan(ctx, globalScnS, globalScnT, tableRows, tableSize, attsRule)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	_, err = model.GetIDataCompareSummaryRW().CreateDataCompareSummary(ctx, &task.DataCompareSummary{
+		TaskName:       dmt.Task.TaskName,
+		SchemaNameS:    attsRule.SchemaNameS,
+		TableNameS:     attsRule.TableNameS,
+		SchemaNameT:    attsRule.SchemaNameT,
+		TableNameT:     attsRule.TableNameT,
+		SnapshotPointS: globalScnS,
+		SnapshotPointT: globalScnT,
+		TableRowsS:     tableRows,
+		TableSizeS:     tableSize,
+		ChunkTotals:    uint64(totalChunks),
+		InitFlag:       constant.TaskInitStatusFinished,
+		CompareFlag:    constant.TaskCompareStatusNotFinished,
+	})
+	if err != nil {
 		return err
 	}
 

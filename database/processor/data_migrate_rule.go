@@ -59,6 +59,12 @@ func (r *DataMigrateRule) GenSchemaNameRule() (string, string, error) {
 			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetSchemaNameRule] schema [%s] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, err)
 		}
 		schemaNameS = stringutil.BytesToString(convertUtf8Raw)
+	case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.SchemaNameS), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetSchemaNameRule] schema [%s] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, err)
+		}
+		schemaNameS = stringutil.BytesToString(convertUtf8Raw)
 	default:
 		return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 	}
@@ -92,6 +98,12 @@ func (r *DataMigrateRule) GenSchemaTableNameRule() (string, string, error) {
 	switch r.TaskFlow {
 	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableNameRule] schema [%s] table [%v] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, err)
+		}
+		tableNameS = stringutil.BytesToString(convertUtf8Raw)
+	case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableNameS), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableNameRule] schema [%s] table [%v] charset convert failed, %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, err)
 		}
@@ -144,6 +156,12 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		switch r.TaskFlow {
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
 			}
@@ -211,6 +229,18 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 				return "", "", "", "", err
 			}
 			columnNameSilS = append(columnNameSilS, columnNameS)
+		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnName), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenTableQueryColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName, err)
+			}
+			columnName = stringutil.BytesToString(columnNameUtf8Raw)
+
+			columnNameS, err := OptimizerPostgresDataMigrateColumnS(columnName, rowCol["DATA_TYPE"], rowCol["DATETIME_PRECISION"])
+			if err != nil {
+				return "", "", "", "", err
+			}
+			columnNameSilS = append(columnNameSilS, columnNameS)
 		default:
 			return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 		}
@@ -230,8 +260,8 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		}
 
 		if val, ok := columnRules[columnNameSNew]; ok {
-			switch {
-			case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+			switch r.TaskFlow {
+			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 				if strings.EqualFold(r.TaskMode, constant.TaskModeStmtMigrate) ||
 					strings.EqualFold(r.TaskMode, constant.TaskModeIncrMigrate) {
 					columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorBacktick, val, constant.StringSeparatorBacktick)

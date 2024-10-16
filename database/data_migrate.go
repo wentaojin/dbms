@@ -16,6 +16,9 @@ limitations under the License.
 package database
 
 import (
+	"context"
+	"database/sql"
+
 	"golang.org/x/sync/errgroup"
 )
 
@@ -24,7 +27,6 @@ type IDatabaseDataMigrate interface {
 	GetDatabaseRole() (string, error)
 	GetDatabaseVersion() (string, error)
 	GetDatabaseCharset() (string, error)
-	GetDatabaseConsistentPos() (uint64, error)
 	GetDatabaseTableType(schemaName string) (map[string]string, error)
 	GetDatabaseTableColumnInfo(schemaName string, tableName string) ([]map[string]string, error)
 	GetDatabaseTableColumnNameTableDimensions(schemaName, tableName string) ([]string, error)
@@ -34,6 +36,11 @@ type IDatabaseDataMigrate interface {
 	GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64, batchSize int, dataChan chan []map[string]string) error
 	GetDatabaseTableChunkData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error
 	GetDatabaseTableCsvData(querySQL string, queryArgs []interface{}, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error
+	IDatabaseDataMigrateSnapshot
+}
+
+type IDatabaseDataMigrateSnapshot interface {
+	GetDatabaseConsistentPos(ctx context.Context, tx *sql.Tx) (string, error)
 }
 
 // IDataMigrateRuleInitializer used for database table rule initializer

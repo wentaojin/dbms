@@ -35,6 +35,9 @@ import (
 type IDatabase interface {
 	PrepareContext(ctx context.Context, sqlStr string) (*sql.Stmt, error)
 	QueryContext(ctx context.Context, sqlStr string, args ...any) (*sql.Rows, error)
+	BeginTxn(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	Transaction(ctx context.Context, opts *sql.TxOptions, fns []func(ctx context.Context, tx *sql.Tx) error) error
+	CommitTxn(txn *sql.Tx) error
 	ExecContext(ctx context.Context, sqlStr string, args ...any) (sql.Result, error)
 	GeneralQuery(sqlStr string, args ...any) ([]string, []map[string]string, error)
 	PingDatabaseConnection() error

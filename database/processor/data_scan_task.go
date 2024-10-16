@@ -17,7 +17,12 @@ package processor
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/golang/snappy"
 	"github.com/google/uuid"
 	"github.com/wentaojin/dbms/database"
@@ -32,9 +37,6 @@ import (
 	"github.com/wentaojin/dbms/utils/structure"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type DataScanTask struct {
@@ -156,12 +158,17 @@ func (dst *DataScanTask) Init() error {
 		return err
 	}
 
-	globalScnS, err := dst.DatabaseS.GetDatabaseConsistentPos()
-	if err != nil {
+	if err := dst.DatabaseS.Transaction(dst.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+		func(ctx context.Context, tx *sql.Tx) error {
+			globalScn, err = dst.DatabaseS.GetDatabaseConsistentPos(ctx, tx)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}); err != nil {
 		return err
 	}
-
-	globalScn = strconv.FormatUint(globalScnS, 10)
 
 	// database tables
 	// init database table
@@ -748,6 +755,16 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, glo
 		return err
 	}
 	if h == nil {
+		logger.Warn("data scan task table",
+			zap.String("task_name", dst.Task.TaskName),
+			zap.String("task_mode", dst.Task.TaskMode),
+			zap.String("task_flow", dst.Task.TaskFlow),
+			zap.String("schema_name_s", attsRule.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("database_version", dst.DBVersionS),
+			zap.String("database_role", dst.DBRoleS),
+			zap.String("seletivity", "selectivity is null, skip statistics"),
+			zap.String("migrate_method", "scan"))
 		err = dst.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 		if err != nil {
 			return err
@@ -776,6 +793,8 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, glo
 		zap.String("migrate_method", "statistic"))
 
 	rangeC := make(chan []*structure.Range, constant.DefaultMigrateTaskQueueSize)
+	chunksC := make(chan int, 1)
+
 	d := &Divide{
 		DBTypeS:     dbTypeS,
 		DBCharsetS:  stringutil.StringUpper(dst.DBCharsetS),
@@ -814,32 +833,36 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, glo
 			return nil
 		}
 
-		if totalChunks == 0 {
-			err := dst.ProcessTableScan(gCtx, globalScn, tableRows, tableSize, attsRule)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
-		_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(gCtx, &task.DataScanSummary{
-			TaskName:       dst.Task.TaskName,
-			SchemaNameS:    attsRule.SchemaNameS,
-			TableNameS:     attsRule.TableNameS,
-			SnapshotPointS: globalScn,
-			TableRowsS:     tableRows,
-			TableSizeS:     tableSize,
-			ChunkTotals:    uint64(totalChunks),
-			InitFlag:       constant.TaskInitStatusFinished,
-			ScanFlag:       constant.TaskScanStatusNotFinished,
-		})
-		if err != nil {
-			return err
-		}
+		chunksC <- totalChunks
 		return nil
 	})
 
 	if err = g.Wait(); err != nil {
+		return err
+	}
+
+	totalChunks := <-chunksC
+
+	if totalChunks == 0 {
+		err := dst.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(ctx, &task.DataScanSummary{
+		TaskName:       dst.Task.TaskName,
+		SchemaNameS:    attsRule.SchemaNameS,
+		TableNameS:     attsRule.TableNameS,
+		SnapshotPointS: globalScn,
+		TableRowsS:     tableRows,
+		TableSizeS:     tableSize,
+		ChunkTotals:    uint64(totalChunks),
+		InitFlag:       constant.TaskInitStatusFinished,
+		ScanFlag:       constant.TaskScanStatusNotFinished,
+	})
+	if err != nil {
 		return err
 	}
 
@@ -962,6 +985,7 @@ func (dst *DataScanTask) ProcessTableScan(ctx context.Context, globalScn string,
 
 func (dst *DataScanTask) ProcessChunkScan(ctx context.Context, schemaNameS, tableNameS, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataScanAttributesRule) error {
 	chunkCh := make(chan []map[string]string, constant.DefaultMigrateTaskQueueSize)
+	chunkRecC := make(chan int, 1)
 
 	gC, gCtx := errgroup.WithContext(ctx)
 
@@ -1019,32 +1043,36 @@ func (dst *DataScanTask) ProcessChunkScan(ctx context.Context, schemaNameS, tabl
 			}
 		}
 
-		if totalChunkRecs == 0 {
-			err := dst.ProcessTableScan(gCtx, globalScn, tableRows, tableSize, attsRule)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
-		_, err := model.GetIDataScanSummaryRW().CreateDataScanSummary(gCtx, &task.DataScanSummary{
-			TaskName:       dst.Task.TaskName,
-			SchemaNameS:    attsRule.SchemaNameS,
-			TableNameS:     attsRule.TableNameS,
-			SnapshotPointS: globalScn,
-			TableRowsS:     tableRows,
-			TableSizeS:     tableSize,
-			ChunkTotals:    uint64(totalChunkRecs),
-			InitFlag:       constant.TaskInitStatusFinished,
-			ScanFlag:       constant.TaskScanStatusNotFinished,
-		})
-		if err != nil {
-			return err
-		}
+		chunkRecC <- totalChunkRecs
 		return nil
 	})
 
 	err := gC.Wait()
+	if err != nil {
+		return err
+	}
+
+	totalChunkRecs := <-chunkRecC
+
+	if totalChunkRecs == 0 {
+		err := dst.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	_, err = model.GetIDataScanSummaryRW().CreateDataScanSummary(ctx, &task.DataScanSummary{
+		TaskName:       dst.Task.TaskName,
+		SchemaNameS:    attsRule.SchemaNameS,
+		TableNameS:     attsRule.TableNameS,
+		SnapshotPointS: globalScn,
+		TableRowsS:     tableRows,
+		TableSizeS:     tableSize,
+		ChunkTotals:    uint64(totalChunkRecs),
+		InitFlag:       constant.TaskInitStatusFinished,
+		ScanFlag:       constant.TaskScanStatusNotFinished,
+	})
 	if err != nil {
 		return err
 	}

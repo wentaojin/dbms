@@ -17,12 +17,13 @@ package structure
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"go.uber.org/zap"
-	"sort"
-	"strings"
 )
 
 // Selectivity store the highest selectivity constraint or index bucket
@@ -68,6 +69,19 @@ func (h *Selectivity) TransSelectivity(dbTypeS, dbCharsetS string, caseFieldRule
 			if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleUpper) {
 				columnName = strings.ToUpper(stringutil.BytesToString(convertUtf8Raws))
 			}
+		case constant.DatabaseTypePostgresql:
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(col), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket column charset convert failed: %v", dbTypeS, err)
+			}
+			columnName = stringutil.BytesToString(convertUtf8Raws)
+
+			if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleLower) {
+				columnName = strings.ToLower(stringutil.BytesToString(convertUtf8Raws))
+			}
+			if strings.EqualFold(caseFieldRuleS, constant.ParamValueDataCompareCaseFieldRuleUpper) {
+				columnName = strings.ToUpper(stringutil.BytesToString(convertUtf8Raws))
+			}
 		default:
 			return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", dbTypeS)
 		}
@@ -99,6 +113,18 @@ func (h *Selectivity) TransSelectivity(dbTypeS, dbCharsetS string, caseFieldRule
 			b.LowerBound = stringutil.BytesToString(convertUtf8Raws)
 
 			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket charset convert failed: %v", dbTypeS, err)
+			}
+			b.UpperBound = stringutil.BytesToString(convertUtf8Raws)
+		case constant.DatabaseTypePostgresql:
+			convertUtf8Raws, err := stringutil.CharsetConvert([]byte(b.LowerBound), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("the database type [%s] higest bucket charset convert failed: %v", dbTypeS, err)
+			}
+			b.LowerBound = stringutil.BytesToString(convertUtf8Raws)
+
+			convertUtf8Raws, err = stringutil.CharsetConvert([]byte(b.UpperBound), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dbCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
 				return fmt.Errorf("the database type [%s] higest bucket charset convert failed: %v", dbTypeS, err)
 			}
@@ -200,9 +226,6 @@ type Rule struct {
 // Each bucket's lower bound is the value of one element, and the upper bound is the next element's value.
 // The last bucket will have the same upper bound as the previous bucket if there are no more elements.
 func StringSliceCreateBuckets(newColumnsBs []string, numRows int64) []Bucket {
-	// Sort the string slice
-	sort.Strings(newColumnsBs)
-
 	// Create buckets
 	buckets := make([]Bucket, len(newColumnsBs))
 	for i := 0; i < len(newColumnsBs); i++ {

@@ -81,6 +81,34 @@ func (d *Database) QueryContext(ctx context.Context, query string, args ...any) 
 	return d.DBConn.QueryContext(ctx, query, args...)
 }
 
+func (d *Database) BeginTxn(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	return d.DBConn.BeginTx(ctx, opts)
+}
+
+func (d *Database) CommitTxn(txn *sql.Tx) error {
+	return txn.Commit()
+}
+
+func (d *Database) Transaction(ctx context.Context, opts *sql.TxOptions, fns []func(ctx context.Context, tx *sql.Tx) error) error {
+	tx, err := d.BeginTxn(ctx, opts)
+	if err != nil {
+		return err
+	}
+	for _, fn := range fns {
+		if err = fn(ctx, tx); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return nil
+}
+
 func (d *Database) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return d.DBConn.ExecContext(ctx, query, args...)
 }

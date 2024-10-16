@@ -12,7 +12,7 @@ POSTGRES COMPATIBLE DATABASE DATA TYPE MAPPING MYSQL COMPATIBLE DATABASE RULE
 | smallserial              | smallint         | 1, suggest set auto_increment in its tables definition（mysql）<br> 2, suggest set auto_random in its tables definition (tidb)|
 | bigserial                | bigint           | 1, suggest set auto_increment in its tables definition（mysql）<br> 2, suggest set auto_random in its tables definition (tidb)|
 | bit                      | bit              |                                             |
-| boolean                  | tinyint(1)       |                                             |
+| boolean                  | tinyint(1)       | states: true,false,null (unkown)            |
 | real                     | float            |                                             |
 | double precision         | double           |                                             |
 | numeric(M,D)             | decimal(M,D)     |                                             |

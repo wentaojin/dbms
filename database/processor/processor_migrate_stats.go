@@ -17,13 +17,14 @@ package processor
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"github.com/wentaojin/dbms/utils/structure"
 	"go.uber.org/zap"
-	"strings"
 )
 
 // ExtractDatabaseTableStatisticsValuesFromBuckets analyze upperBound or lowerBound to string for each column.
@@ -38,7 +39,7 @@ func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString s
 			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)
 		}
 		return values, nil
-	case constant.DatabaseTypeOracle:
+	case constant.DatabaseTypeOracle, constant.DatabaseTypePostgresql:
 		values := strings.Split(valueString, constant.StringSeparatorComma)
 		if len(values) != len(columnNames) {
 			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)

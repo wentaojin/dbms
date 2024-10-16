@@ -17,10 +17,11 @@ package taskflow
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"github.com/wentaojin/dbms/database/processor"
-	"strconv"
 	"time"
+
+	"github.com/wentaojin/dbms/database/processor"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
@@ -81,40 +82,116 @@ func (stm *StmtMigrateTask) Start() error {
 		if err != nil {
 			return err
 		}
+		dbVersionS, err := databaseS.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		dbRoles, err := databaseS.GetDatabaseRole()
+		if err != nil {
+			return err
+		}
+
+		var globalScnS string
+		if err := databaseS.Transaction(stm.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+			func(ctx context.Context, tx *sql.Tx) error {
+				globalScnS, err = databaseS.GetDatabaseConsistentPos(ctx, tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}); err != nil {
+			return err
+		}
+		err = database.IDatabaseRun(&processor.DataMigrateTask{
+			Ctx:             stm.Ctx,
+			Task:            stm.Task,
+			DBRoleS:         dbRoles,
+			DBVersionS:      dbVersionS,
+			DBCharsetS:      stringutil.StringUpper(stm.DatasourceS.ConnectCharset),
+			DBCharsetT:      stringutil.StringUpper(stm.DatasourceT.ConnectCharset),
+			DatabaseS:       databaseS,
+			DatabaseT:       databaseT,
+			SchemaNameS:     schemaRoute.SchemaNameS,
+			StmtParams:      stm.TaskParams,
+			GlobalSnapshotS: globalScnS,
+			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		})
+		if err != nil {
+			return err
+		}
+	case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+		databaseS, err = database.NewDatabase(stm.Ctx, stm.DatasourceS, "", int64(stm.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+		databaseT, err = database.NewDatabase(stm.Ctx, stm.DatasourceT, "", int64(stm.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
+
+		logger.Info("stmt migrate task inspect migrate task",
+			zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
+		_, err = processor.InspectPostgresMigrateTask(stm.Task.TaskName, stm.Task.TaskFlow, stm.Task.TaskMode, databaseS,
+			stringutil.StringUpper(stm.DatasourceS.ConnectCharset),
+			stringutil.StringUpper(stm.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
+		dbVersionS, err := databaseS.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		dbRoles, err := databaseS.GetDatabaseRole()
+		if err != nil {
+			return err
+		}
+
+		var (
+			globalScnS string
+			txn        *sql.Tx
+		)
+		if stm.TaskParams.EnableConsistentRead {
+			txn, err = databaseS.BeginTxn(stm.Ctx, &sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+			})
+			if err != nil {
+				return err
+			}
+			globalScnS, err = databaseS.GetDatabaseConsistentPos(stm.Ctx, txn)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = database.IDatabaseRun(&processor.DataMigrateTask{
+			Ctx:             stm.Ctx,
+			Task:            stm.Task,
+			DBRoleS:         dbRoles,
+			DBVersionS:      dbVersionS,
+			DBCharsetS:      stringutil.StringUpper(stm.DatasourceS.ConnectCharset),
+			DBCharsetT:      stringutil.StringUpper(stm.DatasourceT.ConnectCharset),
+			DatabaseS:       databaseS,
+			DatabaseT:       databaseT,
+			SchemaNameS:     schemaRoute.SchemaNameS,
+			StmtParams:      stm.TaskParams,
+			GlobalSnapshotS: globalScnS,
+			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		})
+		if err != nil {
+			return err
+		}
+		if stm.TaskParams.EnableConsistentRead {
+			if err = databaseS.CommitTxn(txn); err != nil {
+				return err
+			}
+		}
 	default:
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", stm.Task.TaskName, stm.Task.TaskMode, stm.Task.TaskFlow, schemaRoute.SchemaNameS)
-	}
-
-	dbVersionS, err := databaseS.GetDatabaseVersion()
-	if err != nil {
-		return err
-	}
-	dbRoles, err := databaseS.GetDatabaseRole()
-	if err != nil {
-		return err
-	}
-	globalScnS, err := databaseS.GetDatabaseConsistentPos()
-	if err != nil {
-		return err
-	}
-
-	err = database.IDatabaseRun(&processor.DataMigrateTask{
-		Ctx:             stm.Ctx,
-		Task:            stm.Task,
-		DBRoleS:         dbRoles,
-		DBVersionS:      dbVersionS,
-		DBCharsetS:      stringutil.StringUpper(stm.DatasourceS.ConnectCharset),
-		DBCharsetT:      stringutil.StringUpper(stm.DatasourceT.ConnectCharset),
-		DatabaseS:       databaseS,
-		DatabaseT:       databaseT,
-		SchemaNameS:     schemaRoute.SchemaNameS,
-		StmtParams:      stm.TaskParams,
-		GlobalSnapshotS: strconv.FormatUint(globalScnS, 10),
-		WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
-		ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
-	})
-	if err != nil {
-		return err
 	}
 
 	logger.Info("data migrate task",

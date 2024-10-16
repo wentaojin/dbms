@@ -16,10 +16,15 @@ limitations under the License.
 package postgresql
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/greatcloak/decimal"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
@@ -889,31 +894,53 @@ func (d *Database) GetDatabaseRole() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("get database role failed: %v", err)
 	}
-	return res[0]["role"], nil
+	if strings.EqualFold(res[0]["role"], "false") {
+		return "PRIMARY", nil
+	} else if strings.EqualFold(res[0]["role"], "true") {
+		return "STANDBY", nil
+	} else {
+		return "UNKNOWN", nil
+	}
 }
 
-func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
-	version, err := d.GetDatabaseVersion()
-	if err != nil {
-		return 0, err
-	}
-	var queryStr string
-	if stringutil.VersionOrdinal(version) > stringutil.VersionOrdinal("10") {
-		queryStr = fmt.Sprintf(`SELECT pg_current_wal_lsn() AS scn`)
-	} else {
-		queryStr = fmt.Sprintf(`SELECT pg_current_xlog_location() AS scn`)
-	}
+func (d *Database) GetDatabaseConsistentPos(ctx context.Context, tx *sql.Tx) (string, error) {
+	// version, err := d.GetDatabaseVersion()
+	// if err != nil {
+	// 	return 0, err
+	// }
+	// var queryStr string
+	// if stringutil.VersionOrdinal(version) > stringutil.VersionOrdinal("10") {
+	// 	queryStr = fmt.Sprintf(`SELECT pg_current_wal_lsn() AS scn`)
+	// } else {
+	// 	queryStr = fmt.Sprintf(`SELECT pg_current_xlog_location() AS scn`)
+	// }
 
-	_, res, err := d.GeneralQuery(queryStr)
-	if err != nil {
-		return 0, err
-	}
+	// _, res, err := d.GeneralQuery(queryStr)
+	// if err != nil {
+	// 	return 0, err
+	// }
 
-	size, err := stringutil.StrconvUintBitSize(res[0]["scn"], 64)
+	// size, err := stringutil.StrconvUintBitSize(res[0]["scn"], 64)
+	// if err != nil {
+	// 	return 0, err
+	// }
+	// return size, nil
+
+	// similar pg_dump --snapshot
+	// session 1:
+	// BEGIN transaction isolation level repeatable read;
+	// SELECT pg_export_snapshot();
+	// output: 000003A1-1
+
+	// session 2:
+	// BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+	// SET TRANSACTION SNAPSHOT '000003A1-1';
+	var globalSCN string
+	err := tx.QueryRowContext(ctx, "SELECT pg_export_snapshot() AS current_scn").Scan(&globalSCN)
 	if err != nil {
-		return 0, err
+		return globalSCN, err
 	}
-	return size, nil
+	return globalSCN, nil
 }
 
 func (d *Database) GetDatabaseTableColumnNameTableDimensions(schemaName, tableName string) ([]string, error) {
@@ -967,7 +994,12 @@ AND relname = '%s'`, schemaName, tableName))
 	if err != nil {
 		return 0, err
 	}
-	size, err := stringutil.StrconvUintBitSize(res[0]["row_counts"], 64)
+
+	decimalNums, err := decimal.NewFromString(res[0]["row_counts"])
+	if err != nil {
+		return 0, err
+	}
+	size, err := stringutil.StrconvUintBitSize(decimalNums.String(), 64)
 	if err != nil {
 		return 0, err
 	}
@@ -992,8 +1024,136 @@ func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName str
 }
 
 func (d *Database) GetDatabaseTableChunkData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
-	//TODO implement me
-	panic("implement me")
+	var (
+		databaseTypes []string
+		err           error
+	)
+	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
+	columnNameOrdersCounts := len(columnNameOrders)
+	rowData := make([]interface{}, columnNameOrdersCounts)
+
+	argsNums := batchSize * columnNameOrdersCounts
+
+	batchRowsData := make([]interface{}, 0, argsNums)
+
+	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
+
+	for i, c := range columnNameOrders {
+		columnNameOrderIndexMap[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	txn, err := d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+	if err != nil {
+		return err
+	}
+
+	sqlSlis := stringutil.StringSplit(querySQL, constant.StringSeparatorSemicolon)
+	sliLen := len(sqlSlis)
+
+	var rows *sql.Rows
+
+	if sliLen == 1 {
+		rows, err = txn.QueryContext(ctx, sqlSlis[0], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else if sliLen == 2 {
+		// SET TRANSACTION SNAPSHOT '000003A1-1';
+		_, err = txn.ExecContext(ctx, sqlSlis[0])
+		if err != nil {
+			return err
+		}
+		rows, err = txn.QueryContext(ctx, sqlSlis[1], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else {
+		return fmt.Errorf("the query sql [%v] cannot be over two values, please contact author or reselect", querySQL)
+	}
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return err
+	}
+
+	for _, ct := range colTypes {
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
+	}
+
+	// data scan
+	values := make([]interface{}, columnNameOrdersCounts)
+	valuePtrs := make([]interface{}, columnNameOrdersCounts)
+	for i, _ := range columnNameOrders {
+		valuePtrs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return err
+		}
+
+		for i, colName := range columnNameOrders {
+			valRes := values[i]
+			if stringutil.IsValueNil(valRes) {
+				//rowsMap[cols[i]] = `NULL` -> sql
+				rowData[columnNameOrderIndexMap[colName]] = nil
+			} else {
+				value := reflect.ValueOf(valRes).Interface()
+				switch val := value.(type) {
+				case int16, int32, int64:
+					rowData[columnNameOrderIndexMap[colName]] = val
+				case string:
+					convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+					}
+					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+					}
+					rowData[columnNameOrderIndexMap[colName]] = stringutil.BytesToString(convertTargetRaw)
+				default:
+					rowData[columnNameOrderIndexMap[colName]] = val
+				}
+			}
+		}
+
+		// temporary array
+		batchRowsData = append(batchRowsData, rowData...)
+
+		// clear
+		rowData = make([]interface{}, columnNameOrdersCounts)
+
+		// batch
+		if len(batchRowsData) == argsNums {
+			dataChan <- batchRowsData
+			// clear
+			batchRowsData = make([]interface{}, 0, argsNums)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	// non-batch batch
+	if len(batchRowsData) > 0 {
+		dataChan <- batchRowsData
+	}
+
+	if err = d.CommitTxn(txn); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interface{}, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {

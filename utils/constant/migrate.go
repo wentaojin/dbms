@@ -61,9 +61,9 @@ var MigrateMySQLCompatibleCharsetStringConvertMapping = map[string]string{
 }
 
 var MigratePostgreSQLCompatibleCharsetStringConvertMapping = map[string]string{
-	PostgreSQLCharsetEUC_TW: CharsetUTF8MB4,
+	PostgreSQLCharsetEUC_TW: CharsetBIG5,
 	PostgreSQLCharsetUTF8:   CharsetUTF8MB4,
-	PostgreSQLCharsetEUC_CN: CharsetUTF8MB4,
+	PostgreSQLCharsetEUC_CN: CharsetGBK,
 }
 
 // string data support charset list

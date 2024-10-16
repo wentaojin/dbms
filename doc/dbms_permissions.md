@@ -191,6 +191,7 @@ CREATE ROLE dbms_privs_role WITH CREATEDB;
 -- grant system view permission
 GRANT USAGE ON SCHEMA pg_catalog TO dbms_privs_role;
 GRANT SELECT ON ALL TABLES IN SCHEMA pg_catalog TO dbms_privs_role;
+GRANT SELECT ON pg_statistic TO dbms_privs_role;
 
 GRANT USAGE ON SCHEMA information_schema TO dbms_privs_role;
 GRANT SELECT ON ALL TABLES IN SCHEMA information_schema TO dbms_privs_role;

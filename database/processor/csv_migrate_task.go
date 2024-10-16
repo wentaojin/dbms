@@ -19,6 +19,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/golang/snappy"
 	"github.com/google/uuid"
 	"github.com/wentaojin/dbms/database"
@@ -33,10 +38,6 @@ import (
 	"github.com/wentaojin/dbms/utils/structure"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type CsvMigrateTask struct {
@@ -986,6 +987,16 @@ func (cmt *CsvMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, g
 		return err
 	}
 	if h == nil {
+		logger.Warn("csv migrate task table",
+			zap.String("task_name", cmt.Task.TaskName),
+			zap.String("task_mode", cmt.Task.TaskMode),
+			zap.String("task_flow", cmt.Task.TaskFlow),
+			zap.String("schema_name_s", attsRule.SchemaNameS),
+			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("database_version", cmt.DBVersionS),
+			zap.String("database_role", cmt.DBRoleS),
+			zap.String("seletivity", "selectivity is null, skip statistics"),
+			zap.String("migrate_method", "scan"))
 		err = cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 		if err != nil {
 			return err
@@ -1014,6 +1025,7 @@ func (cmt *CsvMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, g
 		zap.String("migrate_method", "statistic"))
 
 	rangeC := make(chan []*structure.Range, constant.DefaultMigrateTaskQueueSize)
+	chunksC := make(chan int, 1)
 	d := &Divide{
 		DBTypeS:     dbTypeS,
 		DBCharsetS:  stringutil.StringUpper(cmt.DBCharsetS),
@@ -1057,34 +1069,36 @@ func (cmt *CsvMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, g
 				totalChunks = totalChunks + len(statsRanges)
 			}
 		}
-
-		if totalChunks == 0 {
-			err := cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
-			TaskName:       cmt.Task.TaskName,
-			SchemaNameS:    attsRule.SchemaNameS,
-			TableNameS:     attsRule.TableNameS,
-			SchemaNameT:    attsRule.SchemaNameT,
-			TableNameT:     attsRule.TableNameT,
-			SnapshotPointS: globalScn,
-			TableRowsS:     tableRows,
-			TableSizeS:     tableSize,
-			ChunkTotals:    uint64(totalChunks),
-			InitFlag:       constant.TaskInitStatusFinished,
-			MigrateFlag:    constant.TaskMigrateStatusNotFinished,
-		})
-		if err != nil {
-			return err
-		}
+		chunksC <- totalChunks
 		return nil
 	})
 
 	if err = g.Wait(); err != nil {
+		return err
+	}
+
+	totalChunks := <-chunksC
+	if totalChunks == 0 {
+		err := cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	_, err = model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(ctx, &task.DataMigrateSummary{
+		TaskName:       cmt.Task.TaskName,
+		SchemaNameS:    attsRule.SchemaNameS,
+		TableNameS:     attsRule.TableNameS,
+		SchemaNameT:    attsRule.SchemaNameT,
+		TableNameT:     attsRule.TableNameT,
+		SnapshotPointS: globalScn,
+		TableRowsS:     tableRows,
+		TableSizeS:     tableSize,
+		ChunkTotals:    uint64(totalChunks),
+		InitFlag:       constant.TaskInitStatusFinished,
+		MigrateFlag:    constant.TaskMigrateStatusNotFinished,
+	})
+	if err != nil {
 		return err
 	}
 
@@ -1233,6 +1247,7 @@ func (cmt *CsvMigrateTask) ProcessTableScan(ctx context.Context, globalScn strin
 
 func (cmt *CsvMigrateTask) ProcessChunkScan(ctx context.Context, globalScn string, tableRows uint64, tableSize float64, attsRule *database.DataMigrateAttributesRule) error {
 	chunkCh := make(chan []map[string]string, constant.DefaultMigrateTaskQueueSize)
+	chunkRecC := make(chan int, 1)
 
 	gC, gCtx := errgroup.WithContext(ctx)
 
@@ -1306,34 +1321,38 @@ func (cmt *CsvMigrateTask) ProcessChunkScan(ctx context.Context, globalScn strin
 			}
 		}
 
-		if totalChunkRecs == 0 {
-			err := cmt.ProcessTableScan(gCtx, globalScn, tableRows, tableSize, attsRule)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
-		_, err := model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
-			TaskName:       cmt.Task.TaskName,
-			SchemaNameS:    attsRule.SchemaNameS,
-			TableNameS:     attsRule.TableNameS,
-			SchemaNameT:    attsRule.SchemaNameT,
-			TableNameT:     attsRule.TableNameT,
-			SnapshotPointS: globalScn,
-			TableRowsS:     tableRows,
-			TableSizeS:     tableSize,
-			ChunkTotals:    uint64(totalChunkRecs),
-			InitFlag:       constant.TaskInitStatusFinished,
-			MigrateFlag:    constant.TaskMigrateStatusNotFinished,
-		})
-		if err != nil {
-			return err
-		}
+		chunkRecC <- totalChunkRecs
 		return nil
 	})
 
 	if err := gC.Wait(); err != nil {
+		return err
+	}
+
+	totalChunkRecs := <-chunkRecC
+
+	if totalChunkRecs == 0 {
+		err := cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	_, err := model.GetIDataMigrateSummaryRW().CreateDataMigrateSummary(ctx, &task.DataMigrateSummary{
+		TaskName:       cmt.Task.TaskName,
+		SchemaNameS:    attsRule.SchemaNameS,
+		TableNameS:     attsRule.TableNameS,
+		SchemaNameT:    attsRule.SchemaNameT,
+		TableNameT:     attsRule.TableNameT,
+		SnapshotPointS: globalScn,
+		TableRowsS:     tableRows,
+		TableSizeS:     tableSize,
+		ChunkTotals:    uint64(totalChunkRecs),
+		InitFlag:       constant.TaskInitStatusFinished,
+		MigrateFlag:    constant.TaskMigrateStatusNotFinished,
+	})
+	if err != nil {
 		return err
 	}
 

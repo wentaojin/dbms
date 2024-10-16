@@ -90,6 +90,8 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.ORACLECharsetAL32UTF8)
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.MYSQLCharsetUTF8MB4)
+		case constant.DatabaseTypePostgresql:
+			chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.PostgreSQLCharsetUTF8)
 		default:
 			return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", d.DBTypeS)
 		}
@@ -163,6 +165,8 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.ORACLECharsetAL32UTF8)
 	case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.MYSQLCharsetUTF8MB4)
+	case constant.DatabaseTypePostgresql:
+		chunkRange = structure.NewChunkRange(d.DBTypeS, d.DBCharsetS, constant.PostgreSQLCharsetUTF8)
 	default:
 		return fmt.Errorf("the database type [%s] is not supported, please contact author or reselect", d.DBTypeS)
 	}
@@ -254,6 +258,14 @@ func ProcessDownstreamStatisticsBucket(dbTypeT, dbCharsetT string, bs []*structu
 				DBType:        dbTypeT,
 				DBCharsetFrom: dbCharsetT,
 				DBCharsetDest: constant.MYSQLCharsetUTF8MB4,
+				Bounds:        bounds,
+				BoundOffset:   newBoundOffset,
+			})
+		case constant.DatabaseTypePostgresql:
+			ranges = append(ranges, &structure.Range{
+				DBType:        dbTypeT,
+				DBCharsetFrom: dbCharsetT,
+				DBCharsetDest: constant.PostgreSQLCharsetUTF8,
 				Bounds:        bounds,
 				BoundOffset:   newBoundOffset,
 			})

@@ -18,9 +18,6 @@ package oracle
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/logger"
-	"github.com/wentaojin/dbms/utils/structure"
-	"go.uber.org/zap"
 	"hash/crc32"
 	"path/filepath"
 	"reflect"
@@ -28,6 +25,10 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/wentaojin/dbms/logger"
+	"github.com/wentaojin/dbms/utils/structure"
+	"go.uber.org/zap"
 
 	"github.com/godror/godror"
 	"github.com/shopspring/decimal"
@@ -113,14 +114,9 @@ WHERE TABLE_OWNER = '%s'
 			if err != nil {
 				return nil, err
 			}
-
 			// prefix column index need exist or match support datatype, otherwise break, continue next index
 			if i == 0 && len(bts) == 0 {
-				if !d.filterDatabaseTableColumnBucketSupportDatatype(columnProps[c]) {
-					break
-				} else {
-					columnBuckets = append(columnBuckets, bts)
-				}
+				break
 			} else if i > 0 && len(bts) == 0 {
 				continue
 			} else {

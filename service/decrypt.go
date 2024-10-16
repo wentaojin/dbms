@@ -20,6 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/golang/snappy"
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/model"
@@ -28,8 +31,6 @@ import (
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"os"
-	"strings"
 )
 
 type CompareDecrypt struct {
@@ -461,11 +462,17 @@ func Counts(ctx context.Context, serverAddr, taskName, schema string, table stri
 							return err
 						}
 					}
-					_, res, err := newDatabase.GeneralQuery(fmt.Sprintf("SELECT COUNT(1) AS CT FROM %s.%s WHERE %v", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
+					_, res, err := newDatabase.GeneralQuery(fmt.Sprintf(`SELECT COUNT(1) AS "CT" FROM %s.%s WHERE %v`, v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
 					if err != nil {
 						return err
 					}
-					size, err := stringutil.StrconvIntBitSize(res[0]["CT"], 64)
+					var counts string
+					if strings.EqualFold(res[0]["CT"], "") {
+						counts = "0"
+					} else {
+						counts = res[0]["CT"]
+					}
+					size, err := stringutil.StrconvIntBitSize(counts, 64)
 					if err != nil {
 						return err
 					}
@@ -494,11 +501,17 @@ func Counts(ctx context.Context, serverAddr, taskName, schema string, table stri
 						return err
 					}
 				}
-				_, res, err := newDatabase.GeneralQuery(fmt.Sprintf("SELECT COUNT(1) AS CT FROM %s.%s WHERE %v", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
+				_, res, err := newDatabase.GeneralQuery(fmt.Sprintf(`SELECT COUNT(1) AS "CT" FROM %s.%s WHERE %v`, v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
 				if err != nil {
 					return err
 				}
-				size, err := stringutil.StrconvIntBitSize(res[0]["CT"], 64)
+				var counts string
+				if strings.EqualFold(res[0]["CT"], "") {
+					counts = "0"
+				} else {
+					counts = res[0]["CT"]
+				}
+				size, err := stringutil.StrconvIntBitSize(counts, 64)
 				if err != nil {
 					return err
 				}
@@ -577,11 +590,17 @@ func Counts(ctx context.Context, serverAddr, taskName, schema string, table stri
 							return err
 						}
 					}
-					_, res, err := newDatabase.GeneralQuery(fmt.Sprintf("SELECT COUNT(1) AS CT FROM %s.%s WHERE %v", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
+					_, res, err := newDatabase.GeneralQuery(fmt.Sprintf(`SELECT COUNT(1) AS "CT" FROM %s.%s WHERE %v`, v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
 					if err != nil {
 						return err
 					}
-					size, err := stringutil.StrconvIntBitSize(res[0]["CT"], 64)
+					var counts string
+					if strings.EqualFold(res[0]["CT"], "") {
+						counts = "0"
+					} else {
+						counts = res[0]["CT"]
+					}
+					size, err := stringutil.StrconvIntBitSize(counts, 64)
 					if err != nil {
 						return err
 					}
@@ -611,11 +630,17 @@ func Counts(ctx context.Context, serverAddr, taskName, schema string, table stri
 						return err
 					}
 				}
-				_, res, err := newDatabase.GeneralQuery(fmt.Sprintf("SELECT COUNT(1) AS CT FROM %s.%s WHERE %v", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
+				_, res, err := newDatabase.GeneralQuery(fmt.Sprintf(`SELECT COUNT(1) AS "CT" FROM %s.%s WHERE %v`, v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
 				if err != nil {
 					return err
 				}
-				size, err := stringutil.StrconvIntBitSize(res[0]["CT"], 64)
+				var counts string
+				if strings.EqualFold(res[0]["CT"], "") {
+					counts = "0"
+				} else {
+					counts = res[0]["CT"]
+				}
+				size, err := stringutil.StrconvIntBitSize(counts, 64)
 				if err != nil {
 					return err
 				}
@@ -693,11 +718,17 @@ func Counts(ctx context.Context, serverAddr, taskName, schema string, table stri
 							return err
 						}
 					}
-					_, res, err := newDatabase.GeneralQuery(fmt.Sprintf("SELECT COUNT(1) AS CT FROM %s.%s WHERE %v", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
+					_, res, err := newDatabase.GeneralQuery(fmt.Sprintf(`SELECT COUNT(1) AS "CT" FROM %s.%s WHERE %v`, v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
 					if err != nil {
 						return err
 					}
-					size, err := stringutil.StrconvIntBitSize(res[0]["CT"], 64)
+					var counts string
+					if strings.EqualFold(res[0]["CT"], "") {
+						counts = "0"
+					} else {
+						counts = res[0]["CT"]
+					}
+					size, err := stringutil.StrconvIntBitSize(counts, 64)
 					if err != nil {
 						return err
 					}
@@ -723,11 +754,17 @@ func Counts(ctx context.Context, serverAddr, taskName, schema string, table stri
 						return err
 					}
 				}
-				_, res, err := newDatabase.GeneralQuery(fmt.Sprintf("SELECT COUNT(1) AS CT FROM %s.%s WHERE %v", v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
+				_, res, err := newDatabase.GeneralQuery(fmt.Sprintf(`SELECT COUNT(1) AS "CT" FROM %s.%s WHERE %v`, v.SchemaNameS, v.TableNameS, stringutil.BytesToString(decChunkDetailS)), args...)
 				if err != nil {
 					return err
 				}
-				size, err := stringutil.StrconvIntBitSize(res[0]["CT"], 64)
+				var counts string
+				if strings.EqualFold(res[0]["CT"], "") {
+					counts = "0"
+				} else {
+					counts = res[0]["CT"]
+				}
+				size, err := stringutil.StrconvIntBitSize(counts, 64)
 				if err != nil {
 					return err
 				}

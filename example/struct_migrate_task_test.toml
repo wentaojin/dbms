@@ -6,7 +6,7 @@ comment = "测试数据源"
 [struct-migrate-param]
 migrate-thread = 10
 create-if-not-exist = true
-enable-direct-create = false
+enable-direct-create = true
 enable-checkpoint = false
 # calltimeout，单位：秒
 call-timeout = 36000
@@ -27,7 +27,7 @@ case-field-rule-t = "1"
 schema-name-s = "marvin"
 schema-name-t = "ucccis"
 # include-table-s 迁移所有表需指定 *，特定表写具体表名
-include-table-s = ["*"]
+include-table-s = ["users"]
 exclude-table-s = []
 # sequence 设置空代表不迁移 sequence
 include-sequence-s = []

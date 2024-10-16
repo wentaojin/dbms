@@ -17,6 +17,7 @@ package oracle
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -40,15 +41,11 @@ func (d *Database) GetDatabaseRole() (string, error) {
 	return res[0]["DATABASE_ROLE"], nil
 }
 
-func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
-	_, res, err := d.GeneralQuery("SELECT MIN(CURRENT_SCN) CURRENT_SCN FROM GV$DATABASE")
-	var globalSCN uint64
+func (d *Database) GetDatabaseConsistentPos(ctx context.Context, tx *sql.Tx) (string, error) {
+	var globalSCN string
+	err := tx.QueryRowContext(ctx, "SELECT TO_CHAR(MIN(CURRENT_SCN)) CURRENT_SCN FROM GV$DATABASE").Scan(&globalSCN)
 	if err != nil {
 		return globalSCN, err
-	}
-	globalSCN, err = strconv.ParseUint(res[0]["CURRENT_SCN"], 10, 64)
-	if err != nil {
-		return globalSCN, fmt.Errorf("get oracle current snapshot scn %s parseUint failed: %v", res[0]["CURRENT_SCN"], err)
 	}
 	return globalSCN, nil
 }

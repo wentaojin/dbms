@@ -17,8 +17,9 @@ package structure
 
 import (
 	"fmt"
-	"github.com/godror/godror"
 	"strings"
+
+	"github.com/godror/godror"
 
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -85,6 +86,10 @@ func (rg *Range) ToString() (string, []interface{}) {
 			if b.Collation != constant.DataCompareDisabledCollationSettingFillEmptyString {
 				b.Collation = fmt.Sprintf("COLLATE '%s'", b.Collation)
 			}
+		case constant.DatabaseTypePostgresql:
+			if b.Collation != constant.DataCompareDisabledCollationSettingFillEmptyString {
+				b.Collation = fmt.Sprintf(`COLLATE "%s"`, b.Collation)
+			}
 		default:
 			panic(fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", rg.DBType))
 		}
@@ -148,6 +153,32 @@ func (rg *Range) ToString() (string, []interface{}) {
 				sameArgs = append(sameArgs, bound.Lower)
 			} else {
 				sameCondition = append(sameCondition, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("CONVERT(`", bound.ColumnName, "` USING '", rg.DBCharsetDest, "')"), bound.Collation))
+				sameArgs = append(sameArgs, bound.Lower)
+			}
+		}
+
+		if strings.EqualFold(rg.DBType, constant.DatabaseTypePostgresql) {
+			if strings.EqualFold(bound.Collation, "") {
+				if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = TO_DATE(?,'YYYY-MM-DD')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+				} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+					// datetimePrecision -> dataScale
+					//sameCondition = append(sameCondition, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.DatetimePrecision))
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+				} else {
+					sameCondition = append(sameCondition, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+				}
+				sameArgs = append(sameArgs, bound.Lower)
+			} else {
+				if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+					sameCondition = append(sameCondition, fmt.Sprintf("%s %s = TO_DATE(?,'YYYY-MM-DD')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+				} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+					// datetimePrecision -> dataScale
+					//sameCondition = append(sameCondition, fmt.Sprintf("%s %s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, bound.DatetimePrecision))
+					sameCondition = append(sameCondition, fmt.Sprintf("%s %s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+				} else {
+					sameCondition = append(sameCondition, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+				}
 				sameArgs = append(sameArgs, bound.Lower)
 			}
 		}
@@ -259,6 +290,80 @@ func (rg *Range) ToString() (string, []interface{}) {
 					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
 				}
 			}
+
+			if strings.EqualFold(rg.DBType, constant.DatabaseTypePostgresql) {
+				if strings.EqualFold(bound.Collation, "") {
+					if len(preConditionForLower) > 0 {
+						if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s TO_DATE(?,'YYYY-MM-DD'))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							//lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol, bound.DatetimePrecision))
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US'))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						} else {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						}
+						lowerArgs = append(append(lowerArgs, preConditionArgsForLower...), bound.Lower)
+					} else {
+						if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s TO_DATE(?,'YYYY-MM-DD'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							// lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol, bound.DatetimePrecision))
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						} else {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s ?)", stringutil.StringBuilder("\"", bound.ColumnName, "\""), lowerSymbol))
+						}
+						lowerArgs = append(lowerArgs, bound.Lower)
+					}
+
+					if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = TO_DATE(?,'YYYY-MM-DD')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+						// datetimePrecision -> dataScale
+						//preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.DatetimePrecision))
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					} else {
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					}
+					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
+				} else {
+					if len(preConditionForLower) > 0 {
+						if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s %s TO_DATE(?,'YYYY-MM-DD'))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol))
+						} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							// lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol, bound.DatetimePrecision))
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US'))", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol))
+						} else {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForLower, " AND "), stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), lowerSymbol))
+						}
+						lowerArgs = append(append(lowerArgs, preConditionArgsForLower...), bound.Lower)
+					} else {
+						if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s %s TO_DATE(?,'YYYY-MM-DD'))", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol))
+						} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							//lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol, bound.DatetimePrecision))
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US'))", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol))
+						} else {
+							lowerCondition = append(lowerCondition, fmt.Sprintf("(%s %s %s ?)", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, lowerSymbol))
+						}
+						lowerArgs = append(lowerArgs, bound.Lower)
+					}
+
+					if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s %s = TO_DATE(?,'YYYY-MM-DD')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+					} else if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, bound.Datatype) {
+						// datetimePrecision -> dataScale
+						//preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s %s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, bound.DatetimePrecision))
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s %s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+					} else {
+						preConditionForLower = append(preConditionForLower, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+					}
+					preConditionArgsForLower = append(preConditionArgsForLower, bound.Lower)
+				}
+			}
 		}
 
 		if bound.HasUpper {
@@ -353,6 +458,80 @@ func (rg *Range) ToString() (string, []interface{}) {
 					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
 				}
 			}
+
+			if strings.EqualFold(rg.DBType, constant.DatabaseTypePostgresql) {
+				if strings.EqualFold(bound.Collation, "") {
+					if len(preConditionForUpper) > 0 {
+						if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s TO_DATE(?,'YYYY-MM-DD'))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							//upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol, bound.DatetimePrecision))
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US'))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						} else {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s ?)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						}
+						upperArgs = append(append(upperArgs, preConditionArgsForUpper...), bound.Upper)
+					} else {
+						if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s TO_DATE(?,'YYYY-MM-DD'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							// upperCondition = append(upperCondition, fmt.Sprintf("(%s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol, bound.DatetimePrecision))
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US'))", stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						} else {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s ?)", stringutil.StringBuilder("\"", bound.ColumnName, "\""), upperSymbol))
+						}
+						upperArgs = append(upperArgs, bound.Upper)
+					}
+
+					if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = TO_DATE(?,'YYYY-MM-DD')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+						// datetimePrecision -> dataScale
+						// preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("\"", bound.ColumnName, "\""), bound.DatetimePrecision))
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US')", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					} else {
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s = ?", stringutil.StringBuilder("\"", bound.ColumnName, "\"")))
+					}
+					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
+				} else {
+					if len(preConditionForUpper) > 0 {
+						if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s TO_DATE(?,'YYYY-MM-DD'))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol))
+						} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							//upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol, bound.DatetimePrecision))
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US'))", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol))
+						} else {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s AND %s %s %s ?)", stringutil.StringJoin(preConditionForUpper, " AND "), stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol))
+						}
+						upperArgs = append(append(upperArgs, preConditionArgsForUpper...), bound.Upper)
+					} else {
+						if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s TO_DATE(?,'YYYY-MM-DD'))", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol))
+						} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+							// datetimePrecision -> dataScale
+							//upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s'))", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol, bound.DatetimePrecision))
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US'))", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol))
+						} else {
+							upperCondition = append(upperCondition, fmt.Sprintf("(%s %s %s ?)", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, upperSymbol))
+						}
+						upperArgs = append(upperArgs, bound.Upper)
+					}
+
+					if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnDateSubtypes, bound.Datatype) {
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s %s = TO_DATE(?,'YYYY-MM-DD')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+					} else if stringutil.IsContainedString(constant.DataComparePostgresCompatibleDatabaseColumnTimeSubtypes, bound.Datatype) {
+						// datetimePrecision -> dataScale
+						// preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s %s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.FF%s')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation, bound.DatetimePrecision))
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s %s = TO_TIMESTAMP(?,'YYYY-MM-DD HH24:MI:SS.US')", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+					} else {
+						preConditionForUpper = append(preConditionForUpper, fmt.Sprintf("%s %s = ?", stringutil.StringBuilder("CONVERT_TO(\"", bound.ColumnName, "\",'", rg.DBCharsetDest, "')"), bound.Collation))
+					}
+					preConditionArgsForUpper = append(preConditionArgsForUpper, bound.Upper)
+				}
+			}
 		}
 	}
 
@@ -367,6 +546,8 @@ func (rg *Range) ToString() (string, []interface{}) {
 				return godror.ReplaceQuestionPlacholders(strings.Join(lowerCondition, " OR ")), lowerArgs
 			case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 				return strings.Join(lowerCondition, " OR "), lowerArgs
+			case constant.DatabaseTypePostgresql:
+				return stringutil.ReplaceQuestionPlacholders(strings.Join(lowerCondition, " OR "), '?', '$'), lowerArgs
 			default:
 				panic(fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", rg.DBType))
 			}
@@ -378,6 +559,8 @@ func (rg *Range) ToString() (string, []interface{}) {
 				return godror.ReplaceQuestionPlacholders(strings.Join(upperCondition, " OR ")), upperArgs
 			case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 				return strings.Join(upperCondition, " OR "), upperArgs
+			case constant.DatabaseTypePostgresql:
+				return stringutil.ReplaceQuestionPlacholders(strings.Join(upperCondition, " OR "), '?', '$'), upperArgs
 			default:
 				panic(fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", rg.DBType))
 			}
@@ -388,6 +571,8 @@ func (rg *Range) ToString() (string, []interface{}) {
 			return godror.ReplaceQuestionPlacholders(fmt.Sprintf("(%s) AND (%s)", strings.Join(lowerCondition, " OR "), strings.Join(upperCondition, " OR "))), append(lowerArgs, upperArgs...)
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 			return fmt.Sprintf("(%s) AND (%s)", strings.Join(lowerCondition, " OR "), strings.Join(upperCondition, " OR ")), append(lowerArgs, upperArgs...)
+		case constant.DatabaseTypePostgresql:
+			return stringutil.ReplaceQuestionPlacholders(fmt.Sprintf("(%s) AND (%s)", strings.Join(lowerCondition, " OR "), strings.Join(upperCondition, " OR ")), '?', '$'), append(lowerArgs, upperArgs...)
 		default:
 			panic(fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", rg.DBType))
 		}
@@ -399,6 +584,8 @@ func (rg *Range) ToString() (string, []interface{}) {
 				return godror.ReplaceQuestionPlacholders(strings.Join(sameCondition, " AND ")), sameArgs
 			case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 				return strings.Join(sameCondition, " AND "), sameArgs
+			case constant.DatabaseTypePostgresql:
+				return stringutil.ReplaceQuestionPlacholders(strings.Join(sameCondition, " AND "), '?', '$'), sameArgs
 			default:
 				panic(fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", rg.DBType))
 			}
@@ -410,6 +597,8 @@ func (rg *Range) ToString() (string, []interface{}) {
 				return godror.ReplaceQuestionPlacholders(fmt.Sprintf("(%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(lowerCondition, " OR "))), append(sameArgs, lowerArgs...)
 			case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 				return fmt.Sprintf("(%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(lowerCondition, " OR ")), append(sameArgs, lowerArgs...)
+			case constant.DatabaseTypePostgresql:
+				return stringutil.ReplaceQuestionPlacholders(fmt.Sprintf("(%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(lowerCondition, " OR ")), '?', '$'), append(sameArgs, lowerArgs...)
 			default:
 				panic(fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", rg.DBType))
 			}
@@ -421,6 +610,8 @@ func (rg *Range) ToString() (string, []interface{}) {
 				return godror.ReplaceQuestionPlacholders(fmt.Sprintf("(%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(upperCondition, " OR "))), append(sameArgs, upperArgs...)
 			case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 				return fmt.Sprintf("(%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(upperCondition, " OR ")), append(sameArgs, upperArgs...)
+			case constant.DatabaseTypePostgresql:
+				return stringutil.ReplaceQuestionPlacholders(fmt.Sprintf("(%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(upperCondition, " OR ")), '?', '$'), append(sameArgs, upperArgs...)
 			default:
 				panic(fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", rg.DBType))
 			}
@@ -431,6 +622,8 @@ func (rg *Range) ToString() (string, []interface{}) {
 			return godror.ReplaceQuestionPlacholders(fmt.Sprintf("(%s) AND (%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(lowerCondition, " OR "), strings.Join(upperCondition, " OR "))), append(append(sameArgs, lowerArgs...), upperArgs...)
 		case constant.DatabaseTypeMySQL, constant.DatabaseTypeTiDB:
 			return fmt.Sprintf("(%s) AND (%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(lowerCondition, " OR "), strings.Join(upperCondition, " OR ")), append(append(sameArgs, lowerArgs...), upperArgs...)
+		case constant.DatabaseTypePostgresql:
+			return stringutil.ReplaceQuestionPlacholders(fmt.Sprintf("(%s) AND (%s) AND (%s)", strings.Join(sameCondition, " AND "), strings.Join(lowerCondition, " OR "), strings.Join(upperCondition, " OR ")), '?', '$'), append(append(sameArgs, lowerArgs...), upperArgs...)
 		default:
 			panic(fmt.Errorf("the database type [%s] range chunk isn't support, please contact author or reselect", rg.DBType))
 		}

@@ -43,12 +43,13 @@
   - Schema NUMBER 数据类型列采样或全扫描，识别 NUMBER 数据类型适配建议
 - Postgres -> MYSQL 兼容性数据库迁移服务
   - Schema 表结构转换，支持 schema、表、列级别和默认值自定义
+  - Schema 表数据迁移，支持 sql 一致性或非一致性迁移
 - TiDB -> ORACLE 兼容性数据库迁移服务
   - Schema 表数据校验，支持 schema、表、列级别路由规则、配置上下游快照数据校验以及自定义筛选过滤字段
 - ...
 
 **未来计划**
-- POSTGRESQL 数据库数据迁移到 MYSQL 兼容性数据库
+- POSTGRESQL 数据库 CSV 数据迁移到 MYSQL 兼容性数据库
 - MYSQL 兼容性数据库表结构迁移至 ORACLE 数据库
 - MYSQL 兼容性数据库表结构与 ORACLE 数据库表结构对比
 - ORACLE 数据实时同步到 MYSQL 兼容性数据库（基于 logminer）

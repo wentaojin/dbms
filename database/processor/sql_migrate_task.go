@@ -17,7 +17,12 @@ package processor
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/logger"
@@ -28,9 +33,6 @@ import (
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type SqlMigrateTask struct {
@@ -96,12 +98,17 @@ func (smt *SqlMigrateTask) Init() error {
 
 	var globalScn string
 
-	globalScnS, err := smt.DatabaseS.GetDatabaseConsistentPos()
-	if err != nil {
+	if err := smt.DatabaseS.Transaction(smt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+		func(ctx context.Context, tx *sql.Tx) error {
+			globalScn, err = smt.DatabaseS.GetDatabaseConsistentPos(ctx, tx)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}); err != nil {
 		return err
 	}
-
-	globalScn = strconv.FormatUint(globalScnS, 10)
 
 	logger.Info("sql migrate task init sql",
 		zap.String("task_name", smt.Task.TaskName),

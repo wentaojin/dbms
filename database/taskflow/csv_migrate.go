@@ -17,10 +17,11 @@ package taskflow
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"github.com/wentaojin/dbms/database/processor"
-	"strconv"
 	"time"
+
+	"github.com/wentaojin/dbms/database/processor"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
@@ -87,6 +88,46 @@ func (cmt *CsvMigrateTask) Start() error {
 			}
 		}
 
+		dbVersionS, err := databaseS.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		dbRoles, err := databaseS.GetDatabaseRole()
+		if err != nil {
+			return err
+		}
+		var globalScnS string
+		if err := databaseS.Transaction(cmt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+			func(ctx context.Context, tx *sql.Tx) error {
+				globalScnS, err = databaseS.GetDatabaseConsistentPos(ctx, tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}); err != nil {
+			return err
+		}
+		err = database.IDatabaseRun(&processor.CsvMigrateTask{
+			Ctx:             cmt.Ctx,
+			Task:            cmt.Task,
+			DBRoleS:         dbRoles,
+			DBVersionS:      dbVersionS,
+			DBCharsetS:      stringutil.StringUpper(cmt.DatasourceS.ConnectCharset),
+			DBCharsetT:      stringutil.StringUpper(cmt.DatasourceT.ConnectCharset),
+			DatabaseS:       databaseS,
+			DatabaseT:       databaseT,
+			SchemaNameS:     schemaRoute.SchemaNameS,
+			SchemaNameT:     schemaRoute.SchemaNameT,
+			GlobalSnapshotS: globalScnS,
+			CsvParams:       cmt.MigrateParams,
+			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		})
+		if err != nil {
+			return err
+		}
+
 	case constant.TaskFlowOracleToMySQL:
 		databaseS, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceS, schemaRoute.SchemaNameS, int64(cmt.MigrateParams.CallTimeout))
 		if err != nil {
@@ -109,41 +150,48 @@ func (cmt *CsvMigrateTask) Start() error {
 		if cmt.MigrateParams.EnableImportFeature {
 			return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] database [mysql] isn't support, please setting enable-import-feature = false and retry", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow)
 		}
+
+		dbVersionS, err := databaseS.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		dbRoles, err := databaseS.GetDatabaseRole()
+		if err != nil {
+			return err
+		}
+		var globalScnS string
+		if err := databaseS.Transaction(cmt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+			func(ctx context.Context, tx *sql.Tx) error {
+				globalScnS, err = databaseS.GetDatabaseConsistentPos(ctx, tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}); err != nil {
+			return err
+		}
+		err = database.IDatabaseRun(&processor.CsvMigrateTask{
+			Ctx:             cmt.Ctx,
+			Task:            cmt.Task,
+			DBRoleS:         dbRoles,
+			DBVersionS:      dbVersionS,
+			DBCharsetS:      stringutil.StringUpper(cmt.DatasourceS.ConnectCharset),
+			DBCharsetT:      stringutil.StringUpper(cmt.DatasourceT.ConnectCharset),
+			DatabaseS:       databaseS,
+			DatabaseT:       databaseT,
+			SchemaNameS:     schemaRoute.SchemaNameS,
+			SchemaNameT:     schemaRoute.SchemaNameT,
+			GlobalSnapshotS: globalScnS,
+			CsvParams:       cmt.MigrateParams,
+			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		})
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow, schemaRoute.SchemaNameS)
-	}
-
-	dbVersionS, err := databaseS.GetDatabaseVersion()
-	if err != nil {
-		return err
-	}
-	dbRoles, err := databaseS.GetDatabaseRole()
-	if err != nil {
-		return err
-	}
-	globalScnS, err := databaseS.GetDatabaseConsistentPos()
-	if err != nil {
-		return err
-	}
-
-	err = database.IDatabaseRun(&processor.CsvMigrateTask{
-		Ctx:             cmt.Ctx,
-		Task:            cmt.Task,
-		DBRoleS:         dbRoles,
-		DBVersionS:      dbVersionS,
-		DBCharsetS:      stringutil.StringUpper(cmt.DatasourceS.ConnectCharset),
-		DBCharsetT:      stringutil.StringUpper(cmt.DatasourceT.ConnectCharset),
-		DatabaseS:       databaseS,
-		DatabaseT:       databaseT,
-		SchemaNameS:     schemaRoute.SchemaNameS,
-		SchemaNameT:     schemaRoute.SchemaNameT,
-		GlobalSnapshotS: strconv.FormatUint(globalScnS, 10),
-		CsvParams:       cmt.MigrateParams,
-		WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
-		ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
-	})
-	if err != nil {
-		return err
 	}
 
 	logger.Info("data migrate task",

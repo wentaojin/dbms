@@ -121,6 +121,30 @@ var (
 		BuildInMySQLDatatypeTinyText,
 		BuildInMySQLDatatypeMediumText,
 		BuildInMySQLDatatypeLongText}
+
+	DataComparePostgresCompatibleDatabaseSupportDecimalSubtypes = []string{
+		BuildInPostgresDatatypeInteger,
+		BuildInPostgresDatatypeSmallInt,
+		BuildInPostgresDatatypeBigInt,
+		BuildInPostgresDatatypeNumeric,
+		BuildInPostgresDatatypeDecimal,
+		BuildInPostgresDatatypeMoney,
+		BuildInPostgresDatatypeReal,
+		BuildInPostgresDatatypeDoublePrecision,
+	}
+	DataComparePostgresCompatibleDatabaseColumnTimeSubtypes = []string{
+		BuildInPostgresDatatypeTimeWithoutTimeZone,
+		BuildInPostgresDatatypeTimestampWithoutTimeZone,
+		BuildInPostgresDatatypeInterval,
+	}
+	DataComparePostgresCompatibleDatabaseColumnDateSubtypes = []string{
+		BuildInPostgresDatatypeDate,
+	}
+	DataComparePostgresCompatibleDatabaseColumnDatatypeSupportCollation = []string{
+		BuildInPostgresDatatypeText,
+		BuildInPostgresDatatypeCharacterVarying,
+		BuildInPostgresDatatypeCharacter,
+	}
 )
 
 const (

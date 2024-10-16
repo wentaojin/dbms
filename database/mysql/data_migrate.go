@@ -16,6 +16,8 @@ limitations under the License.
 package mysql
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -49,7 +51,7 @@ func (d *Database) GetDatabaseVersion() (string, error) {
 	return version, nil
 }
 
-func (d *Database) GetDatabaseConsistentPos() (uint64, error) {
+func (d *Database) GetDatabaseConsistentPos(ctx context.Context, tx *sql.Tx) (string, error) {
 	//TODO implement me
 	panic("implement me")
 }
