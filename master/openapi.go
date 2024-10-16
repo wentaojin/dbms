@@ -545,6 +545,8 @@ func (s *Server) upsertDataCompareTask(ctx context.Context, req openapi.APIPutDa
 			CompareConditionRangeT: *r.CompareConditionRangeT,
 			IgnoreConditionFields:  *r.IgnoreConditionFields,
 			IgnoreSelectFields:     *r.IgnoreSelectFields,
+			SqlHintS:               *r.SqlHintS,
+			SqlHintT:               *r.SqlHintT,
 		})
 	}
 
