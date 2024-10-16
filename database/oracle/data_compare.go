@@ -56,19 +56,24 @@ func (d *Database) GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS
 	for _, uk := range ukRes {
 		ci[uk["CONSTRAINT_NAME"]] = uk["COLUMN_LIST"]
 	}
-	normalRes, err := d.GetDatabaseTableNormalIndex(schemaNameS, tableNameS)
-	if err != nil {
-		return nil, err
-	}
-	for _, nr := range normalRes {
-		ci[nr["INDEX_NAME"]] = nr["COLUMN_LIST"]
-	}
 	uniqueRes, err := d.GetDatabaseTableUniqueIndex(schemaNameS, tableNameS)
 	if err != nil {
 		return nil, err
 	}
 	for _, ur := range uniqueRes {
 		ci[ur["INDEX_NAME"]] = ur["COLUMN_LIST"]
+	}
+	// when the database table has a primary key, unique key, or unique index, simply ignore the common index and select only from the primary key, unique key, or unique index options.
+	// there is a problem with stats_histograms in the tidb database: the NDV of a common field may be higher than that of the PK. This problem may cause the DBMS to select a common field (such as a Chinese field) to divide the chunk, because the sorting of Chinese in GBK and UTF8 is inconsistent, and a large number of FIX
+	// issue: https://github.com/wentaojin/dbms/issues/70
+	if len(ci) == 0 {
+		normalRes, err := d.GetDatabaseTableNormalIndex(schemaNameS, tableNameS)
+		if err != nil {
+			return nil, err
+		}
+		for _, nr := range normalRes {
+			ci[nr["INDEX_NAME"]] = nr["COLUMN_LIST"]
+		}
 	}
 	return ci, nil
 }
