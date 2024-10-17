@@ -18,13 +18,14 @@ package etcdutil
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/model"
-	"github.com/wentaojin/dbms/model/params"
-	"github.com/wentaojin/dbms/model/task"
 	"math"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/wentaojin/dbms/model"
+	"github.com/wentaojin/dbms/model/params"
+	"github.com/wentaojin/dbms/model/task"
 
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -286,10 +287,10 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 				if err != nil {
 					return "", err
 				}
-				return "", fmt.Errorf("there are not avaliable instance in the datasourceT [%s] machine [%s] currently, the csv migrate task [enable-import-feature] require need bound datasourceT machine worker, please scale-out worker instance or waiting free worker:\n %v",
-					datasourceT.DatasourceName, datasourceT.Host, jsonStr)
+				return "", fmt.Errorf("there are not avaliable instance in the datasourceT [%s] machine [%s] currently, the csv migrate task [enable-import-feature = true] require need bound datasourceT machine worker, please scale-out worker instance in the machine [%s] or set the params  [enable-import-feature = false] or waiting free worker:\n %v",
+					datasourceT.DatasourceName, datasourceT.Host, datasourceT.Host, jsonStr)
 			case len(csvFreeWorker) == 0 && len(csvBusyWorkerM) == 0:
-				return "", fmt.Errorf("there are not avaliable instance in the datasourceT [%s] machine [%s] currently, the csv migrate task [enable-import-feature] require need bound datasourceT machine worker, please scale-out worker instance in the machine [%s]",
+				return "", fmt.Errorf("there are not avaliable instance in the datasourceT [%s] machine [%s] currently, the csv migrate task [enable-import-feature = true] require need bound datasourceT machine worker, please scale-out worker instance in the machine [%s] or set the params  [enable-import-feature = false]",
 					datasourceT.DatasourceName, datasourceT.Host, datasourceT.Host)
 			default:
 				elem, err := stringutil.GetRandomElem(csvFreeWorker)

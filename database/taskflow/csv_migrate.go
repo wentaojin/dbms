@@ -45,6 +45,7 @@ type CsvMigrateTask struct {
 
 func (cmt *CsvMigrateTask) Start() error {
 	schemaTaskTime := time.Now()
+
 	logger.Info("data migrate task get schema route",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(cmt.Ctx, &rule.SchemaRouteRule{TaskName: cmt.Task.TaskName})
@@ -189,6 +190,156 @@ func (cmt *CsvMigrateTask) Start() error {
 		})
 		if err != nil {
 			return err
+		}
+
+	case constant.TaskFlowPostgresToTiDB:
+		databaseS, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceS, "", int64(cmt.MigrateParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+		databaseT, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceT, "", int64(cmt.MigrateParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
+
+		logger.Info("data migrate task inspect migrate task",
+			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
+		_, err = processor.InspectPostgresMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
+
+		if cmt.MigrateParams.EnableImportFeature {
+			dbVersionT, err := databaseT.GetDatabaseVersion()
+			if err != nil {
+				return err
+			}
+			if stringutil.VersionOrdinal(dbVersionT) < stringutil.VersionOrdinal(constant.TIDBDatabaseImportIntoSupportVersion) {
+				return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] database [tidb] version [%v] isn't support, require version [>=%s], please setting enable-import-feature = false and retry", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow, dbVersionT, constant.TIDBDatabaseImportIntoSupportVersion)
+			}
+		}
+
+		dbVersionS, err := databaseS.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		dbRoles, err := databaseS.GetDatabaseRole()
+		if err != nil {
+			return err
+		}
+
+		var (
+			globalScnS string
+			txn        *sql.Tx
+		)
+		if cmt.MigrateParams.EnableConsistentRead {
+			txn, err = databaseS.BeginTxn(cmt.Ctx, &sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+			})
+			if err != nil {
+				return err
+			}
+			globalScnS, err = databaseS.GetDatabaseConsistentPos(cmt.Ctx, txn)
+			if err != nil {
+				return err
+			}
+		}
+		err = database.IDatabaseRun(&processor.CsvMigrateTask{
+			Ctx:             cmt.Ctx,
+			Task:            cmt.Task,
+			DBRoleS:         dbRoles,
+			DBVersionS:      dbVersionS,
+			DBCharsetS:      stringutil.StringUpper(cmt.DatasourceS.ConnectCharset),
+			DBCharsetT:      stringutil.StringUpper(cmt.DatasourceT.ConnectCharset),
+			DatabaseS:       databaseS,
+			DatabaseT:       databaseT,
+			SchemaNameS:     schemaRoute.SchemaNameS,
+			SchemaNameT:     schemaRoute.SchemaNameT,
+			GlobalSnapshotS: globalScnS,
+			CsvParams:       cmt.MigrateParams,
+			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		})
+		if err != nil {
+			return err
+		}
+		if cmt.MigrateParams.EnableConsistentRead {
+			if err = databaseS.CommitTxn(txn); err != nil {
+				return err
+			}
+		}
+	case constant.TaskFlowPostgresToMySQL:
+		databaseS, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceS, "", int64(cmt.MigrateParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+		databaseT, err = database.NewDatabase(cmt.Ctx, cmt.DatasourceT, "", int64(cmt.MigrateParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
+
+		logger.Info("data migrate task inspect migrate task",
+			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
+		_, err = processor.InspectPostgresMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
+
+		if cmt.MigrateParams.EnableImportFeature {
+			return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] database [mysql] isn't support, please setting enable-import-feature = false and retry", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow)
+		}
+
+		dbVersionS, err := databaseS.GetDatabaseVersion()
+		if err != nil {
+			return err
+		}
+		dbRoles, err := databaseS.GetDatabaseRole()
+		if err != nil {
+			return err
+		}
+		var (
+			globalScnS string
+			txn        *sql.Tx
+		)
+		if cmt.MigrateParams.EnableConsistentRead {
+			txn, err = databaseS.BeginTxn(cmt.Ctx, &sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+			})
+			if err != nil {
+				return err
+			}
+			globalScnS, err = databaseS.GetDatabaseConsistentPos(cmt.Ctx, txn)
+			if err != nil {
+				return err
+			}
+		}
+		err = database.IDatabaseRun(&processor.CsvMigrateTask{
+			Ctx:             cmt.Ctx,
+			Task:            cmt.Task,
+			DBRoleS:         dbRoles,
+			DBVersionS:      dbVersionS,
+			DBCharsetS:      stringutil.StringUpper(cmt.DatasourceS.ConnectCharset),
+			DBCharsetT:      stringutil.StringUpper(cmt.DatasourceT.ConnectCharset),
+			DatabaseS:       databaseS,
+			DatabaseT:       databaseT,
+			SchemaNameS:     schemaRoute.SchemaNameS,
+			SchemaNameT:     schemaRoute.SchemaNameT,
+			GlobalSnapshotS: globalScnS,
+			CsvParams:       cmt.MigrateParams,
+			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		})
+		if err != nil {
+			return err
+		}
+		if cmt.MigrateParams.EnableConsistentRead {
+			if err = databaseS.CommitTxn(txn); err != nil {
+				return err
+			}
 		}
 	default:
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow, schemaRoute.SchemaNameS)

@@ -92,6 +92,6 @@ enable-consistent-read = false
 # 3，csv 数据文件字符集、字段分隔符、字段定定界符号、NULL 值映射、行分隔符无需单独配置，自动继承 csv-migrate-params 值
 # 4，csv 数据导入所在目标表必须是空表，若非空表，导入数据报错
 # 5，csv 数据数据导入功能属于有状态任务，enable-import-feature 参数一旦创建，则该参数的修改无法修改，即无法从 false -> true，true -> false，除非是新创建任务重新开始
-enable-import-feature = true
+enable-import-feature = false
 # 参数以 Key-Value 形式配置（具体以下游数据库对应参数配置为准）
 csv-import-params = {}

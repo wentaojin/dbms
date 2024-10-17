@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS marvin00(
     c01 char(10)  not null default 'kp',
     c02 char(255),
     c03 char(355),
-    nc00 national character not null default 'pl',
+    nc00 national character(20) not null default 'pl',
     nc01 national character(10),
     nc02 char(255),
     nc03 char(355),
@@ -59,7 +59,29 @@ CREATE TABLE IF NOT EXISTS marvin00(
     txd00 txid_snapshot
 );
 
-comment on column marvin00.nc00 is '您好';
+
+INSERT INTO marvin00 (
+    i00, i01, i02, b00, b01, b02, r00, n00, n01, n02, 
+    d00, d01, d02, m00, c00, c01, c02, c03, nc00, nc01, 
+    nc02, nc03, v00, v01, v02, v03, nv00, nv01, nv02, 
+    nv03, de00, t00, t01, t02, it00, in01, by00, tx00, 
+    cr00, in00, mc00, ud00, x00, js, vec00, tq00, ar00, 
+    po00, li00, ls00, bx00, ph, py, cl00, txd00
+) VALUES (
+    2, 32767, 9223372036854775807, B'1', B'1010101010', TRUE, 3.14, 123.456, 1234567890, 123.45, 
+    123.456, 12345678, 1234.56, 1234.56, 'A', 'example', 'long string here', 'very long string here', 
+    'example', 'example', 'long string here', 'very long string here', 'example', 'ex', 'very long string here', 
+    'very very long string here', 'example', 'ex', 'very long string here', 'very very long string here', 
+    '2024-01-01', '12:00:00', '2024-01-01 12:00:00', '2024-01-01 12:00:00.123', '1 day', '1 hour', 
+    E'\\xdeadbeef', 'this is a text field', '192.168.1.0/24', '192.168.1.1', '08:00:27:00:00:01', 
+    '123e4567-e89b-12d3-a456-426614174000', '<root><child>value</child></root>', '{"key": "value"}', 
+    'the quick brown fox jumps over the lazy dog', 'the & quick', ARRAY[['text1','text2'],['text3','text4']], 
+    '(1.23,4.56)', '(1,2,3,4)', '((1,2),(3,4))', '(1.23,4.56,7.89,10.11)', 
+    '((1.23,4.56),(7.89,10.11))', '((1,2),(3,4),(5,6))', '<(1.23,4.56),7.89>', 
+    '1000:2000:'
+);
+
+COMMENT ON COLUMN marvin00.nc00 IS '您好';
 ALTER TABLE marvin00 ADD CONSTRAINT c02_consnull CHECK (c02 is not null);
 CREATE UNIQUE INDEX UNIQ_COMPLEX ON marvin.marvin00(c00,c01);
 CREATE INDEX idx_nv00 on marvin.marvin00 using hash(nv00);

@@ -19,14 +19,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/database/taskflow"
 	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/etcdutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
@@ -382,26 +383,8 @@ func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error
 		return err
 	}
 
-	if !migrateParams.EnableCheckpoint {
-		logger.Warn("stmt migrate task clear task records",
-			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-		err = model.Transaction(ctx, func(txnCtx context.Context) error {
-			err = model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{taskInfo.TaskName})
-			if err != nil {
-				return err
-			}
-			err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(txnCtx, []string{taskInfo.TaskName})
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
+	switch taskInfo.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 		dm := &taskflow.CsvMigrateTask{
 			Ctx:           ctx,
 			Task:          taskInfo,
@@ -413,8 +396,8 @@ func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error
 		if err != nil {
 			return err
 		}
-	} else {
-		return fmt.Errorf("current csv migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
+	default:
+		return fmt.Errorf("the csv migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}
 
 	// status

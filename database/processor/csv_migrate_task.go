@@ -118,26 +118,39 @@ func (cmt *CsvMigrateTask) Init() error {
 		databaseTaskTablesMap[tabName] = struct{}{}
 	}
 
-	if !cmt.CsvParams.EnableCheckpoint {
-		err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(cmt.Ctx, []string{cmt.Task.TaskName})
-		if err != nil {
-			return err
-		}
-		err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(cmt.Ctx, []string{cmt.Task.TaskName})
-		if err != nil {
-			return err
-		}
-	}
-	logger.Warn("csv migrate task checkpoint skip",
+	logger.Warn("csv migrate task checkpoint action",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
 		zap.Bool("enable_checkpoint", cmt.CsvParams.EnableCheckpoint))
 
+	if !cmt.CsvParams.EnableCheckpoint {
+		logger.Warn("stmt migrate task clear task records",
+			zap.String("task_name", cmt.Task.TaskName),
+			zap.String("task_mode", cmt.Task.TaskMode),
+			zap.String("task_flow", cmt.Task.TaskFlow))
+
+		err = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+			err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{cmt.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(txnCtx, []string{cmt.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	logger.Info("csv migrate task compare table",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow))
+
 	// compare the task table
 	// the database task table is exist, and the config task table isn't exist, the clear the database task table
 	summaries, err := model.GetIDataMigrateSummaryRW().FindDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{TaskName: cmt.Task.TaskName, SchemaNameS: cmt.SchemaNameS})
@@ -378,21 +391,32 @@ func (cmt *CsvMigrateTask) Init() error {
 						if err != nil {
 							return err
 						}
-						return nil
+					} else {
+						err = cmt.ProcessChunkScan(
+							gCtx,
+							cmt.GlobalSnapshotS,
+							tableRows,
+							tableSize,
+							attsRule)
+						if err != nil {
+							return err
+						}
+					}
+				case constant.DatabaseTypePostgresql:
+					err = cmt.ProcessStatisticsScan(
+						gCtx,
+						dbTypeS,
+						cmt.GlobalSnapshotS,
+						tableRows,
+						tableSize,
+						attsRule)
+					if err != nil {
+						return err
 					}
 				default:
 					return fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] database type [%s] can't support, please contact author or retry", cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, dbTypeS)
 				}
 
-				err = cmt.ProcessChunkScan(
-					gCtx,
-					cmt.GlobalSnapshotS,
-					tableRows,
-					tableSize,
-					attsRule)
-				if err != nil {
-					return err
-				}
 				logger.Info("csv migrate task init table finished",
 					zap.String("task_name", cmt.Task.TaskName),
 					zap.String("task_mode", cmt.Task.TaskMode),
@@ -596,6 +620,16 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 			zap.String("schema_name_s", s.SchemaNameS),
 			zap.String("table_name_s", s.TableNameS))
 
+		var convertDBCharsetS string
+		switch cmt.Task.TaskFlow {
+		case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
+			convertDBCharsetS = constant.MigrateOracleCharsetStringConvertMapping[cmt.DBCharsetS]
+		case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+			convertDBCharsetS = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[cmt.DBCharsetS]
+		default:
+			return fmt.Errorf("the task_name [%s] schema_name_s [%s] task_mode [%s] task_flow [%s] prepare isn't support, please contact author", cmt.Task.TaskName, s.SchemaNameS, cmt.Task.TaskMode, cmt.Task.TaskFlow)
+		}
+
 		g := errconcurrent.NewGroup()
 		g.SetLimit(int(cmt.CsvParams.SqlThreadS))
 
@@ -641,7 +675,7 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 					BufioSize:  constant.DefaultMigrateTaskBufferIOSize,
 					Dmt:        dt,
 					DatabaseS:  cmt.DatabaseS,
-					DBCharsetS: constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(cmt.DBCharsetS)],
+					DBCharsetS: convertDBCharsetS,
 					DBCharsetT: stringutil.StringUpper(cmt.DBCharsetT),
 					TaskParams: cmt.CsvParams,
 					ReadChan:   make(chan []string, constant.DefaultMigrateTaskQueueSize),
@@ -890,6 +924,7 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 			dbTypeT := dbTypeSli[1]
 			switch stringutil.StringUpper(dbTypeT) {
 			case constant.DatabaseTypeTiDB:
+				// require >=v7.5
 				var (
 					escape       string
 					importParams ImportTiDBParams
@@ -932,7 +967,7 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 					return err
 				}
 
-				// clear data dir
+				// clear csv data dir
 				err = stringutil.RemoveAllDir(outCsvDir)
 				if err != nil {
 					return err

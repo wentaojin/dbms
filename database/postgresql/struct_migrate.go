@@ -1047,23 +1047,25 @@ func (d *Database) GetDatabaseTableChunkData(querySQL string, queryArgs []interf
 	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
 	defer cancel()
 
-	txn, err := d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
-	if err != nil {
-		return err
-	}
-
 	sqlSlis := stringutil.StringSplit(querySQL, constant.StringSeparatorSemicolon)
 	sliLen := len(sqlSlis)
 
-	var rows *sql.Rows
+	var (
+		txn  *sql.Tx
+		rows *sql.Rows
+	)
 
 	if sliLen == 1 {
-		rows, err = txn.QueryContext(ctx, sqlSlis[0], queryArgs...)
+		rows, err = d.QueryContext(ctx, sqlSlis[0], queryArgs...)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 	} else if sliLen == 2 {
+		txn, err = d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+		if err != nil {
+			return err
+		}
 		// SET TRANSACTION SNAPSHOT '000003A1-1';
 		_, err = txn.ExecContext(ctx, sqlSlis[0])
 		if err != nil {
@@ -1149,16 +1151,220 @@ func (d *Database) GetDatabaseTableChunkData(querySQL string, queryArgs []interf
 		dataChan <- batchRowsData
 	}
 
-	if err = d.CommitTxn(txn); err != nil {
-		return err
+	// transaction commit
+	if sliLen == 2 {
+		if err = d.CommitTxn(txn); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interface{}, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
-	//TODO implement me
-	panic("implement me")
+	var (
+		databaseTypes []string
+		err           error
+	)
+	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
+	columnNameOrdersCounts := len(columnNameOrders)
+	rowData := make([]string, columnNameOrdersCounts)
+
+	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
+
+	for i, c := range columnNameOrders {
+		columnNameOrderIndexMap[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	sqlSlis := stringutil.StringSplit(querySQL, constant.StringSeparatorSemicolon)
+	sliLen := len(sqlSlis)
+
+	var (
+		txn  *sql.Tx
+		rows *sql.Rows
+	)
+
+	if sliLen == 1 {
+		rows, err = d.QueryContext(ctx, sqlSlis[0], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else if sliLen == 2 {
+		txn, err = d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+		if err != nil {
+			return err
+		}
+		// SET TRANSACTION SNAPSHOT '000003A1-1';
+		_, err = txn.ExecContext(ctx, sqlSlis[0])
+		if err != nil {
+			return err
+		}
+		rows, err = txn.QueryContext(ctx, sqlSlis[1], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else {
+		return fmt.Errorf("the query sql [%v] cannot be over two values, please contact author or reselect", querySQL)
+	}
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return err
+	}
+
+	for _, ct := range colTypes {
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
+	}
+
+	// data scan
+	values := make([]interface{}, columnNameOrdersCounts)
+	valuePtrs := make([]interface{}, columnNameOrdersCounts)
+	for i, _ := range columnNameOrders {
+		valuePtrs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return err
+		}
+		for i, colName := range columnNameOrders {
+			valRes := values[i]
+			// postgres database NULL and "" are differently
+			if stringutil.IsValueNil(valRes) {
+				if !strings.EqualFold(nullValue, "") {
+					rowData[columnNameOrderIndexMap[colName]] = nullValue
+				} else {
+					rowData[columnNameOrderIndexMap[colName]] = `NULL`
+				}
+			} else {
+				if err = d.Recursive(
+					columnNameOrderIndexMap[colName],
+					taskFlow,
+					colName,
+					dbCharsetS,
+					dbCharsetT,
+					databaseTypes[i],
+					valRes,
+					rowData,
+					separator,
+					delimiter,
+					escapeBackslash); err != nil {
+					return err
+				}
+			}
+		}
+
+		// temporary array
+		dataChan <- rowData
+		// clear
+		rowData = make([]string, columnNameOrdersCounts)
+	}
+
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	// transaction commit
+	if sliLen == 2 {
+		if err = d.CommitTxn(txn); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (d *Database) Recursive(columnOrder int, taskFlow, columnName, dbCharsetS, dbCharsetT, dbTypes string, valRes interface{}, rowData []string, separator, delimiter string, escapeBackslash bool) error {
+	v := reflect.ValueOf(valRes)
+	switch v.Kind() {
+	case reflect.Int16, reflect.Int32, reflect.Int64:
+		rowData[columnOrder] = decimal.NewFromInt(v.Int()).String()
+	case reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		rowData[columnOrder] = strconv.FormatUint(v.Uint(), 10)
+	case reflect.Float32, reflect.Float64:
+		rowData[columnOrder] = decimal.NewFromFloat(v.Float()).String()
+	case reflect.Bool:
+		rowData[columnOrder] = strconv.FormatBool(v.Bool())
+	case reflect.String:
+		// postgres database NULL and "" are differently, so "" no special attention is required
+		var convertTargetRaw []byte
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(v.String()), dbCharsetS, constant.CharsetUTF8MB4)
+		if err != nil {
+			return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+		}
+		// Handling character sets, special character escapes, string reference delimiters
+		if escapeBackslash {
+			switch taskFlow {
+			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+				convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
+				if err != nil {
+					return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+				}
+			default:
+				return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+			}
+		} else {
+			convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+			if err != nil {
+				return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+			}
+		}
+		if delimiter == "" {
+			rowData[columnOrder] = stringutil.BytesToString(convertTargetRaw)
+		} else {
+			rowData[columnOrder] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
+		}
+	case reflect.Array, reflect.Slice:
+		if strings.EqualFold(dbTypes, constant.BuildInPostgresDatatypeBytea) {
+			// bytea -> []uint8
+			// binary
+			rowData[columnOrder] = stringutil.EscapeBinaryCSV(v.Bytes(), escapeBackslash, delimiter, separator)
+		} else {
+			// postgres database NULL and "" are differently, so "" no special attention is required
+			var convertTargetRaw []byte
+			convertUtf8Raw, err := stringutil.CharsetConvert(v.Bytes(), dbCharsetS, constant.CharsetUTF8MB4)
+			if err != nil {
+				return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+			}
+			// Handling character sets, special character escapes, string reference delimiters
+			if escapeBackslash {
+				switch taskFlow {
+				case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+					convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
+					if err != nil {
+						return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+					}
+				default:
+					return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+				}
+			} else {
+				convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+				if err != nil {
+					return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+				}
+			}
+			if delimiter == "" {
+				rowData[columnOrder] = stringutil.BytesToString(convertTargetRaw)
+			} else {
+				rowData[columnOrder] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
+			}
+		}
+	case reflect.Interface:
+		if err := d.Recursive(columnOrder, taskFlow, columnName, dbCharsetS, dbCharsetT, dbTypes, v.Elem().Interface(), rowData, separator, delimiter, escapeBackslash); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("column [%v] column_value [%v] column_kind [%v] not support, please contact author or exclude", columnName, v.String(), v.Kind())
+	}
+	return nil
 }
 
 func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {

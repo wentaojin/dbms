@@ -1,7 +1,8 @@
 task-name = "csv-task01"
-datasource-name-s = "oracle151"
+datasource-name-s = "pg117"
 datasource-name-t = "tidb161"
 comment = "测试数据源"
+
 
 [case-field-rule]
 # 控制配置文件内所有 *-s 参数配置值以及 column-route-rules 中的 key 值
@@ -16,9 +17,11 @@ case-field-rule-s = "0"
 case-field-rule-t = "2"
 
 [schema-route-rule]
-schema-name-s = "SCOTT"
-schema-name-t = "uccis"
-include-table-s =  ["T8"]
+schema-name-s = "marvin"
+schema-name-t = "ucccis"
+# include-table-s 迁移所有表需指定 "*"，特定表写具体表名
+#include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
+include-table-s = ["marvin00","users"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
@@ -68,7 +71,7 @@ escape-backslash = true
 chunk-size = 100000
 # 数据文件输出目录, 所有表数据输出文件目录，需要磁盘空间充足，当数据目录不足某个表存储时将自动跳过数据导出直至满足条件的表或者任务结束
 # 目录格式：/data/${target_dbname}/${table_name}
-output-dir = "/users/marvin/gostore/dbms/data/csv"
+output-dir = "/users/wentaojin/gostore/dbms/data/csv"
 # 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上游表数据，可动态变更
 sql-thread-s = 32
 # 指定分片 chunk sql 查询 hint
@@ -89,6 +92,6 @@ enable-consistent-read = false
 # 3，csv 数据文件字符集、字段分隔符、字段定定界符号、NULL 值映射、行分隔符无需单独配置，自动继承 csv-migrate-params 值
 # 4，csv 数据导入所在目标表必须是空表，若非空表，导入数据报错
 # 5，csv 数据数据导入功能属于有状态任务，enable-import-feature 参数一旦创建，则该参数的修改无法修改，即无法从 false -> true，true -> false，除非是新创建任务重新开始
-enable-import-feature = true
+enable-import-feature = false
 # 参数以 Key-Value 形式配置（具体以下游数据库对应参数配置为准）
 csv-import-params = {"disableTikvImportMode"="false", "Thread"="10"}
