@@ -45,12 +45,16 @@
   - Schema 表结构转换，支持 schema、表、列级别和默认值自定义
   - Schema 表数据迁移，支持 sql、csv 一致性或非一致性迁移
       - TiDB 数据库 csv 数据迁移支持自动导入（Require: TiDB Version >= v7.5）
+  - Schema 表数据校验，支持 schema、表、列级别路由规则以及自定义筛选过滤字段
+    - TiDB 数据库支持自定义配置上下游快照数据校验
 - TiDB -> ORACLE 兼容性数据库迁移服务
+  - Schema 表数据校验，支持 schema、表、列级别路由规则、配置上下游快照数据校验以及自定义筛选过滤字段
+- TiDB -> Postgres 兼容性数据库迁移服务
   - Schema 表数据校验，支持 schema、表、列级别路由规则、配置上下游快照数据校验以及自定义筛选过滤字段
 - ...
 
 **未来计划**
-- POSTGRESQL 数据库与 MYSQL 兼容性数据库数据校验
+- POSTGRESQL 数据库与 MYSQL 兼容性数据库结构校验
 - MYSQL 兼容性数据库表结构迁移至 ORACLE 数据库
 - MYSQL 兼容性数据库表结构与 ORACLE 数据库表结构对比
 - ORACLE 数据实时同步到 MYSQL 兼容性数据库（基于 logminer）
