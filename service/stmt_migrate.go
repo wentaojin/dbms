@@ -306,8 +306,11 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 
 func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) error {
 	startTime := time.Now()
-	logger.Info("stmt migrate task start", zap.String("task_name", taskName))
-	logger.Info("stmt migrate task get task information", zap.String("task_name", taskName))
+
+	logger.Info("stmt migrate task start",
+		zap.String("task_name", taskName),
+		zap.String("assign_worker", workerAddr))
+
 	var (
 		taskInfo         *task.Task
 		sourceDatasource *datasource.Datasource
@@ -331,14 +334,25 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		if err != nil {
 			return err
 		}
+		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+			TaskName: taskInfo.TaskName,
+			LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] starting",
+				stringutil.CurrentTimeFormatString(),
+				stringutil.StringLower(constant.TaskModeStmtMigrate),
+				taskInfo.TaskName,
+				taskInfo.TaskFlow,
+				taskInfo.WorkerAddr,
+			),
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	logger.Info("stmt migrate task update task status",
-		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 	_, err = model.GetITaskRW().UpdateTask(ctx, &task.Task{
 		TaskName: taskInfo.TaskName,
 	}, map[string]interface{}{
@@ -350,8 +364,26 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
-	logger.Info("stmt migrate task get task params",
-		zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
+	logger.Info("stmt migrate task running",
+		zap.String("task_name", taskInfo.TaskName),
+		zap.String("task_mode", taskInfo.TaskMode),
+		zap.String("task_flow", taskInfo.TaskFlow),
+		zap.String("task_stage", "task params get"))
+
+	_, err = model.GetITaskLogRW().CreateLog(ctx, &task.Log{
+		TaskName: taskInfo.TaskName,
+		LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] task params get",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeStmtMigrate),
+			taskInfo.TaskName,
+			taskInfo.TaskFlow,
+			taskInfo.WorkerAddr,
+		),
+	})
+	if err != nil {
+		return err
+	}
+
 	taskParams, err := getStmtMigrateTasKParams(ctx, taskInfo.TaskName)
 	if err != nil {
 		return err
@@ -359,8 +391,13 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 
 	switch taskInfo.TaskFlow {
 	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
-		logger.Info("stmt migrate task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 		taskTime := time.Now()
+		logger.Info("stmt migrate task running",
+			zap.String("task_name", taskInfo.TaskName),
+			zap.String("task_mode", taskInfo.TaskMode),
+			zap.String("task_flow", taskInfo.TaskFlow),
+			zap.String("task_stage", "process migrate task"))
+
 		dataMigrate := &taskflow.StmtMigrateTask{
 			Ctx:         ctx,
 			Task:        taskInfo,
@@ -372,14 +409,22 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		if err != nil {
 			return err
 		}
-		logger.Info("stmt migrate task process task",
-			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
+		logger.Info("stmt migrate task running",
+			zap.String("task_name", taskInfo.TaskName),
+			zap.String("task_mode", taskInfo.TaskMode),
+			zap.String("task_flow", taskInfo.TaskFlow),
+			zap.String("task_stage", "process migrate task"),
 			zap.String("cost", time.Now().Sub(taskTime).String()))
 	default:
 		return fmt.Errorf("current stmt migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}
 
 	// status
+	logger.Info("stmt migrate task running",
+		zap.String("task_name", taskInfo.TaskName),
+		zap.String("task_mode", taskInfo.TaskMode),
+		zap.String("task_flow", taskInfo.TaskFlow),
+		zap.String("task_stage", "task status get"))
 	var (
 		migrateFailedResults  int64
 		migrateWaitResults    int64
@@ -424,12 +469,13 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 				return err
 			}
 			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-				TaskName: taskName,
-				LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] are exist failed [%d] or waiting [%d] or running [%d] or stopped [%d] status records during running operation, please see [data_migrate_task] detail, total records [%d], success records [%d]",
+				TaskName: taskInfo.TaskName,
+				LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] are exist failed [%d] or waiting [%d] or running [%d] or stopped [%d] status records during running operation, please see [data_migrate_task] detail, total records [%d], success records [%d]",
 					stringutil.CurrentTimeFormatString(),
 					stringutil.StringLower(constant.TaskModeStmtMigrate),
+					taskInfo.TaskName,
+					taskInfo.TaskFlow,
 					taskInfo.WorkerAddr,
-					taskName,
 					migrateFailedResults,
 					migrateWaitResults,
 					migrateRunResults,
@@ -446,8 +492,8 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 			return err
 		}
 
-		logger.Info("stmt migrate task failed",
-			zap.String("task_name", taskInfo.TaskName),
+		logger.Info("struct migrate task failed",
+			zap.String("task_name", taskName),
 			zap.String("task_mode", taskInfo.TaskMode),
 			zap.String("task_flow", taskInfo.TaskFlow),
 			zap.Int64("total records", migrateTotalsResults),
@@ -472,11 +518,12 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		}
 		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 			TaskName: taskName,
-			LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] running success, total records [%d], success records [%d], cost: [%v]",
+			LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] running success, total records [%d], success records [%d], cost: [%v]",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeStmtMigrate),
-				taskInfo.WorkerAddr,
-				taskName,
+				taskInfo.TaskName,
+				taskInfo.TaskFlow,
+				workerAddr,
 				migrateTotalsResults,
 				migrateSuccessResults,
 				time.Now().Sub(startTime).String()),
@@ -490,8 +537,8 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
-	logger.Info("stmt migrate task success",
-		zap.String("task_name", taskInfo.TaskName),
+	logger.Info("struct migrate task success",
+		zap.String("task_name", taskName),
 		zap.String("task_mode", taskInfo.TaskMode),
 		zap.String("task_flow", taskInfo.TaskFlow),
 		zap.Int64("total records", migrateTotalsResults),

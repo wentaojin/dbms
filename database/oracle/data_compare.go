@@ -78,7 +78,7 @@ func (d *Database) GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS
 	return ci, nil
 }
 
-func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, error) {
+func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, map[string]string, error) {
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
 	INDEX_NAME,
 	DISTINCT_KEYS,
@@ -88,45 +88,52 @@ WHERE TABLE_OWNER = '%s'
   AND TABLE_NAME = '%s' 
   AND OBJECT_TYPE = 'INDEX'`, schemaNameS, tableNameS))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// estimate avg rows per key
 	bsEstimateCounts := make(map[string]int64)
 	for _, r := range res {
 		numRows, err := strconv.ParseInt(r["NUM_ROWS"], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing null_rows [%s] integer: %v", r["NUM_ROWS"], err)
+			return nil, nil, fmt.Errorf("error parsing null_rows [%s] integer: %v", r["NUM_ROWS"], err)
 		}
 		bsEstimateCounts[r["INDEX_NAME"]] = numRows
 	}
 
 	buckets := make(map[string][]structure.Bucket)
+	newConsColumns := make(map[string]string)
+
 	for k, v := range consColumns {
 		columns := stringutil.StringSplit(v, constant.StringSeparatorComplexSymbol)
 
 		columnProps := make(map[string]string)
 		props, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, columns)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for _, p := range props {
 			columnProps[p["COLUMN_NAME"]] = p["DATA_TYPE"]
 		}
 
-		var columnBuckets [][]string
+		var (
+			columnBuckets [][]string
+			newColumns    []string
+		)
 		for i, c := range columns {
 			bts, err := d.getDatabaseTableColumnStatisticsBucket(schemaNameS, tableNameS, c, columnProps[c])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			// prefix column index need exist or match support datatype, otherwise break, continue next index
 			if i == 0 && len(bts) == 0 {
 				break
 			} else if i > 0 && len(bts) == 0 {
+				// when statistics exist for the join index, but the suffix index does not exist, you can ignore this field and continue
 				continue
 			} else {
 				if d.filterDatabaseTableColumnBucketSupportDatatype(columnProps[c]) {
 					columnBuckets = append(columnBuckets, bts)
+					newColumns = append(newColumns, c)
 				}
 			}
 		}
@@ -149,9 +156,11 @@ WHERE TABLE_OWNER = '%s'
 		}
 
 		buckets[k] = structure.StringSliceCreateBuckets(newColumnsBs, bsEstimateCounts[k])
+
+		newConsColumns[k] = stringutil.StringJoin(newColumns, constant.StringSeparatorComplexSymbol)
 	}
 
-	return buckets, nil
+	return buckets, newConsColumns, nil
 }
 
 func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS string, consColumns map[string]string) (map[string]structure.Histogram, error) {
@@ -179,10 +188,22 @@ WHERE TABLE_OWNER = '%s'
 }
 
 func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.Selectivity, error) {
-	consColumns, err := d.GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS)
+	oldConsColumns, err := d.GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS)
 	if err != nil {
 		return nil, err
 	}
+
+	// find max histogram indexName -> columnName
+	buckets, consColumns, err := d.GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS, oldConsColumns)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(buckets) == 0 {
+		// not found bucket
+		return nil, nil
+	}
+
 	// query := fmt.Sprintf("SELECT COUNT(DISTINCT %s)/COUNT(1) as SEL FROM %s.%s", columns, schemaNameS,tableNameS)
 	histograms, err := d.GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS, consColumns)
 	if err != nil {
@@ -213,17 +234,6 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		sortHists = structure.SortDistinctCountHistogram(matchIndexHists, consColumns)
 	} else {
 		sortHists = structure.SortDistinctCountHistogram(histograms, consColumns)
-	}
-
-	// find max histogram indexName -> columnName
-	buckets, err := d.GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS, consColumns)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(buckets) == 0 {
-		// not found bucket
-		return nil, nil
 	}
 
 	Selectivity, err := structure.FindMatchDistinctCountBucket(sortHists, buckets, consColumns)
@@ -299,7 +309,7 @@ FROM (
 )
 WHERE rn <= %[5]d`, stringutil.StringJoin(columnNames, constant.StringSeparatorComma), fmt.Sprintf(`"%s"."%s"`, schemaNameS, tableNameS), conditions, stringutil.StringJoin(columnOrders, constant.StringSeparatorComma), limit)
 
-	logger.Debug("divide database bucket value by query", zap.Strings("columns", columnNames), zap.Strings("collations", collations), zap.String("query", query))
+	logger.Debug("divide database bucket value query", zap.Strings("columns", columnNames), zap.Strings("collations", collations), zap.String("query", query))
 
 	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
 

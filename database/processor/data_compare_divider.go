@@ -55,17 +55,17 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 		count := d.Cons.Buckets[i].Count - latestCount
 		if count < d.ChunkSize {
 			// merge more buckets into one chunk
-			logger.Info("divide database bucket value",
+			logger.Info("divide database bucket value processing",
 				zap.String("schema_name_s", d.SchemaNameS),
 				zap.String("table_name_s", d.TableNameS),
-				zap.Int("current_bucket_id", bucketID),
+				zap.Int("bucket_id", bucketID),
 				zap.Int64("bucket_counts", count),
 				zap.Int64("chunk_size", d.ChunkSize),
 				zap.String("origin_lower_value", d.Cons.Buckets[i].LowerBound),
 				zap.String("origin_upper_value", d.Cons.Buckets[i].UpperBound),
 				zap.Any("new_lower_values", lowerValues),
 				zap.Any("new_upper_values", upperValues),
-				zap.String("chunk_action", "skip"))
+				zap.String("chunk_process_action", "bucket_counts not match chunk_size, skip divide"))
 			continue
 		}
 
@@ -74,15 +74,15 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 			return err
 		}
 
-		logger.Debug("divide database bucket value",
+		logger.Debug("divide database bucket value processing",
 			zap.String("schema_name_s", d.SchemaNameS),
 			zap.String("table_name_s", d.TableNameS),
-			zap.Int("current_bucket_id", bucketID),
+			zap.Int("bucket_id", bucketID),
 			zap.Int64("bucket_counts", count),
 			zap.Int64("chunk_size", d.ChunkSize),
 			zap.String("origin_lower_value", d.Cons.Buckets[i].LowerBound),
 			zap.String("origin_upper_value", d.Cons.Buckets[i].UpperBound),
-			zap.String("chunk_action", "divide"))
+			zap.String("chunk_process_action", "divide"))
 
 		var chunkRange *structure.Range
 		switch stringutil.StringUpper(d.DBTypeS) {
@@ -118,7 +118,7 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 			}
 			d.RangeC <- ranges
 
-			logger.Debug("divide database bucket value",
+			logger.Debug("divide database bucket value processing",
 				zap.String("schema_name_s", d.SchemaNameS),
 				zap.String("table_name_s", d.TableNameS),
 				zap.Int("current_bucket_id", bucketID),
@@ -128,8 +128,8 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 				zap.String("origin_upper_value", d.Cons.Buckets[i].UpperBound),
 				zap.Any("new_lower_values", lowerValues),
 				zap.Any("new_upper_values", upperValues),
-				zap.Any("chunk_ranges", chunkRange),
-				zap.String("chunk_action", "random"))
+				zap.Any("chunk_divide_range", chunkRange),
+				zap.String("chunk_process_action", "random divide"))
 		} else {
 			// merge bucket
 			// use multi-buckets so chunkCnt = 1
@@ -139,7 +139,7 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 			}
 			d.RangeC <- ranges
 
-			logger.Debug("divide database bucket value",
+			logger.Debug("divide database bucket value processing",
 				zap.String("schema_name_s", d.SchemaNameS),
 				zap.String("table_name_s", d.TableNameS),
 				zap.Int("current_bucket_id", bucketID),
@@ -149,8 +149,8 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 				zap.String("origin_upper_value", d.Cons.Buckets[i].UpperBound),
 				zap.Any("new_lower_values", lowerValues),
 				zap.Any("new_upper_values", upperValues),
-				zap.Any("chunk_ranges", chunkRange),
-				zap.String("chunk_action", "random"))
+				zap.Any("chunk_divide_range", chunkRange),
+				zap.String("chunk_process_action", "random divide"))
 		}
 
 		latestCount = d.Cons.Buckets[i].Count
@@ -178,6 +178,17 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 			}
 		}
 	}
+
+	logger.Debug("divide database bucket value processing",
+		zap.String("schema_name_s", d.SchemaNameS),
+		zap.String("table_name_s", d.TableNameS),
+		zap.Int("bucket_id", bucketID),
+		zap.Int64("chunk_size", d.ChunkSize),
+		zap.Any("new_lower_values", lowerValues),
+		zap.Any("new_upper_values", upperValues),
+		zap.Any("chunk_divide_range", chunkRange),
+		zap.String("chunk_process_action", "merge divide"))
+
 	// When the table is much less than chunkSize,
 	// it will return a chunk include the whole table.
 	ranges, err := DivideDatabaseTableColumnStatisticsBucket(d.DatabaseS, d.SchemaNameS, d.TableNameS, d.Cons, chunkRange, 1)
@@ -186,15 +197,6 @@ func (d *Divide) ProcessUpstreamStatisticsBucket() error {
 	}
 	d.RangeC <- ranges
 
-	logger.Debug("divide database bucket value",
-		zap.String("schema_name_s", d.SchemaNameS),
-		zap.String("table_name_s", d.TableNameS),
-		zap.Int("last_bucket_id", bucketID),
-		zap.Int64("chunk_size", d.ChunkSize),
-		zap.Any("new_lower_values", lowerValues),
-		zap.Any("new_upper_values", upperValues),
-		zap.Any("chunk_ranges", chunkRange),
-		zap.String("chunk_action", "merge"))
 	return nil
 }
 

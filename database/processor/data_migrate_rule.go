@@ -44,6 +44,11 @@ type DataMigrateRule struct {
 	CaseFieldRuleT string             `json:"caseFieldRuleT"`
 }
 
+func (r *DataMigrateRule) String() string {
+	jsonStr, _ := stringutil.MarshalJSON(r)
+	return jsonStr
+}
+
 func (r *DataMigrateRule) GenSchemaNameRule() (string, string, error) {
 	routeRule, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(r.Ctx, &rule.SchemaRouteRule{
 		TaskName: r.TaskName, SchemaNameS: r.SchemaNameS})

@@ -75,29 +75,36 @@ func (d *Database) GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS
 	return ci, nil
 }
 
-func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, error) {
+func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, map[string]string, error) {
 	columnDists, columnBs, err := d.getDatabaseTableColumnStatisticsBucket(schemaNameS, tableNameS)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	estRows, err := d.GetDatabaseTableRows(schemaNameS, tableNameS)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	buckets := make(map[string][]structure.Bucket)
+	newConsColumns := make(map[string]string)
+
 	for k, v := range consColumns {
 		columns := stringutil.StringSplit(v, constant.StringSeparatorComplexSymbol)
 
-		var columnBuckets [][]string
+		var (
+			columnBuckets [][]string
+			newColumns    []string
+		)
 		for i, c := range columns {
 			// prefix column index need exist, otherwise break, continue next index
 			if i == 0 && len(columnBs[c]) == 0 {
 				break
 			} else if i > 0 && len(columnBs[c]) == 0 {
+				// when statistics exist for the join index, but the suffix index does not exist, you can ignore this field and continue
 				continue
 			} else {
 				columnBuckets = append(columnBuckets, columnBs[c])
+				newColumns = append(newColumns, c)
 			}
 		}
 
@@ -120,9 +127,11 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 
 		// estimated number of rows per index based on the first field of the index
 		buckets[k] = structure.StringSliceCreateBuckets(newColumnsBs, int64(math.Round(float64(estRows)*columnDists[columns[0]])))
+
+		newConsColumns[k] = stringutil.StringJoin(newColumns, constant.StringSeparatorComplexSymbol)
 	}
 
-	return buckets, nil
+	return buckets, newConsColumns, nil
 }
 
 func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS string, consColumns map[string]string) (map[string]structure.Histogram, error) {
@@ -146,10 +155,20 @@ func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS s
 }
 
 func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNameS string, compareCondField string, ignoreCondFields []string) (*structure.Selectivity, error) {
-	consColumns, err := d.GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS)
+	oldConsColumns, err := d.GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS)
 	if err != nil {
 		return nil, err
 	}
+	// find max histogram indexName -> columnName
+	buckets, consColumns, err := d.GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS, oldConsColumns)
+	if err != nil {
+		return nil, err
+	}
+	if len(buckets) == 0 {
+		// not found bucket
+		return nil, nil
+	}
+
 	// query := fmt.Sprintf("SELECT COUNT(DISTINCT %s)/COUNT(1) as SEL FROM %s.%s", columns, schemaNameS,tableNameS)
 	histograms, err := d.GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS, consColumns)
 	if err != nil {
@@ -180,17 +199,6 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		sortHists = structure.SortDistinctCountHistogram(matchIndexHists, consColumns)
 	} else {
 		sortHists = structure.SortDistinctCountHistogram(histograms, consColumns)
-	}
-
-	// find max histogram indexName -> columnName
-	buckets, err := d.GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS, consColumns)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(buckets) == 0 {
-		// not found bucket
-		return nil, nil
 	}
 
 	Selectivity, err := structure.FindMatchDistinctCountBucket(sortHists, buckets, consColumns)
@@ -319,7 +327,7 @@ func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, 
 	query := fmt.Sprintf("SELECT %[1]s FROM (SELECT %[1]s, random() as rand_value FROM %[2]s WHERE %[3]s ORDER BY rand_value LIMIT %[4]d) rand_tmp ORDER BY %[5]s",
 		strings.Join(columnNames, ", "), fmt.Sprintf("`%s`.`%s`", schemaNameS, tableNameS), conditions, limit, strings.Join(columnOrders, ", "))
 
-	logger.Debug("divide database bucket value by query",
+	logger.Debug("divide database bucket value query",
 		zap.Strings("columns", columnNames),
 		zap.Strings("collations", collations),
 		zap.String("query", query),

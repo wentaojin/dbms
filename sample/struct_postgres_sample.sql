@@ -174,23 +174,21 @@ CREATE INDEX idx_nv0001 on marvin.marvin01 using hash(nv00);
 
 CREATE TABLE marvin02 (
     id1 BIGINT NOT NULL,
-    id2 BIGINT NOT NULL,
+    vd2 VARCHAR(50) NOT NULL,
     unique_key1 VARCHAR(50) NOT NULL,
     unique_key2 VARCHAR(50) NOT NULL,
     normal_index_column VARCHAR(100),
     data_column TEXT,
-    PRIMARY KEY (id1, id2),
+    PRIMARY KEY (id1, vd2),
     UNIQUE (unique_key1, unique_key2)
 );
-
 CREATE INDEX idx_normal ON marvin02 (normal_index_column);
 
-
 -- 插入 500 万条数据
-INSERT INTO marvin02 (id1, id2, unique_key1, unique_key2, normal_index_column, data_column)
+INSERT INTO marvin02 (id1, vd2, unique_key1, unique_key2, normal_index_column, data_column)
 SELECT
     (series % 1000000) AS id1, -- 生成 0 到 999999 之间的整数
-    (series / 1000000) % 1000000 AS id2, -- 生成 0 到 999999 之间的整数
+    'vd_' || lpad((series % 100000000000000)::text, 20, '0') AS vd2,  -- 生成唯一的字符串
     'unique1_' || lpad((series % 100000000000000)::text, 20, '0') AS unique_key1, -- 生成唯一的字符串
     'unique2_' || lpad(((series / 100000000000000) % 100000000000000)::text, 20, '0') AS unique_key2, -- 生成唯一的字符串
     'index_' || lpad((random() * 100000000000000)::bigint::text, 20, '0') AS normal_index_column, -- 生成索引用的字符串

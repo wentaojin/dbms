@@ -48,16 +48,22 @@ type StmtMigrateTask struct {
 
 func (stm *StmtMigrateTask) Start() error {
 	schemaTaskTime := time.Now()
-	logger.Info("stmt migrate task get schema route",
-		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
+	logger.Info("stmt migrate task processing",
+		zap.String("task_name", stm.Task.TaskName),
+		zap.String("task_mode", stm.Task.TaskMode),
+		zap.String("task_flow", stm.Task.TaskFlow),
+		zap.String("start_time", schemaTaskTime.String()),
+		zap.String("task_stage", "schema route get"))
 	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(stm.Ctx, &rule.SchemaRouteRule{TaskName: stm.Task.TaskName})
 	if err != nil {
 		return err
 	}
 
-	logger.Info("stmt migrate task init database connection",
-		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
-
+	logger.Info("stmt migrate task processing",
+		zap.String("task_name", stm.Task.TaskName),
+		zap.String("task_mode", stm.Task.TaskMode),
+		zap.String("task_flow", stm.Task.TaskFlow),
+		zap.String("task_stage", "database connection init"))
 	var (
 		databaseS, databaseT database.IDatabase
 	)
@@ -74,8 +80,12 @@ func (stm *StmtMigrateTask) Start() error {
 		}
 		defer databaseT.Close()
 
-		logger.Info("stmt migrate task inspect migrate task",
-			zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
+		logger.Info("stmt migrate task processing",
+			zap.String("task_name", stm.Task.TaskName),
+			zap.String("task_mode", stm.Task.TaskMode),
+			zap.String("task_flow", stm.Task.TaskFlow),
+			zap.String("task_stage", "stmt task inspect"))
+
 		_, err = processor.InspectOracleMigrateTask(stm.Task.TaskName, stm.Task.TaskFlow, stm.Task.TaskMode, databaseS,
 			stringutil.StringUpper(stm.DatasourceS.ConnectCharset),
 			stringutil.StringUpper(stm.DatasourceT.ConnectCharset))
@@ -113,6 +123,7 @@ func (stm *StmtMigrateTask) Start() error {
 			DatabaseS:       databaseS,
 			DatabaseT:       databaseT,
 			SchemaNameS:     schemaRoute.SchemaNameS,
+			SchemaNameT:     schemaRoute.SchemaNameT,
 			StmtParams:      stm.TaskParams,
 			GlobalSnapshotS: globalScnS,
 			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
@@ -133,8 +144,11 @@ func (stm *StmtMigrateTask) Start() error {
 		}
 		defer databaseT.Close()
 
-		logger.Info("stmt migrate task inspect migrate task",
-			zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow))
+		logger.Info("stmt migrate task processing",
+			zap.String("task_name", stm.Task.TaskName),
+			zap.String("task_mode", stm.Task.TaskMode),
+			zap.String("task_flow", stm.Task.TaskFlow),
+			zap.String("task_stage", "stmt task inspect"))
 		_, err = processor.InspectPostgresMigrateTask(stm.Task.TaskName, stm.Task.TaskFlow, stm.Task.TaskMode, databaseS,
 			stringutil.StringUpper(stm.DatasourceS.ConnectCharset),
 			stringutil.StringUpper(stm.DatasourceT.ConnectCharset))
@@ -177,6 +191,7 @@ func (stm *StmtMigrateTask) Start() error {
 			DatabaseS:       databaseS,
 			DatabaseT:       databaseT,
 			SchemaNameS:     schemaRoute.SchemaNameS,
+			SchemaNameT:     schemaRoute.SchemaNameT,
 			StmtParams:      stm.TaskParams,
 			GlobalSnapshotS: globalScnS,
 			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
@@ -194,8 +209,12 @@ func (stm *StmtMigrateTask) Start() error {
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", stm.Task.TaskName, stm.Task.TaskMode, stm.Task.TaskFlow, schemaRoute.SchemaNameS)
 	}
 
-	logger.Info("data migrate task",
-		zap.String("task_name", stm.Task.TaskName), zap.String("task_mode", stm.Task.TaskMode), zap.String("task_flow", stm.Task.TaskFlow),
+	logger.Info("stmt migrate task processing",
+		zap.String("task_name", stm.Task.TaskName),
+		zap.String("task_mode", stm.Task.TaskMode),
+		zap.String("task_flow", stm.Task.TaskFlow),
+		zap.String("task_stage", "stmt task inspect"),
 		zap.String("cost", time.Now().Sub(schemaTaskTime).String()))
+
 	return nil
 }

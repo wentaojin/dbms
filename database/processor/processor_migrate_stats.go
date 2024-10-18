@@ -18,6 +18,7 @@ package processor
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
@@ -40,7 +41,7 @@ func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString s
 		}
 		return values, nil
 	case constant.DatabaseTypeOracle, constant.DatabaseTypePostgresql:
-		values := strings.Split(valueString, constant.StringSeparatorComma)
+		values := strings.Split(valueString, constant.StringSeparatorComplexSymbol)
 		if len(values) != len(columnNames) {
 			return nil, fmt.Errorf("extract database type [%s] value %s failed, values %v not match columnNames %v", divideDbType, valueString, values, columnNames)
 		}
@@ -53,6 +54,7 @@ func ExtractDatabaseTableStatisticsValuesFromBuckets(divideDbType, valueString s
 // DivideDatabaseTableColumnStatisticsBucket splits a chunk to multiple chunks by random
 // Notice: If the `count <= 1`, it will skip splitting and return `chunk` as a slice directly.
 func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, schemaName, tableName string, cons *structure.Selectivity, chunkRange *structure.Range, divideCountCnt int) ([]*structure.Range, error) {
+	startTime := time.Now()
 	var chunkRanges []*structure.Range
 
 	if divideCountCnt <= 1 {
@@ -67,7 +69,11 @@ func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, sche
 		return nil, err
 	}
 
-	logger.Debug("divide database bucket value by random", zap.Stringer("chunk", chunkRange), zap.Int("random values num", len(randomValueSli)), zap.Any("random values", randomValueSli))
+	logger.Debug("divide database bucket value random",
+		zap.Stringer("chunk", chunkRange),
+		zap.Int("random values num", len(randomValueSli)),
+		zap.Any("random values", randomValueSli),
+		zap.String("random query cost", time.Now().Sub(startTime).String()))
 
 	for i := 0; i <= len(randomValueSli); i++ {
 		newChunk := chunkRange.Copy()
@@ -114,10 +120,11 @@ func DivideDatabaseTableColumnStatisticsBucket(database database.IDatabase, sche
 		chunkRanges = append(chunkRanges, newChunk)
 	}
 
-	logger.Debug("divide database bucket value by random",
+	logger.Debug("divide database bucket value random",
 		zap.Int("divide chunk range num", len(chunkRanges)),
 		zap.Stringer("origin chunk range", chunkRange),
-		zap.Any("new chunk range", chunkRanges))
+		zap.Any("new chunk range", chunkRanges),
+		zap.String("random divide cost", time.Now().Sub(startTime).String()))
 
 	return chunkRanges, nil
 }

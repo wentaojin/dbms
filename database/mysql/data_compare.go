@@ -75,10 +75,10 @@ func (d *Database) GetDatabaseTableConstraintIndexColumn(schemaNameS, tableNameS
 	return ci, nil
 }
 
-func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, error) {
+func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS string, consColumns map[string]string) (map[string][]structure.Bucket, map[string]string, error) {
 	_, res, err := d.GeneralQuery(`SELECT VERSION() AS VERSION`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	buckets := make(map[string][]structure.Bucket)
@@ -95,7 +95,7 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 		*/
 		_, res, err = d.GeneralQuery(fmt.Sprintf(`SHOW STATS_BUCKETS WHERE db_name= '%s' AND table_name= '%s'`, schemaNameS, tableNameS))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var pkIntegerColumnName string
@@ -104,7 +104,7 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 			if len(pkSlis) == 1 {
 				columnInfo, err := d.GetDatabaseTableColumnProperties(schemaNameS, tableNameS, []string{pkSlis[0]})
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				if stringutil.IsContainedStringIgnoreCase(constant.TiDBDatabaseIntegerColumnDatatypePrimaryKey, stringutil.StringUpper(columnInfo[0]["DATA_TYPE"])) {
 					pkIntegerColumnName = pkSlis[0]
@@ -115,7 +115,7 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 		for _, r := range res {
 			count, err := strconv.ParseInt(r["Count"], 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("the database [%s] table [%s] statistics bucket error parsing integer: %v", schemaNameS, tableNameS, err)
+				return nil, nil, fmt.Errorf("the database [%s] table [%s] statistics bucket error parsing integer: %v", schemaNameS, tableNameS, err)
 			}
 			// filter index column
 			if strings.EqualFold(r["Is_index"], "1") {
@@ -146,9 +146,9 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 				})
 			}
 		}
-		return buckets, nil
+		return buckets, nil, nil
 	}
-	return nil, fmt.Errorf("the database [%s] table [%s] statistics bucket doesn't supported, only support tidb database, version: [%v]", schemaNameS, tableNameS, res[0]["VERSION"])
+	return nil, nil, fmt.Errorf("the database [%s] table [%s] statistics bucket doesn't supported, only support tidb database, version: [%v]", schemaNameS, tableNameS, res[0]["VERSION"])
 }
 
 func (d *Database) GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS string, consColumns map[string]string) (map[string]structure.Histogram, error) {
@@ -224,6 +224,17 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 	if err != nil {
 		return nil, err
 	}
+	// find max histogram indexName -> columnName
+	buckets, _, err := d.GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS, consColumns)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(buckets) == 0 {
+		// not found bucket
+		return nil, nil
+	}
+
 	// query := fmt.Sprintf("SELECT COUNT(DISTINCT %s)/COUNT(1) as SEL FROM %s.%s", columns, schemaNameS,tableNameS)
 	histograms, err := d.GetDatabaseTableStatisticsHistogram(schemaNameS, tableNameS, consColumns)
 	if err != nil {
@@ -254,17 +265,6 @@ func (d *Database) GetDatabaseTableHighestSelectivityIndex(schemaNameS, tableNam
 		sortHists = structure.SortDistinctCountHistogram(matchIndexHists, consColumns)
 	} else {
 		sortHists = structure.SortDistinctCountHistogram(histograms, consColumns)
-	}
-
-	// find max histogram indexName -> columnName
-	buckets, err := d.GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS, consColumns)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(buckets) == 0 {
-		// not found bucket
-		return nil, nil
 	}
 
 	Selectivity, err := structure.FindMatchDistinctCountBucket(sortHists, buckets, consColumns)
@@ -339,7 +339,7 @@ func (d *Database) GetDatabaseTableRandomValues(schemaNameS, tableNameS string, 
 	query := fmt.Sprintf("SELECT %[1]s FROM (SELECT %[1]s, rand() rand_value FROM %[2]s WHERE %[3]s ORDER BY rand_value LIMIT %[4]d)rand_tmp ORDER BY %[5]s",
 		strings.Join(columnNames, ", "), fmt.Sprintf("`%s`.`%s`", schemaNameS, tableNameS), conditions, limit, strings.Join(columnOrders, ", "))
 
-	logger.Debug("divide database bucket value by query",
+	logger.Debug("divide database bucket value query",
 		zap.Strings("columns", columnNames),
 		zap.Strings("collations", collations),
 		zap.String("query", query),

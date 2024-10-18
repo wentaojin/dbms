@@ -49,6 +49,7 @@ type DataMigrateTask struct {
 	DatabaseS       database.IDatabase
 	DatabaseT       database.IDatabase
 	SchemaNameS     string
+	SchemaNameT     string
 	GlobalSnapshotS string
 	StmtParams      *pb.StatementMigrateParam
 
@@ -62,21 +63,34 @@ func (cmt *DataMigrateTask) Init() error {
 		close(cmt.ResumeC)
 	}()
 	startTime := time.Now()
-	logger.Info("data migrate task init start",
+
+	logger.Info("data migrate task processor",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
+		zap.String("schema_name_s", cmt.SchemaNameS),
+		zap.String("schema_name_t", cmt.SchemaNameT),
+		zap.String("task_stage", "stmt records init"),
 		zap.String("startTime", startTime.String()))
 
-	logger.Warn("data migrate task checkpoint action",
+	logger.Info("data migrate task processor",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
-		zap.Bool("enable_checkpoint", cmt.StmtParams.EnableCheckpoint))
+		zap.String("schema_name_s", cmt.SchemaNameS),
+		zap.String("schema_name_t", cmt.SchemaNameT),
+		zap.Bool("enable_checkpoint", cmt.StmtParams.EnableCheckpoint),
+		zap.String("task_stage", "stmt task checkpoint"))
 
 	if !cmt.StmtParams.EnableCheckpoint {
-		logger.Warn("stmt migrate task clear task records",
-			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
+		logger.Warn("data migrate task processor",
+			zap.String("task_name", cmt.Task.TaskName),
+			zap.String("task_mode", cmt.Task.TaskMode),
+			zap.String("task_flow", cmt.Task.TaskFlow),
+			zap.String("schema_name_s", cmt.SchemaNameS),
+			zap.String("schema_name_t", cmt.SchemaNameT),
+			zap.Bool("enable_checkpoint", cmt.StmtParams.EnableCheckpoint),
+			zap.String("task_stage", "clear stmt records"))
 		err := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
 			err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{cmt.Task.TaskName})
 			if err != nil {
@@ -140,10 +154,13 @@ func (cmt *DataMigrateTask) Init() error {
 		databaseTaskTablesMap[tabName] = struct{}{}
 	}
 
-	logger.Info("data migrate task compare table",
+	logger.Info("data migrate task processor",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
-		zap.String("task_flow", cmt.Task.TaskFlow))
+		zap.String("task_flow", cmt.Task.TaskFlow),
+		zap.String("schema_name_s", cmt.SchemaNameS),
+		zap.String("schema_name_t", cmt.SchemaNameT),
+		zap.String("task_stage", "stmt task clear"))
 	// compare the task table
 	// the database task table is exist, and the config task table isn't exist, the clear the database task table
 	summaries, err := model.GetIDataMigrateSummaryRW().FindDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{TaskName: cmt.Task.TaskName, SchemaNameS: cmt.SchemaNameS})
@@ -190,11 +207,13 @@ func (cmt *DataMigrateTask) Init() error {
 	dbTypeS := dbTypeSli[0]
 
 	initTable := time.Now()
-	logger.Info("data migrate task init table",
+	logger.Info("data migrate task processor",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
-		zap.String("startTime", initTable.String()))
+		zap.String("schema_name_s", cmt.SchemaNameS),
+		zap.String("schema_name_t", cmt.SchemaNameT),
+		zap.String("task_stage", "init concurrency start"))
 	g, gCtx := errgroup.WithContext(cmt.Ctx)
 	g.SetLimit(int(cmt.StmtParams.TableThread))
 
@@ -230,7 +249,9 @@ func (cmt *DataMigrateTask) Init() error {
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
 							zap.String("schema_name_s", cmt.SchemaNameS),
-							zap.String("table_name_s", sourceTable))
+							zap.String("schema_name_t", cmt.SchemaNameT),
+							zap.String("table_name_s", sourceTable),
+							zap.String("task_stage", "send resume channel"))
 					default:
 						_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
 							TaskName:    cmt.Task.TaskName,
@@ -241,13 +262,14 @@ func (cmt *DataMigrateTask) Init() error {
 						if err != nil {
 							return err
 						}
-						logger.Warn("data migrate task resume channel full",
+						logger.Warn("data migrate task resume full",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
 							zap.String("schema_name_s", cmt.SchemaNameS),
+							zap.String("schema_name_t", cmt.SchemaNameT),
 							zap.String("table_name_s", sourceTable),
-							zap.String("action", "skip send"))
+							zap.String("task_stage", "skip send resume channel"))
 					}
 					return nil
 				}
@@ -281,8 +303,27 @@ func (cmt *DataMigrateTask) Init() error {
 					return err
 				}
 
+				logger.Info("data migrate task migrate rule",
+					zap.String("task_name", cmt.Task.TaskName),
+					zap.String("task_mode", cmt.Task.TaskMode),
+					zap.String("task_flow", cmt.Task.TaskFlow),
+					zap.String("schema_name_s", cmt.SchemaNameS),
+					zap.String("schema_name_t", cmt.SchemaNameT),
+					zap.String("table_name_s", sourceTable),
+					zap.String("table_migrate_rule", dataRule.String()),
+					zap.String("task_stage", "data migrate rule gen"))
+
 				// only where range
 				if !attsRule.EnableChunkStrategy && !strings.EqualFold(attsRule.WhereRange, "") {
+					logger.Info("data migrate task migrate strategy",
+						zap.String("task_name", cmt.Task.TaskName),
+						zap.String("task_mode", cmt.Task.TaskMode),
+						zap.String("task_flow", cmt.Task.TaskFlow),
+						zap.String("schema_name_s", cmt.SchemaNameS),
+						zap.String("schema_name_t", cmt.SchemaNameT),
+						zap.String("table_name_s", sourceTable),
+						zap.String("task_migrate_strategy", "chunk and range"))
+
 					encChunkS := snappy.Encode(nil, []byte(attsRule.WhereRange))
 
 					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
@@ -348,7 +389,9 @@ func (cmt *DataMigrateTask) Init() error {
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
 							zap.String("schema_name_s", cmt.SchemaNameS),
-							zap.String("table_name_s", sourceTable))
+							zap.String("schema_name_t", cmt.SchemaNameT),
+							zap.String("table_name_s", sourceTable),
+							zap.String("task_stage", "send wait channel"))
 					default:
 						_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
 							TaskName:    cmt.Task.TaskName,
@@ -359,13 +402,14 @@ func (cmt *DataMigrateTask) Init() error {
 						if err != nil {
 							return err
 						}
-						logger.Warn("data migrate task wait channel full",
+						logger.Warn("data migrate task wait full",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
 							zap.String("schema_name_s", cmt.SchemaNameS),
+							zap.String("schema_name_t", cmt.SchemaNameT),
 							zap.String("table_name_s", sourceTable),
-							zap.String("action", "skip send"))
+							zap.String("task_stage", "skip send wait channel"))
 					}
 					return nil
 				}
@@ -374,6 +418,14 @@ func (cmt *DataMigrateTask) Init() error {
 				switch stringutil.StringUpper(dbTypeS) {
 				case constant.DatabaseTypeOracle:
 					if !strings.EqualFold(cmt.DBRoleS, constant.OracleDatabasePrimaryRole) || (strings.EqualFold(cmt.DBRoleS, constant.OracleDatabasePrimaryRole) && stringutil.VersionOrdinal(cmt.DBVersionS) < stringutil.VersionOrdinal(constant.OracleDatabaseTableMigrateRowidRequireVersion)) {
+						logger.Info("data migrate task migrate strategy",
+							zap.String("task_name", cmt.Task.TaskName),
+							zap.String("task_mode", cmt.Task.TaskMode),
+							zap.String("task_flow", cmt.Task.TaskFlow),
+							zap.String("schema_name_s", cmt.SchemaNameS),
+							zap.String("schema_name_t", cmt.SchemaNameT),
+							zap.String("table_name_s", sourceTable),
+							zap.String("task_migrate_strategy", "statistics"))
 						if err = cmt.ProcessStatisticsScan(
 							gCtx,
 							dbTypeS,
@@ -384,6 +436,14 @@ func (cmt *DataMigrateTask) Init() error {
 							return err
 						}
 					} else {
+						logger.Info("data migrate task migrate strategy",
+							zap.String("task_name", cmt.Task.TaskName),
+							zap.String("task_mode", cmt.Task.TaskMode),
+							zap.String("task_flow", cmt.Task.TaskFlow),
+							zap.String("schema_name_s", cmt.SchemaNameS),
+							zap.String("schema_name_t", cmt.SchemaNameT),
+							zap.String("table_name_s", sourceTable),
+							zap.String("task_migrate_strategy", "chunks"))
 						if err = cmt.ProcessChunkScan(
 							gCtx,
 							cmt.GlobalSnapshotS,
@@ -394,6 +454,14 @@ func (cmt *DataMigrateTask) Init() error {
 						}
 					}
 				case constant.DatabaseTypePostgresql:
+					logger.Info("data migrate task migrate strategy",
+						zap.String("task_name", cmt.Task.TaskName),
+						zap.String("task_mode", cmt.Task.TaskMode),
+						zap.String("task_flow", cmt.Task.TaskFlow),
+						zap.String("schema_name_s", cmt.SchemaNameS),
+						zap.String("schema_name_t", cmt.SchemaNameT),
+						zap.String("table_name_s", sourceTable),
+						zap.String("task_migrate_strategy", "statistics"))
 					if err = cmt.ProcessStatisticsScan(
 						gCtx,
 						dbTypeS,
@@ -407,12 +475,13 @@ func (cmt *DataMigrateTask) Init() error {
 					return fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] database type [%s] can't support, please contact author or retry", cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, dbTypeS)
 				}
 
-				logger.Info("data migrate task init table finished",
+				logger.Info("data migrate task init finished",
 					zap.String("task_name", cmt.Task.TaskName),
 					zap.String("task_mode", cmt.Task.TaskMode),
 					zap.String("task_flow", cmt.Task.TaskFlow),
-					zap.String("schema_name_s", attsRule.SchemaNameS),
-					zap.String("table_name_s", attsRule.TableNameS),
+					zap.String("schema_name_s", cmt.SchemaNameS),
+					zap.String("schema_name_t", cmt.SchemaNameT),
+					zap.String("table_name_s", sourceTable),
 					zap.String("cost", time.Now().Sub(initTableTime).String()))
 				return nil
 			}
@@ -421,7 +490,9 @@ func (cmt *DataMigrateTask) Init() error {
 
 	if err = g.Wait(); err != nil {
 		logger.Error("data migrate task init failed",
-			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
+			zap.String("task_name", cmt.Task.TaskName),
+			zap.String("task_mode", cmt.Task.TaskMode),
+			zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", cmt.SchemaNameS),
 			zap.Error(err))
 		return err
@@ -443,7 +514,9 @@ func (cmt *DataMigrateTask) Init() error {
 func (cmt *DataMigrateTask) Run() error {
 	startTime := time.Now()
 	logger.Info("data migrate task run starting",
-		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
+		zap.String("task_name", cmt.Task.TaskName),
+		zap.String("task_mode", cmt.Task.TaskMode),
+		zap.String("task_flow", cmt.Task.TaskFlow))
 
 	for s := range cmt.WaiterC {
 		err := cmt.Process(s)
@@ -463,7 +536,9 @@ func (cmt *DataMigrateTask) Run() error {
 func (cmt *DataMigrateTask) Resume() error {
 	startTime := time.Now()
 	logger.Info("data migrate task resume starting",
-		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
+		zap.String("task_name", cmt.Task.TaskName),
+		zap.String("task_mode", cmt.Task.TaskMode),
+		zap.String("task_flow", cmt.Task.TaskFlow))
 
 	for s := range cmt.ResumeC {
 		err := cmt.Process(s)
@@ -480,8 +555,11 @@ func (cmt *DataMigrateTask) Resume() error {
 }
 
 func (cmt *DataMigrateTask) Last() error {
+	startTime := time.Now()
 	logger.Info("data migrate task last table",
-		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
+		zap.String("task_name", cmt.Task.TaskName),
+		zap.String("task_mode", cmt.Task.TaskMode),
+		zap.String("task_flow", cmt.Task.TaskFlow))
 	flags, err := model.GetIDataMigrateSummaryRW().QueryDataMigrateSummaryFlag(cmt.Ctx, &task.DataMigrateSummary{
 		TaskName:    cmt.Task.TaskName,
 		SchemaNameS: cmt.SchemaNameS,
@@ -502,11 +580,25 @@ func (cmt *DataMigrateTask) Last() error {
 			return err
 		}
 	}
+
+	logger.Info("data migrate task last table success",
+		zap.String("task_name", cmt.Task.TaskName),
+		zap.String("task_mode", cmt.Task.TaskMode),
+		zap.String("task_flow", cmt.Task.TaskFlow),
+		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
 }
 
 func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 	startTableTime := time.Now()
+
+	logger.Info("data migrate task processing",
+		zap.String("task_name", cmt.Task.TaskName),
+		zap.String("task_mode", cmt.Task.TaskMode),
+		zap.String("task_flow", cmt.Task.TaskFlow),
+		zap.String("schema_name_s", s.SchemaNameS),
+		zap.String("table_name_s", s.TableNameS),
+		zap.String("start_time", startTableTime.String()))
 
 	summary, err := model.GetIDataMigrateSummaryRW().GetDataMigrateSummary(cmt.Ctx, &task.DataMigrateSummary{
 		TaskName:    s.TaskName,
@@ -517,14 +609,14 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		return err
 	}
 	if strings.EqualFold(summary.MigrateFlag, constant.TaskMigrateStatusFinished) {
-		logger.Warn("data migrate task process",
+		logger.Warn("data migrate task flag processing",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", s.SchemaNameS),
 			zap.String("table_name_s", s.TableNameS),
 			zap.String("migrate_flag", summary.MigrateFlag),
-			zap.String("action", "migrate skip"))
+			zap.String("action", "the task migrate success, skip migrate"))
 		return nil
 	}
 
@@ -537,13 +629,13 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		convertDBCharsetS string
 	)
 
-	logger.Info("data migrate task process table",
+	logger.Info("data migrate task prepare processing",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
 		zap.String("schema_name_s", s.SchemaNameS),
 		zap.String("table_name_s", s.TableNameS),
-		zap.String("startTime", startTableTime.String()))
+		zap.String("migrate_flag", summary.MigrateFlag))
 
 	switch cmt.Task.TaskFlow {
 	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
@@ -581,7 +673,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		return err
 	}
 
-	logger.Info("data migrate task process chunks",
+	logger.Warn("data migrate task chunks processing",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
@@ -595,6 +687,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		gTime := time.Now()
 		g.Go(j, gTime, func(j interface{}) error {
 			dt := j.(*task.DataMigrateTask)
+			startTime := time.Now()
 			errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
 				_, err := model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
 					&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
@@ -625,6 +718,14 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 			if errW != nil {
 				return errW
 			}
+
+			logger.Warn("data migrate task chunks processing",
+				zap.String("task_name", cmt.Task.TaskName),
+				zap.String("task_mode", cmt.Task.TaskMode),
+				zap.String("task_flow", cmt.Task.TaskFlow),
+				zap.String("schema_name_s", s.SchemaNameS),
+				zap.String("table_name_s", s.TableNameS),
+				zap.String("chunk_id_s", dt.ChunkID))
 
 			err = database.IDataMigrateProcess(&StmtMigrateRow{
 				Ctx:           cmt.Ctx,
@@ -678,6 +779,15 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 			if errW != nil {
 				return errW
 			}
+
+			logger.Warn("data migrate task chunks processing",
+				zap.String("task_name", cmt.Task.TaskName),
+				zap.String("task_mode", cmt.Task.TaskMode),
+				zap.String("task_flow", cmt.Task.TaskFlow),
+				zap.String("schema_name_s", s.SchemaNameS),
+				zap.String("table_name_s", s.TableNameS),
+				zap.String("chunk_id_s", dt.ChunkID),
+				zap.String("cost", time.Now().Sub(startTime).String()))
 			return nil
 		})
 	}
@@ -685,10 +795,13 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 	for _, r := range g.Wait() {
 		if r.Err != nil {
 			smt := r.Task.(*task.DataMigrateTask)
-			logger.Warn("data migrate task process tables",
-				zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
+			logger.Error("data migrate task chunk processing",
+				zap.String("task_name", cmt.Task.TaskName),
+				zap.String("task_mode", cmt.Task.TaskMode),
+				zap.String("task_flow", cmt.Task.TaskFlow),
 				zap.String("schema_name_s", smt.SchemaNameS),
 				zap.String("table_name_s", smt.TableNameS),
+				zap.String("chunk_id_s", smt.ChunkID),
 				zap.Error(r.Err))
 
 			errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
@@ -808,7 +921,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 			return err
 		}
 
-		logger.Info("data migrate task process summary",
+		logger.Info("data migrate task summary processing",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -848,7 +961,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		return err
 	}
 
-	logger.Info("data migrate task process table",
+	logger.Info("data migrate task processing",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
@@ -868,7 +981,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		return err
 	}
 	if h == nil {
-		logger.Warn("data migrate task table",
+		logger.Warn("data migrate task table scanning",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
@@ -877,7 +990,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 			zap.String("database_version", cmt.DBVersionS),
 			zap.String("database_role", cmt.DBRoleS),
 			zap.String("seletivity", "selectivity is null, skip statistics"),
-			zap.String("migrate_method", "scan"))
+			zap.String("migrate_method", "table scan"))
 		err = cmt.ProcessTableScan(ctx, globalScn, tableRows, tableSize, attsRule)
 		if err != nil {
 			return err
@@ -895,7 +1008,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		return err
 	}
 
-	logger.Warn("data migrate task table",
+	logger.Warn("data migrate task table scanning",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
@@ -903,7 +1016,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		zap.String("table_name_s", attsRule.TableNameS),
 		zap.String("database_version", cmt.DBVersionS),
 		zap.String("database_role", cmt.DBRoleS),
-		zap.String("migrate_method", "statistic"))
+		zap.String("migrate_method", "statistic scan"))
 
 	rangeC := make(chan []*structure.Range, constant.DefaultMigrateTaskQueueSize)
 	chunksC := make(chan int, 1)
@@ -1029,7 +1142,7 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 	default:
 		whereRange = `1 = 1`
 	}
-	logger.Warn("data migrate task table",
+	logger.Warn("data migrate task table scanning",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
 		zap.String("task_flow", cmt.Task.TaskFlow),
