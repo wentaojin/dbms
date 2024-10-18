@@ -57,6 +57,8 @@ const (
 	TaskFlowTiDBToOracle    = "TIDB@ORACLE"
 	TaskFlowPostgresToTiDB  = "POSTGRES@TIDB"
 	TaskFlowPostgresToMySQL = "POSTGRES@MYSQL"
+	TaskFlowTiDBToPostgres  = "TIDB@POSTGRES"
+	TaskFlowMySQLToPostgres = "MYSQL@POSTGRES"
 )
 
 const (

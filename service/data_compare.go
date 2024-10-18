@@ -19,12 +19,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/wentaojin/dbms/database/processor"
-	"github.com/wentaojin/dbms/database/taskflow"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/database/processor"
+	"github.com/wentaojin/dbms/database/taskflow"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/etcdutil"
@@ -367,28 +368,14 @@ func StartDataCompareTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
-	if !taskParams.EnableCheckpoint {
-		logger.Warn("data compare task clear task records",
-			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
-		err = model.Transaction(ctx, func(txnCtx context.Context) error {
-			err = model.GetIDataCompareSummaryRW().DeleteDataCompareSummaryName(txnCtx, []string{taskInfo.TaskName})
-			if err != nil {
-				return err
-			}
-			err = model.GetIDataCompareTaskRW().DeleteDataCompareTaskName(txnCtx, []string{taskInfo.TaskName})
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-
 	logger.Info("data compare task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 	switch taskInfo.TaskFlow {
-	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowTiDBToOracle:
+	case constant.TaskFlowOracleToTiDB,
+		constant.TaskFlowOracleToMySQL,
+		constant.TaskFlowTiDBToOracle,
+		constant.TaskFlowPostgresToTiDB,
+		constant.TaskFlowPostgresToMySQL,
+		constant.TaskFlowTiDBToPostgres:
 		taskTime := time.Now()
 		dataMigrate := &taskflow.DataCompareTask{
 			Ctx:         ctx,

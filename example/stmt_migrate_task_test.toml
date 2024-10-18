@@ -20,7 +20,7 @@ schema-name-s = "marvin"
 schema-name-t = "ucccis"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["users"]
+include-table-s = ["users","marvin10"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
 

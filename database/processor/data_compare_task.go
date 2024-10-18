@@ -17,7 +17,6 @@ package processor
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -50,7 +49,10 @@ type DataCompareTask struct {
 
 	DBCharsetS string
 	DBCharsetT string
-	TaskParams *pb.DataCompareParam
+
+	GlobalSnapshotS string
+	GlobalSnapshotT string
+	TaskParams      *pb.DataCompareParam
 
 	WaiterC chan *WaitingRecs
 	ResumeC chan *WaitingRecs
@@ -64,7 +66,17 @@ func (dmt *DataCompareTask) Init() error {
 	logger.Info("data compare task init table",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 
+	logger.Warn("data compare task checkpoint action",
+		zap.String("task_name", dmt.Task.TaskName),
+		zap.String("task_mode", dmt.Task.TaskMode),
+		zap.String("task_flow", dmt.Task.TaskFlow),
+		zap.Bool("enable_checkpoint", dmt.TaskParams.EnableCheckpoint))
 	if !dmt.TaskParams.EnableCheckpoint {
+		logger.Warn("data compare task clear task records",
+			zap.String("task_name", dmt.Task.TaskName),
+			zap.String("task_mode", dmt.Task.TaskMode),
+			zap.String("task_flow", dmt.Task.TaskFlow))
+
 		err := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
 			err := model.GetIDataCompareSummaryRW().DeleteDataCompareSummaryName(txnCtx, []string{dmt.Task.TaskName})
 			if err != nil {
@@ -84,11 +96,6 @@ func (dmt *DataCompareTask) Init() error {
 			return err
 		}
 	}
-	logger.Warn("data compare task checkpoint skip",
-		zap.String("task_name", dmt.Task.TaskName),
-		zap.String("task_mode", dmt.Task.TaskMode),
-		zap.String("task_flow", dmt.Task.TaskFlow),
-		zap.Bool("enable_checkpoint", dmt.TaskParams.EnableCheckpoint))
 
 	// filter database table
 	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(dmt.Ctx, &rule.MigrateTaskTable{
@@ -99,10 +106,9 @@ func (dmt *DataCompareTask) Init() error {
 		return err
 	}
 	var (
-		includeTables          []string
-		excludeTables          []string
-		databaseTaskTables     []string // task tables
-		globalScnS, globalScnT string
+		includeTables      []string
+		excludeTables      []string
+		databaseTaskTables []string // task tables
 	)
 	databaseTableTypeMap := make(map[string]string)
 	databaseTaskTablesMap := make(map[string]struct{})
@@ -184,67 +190,6 @@ func (dmt *DataCompareTask) Init() error {
 	databaseTableTypeMap, err = dmt.DatabaseS.GetDatabaseTableType(dmt.SchemaNameS)
 	if err != nil {
 		return err
-	}
-
-	switch dmt.Task.TaskFlow {
-	case constant.TaskFlowOracleToTiDB:
-		var globalScn string
-		if err := dmt.DatabaseS.Transaction(dmt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
-			func(ctx context.Context, tx *sql.Tx) error {
-				globalScn, err = dmt.DatabaseS.GetDatabaseConsistentPos(ctx, tx)
-				if err != nil {
-					return err
-				}
-				return nil
-			},
-		}); err != nil {
-			return err
-		}
-
-		if dmt.TaskParams.EnableConsistentRead {
-			globalScnS = globalScn
-		}
-		if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
-			globalScnS = dmt.TaskParams.ConsistentReadPointS
-		}
-		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointT, "") {
-			globalScnT = dmt.TaskParams.ConsistentReadPointT
-		}
-	case constant.TaskFlowOracleToMySQL:
-		var globalScn string
-		if err := dmt.DatabaseS.Transaction(dmt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
-			func(ctx context.Context, tx *sql.Tx) error {
-				globalScn, err = dmt.DatabaseS.GetDatabaseConsistentPos(ctx, tx)
-				if err != nil {
-					return err
-				}
-				return nil
-			},
-		}); err != nil {
-			return err
-		}
-
-		if dmt.TaskParams.EnableConsistentRead {
-			globalScnS = globalScn
-		}
-		if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
-			globalScnS = dmt.TaskParams.ConsistentReadPointS
-		}
-		// ignore params dmt.TaskParams.ConsistentReadPointT, mysql database is not support
-	case constant.TaskFlowTiDBToOracle:
-		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
-			globalScnS = dmt.TaskParams.ConsistentReadPointS
-		}
-
-		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointT, "") {
-			globalScnT = dmt.TaskParams.ConsistentReadPointT
-		}
-	case constant.TaskFlowMySQLToOracle:
-		// ignore params dmt.TaskParams.ConsistentReadPointS, mysql database is not support
-
-		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointT, "") {
-			globalScnT = dmt.TaskParams.ConsistentReadPointT
-		}
 	}
 
 	// database tables
@@ -355,8 +300,8 @@ func (dmt *DataCompareTask) Init() error {
 					gCtx,
 					dbTypeS,
 					dbTypeT,
-					globalScnS,
-					globalScnT,
+					dmt.GlobalSnapshotS,
+					dmt.GlobalSnapshotT,
 					tableRows,
 					tableSize,
 					attsRule)
@@ -556,13 +501,19 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 			}
 
 			var dbCharsetS, dbCharsetT string
-			switch {
-			case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
+			switch dmt.Task.TaskFlow {
+			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
 				dbCharsetS = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
 				dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-			case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowTiDBToOracle) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowMySQLToOracle):
+			case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 				dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
 				dbCharsetT = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
+			case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+				dbCharsetS = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
+				dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
+			case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+				dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
+				dbCharsetT = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
 			default:
 				return fmt.Errorf("the task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", dmt.Task.TaskName, dt.SchemaNameS, dmt.Task.TaskFlow)
 			}

@@ -410,7 +410,65 @@ func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS stri
 	return res, nil
 }
 
-func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
+func (d *Database) GetDatabaseTableCompareRow(query string, args ...any) ([]string, []map[string]string, error) {
+	var (
+		columns []string
+		results []map[string]string
+	)
+
+	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	// general query, automatic get column name
+	columns, err = rows.Columns()
+	if err != nil {
+		return columns, results, fmt.Errorf("query rows.Columns failed, sql: [%v], error: [%v]", query, err)
+	}
+
+	values := make([][]byte, len(columns))
+	scans := make([]interface{}, len(columns))
+	for i := range values {
+		scans[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(scans...)
+		if err != nil {
+			return columns, results, fmt.Errorf("query rows.Scan failed, sql: [%v], error: [%v]", query, err)
+		}
+
+		row := make(map[string]string)
+		for k, v := range values {
+			// Notes: oracle database NULL and ""
+			//	1, if the return value is NULLABLE, it represents the value is NULL, oracle sql query statement had be required the field NULL judgement, and if the filed is NULL, it returns that the value is NULLABLE
+			//	2, if the return value is nil, it represents the value is NULL
+			//	3, if the return value is "", it represents the value is "" string
+			//	4, if the return value is 'NULL' or 'null', it represents the value is NULL or null string
+			if v == nil {
+				row[columns[k]] = "NULLABLE"
+			} else {
+				// Handling empty string and other values, the return value output string
+				row[columns[k]] = stringutil.BytesToString(v)
+			}
+		}
+		results = append(results, row)
+	}
+
+	if err = rows.Err(); err != nil {
+		return columns, results, fmt.Errorf("query rows.Next failed, sql: [%v], error: [%v]", query, err.Error())
+	}
+	return columns, results, nil
+}
+
+func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
 	var (
 		rowData        []string
 		columnNames    []string

@@ -18,9 +18,10 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/wentaojin/dbms/database/processor"
 	"github.com/wentaojin/dbms/model/datasource"
-	"time"
 
 	"github.com/wentaojin/dbms/logger"
 	"go.uber.org/zap"
@@ -57,8 +58,14 @@ func (st *StructMigrateTask) Start() error {
 		databaseS, databaseT database.IDatabase
 		err                  error
 	)
-	logger.Info("struct migrate task init database connection",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+
+	logger.Info("struct migrate task processing",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("start_time", startTime.String()),
+		zap.String("task_stage", "database connection init"))
+
 	switch st.Task.TaskFlow {
 	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
 		databaseS, err = database.NewDatabase(st.Ctx, st.DatasourceS, st.SchemaNameS, int64(st.TaskParams.CallTimeout))
@@ -86,8 +93,12 @@ func (st *StructMigrateTask) Start() error {
 		return fmt.Errorf("the task_name [%v] task_mode [%v] task_flow [%s] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow)
 	}
 
-	logger.Info("struct migrate task get buildin rule",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	logger.Info("struct migrate task processing",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("task_stage", "buildin rule get"))
+
 	dbTypeSli := stringutil.StringSplit(st.Task.TaskFlow, constant.StringSeparatorAite)
 
 	dbTypeS := dbTypeSli[0]
@@ -105,22 +116,20 @@ func (st *StructMigrateTask) Start() error {
 	// process schema
 	var createSchema string
 	schemaCreateTime := time.Now()
-	logger.Info("struct migrate task process schema",
-		zap.String("task_name", st.Task.TaskName),
-		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", st.SchemaNameS),
-		zap.String("schema_name_t", st.SchemaNameT))
 
 	dbVersionS, err := databaseS.GetDatabaseVersion()
 	if err != nil {
 		return err
 	}
 
+	logger.Info("struct migrate task processing",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("task_stage", "task migrate inspect"))
+
 	switch st.Task.TaskFlow {
 	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
-		logger.Info("struct migrate task inspect migrate task",
-			zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 		nlsComp, err := processor.InspectOracleMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, databaseS, stringutil.StringUpper(st.DatasourceS.ConnectCharset), stringutil.StringUpper(st.DatasourceT.ConnectCharset))
 		if err != nil {
 			return err
@@ -158,8 +167,6 @@ func (st *StructMigrateTask) Start() error {
 			}
 		}
 	case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
-		logger.Info("struct migrate task inspect migrate task",
-			zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 		dbCollation, err := processor.InspectPostgresMigrateTask(st.Task.TaskName, st.Task.TaskFlow, st.Task.TaskMode, databaseS, stringutil.StringUpper(st.DatasourceS.ConnectCharset), stringutil.StringUpper(st.DatasourceT.ConnectCharset))
 		if err != nil {
 			return err
@@ -203,18 +210,36 @@ func (st *StructMigrateTask) Start() error {
 		return err
 	}
 
-	logger.Info("struct migrate task process schema",
+	logger.Info("struct migrate task processing",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("create_schema_sql", createSchema))
+		zap.String("create_schema_sql", createSchema),
+		zap.String("task_stage", "schema create sql gen"))
 
-	logger.Info("struct migrate task process table",
+	_, err = model.GetITaskLogRW().CreateLog(st.Ctx, &task.Log{
+		TaskName: st.Task.TaskName,
+		LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema create sql gen",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeStructMigrate),
+			st.Task.TaskName,
+			st.Task.TaskFlow,
+			st.Task.WorkerAddr,
+		),
+	})
+	if err != nil {
+		return err
+	}
+
+	logger.Info("struct migrate task processing",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow))
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "schema table process"))
 
 	err = database.IDatabaseRun(&processor.StructMigrateTask{
 		Ctx:                      st.Ctx,
@@ -239,7 +264,7 @@ func (st *StructMigrateTask) Start() error {
 	}
 
 	endTime := time.Now()
-	logger.Info("struct migrate task",
+	logger.Info("struct migrate task processing",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),

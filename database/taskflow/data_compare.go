@@ -17,9 +17,12 @@ package taskflow
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"github.com/wentaojin/dbms/database/processor"
+	"strings"
 	"time"
+
+	"github.com/wentaojin/dbms/database/processor"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
@@ -54,7 +57,9 @@ func (dmt *DataCompareTask) Start() error {
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 
 	var (
-		databaseS, databaseT database.IDatabase
+		databaseS, databaseT   database.IDatabase
+		globalScnS, globalScnT string
+		globalTxn              *sql.Tx
 	)
 	switch dmt.Task.TaskFlow {
 	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
@@ -72,6 +77,24 @@ func (dmt *DataCompareTask) Start() error {
 		logger.Info("data compare task inspect task",
 			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 		_, err = processor.InspectOracleMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
+		if err != nil {
+			return err
+		}
+	case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+		databaseS, err = database.NewDatabase(dmt.Ctx, dmt.DatasourceS, "", int64(dmt.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+		databaseT, err = database.NewDatabase(dmt.Ctx, dmt.DatasourceT, "", int64(dmt.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
+
+		logger.Info("data compare task inspect task",
+			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		_, err = processor.InspectPostgresMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseS, stringutil.StringUpper(dmt.DatasourceS.ConnectCharset), stringutil.StringUpper(dmt.DatasourceT.ConnectCharset))
 		if err != nil {
 			return err
 		}
@@ -94,24 +117,153 @@ func (dmt *DataCompareTask) Start() error {
 		if err != nil {
 			return err
 		}
+	case constant.TaskFlowTiDBToPostgres:
+		databaseS, err = database.NewDatabase(dmt.Ctx, dmt.DatasourceS, "", int64(dmt.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseS.Close()
+
+		databaseT, err = database.NewDatabase(dmt.Ctx, dmt.DatasourceT, "", int64(dmt.TaskParams.CallTimeout))
+		if err != nil {
+			return err
+		}
+		defer databaseT.Close()
+
+		logger.Info("data compare task inspect task",
+			zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
+		_, err = processor.InspectPostgresMigrateTask(dmt.Task.TaskName, dmt.Task.TaskFlow, dmt.Task.TaskMode, databaseT, stringutil.StringUpper(dmt.DatasourceT.ConnectCharset), stringutil.StringUpper(dmt.DatasourceS.ConnectCharset))
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", dmt.Task.TaskName, dmt.Task.TaskMode, dmt.Task.TaskFlow, schemaRoute.SchemaNameS)
 	}
 
+	// snapshot
+	switch dmt.Task.TaskFlow {
+	case constant.TaskFlowOracleToTiDB:
+		var globalScn string
+		if err := databaseS.Transaction(dmt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+			func(ctx context.Context, tx *sql.Tx) error {
+				globalScn, err = databaseS.GetDatabaseConsistentPos(ctx, tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}); err != nil {
+			return err
+		}
+
+		if dmt.TaskParams.EnableConsistentRead {
+			globalScnS = globalScn
+		}
+		if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
+			globalScnS = dmt.TaskParams.ConsistentReadPointS
+		}
+		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointT, "") {
+			globalScnT = dmt.TaskParams.ConsistentReadPointT
+		}
+	case constant.TaskFlowOracleToMySQL:
+		var globalScn string
+		if err := databaseS.Transaction(dmt.Ctx, &sql.TxOptions{}, []func(ctx context.Context, tx *sql.Tx) error{
+			func(ctx context.Context, tx *sql.Tx) error {
+				globalScn, err = databaseS.GetDatabaseConsistentPos(ctx, tx)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}); err != nil {
+			return err
+		}
+
+		if dmt.TaskParams.EnableConsistentRead {
+			globalScnS = globalScn
+		}
+		// ignore params dmt.TaskParams.ConsistentReadPointT, mysql database is not support
+		if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
+			globalScnS = dmt.TaskParams.ConsistentReadPointS
+		}
+	case constant.TaskFlowPostgresToTiDB:
+		if dmt.TaskParams.EnableConsistentRead {
+			globalTxn, err = databaseS.BeginTxn(dmt.Ctx, &sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+			})
+			if err != nil {
+				return err
+			}
+			globalScn, err := databaseS.GetDatabaseConsistentPos(dmt.Ctx, globalTxn)
+			if err != nil {
+				return err
+			}
+			globalScnS = globalScn
+		}
+		if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
+			globalScnS = dmt.TaskParams.ConsistentReadPointS
+		}
+		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointT, "") {
+			globalScnT = dmt.TaskParams.ConsistentReadPointT
+		}
+	case constant.TaskFlowPostgresToMySQL:
+		if dmt.TaskParams.EnableConsistentRead {
+			globalTxn, err = databaseS.BeginTxn(dmt.Ctx, &sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+			})
+			if err != nil {
+				return err
+			}
+			globalScn, err := databaseS.GetDatabaseConsistentPos(dmt.Ctx, globalTxn)
+			if err != nil {
+				return err
+			}
+			globalScnS = globalScn
+		}
+		// ignore params dmt.TaskParams.ConsistentReadPointT, mysql database is not support
+		if !dmt.TaskParams.EnableConsistentRead && !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
+			globalScnS = dmt.TaskParams.ConsistentReadPointS
+		}
+	case constant.TaskFlowTiDBToOracle, constant.TaskFlowTiDBToPostgres:
+		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointS, "") {
+			globalScnS = dmt.TaskParams.ConsistentReadPointS
+		}
+		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointT, "") {
+			globalScnT = dmt.TaskParams.ConsistentReadPointT
+		}
+	case constant.TaskFlowMySQLToOracle, constant.TaskFlowMySQLToPostgres:
+		// ignore params dmt.TaskParams.ConsistentReadPointS, mysql database is not support
+		if !strings.EqualFold(dmt.TaskParams.ConsistentReadPointT, "") {
+			globalScnT = dmt.TaskParams.ConsistentReadPointT
+		}
+	}
+
 	err = database.IDatabaseRun(&processor.DataCompareTask{
-		Ctx:         dmt.Ctx,
-		Task:        dmt.Task,
-		DatabaseS:   databaseS,
-		DatabaseT:   databaseT,
-		SchemaNameS: schemaRoute.SchemaNameS,
-		DBCharsetS:  stringutil.StringUpper(dmt.DatasourceS.ConnectCharset),
-		DBCharsetT:  stringutil.StringUpper(dmt.DatasourceT.ConnectCharset),
-		TaskParams:  dmt.TaskParams,
-		WaiterC:     make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
-		ResumeC:     make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		Ctx:             dmt.Ctx,
+		Task:            dmt.Task,
+		DatabaseS:       databaseS,
+		DatabaseT:       databaseT,
+		SchemaNameS:     schemaRoute.SchemaNameS,
+		DBCharsetS:      stringutil.StringUpper(dmt.DatasourceS.ConnectCharset),
+		DBCharsetT:      stringutil.StringUpper(dmt.DatasourceT.ConnectCharset),
+		GlobalSnapshotS: globalScnS,
+		GlobalSnapshotT: globalScnT,
+		TaskParams:      dmt.TaskParams,
+		WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 	})
 	if err != nil {
 		return err
+	}
+
+	// globalTxn commit
+	switch dmt.Task.TaskFlow {
+	case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+		if dmt.TaskParams.EnableConsistentRead {
+			if err = databaseS.CommitTxn(globalTxn); err != nil {
+				return err
+			}
+		}
 	}
 
 	logger.Info("data compare task",

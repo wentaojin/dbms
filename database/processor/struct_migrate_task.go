@@ -60,8 +60,22 @@ type StructMigrateTask struct {
 }
 
 func (st *StructMigrateTask) Init() error {
-	logger.Info("struct migrate task init table",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "task record init"))
+
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.Bool("enable_checkpoint", st.TaskParams.EnableCheckpoint),
+		zap.String("task_stage", "task checkpoint action"))
 
 	if !st.TaskParams.EnableCheckpoint {
 		err := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
@@ -87,11 +101,6 @@ func (st *StructMigrateTask) Init() error {
 			return err
 		}
 	}
-	logger.Warn("struct migrate task checkpoint action",
-		zap.String("task_name", st.Task.TaskName),
-		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow),
-		zap.Bool("enable_checkpoint", st.TaskParams.EnableCheckpoint))
 
 	gSeq := &errgroup.Group{}
 
@@ -123,8 +132,14 @@ func (st *StructMigrateTask) Init() error {
 }
 
 func (st *StructMigrateTask) Run() error {
-	logger.Info("struct migrate task run table",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "task record running"))
+
 	gSeq := &errgroup.Group{}
 
 	gSeq.Go(func() error {
@@ -164,25 +179,23 @@ func (st *StructMigrateTask) Run() error {
 }
 
 func (st *StructMigrateTask) Resume() error {
-	logger.Info("struct migrate task resume table",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 	return nil
 }
 
 func (st *StructMigrateTask) Last() error {
-	logger.Info("struct migrate task last table",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
 	return nil
 }
 
 func (st *StructMigrateTask) initStructMigrate() error {
 	defer close(st.StructReadyInit)
 
-	logger.Info("struct migrate task init",
+	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", st.SchemaNameS))
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "struct migrate init"))
 
 	s, err := model.GetIStructMigrateSummaryRW().GetStructMigrateSummary(st.Ctx, &task.StructMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
 	if err != nil {
@@ -218,18 +231,26 @@ func (st *StructMigrateTask) initStructMigrate() error {
 	}
 
 	if len(schemaTaskTables) == 0 {
-		logger.Warn("struct migrate task process",
+		logger.Info("struct migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
 			zap.String("schema_name_s", st.SchemaNameS),
+			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("detail", "config file schema-route-table include-table-s/exclude-table-s params are null, skip struct migrate"),
-			zap.String("action", "skip_struct_migrate"),
+			zap.String("task_stage", "skip struct migrate"),
 			zap.String("cost", time.Now().Sub(st.StartTime).String()))
-
 		st.StructReadyInit <- false
 		return nil
 	}
+
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "schema tables get"))
 
 	var (
 		includeTables      []string
@@ -276,6 +297,14 @@ func (st *StructMigrateTask) initStructMigrate() error {
 	}
 
 	// get table route rule
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "table routes get"))
+
 	tableRouteRule := make(map[string]string)
 
 	tableRoutes, err := model.GetIMigrateTableRouteRW().FindTableRouteRule(st.Ctx, &rule.TableRouteRule{
@@ -287,6 +316,14 @@ func (st *StructMigrateTask) initStructMigrate() error {
 	}
 
 	// clear the struct migrate task table
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "schema table clear"))
+
 	migrateTasks, err := model.GetIStructMigrateTaskRW().BatchFindStructMigrateTask(st.Ctx, &task.StructMigrateTask{TaskName: st.Task.TaskName})
 	if err != nil {
 		return err
@@ -360,25 +397,58 @@ func (st *StructMigrateTask) initStructMigrate() error {
 	}
 
 	st.StructReadyInit <- true
+
+	_, err = model.GetITaskLogRW().CreateLog(st.Ctx, &task.Log{
+		TaskName: st.Task.TaskName,
+		LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] struct migrate record init done",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeStructMigrate),
+			st.Task.TaskName,
+			st.Task.TaskFlow,
+			st.SchemaNameS,
+			st.Task.WorkerAddr,
+		),
+	})
+	if err != nil {
+		return err
+	}
+	logger.Warn("sequence migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "struct records done"),
+		zap.String("cost", time.Now().Sub(st.StartTime).String()))
+
 	return nil
 }
 
 func (st *StructMigrateTask) processStructMigrate() error {
-	logger.Info("struct migrate task run table",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "struct migrate start"))
+
 	s, err := model.GetIStructMigrateSummaryRW().GetStructMigrateSummary(st.Ctx, &task.StructMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
 	if err != nil {
 		return err
 	}
 
 	if strings.EqualFold(s.MigrateFlag, constant.TaskMigrateStatusFinished) {
-		logger.Warn("struct migrate task migrate skip",
+		logger.Info("struct migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
+			zap.String("schema_name_s", st.SchemaNameS),
+			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("init_flag", s.InitFlag),
 			zap.String("migrate_flag", s.MigrateFlag),
-			zap.String("action", "migrate skip"))
+			zap.String("task_stage", "struct migrate skip"))
+
 		_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(st.Ctx,
 			&task.StructMigrateSummary{
 				TaskName:    st.Task.TaskName,
@@ -393,10 +463,13 @@ func (st *StructMigrateTask) processStructMigrate() error {
 		return nil
 	}
 
-	logger.Info("struct migrate task get migrate tasks",
+	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow))
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "struct records get"))
 	var (
 		migrateTasks []*task.StructMigrateTask
 	)
@@ -443,10 +516,14 @@ func (st *StructMigrateTask) processStructMigrate() error {
 		return err
 	}
 
-	logger.Info("struct migrate task process migrate tables",
+	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow))
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "struct concurrency start"))
+
 	g := errconcurrent.NewGroup()
 	g.SetLimit(int(st.TaskParams.MigrateThread))
 
@@ -464,12 +541,13 @@ func (st *StructMigrateTask) processStructMigrate() error {
 	for _, r := range g.Wait() {
 		if r.Err != nil {
 			smt := r.Task.(*task.StructMigrateTask)
-			logger.Warn("struct migrate task",
+			logger.Error("struct migrate task processor",
 				zap.String("task_name", st.Task.TaskName),
 				zap.String("task_mode", st.Task.TaskMode),
 				zap.String("task_flow", st.Task.TaskFlow),
-				zap.String("schema_name_s", smt.SchemaNameS),
-				zap.String("table_name_s", smt.TableNameS),
+				zap.String("schema_name_s", st.SchemaNameS),
+				zap.String("schema_name_t", st.SchemaNameT),
+				zap.String("task_stage", "struct concurrency failed"),
 				zap.Error(r.Err))
 
 			errW := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
@@ -483,17 +561,18 @@ func (st *StructMigrateTask) processStructMigrate() error {
 				if err != nil {
 					return err
 				}
+
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    smt.TaskName,
-					SchemaNameS: smt.SchemaNameS,
-					TableNameS:  smt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] struct migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [struct_migrate_task] detail",
+					TaskName: st.Task.TaskName,
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] table_name_s [%s] migrate failed, please see [struct_migrate_task] detail",
 						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(st.Task.TaskMode),
-						smt.TaskName,
-						st.Task.TaskMode,
-						smt.SchemaNameS,
-						smt.TableNameS),
+						stringutil.StringLower(constant.TaskModeStructMigrate),
+						st.Task.TaskName,
+						st.Task.TaskFlow,
+						st.Task.WorkerAddr,
+						st.SchemaNameS,
+						smt.TableNameS,
+					),
 				})
 				if err != nil {
 					return err
@@ -506,64 +585,40 @@ func (st *StructMigrateTask) processStructMigrate() error {
 		}
 	}
 
-	s, err = model.GetIStructMigrateSummaryRW().GetStructMigrateSummary(st.Ctx, &task.StructMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
-	if err != nil {
-		return err
-	}
-	if s.TableTotals == s.TableSuccess {
-		_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(st.Ctx,
-			&task.StructMigrateSummary{
-				TaskName:    st.Task.TaskName,
-				SchemaNameS: st.SchemaNameS},
-			map[string]interface{}{
-				"MigrateFlag": constant.TaskMigrateStatusFinished,
-				"Duration":    fmt.Sprintf("%f", time.Now().Sub(st.StartTime).Seconds()),
-			})
-		if err != nil {
-			return err
-		}
-	} else {
-		_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(st.Ctx,
-			&task.StructMigrateSummary{
-				TaskName:    st.Task.TaskName,
-				SchemaNameS: st.SchemaNameS},
-			map[string]interface{}{
-				"MigrateFlag": constant.TaskMigrateStatusNotFinished,
-				"Duration":    fmt.Sprintf("%f", time.Now().Sub(st.StartTime).Seconds()),
-			})
-		if err != nil {
-			return err
-		}
-	}
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "struct concurrency done"))
 	return nil
 }
 
 func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) error {
 	// if the schema table success, skip
 	if strings.EqualFold(smt.TaskStatus, constant.TaskDatabaseStatusSuccess) {
-		logger.Warn("struct migrate task process",
+		logger.Warn("struct migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
 			zap.String("schema_name_s", st.SchemaNameS),
-			zap.String("table_name_s", smt.TableNameS),
-			zap.String("task_status", constant.TaskDatabaseStatusSuccess),
-			zap.String("table task had done", "skip migrate"),
+			zap.String("schema_name_t", st.SchemaNameT),
+			zap.String("task_stage", "the task migrate has success, skip the struct migrate"),
 			zap.String("cost", time.Now().Sub(st.StartTime).String()))
 		return nil
 	}
 	// if the table is MATERIALIZED VIEW, SKIP
 	// MATERIALIZED VIEW isn't support struct migrate
 	if strings.EqualFold(smt.TableTypeS, constant.DatabaseMigrateTableStructDisabledMaterializedView) {
-		logger.Warn("struct migrate task process",
+		logger.Warn("struct migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
-			zap.String("schema_name_s", smt.SchemaNameS),
-			zap.String("table_name_s", smt.TableNameS),
-			zap.String("table_type_s", smt.TableTypeS),
-			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
-		zap.String("cost", time.Now().Sub(st.StartTime).String())
+			zap.String("schema_name_s", st.SchemaNameS),
+			zap.String("schema_name_t", st.SchemaNameT),
+			zap.String("task_stage", "the materialized view not support, skip the migrate, if necessary, please manually process the tables in the above list"),
+			zap.String("cost", time.Now().Sub(st.StartTime).String()))
 		return nil
 	}
 
@@ -579,15 +634,16 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 			return err
 		}
 		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-			TaskName:    smt.TaskName,
-			SchemaNameS: smt.SchemaNameS,
-			TableNameS:  smt.TableNameS,
-			LogDetail: fmt.Sprintf("%v [%v] the struct migrate task [%v] source table [%v.%v] starting",
+			TaskName: st.Task.TaskName,
+			LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] table_name_s [%s] migrate start",
 				stringutil.CurrentTimeFormatString(),
-				stringutil.StringLower(st.Task.TaskMode),
-				smt.TaskName,
-				smt.SchemaNameS,
-				smt.TableNameS),
+				stringutil.StringLower(constant.TaskModeStructMigrate),
+				st.Task.TaskName,
+				st.Task.TaskFlow,
+				st.Task.WorkerAddr,
+				st.SchemaNameS,
+				smt.TableNameS,
+			),
 		})
 		if err != nil {
 			return err
@@ -612,15 +668,16 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 	if err != nil {
 		return err
 	}
-	logger.Info("struct migrate task process",
+	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", smt.SchemaNameS),
-		zap.String("table_name_s", smt.TableNameS),
-		zap.String("task_stage", "datasource"),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("datasource", datasourceS.String()),
+		zap.String("task_stage", "struct attributes gen"),
 		zap.String("cost", time.Now().Sub(sourceTime).String()))
+
 	ruleTime := time.Now()
 	dataRule := &StructMigrateRule{
 		Ctx:                      st.Ctx,
@@ -646,14 +703,14 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 	if err != nil {
 		return err
 	}
-	logger.Info("struct migrate task process",
+	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", smt.SchemaNameS),
-		zap.String("table_name_s", smt.TableNameS),
-		zap.String("task_stage", "rule"),
-		zap.String("rule", dataRule.String()),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("datasource", datasourceS.String()),
+		zap.String("task_stage", "struct rule gen"),
 		zap.String("cost", time.Now().Sub(ruleTime).String()))
 
 	tableTime := time.Now()
@@ -671,14 +728,14 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		return err
 	}
 
-	logger.Info("struct migrate task process",
+	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", smt.SchemaNameS),
-		zap.String("table_name_s", smt.TableNameS),
-		zap.String("task_stage", "struct"),
-		zap.String("struct", dataTable.String()),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("datasource", datasourceS.String()),
+		zap.String("task_stage", "struct table gen"),
 		zap.String("cost", time.Now().Sub(tableTime).String()))
 
 	writerTime := time.Now()
@@ -690,12 +747,12 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		if err != nil {
 			return err
 		}
-		logger.Info("struct migrate task process",
+		logger.Info("struct migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
-			zap.String("schema_name_s", smt.SchemaNameS),
-			zap.String("table_name_s", smt.TableNameS),
+			zap.String("schema_name_s", st.SchemaNameS),
+			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("task_stage", "struct sync database"),
 			zap.String("cost", time.Now().Sub(writerTime).String()))
 
@@ -706,12 +763,12 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 	if err != nil {
 		return err
 	}
-	logger.Info("struct migrate task process",
+	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", smt.SchemaNameS),
-		zap.String("table_name_s", smt.TableNameS),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("task_stage", "struct write database"),
 		zap.String("cost", time.Now().Sub(writerTime).String()))
 	return nil
@@ -720,11 +777,13 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 func (st *StructMigrateTask) initSequenceMigrate() error {
 	defer close(st.SequenceReadyInit)
 
-	logger.Info("sequence migrate task init",
+	logger.Info("sequence migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", st.SchemaNameS))
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "sequence migrate init"))
 
 	seq, err := model.GetISequenceMigrateSummaryRW().GetSequenceMigrateSummary(st.Ctx, &task.SequenceMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
 	if err != nil {
@@ -760,13 +819,14 @@ func (st *StructMigrateTask) initSequenceMigrate() error {
 	}
 
 	if len(schemaSeqsTasks) == 0 {
-		logger.Warn("sequence migrate task process",
+		logger.Warn("sequence migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
 			zap.String("schema_name_s", st.SchemaNameS),
+			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("detail", "config file schema-route-table include-sequence-s/exclude-sequence-s params are null, skip sequence migrate"),
-			zap.String("action", "skip_sequence_migrate"),
+			zap.String("task_stage", "skip sequence migrate"),
 			zap.String("cost", time.Now().Sub(st.StartTime).String()))
 
 		st.SequenceReadyInit <- false
@@ -813,6 +873,14 @@ func (st *StructMigrateTask) initSequenceMigrate() error {
 	}
 
 	// clear the sequence migrate task
+	logger.Warn("sequence migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "sequence records clear"))
+
 	migrateSeqs, err := model.GetISequenceMigrateTaskRW().BatchFindSequenceMigrateTask(st.Ctx, &task.SequenceMigrateTask{TaskName: st.Task.TaskName})
 	if err != nil {
 		return err
@@ -863,18 +931,39 @@ func (st *StructMigrateTask) initSequenceMigrate() error {
 
 	st.SequenceReadyInit <- true
 
-	logger.Info("sequence migrate task init finished",
+	_, err = model.GetITaskLogRW().CreateLog(st.Ctx, &task.Log{
+		TaskName: st.Task.TaskName,
+		LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] sequence migrate record init done",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeStructMigrate),
+			st.Task.TaskName,
+			st.Task.TaskFlow,
+			st.Task.WorkerAddr,
+			st.SchemaNameS,
+		),
+	})
+	if err != nil {
+		return err
+	}
+	logger.Warn("sequence migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "sequence records done"),
 		zap.String("cost", time.Now().Sub(st.StartTime).String()))
 	return nil
 }
 
 func (st *StructMigrateTask) processSequenceMigrate() error {
-	logger.Info("sequence migrate task run table",
-		zap.String("task_name", st.Task.TaskName), zap.String("task_mode", st.Task.TaskMode), zap.String("task_flow", st.Task.TaskFlow))
+	logger.Warn("sequence migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "sequence migrate start"))
 
 	s, err := model.GetISequenceMigrateSummaryRW().GetSequenceMigrateSummary(st.Ctx, &task.SequenceMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
 	if err != nil {
@@ -882,13 +971,15 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 	}
 
 	if strings.EqualFold(s.MigrateFlag, constant.TaskMigrateStatusFinished) {
-		logger.Warn("sequence migrate task migrate skip",
+		logger.Warn("sequence migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
+			zap.String("schema_name_s", st.SchemaNameS),
+			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("init_flag", s.InitFlag),
 			zap.String("migrate_flag", s.MigrateFlag),
-			zap.String("action", "migrate skip"))
+			zap.String("task_stage", "sequence migrate skip"))
 		_, err = model.GetISequenceMigrateSummaryRW().UpdateSequenceMigrateSummary(st.Ctx,
 			&task.SequenceMigrateSummary{
 				TaskName:    st.Task.TaskName,
@@ -903,10 +994,13 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 		return nil
 	}
 
-	logger.Info("sequence migrate task get migrate tasks",
+	logger.Warn("sequence migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow))
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "sequence records get"))
 	var (
 		migrateTasks []*task.SequenceMigrateTask
 	)
@@ -953,10 +1047,14 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 		return err
 	}
 
-	logger.Info("sequence migrate task process migrate sequences",
+	logger.Warn("sequence migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow))
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "sequence concurrency start"))
+
 	g := errconcurrent.NewGroup()
 	g.SetLimit(int(st.TaskParams.MigrateThread))
 
@@ -964,6 +1062,16 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 		gTime := time.Now()
 		g.Go(job, gTime, func(job interface{}) error {
 			smt := job.(*task.SequenceMigrateTask)
+
+			logger.Warn("sequence migrate task processor",
+				zap.String("task_name", st.Task.TaskName),
+				zap.String("task_mode", st.Task.TaskMode),
+				zap.String("task_flow", st.Task.TaskFlow),
+				zap.String("schema_name_s", st.SchemaNameS),
+				zap.String("sequence_name_s", smt.SequenceNameS),
+				zap.String("schema_name_t", st.SchemaNameT),
+				zap.String("task_stage", "sequence record processing"))
+
 			err = model.Transaction(st.Ctx, func(txnCtx context.Context) error {
 				_, err = model.GetISequenceMigrateTaskRW().UpdateSequenceMigrateTask(txnCtx, &task.SequenceMigrateTask{
 					TaskName:      smt.TaskName,
@@ -976,15 +1084,16 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 					return err
 				}
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    smt.TaskName,
-					SchemaNameS: smt.SchemaNameS,
-					TableNameS:  smt.SequenceNameS,
-					LogDetail: fmt.Sprintf("%v [%v] the struct migrate task [%v] source sequence [%v.%v] starting",
+					TaskName: st.Task.TaskName,
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] sequence_name_s [%s] migrate starting",
 						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(st.Task.TaskMode),
-						smt.TaskName,
-						smt.SchemaNameS,
-						smt.SequenceNameS),
+						stringutil.StringLower(constant.TaskModeSequenceMigrate),
+						st.Task.TaskName,
+						st.Task.TaskFlow,
+						st.Task.WorkerAddr,
+						st.SchemaNameS,
+						smt.SequenceNameS,
+					),
 				})
 				if err != nil {
 					return err
@@ -1055,18 +1164,29 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 			if err != nil {
 				return err
 			}
+
+			logger.Warn("sequence migrate task processor",
+				zap.String("task_name", st.Task.TaskName),
+				zap.String("task_mode", st.Task.TaskMode),
+				zap.String("task_flow", st.Task.TaskFlow),
+				zap.String("schema_name_s", st.SchemaNameS),
+				zap.String("sequence_name_s", smt.SequenceNameS),
+				zap.String("schema_name_t", st.SchemaNameT),
+				zap.String("task_stage", "sequence record processed"))
 			return nil
 		})
 	}
 	for _, r := range g.Wait() {
 		if r.Err != nil {
 			smt := r.Task.(*task.SequenceMigrateTask)
-			logger.Warn("sequence migrate task",
+			logger.Error("sequence migrate task processor",
 				zap.String("task_name", st.Task.TaskName),
 				zap.String("task_mode", st.Task.TaskMode),
 				zap.String("task_flow", st.Task.TaskFlow),
-				zap.String("schema_name_s", smt.SchemaNameS),
+				zap.String("schema_name_s", st.SchemaNameS),
 				zap.String("sequence_name_s", smt.SequenceNameS),
+				zap.String("schema_name_t", st.SchemaNameT),
+				zap.String("task_stage", "sequence migrate error"),
 				zap.Error(r.Err))
 
 			errW := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
@@ -1081,16 +1201,16 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 					return err
 				}
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    smt.TaskName,
-					SchemaNameS: smt.SchemaNameS,
-					TableNameS:  smt.SequenceNameS,
-					LogDetail: fmt.Sprintf("%v [%v] struct migrate task [%v] taskflow [%v] source sequence [%v.%v] failed, please see [sequence_migrate_task] detail",
+					TaskName: st.Task.TaskName,
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] sequence_name_s [%s] migrate failed, please see [sequence_migrate_task] detail",
 						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(st.Task.TaskMode),
-						smt.TaskName,
-						st.Task.TaskMode,
-						smt.SchemaNameS,
-						smt.SequenceNameS),
+						stringutil.StringLower(constant.TaskModeSequenceMigrate),
+						st.Task.TaskName,
+						st.Task.TaskFlow,
+						st.Task.WorkerAddr,
+						st.SchemaNameS,
+						smt.SequenceNameS,
+					),
 				})
 				if err != nil {
 					return err
@@ -1103,48 +1223,18 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 		}
 	}
 
-	s, err = model.GetISequenceMigrateSummaryRW().GetSequenceMigrateSummary(st.Ctx, &task.SequenceMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
-	if err != nil {
-		return err
-	}
-	if s.SeqTotals == s.SeqSuccess {
-		_, err = model.GetISequenceMigrateSummaryRW().UpdateSequenceMigrateSummary(st.Ctx,
-			&task.SequenceMigrateSummary{
-				TaskName:    st.Task.TaskName,
-				SchemaNameS: st.SchemaNameS},
-			map[string]interface{}{
-				"MigrateFlag": constant.TaskMigrateStatusFinished,
-				"Duration":    fmt.Sprintf("%f", time.Now().Sub(st.StartTime).Seconds()),
-			})
-		if err != nil {
-			return err
-		}
-	} else {
-		_, err = model.GetISequenceMigrateSummaryRW().UpdateSequenceMigrateSummary(st.Ctx,
-			&task.SequenceMigrateSummary{
-				TaskName:    st.Task.TaskName,
-				SchemaNameS: st.SchemaNameS},
-			map[string]interface{}{
-				"MigrateFlag": constant.TaskMigrateStatusNotFinished,
-				"Duration":    fmt.Sprintf("%f", time.Now().Sub(st.StartTime).Seconds()),
-			})
-		if err != nil {
-			return err
-		}
-	}
+	logger.Warn("sequence migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "sequence concurrency done"))
 	return nil
 }
 
 func (st *StructMigrateTask) sequenceMigrateStart(smt *task.SequenceMigrateTask) error {
 	startTime := time.Now()
-	logger.Info("sequence migrate task process",
-		zap.String("task_name", st.Task.TaskName),
-		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", st.SchemaNameS),
-		zap.String("start_time", startTime.String()))
-
-	writerTime := time.Now()
 	var w database.ISequenceMigrateDatabaseWriter
 	w = NewSequenceMigrateDatabase(st.Ctx, st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow, st.DatabaseT, startTime, smt)
 
@@ -1153,13 +1243,16 @@ func (st *StructMigrateTask) sequenceMigrateStart(smt *task.SequenceMigrateTask)
 		if err != nil {
 			return err
 		}
-		logger.Info("sequence migrate task process",
+
+		logger.Warn("sequence migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
 			zap.String("schema_name_s", st.SchemaNameS),
-			zap.String("task_stage", "struct sequence database"),
-			zap.String("cost", time.Now().Sub(writerTime).String()))
+			zap.String("schema_name_t", st.SchemaNameT),
+			zap.Bool("enable_direct_create", st.TaskParams.EnableDirectCreate),
+			zap.String("task_stage", "sync sequence database"),
+			zap.String("cost", time.Now().Sub(startTime).String()))
 		return nil
 	}
 
@@ -1167,12 +1260,14 @@ func (st *StructMigrateTask) sequenceMigrateStart(smt *task.SequenceMigrateTask)
 	if err != nil {
 		return err
 	}
-	logger.Info("sequence migrate task process",
+	logger.Warn("sequence migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
-		zap.String("task_stage", "struct sequence database"),
-		zap.String("cost", time.Now().Sub(writerTime).String()))
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.Bool("enable_direct_create", st.TaskParams.EnableDirectCreate),
+		zap.String("task_stage", "write sequence database"),
+		zap.String("cost", time.Now().Sub(startTime).String()))
 	return nil
 }

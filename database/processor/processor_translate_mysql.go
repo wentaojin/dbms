@@ -16,97 +16,110 @@ limitations under the License.
 package processor
 
 import (
-	"fmt"
-	"github.com/wentaojin/dbms/utils/constant"
-	"github.com/wentaojin/dbms/utils/stringutil"
 	"strconv"
 	"strings"
+
+	"github.com/thinkeridea/go-extend/exstrings"
+	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func GenOracleCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int, safeMode bool) string {
+func GenMYSQLCompatibleDatabasePrepareStmt(
+	schemaName, tableName string, sqlHint, columnDetailSlice string, insertBatchSize int, safeMode bool) string {
+
+	return stringutil.StringBuilder(
+		genMYSQLCompatibleDatabaseInsertSQLStmtPrefix(schemaName, tableName, sqlHint, columnDetailSlice, safeMode),
+		genMYSQLCompatibleDatabasePrepareBindVarStmt(len(stringutil.StringSplit(columnDetailSlice, constant.StringSeparatorComma)), insertBatchSize))
+}
+
+func genMYSQLCompatibleDatabaseInsertSQLStmtPrefix(schemaName, tableName, sqlHint string, columnDetailSlice string, safeMode bool) string {
+	var prefixSQL string
+	column := stringutil.StringBuilder(" (", columnDetailSlice, ")")
+	if safeMode {
+		if strings.EqualFold(sqlHint, "") {
+			prefixSQL = stringutil.StringBuilder(`REPLACE INTO `, schemaName, ".", tableName, column, ` VALUES `)
+		} else {
+			prefixSQL = stringutil.StringBuilder(`REPLACE `, sqlHint, ` INTO `, schemaName, ".", tableName, column, ` VALUES `)
+		}
+	} else {
+		if strings.EqualFold(sqlHint, "") {
+			prefixSQL = stringutil.StringBuilder(`INSERT INTO `, schemaName, ".", tableName, column, ` VALUES `)
+		} else {
+			prefixSQL = stringutil.StringBuilder(`INSERT `, sqlHint, ` INTO `, schemaName, ".", tableName, column, ` VALUES `)
+		}
+	}
+	return prefixSQL
+}
+
+func genMYSQLCompatibleDatabasePrepareBindVarStmt(columns, bindVarBatch int) string {
 	var (
-		prefixSQL                     string
-		columnDetailTSli              []string
-		onCondsColumnDetailTSlice     []string
-		whereCondsColumnDetailT2Slice []string
+		bindVars []string
+		bindVar  []string
+	)
+	for i := 0; i < columns; i++ {
+		bindVar = append(bindVar, "?")
+	}
+	singleBindVar := stringutil.StringBuilder("(", exstrings.Join(bindVar, ","), ")")
+	for i := 0; i < bindVarBatch; i++ {
+		bindVars = append(bindVars, singleBindVar)
+	}
+
+	return exstrings.Join(bindVars, ",")
+}
+
+func GenMYSQLCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int, safeMode bool) string {
+	var (
+		prefixSQL        string
+		columnDetailTSli []string
 	)
 	for _, c := range columnDetailSlice {
-		columnDetailTSli = append(columnDetailTSli, stringutil.StringBuilder(`"`, c, `"`))
-		onCondsColumnDetailTSlice = append(onCondsColumnDetailTSlice, stringutil.StringBuilder(`T1."`, c, `" = T2."`, c, `"`))
-		whereCondsColumnDetailT2Slice = append(whereCondsColumnDetailT2Slice, stringutil.StringBuilder(`T2."`, c, `"`))
+		columnDetailTSli = append(columnDetailTSli, stringutil.StringBuilder("`", c, "`"))
 	}
 
 	if safeMode {
 		if strings.EqualFold(sqlHint, "") {
-			prefixSQL = stringutil.StringBuilder(`MERGE INTO "`, schemaName, `"."`, tableName, `" T1`)
+			prefixSQL = stringutil.StringBuilder("REPLACE INTO `", schemaName, "`.`", tableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
 		} else {
-			prefixSQL = stringutil.StringBuilder(`MERGE `, sqlHint, ` INTO "`, schemaName, `"."`, tableName, `" T1`)
+			prefixSQL = stringutil.StringBuilder("REPLACE ", sqlHint, " INTO `", schemaName, "`.`", tableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
 		}
-
-		var (
-			restoreColDatas []string
-			usingQueries    []string
-		)
-		for i := 0; i < columnDataCounts; i++ {
-			restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
-		}
-
-		for _, c := range restoreColDatas {
-			var selectConds []string
-			for i, s := range stringutil.StringSplit(c, constant.StringSeparatorComma) {
-				selectConds = append(selectConds, stringutil.StringBuilder(s, ` AS `, columnDetailTSli[i]))
-			}
-			usingQueries = append(usingQueries, stringutil.StringBuilder(`SELECT `, stringutil.StringJoin(selectConds, constant.StringSeparatorComma)), ` FROM DUAL`)
-		}
-
-		usingQuery := stringutil.StringJoin(usingQueries, " UNION ")
-		onConds := stringutil.StringJoin(onCondsColumnDetailTSlice, " AND ")
-
-		return fmt.Sprintf(`%s
-USING (%s) T2
-ON (%s)
-WHEN MATCHED THEN
-	UPDATE SET %s
-WHEN NOT MATCHED THEN
-	INSERT (%s) VALUES (%s)`, prefixSQL, usingQuery, onConds, onConds, stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), stringutil.StringJoin(whereCondsColumnDetailT2Slice, constant.StringSeparatorComma))
-
 	} else {
 		if strings.EqualFold(sqlHint, "") {
-			prefixSQL = stringutil.StringBuilder(`INSERT INTO "`, schemaName, `"."`, tableName, `" (`, stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
+			prefixSQL = stringutil.StringBuilder("INSERT INTO `", schemaName, "`.`", tableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
 		} else {
-			prefixSQL = stringutil.StringBuilder(`INSERT `, sqlHint, ` INTO "`, schemaName, `"."`, tableName, `" (`, stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
+			prefixSQL = stringutil.StringBuilder("INSERT ", sqlHint, " INTO `", schemaName, "`.`", tableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
 		}
-
-		var restoreColDatas []string
-		for i := 0; i < columnDataCounts; i++ {
-			restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
-		}
-
-		var suffixVal []string
-		for _, vals := range restoreColDatas {
-			suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
-		}
-		return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma), constant.StringSeparatorSemicolon)
 	}
+
+	var restoreColDatas []string
+	for i := 0; i < columnDataCounts; i++ {
+		restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
+	}
+
+	var suffixVal []string
+	for _, vals := range restoreColDatas {
+		suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
+	}
+
+	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma), constant.StringSeparatorSemicolon)
 }
 
-func GenOracleCompatibleDatabaseDeleteStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int) string {
+func GenMYSQLCompatibleDatabaseDeleteStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int) string {
 
 	var prefixSQL string
 	if strings.EqualFold(sqlHint, "") {
-		prefixSQL = stringutil.StringBuilder(`DELETE FROM "`, schemaName, `"."`, tableName, `" WHERE `)
+		prefixSQL = stringutil.StringBuilder("DELETE FROM `", schemaName, "`.`", tableName, "` WHERE ")
 	} else {
-		prefixSQL = stringutil.StringBuilder(`DELETE `, sqlHint, ` FROM "`, schemaName, `"."`, tableName, `" WHERE `)
+		prefixSQL = stringutil.StringBuilder("DELETE ", sqlHint, " FROM `", schemaName, "`.`", tableName, "` WHERE ")
 	}
 
 	var columnConds []string
 	for i, c := range columnDetailSlice {
-		if strings.EqualFold(columnDataString[i], constant.OracleDatabaseTableColumnDefaultValueWithNULL) {
-			columnConds = append(columnConds, stringutil.StringBuilder(`"`, c, `"`, ` IS `, columnDataString[i]))
-		} else if strings.EqualFold(columnDataString[i], constant.OracleDatabaseTableColumnDefaultValueWithEmptyString) {
-			columnConds = append(columnConds, stringutil.StringBuilder(`"`, c, `"`, ` IS NULL`))
+		if strings.EqualFold(columnDataString[i], constant.MYSQLDatabaseTableColumnDefaultValueWithNULL) {
+			columnConds = append(columnConds, stringutil.StringBuilder("`", c, "`", ` IS `, columnDataString[i]))
+		} else if strings.EqualFold(columnDataString[i], constant.MYSQLDatabaseTableColumnDefaultValueWithEmptyString) {
+			columnConds = append(columnConds, stringutil.StringBuilder("`", c, "`", ` = ''`))
 		} else {
-			columnConds = append(columnConds, stringutil.StringBuilder(`"`, c, `"`, ` = `, columnDataString[i]))
+			columnConds = append(columnConds, stringutil.StringBuilder("`", c, "`", ` = `, columnDataString[i]))
 		}
 	}
 

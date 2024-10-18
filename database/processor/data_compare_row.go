@@ -18,9 +18,10 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/golang/snappy"
 
@@ -141,6 +142,16 @@ func (r *DataCompareRow) CompareRows() error {
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		}
+	case constant.DatabaseTypePostgresql:
+		if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointS, `'`, constant.StringSeparatorSemicolon, `SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointS, `'`, constant.StringSeparatorSemicolon, `SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else if strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else {
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_s [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[0])
 	}
@@ -171,6 +182,16 @@ func (r *DataCompareRow) CompareRows() error {
 			execQueryT = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintT, " ", columnDetailT, " FROM `", r.Dmt.SchemaNameT, "`.`", r.Dmt.TableNameT, "` WHERE ", chunkDetailT)
 		} else {
 			execQueryT = stringutil.StringBuilder("SELECT ", columnDetailT, " FROM ", r.Dmt.SchemaNameT, "`.`", r.Dmt.TableNameT, "` WHERE ", chunkDetailT)
+		}
+	case constant.DatabaseTypePostgresql:
+		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointT, `'`, constant.StringSeparatorSemicolon, `SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else if strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointT, `'`, constant.StringSeparatorSemicolon, `SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else {
+			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
 		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_t [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[1])
@@ -221,7 +242,7 @@ func (r *DataCompareRow) CompareRows() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS...)
+			_, resultS, err := r.DatabaseS.GetDatabaseTableCompareRow(execQueryS, queryCondArgsS...)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
@@ -249,7 +270,7 @@ func (r *DataCompareRow) CompareRows() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT...)
+			_, resultT, err := r.DatabaseT.GetDatabaseTableCompareRow(execQueryT, queryCondArgsT...)
 			if err != nil {
 				return fmt.Errorf("the database source target sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
@@ -554,6 +575,25 @@ SELECT
 FROM
 	(%v) subq`, execQueryS)
 		}
+	case constant.DatabaseTypePostgresql:
+		if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointS, `'`, constant.StringSeparatorSemicolon, `SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointS, `'`, constant.StringSeparatorSemicolon, `SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else if strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else {
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
+			execQueryS = fmt.Sprintf(`SELECT
+	TO_CHAR(COALESCE(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'99999999')+
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'99999999')+
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'99999999')+ 
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'99999999'))),0)) AS ROWSCHECKSUM
+FROM
+	(%v) subq`, execQueryS)
+		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_s [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[0])
 	}
@@ -614,6 +654,25 @@ SELECT
 FROM
 	(%v) subq`, execQueryT)
 		}
+	case constant.DatabaseTypePostgresql:
+		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointT, `'`, constant.StringSeparatorSemicolon, `SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else if strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointT, `'`, constant.StringSeparatorSemicolon, `SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else {
+			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		}
+		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
+			execQueryT = fmt.Sprintf(`SELECT
+	TO_CHAR(COALESCE(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'99999999')+
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'99999999')+
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'99999999')+ 
+	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'99999999'))),0)) AS ROWSCHECKSUM
+FROM
+	(%v) subq`, execQueryT)
+		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_t [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[1])
 	}
@@ -662,7 +721,7 @@ FROM
 			return nil
 		default:
 			streamTime := time.Now()
-			_, resultS, err := r.DatabaseS.GeneralQuery(execQueryS, queryCondArgsS...)
+			_, resultS, err := r.DatabaseS.GetDatabaseTableCompareRow(execQueryS, queryCondArgsS...)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] running failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
@@ -689,7 +748,7 @@ FROM
 			return nil
 		default:
 			streamTime := time.Now()
-			_, resultT, err := r.DatabaseT.GeneralQuery(execQueryT, queryCondArgsT...)
+			_, resultT, err := r.DatabaseT.GetDatabaseTableCompareRow(execQueryT, queryCondArgsT...)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] running failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
@@ -903,6 +962,16 @@ func (r *DataCompareRow) CompareCRC32() error {
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		}
+	case constant.DatabaseTypePostgresql:
+		if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointS, `'`, constant.StringSeparatorSemicolon, `SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointS, `'`, constant.StringSeparatorSemicolon, `SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else if strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else {
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_s [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[0])
 	}
@@ -933,6 +1002,16 @@ func (r *DataCompareRow) CompareCRC32() error {
 			execQueryT = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintT, " ", columnDetailT, " FROM `", r.Dmt.SchemaNameT, "`.`", r.Dmt.TableNameT, "` WHERE ", chunkDetailT)
 		} else {
 			execQueryT = stringutil.StringBuilder("SELECT ", columnDetailT, " FROM ", r.Dmt.SchemaNameT, "`.`", r.Dmt.TableNameT, "` WHERE ", chunkDetailT)
+		}
+	case constant.DatabaseTypePostgresql:
+		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointT, `'`, constant.StringSeparatorSemicolon, `SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else if strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointT, `'`, constant.StringSeparatorSemicolon, `SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else {
+			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
 		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_t [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[1])
@@ -988,7 +1067,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			columnS, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, r.Separator, queryCondArgsS)
+			columnS, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareCrc(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, r.Separator, queryCondArgsS)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] comparing failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
@@ -1021,7 +1100,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			columnT, crc32ValT, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, r.Separator, queryCondArgsT)
+			columnT, crc32ValT, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareCrc(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, r.Separator, queryCondArgsT)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] comparing failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
@@ -1203,9 +1282,29 @@ func (r *DataCompareRow) CompareCRC32() error {
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
-		case constant.TaskFlowTiDBToOracle:
+		case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				delDetails = append(delDetails, GenPostgresCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				addDetails = append(addDetails, GenPostgresCompatibleDatabaseInsertStmtSQL(
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
@@ -1230,9 +1329,29 @@ func (r *DataCompareRow) CompareCRC32() error {
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
-		case constant.TaskFlowTiDBToOracle:
+		case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				delDetails = append(delDetails, GenOracleCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				addDetails = append(addDetails, GenPostgresCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				delDetails = append(delDetails, GenPostgresCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
@@ -1465,6 +1584,16 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 		} else {
 			execQueryS = stringutil.StringBuilder("SELECT ", columnDetailS, " FROM `", r.Dmt.SchemaNameS, "`.`", r.Dmt.TableNameS, "` WHERE ", chunkDetailS)
 		}
+	case constant.DatabaseTypePostgresql:
+		if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointS, `'`, constant.StringSeparatorSemicolon, `SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else if !strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointS, `'`, constant.StringSeparatorSemicolon, `SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else if strings.EqualFold(r.Dmt.SnapshotPointS, "") && !strings.EqualFold(r.Dmt.SqlHintS, "") {
+			execQueryS = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintS, ` `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		} else {
+			execQueryS = stringutil.StringBuilder(`SELECT `, columnDetailS, ` FROM "`, r.Dmt.SchemaNameS, `"."`, r.Dmt.TableNameS, `" WHERE `, chunkDetailS)
+		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_s [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[0])
 	}
@@ -1495,6 +1624,18 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 			execQueryT = stringutil.StringBuilder("SELECT ", r.Dmt.SqlHintT, " ", columnDetailT, " FROM `", r.Dmt.SchemaNameT, "`.`", r.Dmt.TableNameT, "` WHERE ", chunkDetailT)
 		} else {
 			execQueryT = stringutil.StringBuilder("SELECT ", columnDetailT, " FROM ", r.Dmt.SchemaNameT, "`.`", r.Dmt.TableNameT, "` WHERE ", chunkDetailT)
+		}
+	case constant.DatabaseTypePostgresql:
+		if !strings.EqualFold(r.Dmt.SqlHintT, "") && strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else if !strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointT, `'`, constant.StringSeparatorSemicolon,
+				`SELECT `, r.Dmt.SqlHintT, ` `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else if strings.EqualFold(r.Dmt.SqlHintT, "") && !strings.EqualFold(r.Dmt.SnapshotPointT, "") {
+			execQueryT = stringutil.StringBuilder(`SET TRANSACTION SNAPSHOT '`, r.Dmt.SnapshotPointT, `'`, constant.StringSeparatorSemicolon,
+				`SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
+		} else {
+			execQueryT = stringutil.StringBuilder(`SELECT `, columnDetailT, ` FROM "`, r.Dmt.SchemaNameT, `"."`, r.Dmt.TableNameT, `" WHERE `, chunkDetailT)
 		}
 	default:
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] db_type_t [%s] is not supported, please contact author or reselect", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, dbTypeSli[1])
@@ -1548,7 +1689,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			columnS, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareData(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, r.Separator, queryCondArgsS)
+			columnS, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareCrc(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, r.Separator, queryCondArgsS)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] comparing failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
@@ -1579,7 +1720,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			columnT, _, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareData(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, r.Separator, queryCondArgsT)
+			columnT, _, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareCrc(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, r.Separator, queryCondArgsT)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] comparing failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
@@ -1666,9 +1807,29 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
-		case constant.TaskFlowTiDBToOracle:
+		case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				delDetails = append(delDetails, GenPostgresCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				addDetails = append(addDetails, GenPostgresCompatibleDatabaseInsertStmtSQL(
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
@@ -1694,9 +1855,29 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
-		case constant.TaskFlowTiDBToOracle:
+		case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				delDetails = append(delDetails, GenOracleCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
+			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
+				addDetails = append(addDetails, GenPostgresCompatibleDatabaseInsertStmtSQL(
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+			} else {
+				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
+			}
+		case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
+				delDetails = append(delDetails, GenPostgresCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(

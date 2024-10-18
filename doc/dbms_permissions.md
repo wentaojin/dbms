@@ -205,7 +205,9 @@ GRANT CONNECT,CREATE ON DATABASE ${database_name} TO dbms_privs_role;
 GRANT USAGE ON SCHEMA ${schema_name} TO dbms_privs_role;
 GRANT SELECT ON ALL TABLES IN SCHEMA ${schema_name} TO dbms_privs_role;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema_name} GRANT SELECT ON TABLES TO dbms_privs_role;
+-- for role ${business_user}: the default permissions you set are only valid for objects created by the specified role.
+-- grant which business user to have query privileges for the tables created in the future using dbms_privs_role
+ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema_name} FOR ROLE ${business_user} GRANT SELECT ON TABLES TO dbms_privs_role;
 
 -- grant role to user
 GRANT dbms_privs_role TO dbmsadmin;

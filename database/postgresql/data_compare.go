@@ -17,6 +17,7 @@ package postgresql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"hash/crc32"
 	"math"
@@ -363,7 +364,95 @@ NEXTROW:
 
 }
 
-func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
+func (d *Database) GetDatabaseTableCompareRow(querySQL string, queryArgs ...any) ([]string, []map[string]string, error) {
+	var (
+		columns []string
+		results []map[string]string
+	)
+
+	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	sqlSlis := stringutil.StringSplit(querySQL, constant.StringSeparatorSemicolon)
+	sliLen := len(sqlSlis)
+
+	var (
+		txn  *sql.Tx
+		rows *sql.Rows
+		err  error
+	)
+
+	if sliLen == 1 {
+		rows, err = d.QueryContext(ctx, sqlSlis[0], queryArgs...)
+		if err != nil {
+			return columns, results, err
+		}
+		defer rows.Close()
+	} else if sliLen == 2 {
+		txn, err = d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+		if err != nil {
+			return columns, results, err
+		}
+		// SET TRANSACTION SNAPSHOT '000003A1-1';
+		_, err = txn.ExecContext(ctx, sqlSlis[0])
+		if err != nil {
+			return columns, results, err
+		}
+		rows, err = txn.QueryContext(ctx, sqlSlis[1], queryArgs...)
+		if err != nil {
+			return columns, results, err
+		}
+		defer rows.Close()
+	} else {
+		return columns, results, fmt.Errorf("the query sql [%v] cannot be over two values, please contact author or reselect", querySQL)
+	}
+
+	// general query, automatic get column name
+	columns, err = rows.Columns()
+	if err != nil {
+		return columns, results, fmt.Errorf("query rows.Columns failed, sql: [%v], error: [%v]", querySQL, err)
+	}
+
+	values := make([][]byte, len(columns))
+	scans := make([]interface{}, len(columns))
+	for i := range values {
+		scans[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(scans...)
+		if err != nil {
+			return columns, results, fmt.Errorf("query rows.Scan failed, sql: [%v], error: [%v]", querySQL, err)
+		}
+
+		row := make(map[string]string)
+		for k, v := range values {
+			if v == nil {
+				row[columns[k]] = "NULLABLE"
+			} else {
+				// Handling empty string and other values, the return value output string
+				row[columns[k]] = stringutil.BytesToString(v)
+			}
+		}
+		results = append(results, row)
+	}
+
+	if err = rows.Err(); err != nil {
+		return columns, results, fmt.Errorf("query rows.Next failed, sql: [%v], error: [%v]", querySQL, err.Error())
+	}
+
+	// txn commit
+	if sliLen == 2 {
+		if err := d.CommitTxn(txn); err != nil {
+			return columns, results, err
+		}
+	}
+	return columns, results, nil
+}
+
+func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
 	var (
 		rowData       []string
 		columnNames   []string
@@ -382,11 +471,38 @@ func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int,
 	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
 	defer cancel()
 
-	rows, err := d.QueryContext(ctx, querySQL, queryArgs...)
-	if err != nil {
-		return nil, crc32Sum, nil, err
+	sqlSlis := stringutil.StringSplit(querySQL, constant.StringSeparatorSemicolon)
+	sliLen := len(sqlSlis)
+
+	var (
+		txn  *sql.Tx
+		rows *sql.Rows
+	)
+
+	if sliLen == 1 {
+		rows, err = d.QueryContext(ctx, sqlSlis[0], queryArgs...)
+		if err != nil {
+			return nil, crc32Sum, nil, err
+		}
+		defer rows.Close()
+	} else if sliLen == 2 {
+		txn, err = d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+		if err != nil {
+			return nil, crc32Sum, nil, err
+		}
+		// SET TRANSACTION SNAPSHOT '000003A1-1';
+		_, err = txn.ExecContext(ctx, sqlSlis[0])
+		if err != nil {
+			return nil, crc32Sum, nil, err
+		}
+		rows, err = txn.QueryContext(ctx, sqlSlis[1], queryArgs...)
+		if err != nil {
+			return nil, crc32Sum, nil, err
+		}
+		defer rows.Close()
+	} else {
+		return nil, crc32Sum, nil, fmt.Errorf("the query sql [%v] cannot be over two values, please contact author or reselect", querySQL)
 	}
-	defer rows.Close()
 
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
@@ -469,6 +585,13 @@ func (d *Database) GetDatabaseTableCompareData(querySQL string, callTimeout int,
 
 	if err = rows.Err(); err != nil {
 		return nil, crc32Sum, nil, err
+	}
+
+	// txn commit
+	if sliLen == 2 {
+		if err := d.CommitTxn(txn); err != nil {
+			return nil, crc32Sum, nil, err
+		}
 	}
 
 	return columnNames, crc32Sum, batchRowsM, nil

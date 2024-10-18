@@ -17,6 +17,7 @@ package processor
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/wentaojin/dbms/database"
@@ -47,7 +48,7 @@ func InspectPostgresMigrateTask(taskName, taskFlow, taskMode string, databaseS d
 		return "", fmt.Errorf("postgres database charset [%v] isn't support, only support charset [%v]", dbCharsetS, stringutil.StringPairKey(constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping))
 	}
 	if !stringutil.IsContainedString(constant.MigrateDataSupportCharset, stringutil.StringUpper(connectDBCharsetT)) {
-		return "", fmt.Errorf("mysql compatible database current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
+		return "", fmt.Errorf("postgres compatible database current config charset [%v] isn't support, support charset [%v]", connectDBCharsetT, stringutil.StringJoin(constant.MigrateDataSupportCharset, ","))
 	}
 
 	if strings.EqualFold(taskMode, constant.TaskModeStructMigrate) {
@@ -151,5 +152,111 @@ func OptimizerPostgresDataMigrateColumnS(columnName, datatype, datetimePrecision
 	// other datatype
 	default:
 		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+	}
+}
+
+func OptimizerPostgresCompatibleMigrateMySQLCompatibleDataCompareColumnST(columnNameS, datatypeS string, datetimePrecisionS int64, dataPrecisionS, dataScaleS, dbCharsetSDest, columnNameT, dbCharsetTDest string) (string, string, error) {
+	dataPrecisionV, err := strconv.Atoi(dataPrecisionS)
+	if err != nil {
+		return "", "", fmt.Errorf("aujust postgres compatible database table column [%s] datatype precision [%s] strconv.Atoi failed: %v", columnNameS, dataPrecisionS, err)
+	}
+	dataScaleV, err := strconv.Atoi(dataScaleS)
+	if err != nil {
+		return "", "", fmt.Errorf("aujust postgres compatible database table column [%s] scale [%s] strconv.Atoi failed: %v", columnNameS, dataScaleS, err)
+	}
+	nvlNullDecimalS := stringutil.StringBuilder(`COALESCE("`, columnNameS, `",0)`)
+	nvlNullDecimalT := stringutil.StringBuilder(`IFNULL(`, columnNameT, `,0)`)
+
+	nvlNullStringS := stringutil.StringBuilder(`COALESCE("`, columnNameS, `",'0')`)
+	nvlNullStringT := stringutil.StringBuilder(`IFNULL(`, columnNameT, `,'0')`)
+
+	switch strings.ToUpper(datatypeS) {
+	// numeric type
+	case constant.BuildInPostgresDatatypeInteger,
+		constant.BuildInPostgresDatatypeSmallInt,
+		constant.BuildInPostgresDatatypeBigInt:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
+
+	case constant.BuildInPostgresDatatypeNumeric,
+		constant.BuildInPostgresDatatypeDecimal,
+		constant.BuildInPostgresDatatypeMoney:
+		if dataScaleV == 0 {
+			return nvlNullDecimalS, nvlNullDecimalT, nil
+		} else if dataScaleV > 0 {
+			// TODO: optimizer
+			// max decimal(65,30)
+			// decimal(65,30) -> number, according to oracle database to_char max 62 digits format, translate to_char(35 position,27 position) -> decimal(65,30)
+			toCharMax := 62
+			if dataPrecisionV > toCharMax {
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullDecimalS, `,'FM`, stringutil.PaddingString(35, "9", "0"), `.`, stringutil.PaddingString(27, "9", "0"), `')`), stringutil.StringBuilder(`CAST(`, nvlNullDecimalT, ` AS DECIMAL(62,27))`), nil
+			} else {
+				toCharPaddingInteger := dataPrecisionV - dataScaleV
+				return stringutil.StringBuilder(`TO_CHAR(`, nvlNullDecimalS, `,'FM`, stringutil.PaddingString(toCharPaddingInteger, "9", "0"), `.`, stringutil.PaddingString(dataScaleV, "9", "0"), `')`), stringutil.StringBuilder(`CAST(`, nvlNullDecimalT, ` AS DECIMAL(`, strconv.Itoa(dataPrecisionV), `,`, strconv.Itoa(dataScaleV), `))`), nil
+			}
+		} else {
+			return "", "", fmt.Errorf("the postgres compatible database table column [%s] datatype [%s] data_scale value [%d] cannot less zero, please contact author or reselect", columnNameS, datatypeS, dataScaleV)
+		}
+
+	case constant.BuildInPostgresDatatypeReal:
+		return stringutil.StringBuilder(`RPAD(TO_CHAR(`, nvlNullDecimalS, `,'FM99999999999999999999999999999999999990.9999990'),8,0)`), stringutil.StringBuilder(`RPAD(CAST(`, nvlNullDecimalT, ` AS DECIMAL(65,7)),8,0)`), nil
+	case constant.BuildInPostgresDatatypeDoublePrecision:
+		return stringutil.StringBuilder(`RPAD(TO_CHAR(`, nvlNullDecimalS, `,'FM99999999999999999999999999999999999990.999999999999990'),16,0)`), stringutil.StringBuilder(`RPAD(CAST(`, nvlNullDecimalT, ` AS DECIMAL(65,15)),16,0)`), nil
+	// character datatype
+	case constant.BuildInPostgresDatatypeCharacter,
+		constant.BuildInPostgresDatatypeCharacterVarying,
+		constant.BuildInPostgresDatatypeText:
+		return stringutil.StringBuilder(`MD5(CONVERT_TO(`, nvlNullStringS, `,'`, dbCharsetSDest, `'))`), stringutil.StringBuilder(`MD5(CONVERT(`, nvlNullStringT, ` USING '`, dbCharsetTDest, `'))`), nil
+	// date datatype
+	case constant.BuildInPostgresDatatypeDate:
+		return stringutil.StringBuilder(`COALESCE(TO_CHAR("`, columnNameS, `",'YYYY-MM-DD'),'0')`), stringutil.StringBuilder(`IFNULL(DATE_FORMAT(`, columnNameT, `,'%%Y-%%m-%%d'),'0')`), nil
+	// boolean
+	case constant.BuildInPostgresDatatypeBoolean:
+		return stringutil.StringBuilder(`CASE COALESCE("`, columnNameS, `",false) WHEN true THEN 1 WHEN false THEN 0 ELSE -100001 END AS "`, columnNameS, `"`),
+			stringutil.StringBuilder(`CASE IFNULL(`, columnNameT, `,0) WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE `, columnNameT, `END AS `, columnNameT), nil
+	// time datatype
+	case constant.BuildInPostgresDatatypeTimeWithoutTimeZone,
+		constant.BuildInPostgresDatatypeTimestampWithoutTimeZone,
+		constant.BuildInPostgresDatatypeInterval:
+		if datetimePrecisionS == 0 {
+			return nvlNullStringS, nvlNullStringT, nil
+		} else {
+			return stringutil.StringBuilder(`TO_CHAR("`, columnNameS, `",'yyyy-mm-dd hh24:mi:ss.us') AS "`, columnNameS, `"`), stringutil.StringBuilder(`DATE_FORMAT(`, columnNameT, `,'%%Y-%%m-%%d %%H:%%i:%%s.%%f') AS `, columnNameT), nil
+		}
+	// geometry datatype
+	case constant.BuildInPostgresDatatypePoint,
+		constant.BuildInPostgresDatatypeLine,
+		constant.BuildInPostgresDatatypeLseg,
+		constant.BuildInPostgresDatatypeBox,
+		constant.BuildInPostgresDatatypePath,
+		constant.BuildInPostgresDatatypePolygon,
+		constant.BuildInPostgresDatatypeCircle:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
+	// network addr datatype
+	case constant.BuildInPostgresDatatypeCidr,
+		constant.BuildInPostgresDatatypeInet,
+		constant.BuildInPostgresDatatypeMacaddr:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
+	// bit datatype
+	case constant.BuildInPostgresDatatypeBit:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
+	// text search datatype
+	case constant.BuildInPostgresDatatypeTsvector,
+		constant.BuildInPostgresDatatypeTsquery:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
+	// xmltype datatype
+	case constant.BuildInOracleDatatypeXmltype:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
+	case constant.BuildInPostgresDatatypeBytea,
+		constant.BuildInPostgresDatatypeXml,
+		constant.BuildInPostgresDatatypeJson,
+		constant.BuildInPostgresDatatypeArray:
+		return stringutil.StringBuilder(`MD5(`, nvlNullStringS, `)`), stringutil.StringBuilder(`MD5(`, nvlNullStringT, `)`), nil
+	case constant.BuildInPostgresDatatypeUuid:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
+	case constant.BuildInPostgresDatatypeTxidSnapshot:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
+	// other datatype
+	default:
+		return nvlNullDecimalS, nvlNullDecimalT, nil
 	}
 }

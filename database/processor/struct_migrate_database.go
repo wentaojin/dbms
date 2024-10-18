@@ -80,13 +80,15 @@ func (s *StructMigrateDatabase) WriteStructDatabase() error {
 			TaskName:    s.TaskName,
 			SchemaNameS: s.TableStruct.SchemaNameS,
 			TableNameS:  s.TableStruct.TableNameS,
-			LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] source table [%v.%v] success, cost [%v]",
+			LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] table_name_s [%s] migrate write database success, cost [%v]",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeStructMigrate),
 				s.TaskName,
+				s.TaskFlow,
 				s.TableStruct.SchemaNameS,
 				s.TableStruct.TableNameS,
-				duration),
+				duration,
+			),
 		})
 		if err != nil {
 			return err
@@ -138,13 +140,15 @@ func (s *StructMigrateDatabase) SyncStructDatabase() error {
 			TaskName:    s.TaskName,
 			SchemaNameS: s.TableStruct.SchemaNameS,
 			TableNameS:  s.TableStruct.TableNameS,
-			LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] source table [%v.%v] success, cost [%v]",
+			LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] table_name_s [%s] migrate write database success, cost [%v]",
 				stringutil.CurrentTimeFormatString(),
 				stringutil.StringLower(constant.TaskModeStructMigrate),
 				s.TaskName,
+				s.TaskFlow,
 				s.TableStruct.SchemaNameS,
 				s.TableStruct.TableNameS,
-				duration),
+				duration,
+			),
 		})
 		if err != nil {
 			return err
@@ -223,14 +227,15 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 
 		compatibleSql = append(compatibleSql, bf.String())
 
-		zap.L().Info("migrate oracle table struct",
+		logger.Info("struct migrate task processor",
 			zap.String("task_name", s.TaskName),
 			zap.String("task_flow", s.TaskFlow),
 			zap.String("schema_name_s", s.TableStruct.SchemaNameS),
 			zap.String("table_name_s", s.TableStruct.TableNameS),
 			zap.String("schema_name_t", s.TableStruct.SchemaNameT),
 			zap.String("table_name_t", s.TableStruct.TableNameT),
-			zap.String("table_struct_sql", strings.ReplaceAll(bf.String(), "\n", "")))
+			zap.String("task_stage", "struct ddl gen"),
+			zap.String("table_ddl_sql", strings.ReplaceAll(bf.String(), "\n", "")))
 
 		// not support ddl sql
 		if len(s.TableStruct.TableIncompatibleDDL) > 0 {
@@ -241,14 +246,17 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 			for _, fk := range s.TableStruct.TableForeignKeys {
 				fkSQL := fmt.Sprintf("ALTER TABLE `%s`.`%s` ADD %s;",
 					s.TableStruct.SchemaNameT, s.TableStruct.TableNameT, fk)
-				zap.L().Info("migrate oracle table foreign key",
+
+				logger.Warn("struct migrate task processor",
 					zap.String("task_name", s.TaskName),
 					zap.String("task_flow", s.TaskFlow),
 					zap.String("schema_name_s", s.TableStruct.SchemaNameS),
 					zap.String("table_name_s", s.TableStruct.TableNameS),
 					zap.String("schema_name_t", s.TableStruct.SchemaNameT),
 					zap.String("table_name_t", s.TableStruct.TableNameT),
+					zap.String("task_stage", "struct foregin key gen"),
 					zap.String("foreign_key_sql", fkSQL))
+
 				foreignKeySql = append(foreignKeySql, fkSQL)
 			}
 		}
@@ -256,14 +264,17 @@ func (s *StructMigrateDatabase) GenTableStructDDL() ([]string, []string, error) 
 			for _, ck := range s.TableStruct.TableCheckKeys {
 				ckSQL := fmt.Sprintf("ALTER TABLE `%s`.`%s` ADD %s;",
 					s.TableStruct.SchemaNameT, s.TableStruct.SchemaNameT, ck)
-				zap.L().Info("migrate oracle table check key",
+
+				logger.Warn("struct migrate task processor",
 					zap.String("task_name", s.TaskName),
 					zap.String("task_flow", s.TaskFlow),
 					zap.String("schema_name_s", s.TableStruct.SchemaNameS),
 					zap.String("table_name_s", s.TableStruct.TableNameS),
 					zap.String("schema_name_t", s.TableStruct.SchemaNameT),
 					zap.String("table_name_t", s.TableStruct.TableNameT),
+					zap.String("task_stage", "struct check key gen"),
 					zap.String("check_key_sql", ckSQL))
+
 				checkKeySql = append(checkKeySql, ckSQL)
 			}
 		}
@@ -363,13 +374,15 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] success, cost [%v]",
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate write database success, cost [%v]",
 						stringutil.CurrentTimeFormatString(),
 						stringutil.StringLower(constant.TaskModeSequenceMigrate),
 						s.TaskName,
+						s.TaskFlow,
 						s.SeqMigrateTask.SchemaNameS,
 						s.SeqMigrateTask.SequenceNameS,
-						duration),
+						duration,
+					),
 				})
 				if err != nil {
 					return err
@@ -402,13 +415,15 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] success, cost [%v]",
+				LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate write database success, cost [%v]",
 					stringutil.CurrentTimeFormatString(),
-					stringutil.StringLower(constant.TaskModeStructMigrate),
+					stringutil.StringLower(constant.TaskModeSequenceMigrate),
 					s.TaskName,
+					s.TaskFlow,
 					s.SeqMigrateTask.SchemaNameS,
 					s.SeqMigrateTask.SequenceNameS,
-					duration),
+					duration,
+				),
 			})
 			if err != nil {
 				return err
@@ -445,13 +460,15 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] success, cost [%v]",
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate write database success, cost [%v]",
 						stringutil.CurrentTimeFormatString(),
 						stringutil.StringLower(constant.TaskModeSequenceMigrate),
 						s.TaskName,
+						s.TaskFlow,
 						s.SeqMigrateTask.SchemaNameS,
 						s.SeqMigrateTask.SequenceNameS,
-						duration),
+						duration,
+					),
 				})
 				if err != nil {
 					return err
@@ -483,13 +500,15 @@ func (s *SequenceMigrateDatabase) WriteSequenceDatabase() error {
 			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] success, cost [%v]",
+				LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate write database success, cost [%v]",
 					stringutil.CurrentTimeFormatString(),
-					stringutil.StringLower(constant.TaskModeStructMigrate),
+					stringutil.StringLower(constant.TaskModeSequenceMigrate),
 					s.TaskName,
+					s.TaskFlow,
 					s.SeqMigrateTask.SchemaNameS,
 					s.SeqMigrateTask.SequenceNameS,
-					duration),
+					duration,
+				),
 			})
 			if err != nil {
 				return err
@@ -542,13 +561,15 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] failed: [%v]",
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate sync database failed, cost [%v]",
 						stringutil.CurrentTimeFormatString(),
 						stringutil.StringLower(constant.TaskModeSequenceMigrate),
 						s.TaskName,
+						s.TaskFlow,
 						s.SeqMigrateTask.SchemaNameS,
 						s.SeqMigrateTask.SequenceNameS,
-						errMsg),
+						duration,
+					),
 				})
 				if err != nil {
 					return err
@@ -565,13 +586,16 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 		_, err = s.DatasourceT.ExecContext(s.Ctx, s.SeqMigrateTask.TargetSqlDigest)
 		if err != nil {
 			errMsg := fmt.Errorf("the datasource exec sync sequence [%v] failed: [%v]", s.SeqMigrateTask.SequenceNameS, err)
-			logger.Warn("sequence migrate task create failed",
-				zap.String("task_name", s.SeqMigrateTask.TaskName),
+
+			logger.Error("sequence migrate task processor",
+				zap.String("task_name", s.TaskName),
 				zap.String("task_mode", s.TaskMode),
 				zap.String("task_flow", s.TaskFlow),
 				zap.String("schema_name_s", s.SeqMigrateTask.SchemaNameS),
 				zap.String("sequence_name_s", s.SeqMigrateTask.SequenceNameS),
+				zap.String("schema_name_t", s.SeqMigrateTask.SchemaNameT),
 				zap.String("sequence_sql_t", s.SeqMigrateTask.TargetSqlDigest),
+				zap.String("task_stage", "sequence create failed"),
 				zap.Error(errMsg))
 
 			err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
@@ -594,13 +618,15 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] failed: [%v]",
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate sync database failed, cost [%v]",
 						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(constant.TaskModeStructMigrate),
+						stringutil.StringLower(constant.TaskModeSequenceMigrate),
 						s.TaskName,
+						s.TaskFlow,
 						s.SeqMigrateTask.SchemaNameS,
 						s.SeqMigrateTask.SequenceNameS,
-						errMsg),
+						duration,
+					),
 				})
 				if err != nil {
 					return err
@@ -633,13 +659,15 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] success, cost [%v]",
+				LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate sync database success, cost [%v]",
 					stringutil.CurrentTimeFormatString(),
-					stringutil.StringLower(constant.TaskModeStructMigrate),
+					stringutil.StringLower(constant.TaskModeSequenceMigrate),
 					s.TaskName,
+					s.TaskFlow,
 					s.SeqMigrateTask.SchemaNameS,
 					s.SeqMigrateTask.SequenceNameS,
-					duration),
+					duration,
+				),
 			})
 			if err != nil {
 				return err
@@ -658,7 +686,19 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 		if stringutil.VersionOrdinal(version) < stringutil.VersionOrdinal(constant.MYSQLDatabaseSequenceSupportVersion) {
 			err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
 				duration := fmt.Sprintf("%f", time.Now().Sub(s.TaskStartTime).Seconds())
-				errMsg := fmt.Sprintf("the downstream database version [%s] is not support, please checking", version)
+				errMsg := fmt.Errorf("the downstream database version [%s] is not support, please checking", version)
+
+				logger.Error("sequence migrate task processor",
+					zap.String("task_name", s.TaskName),
+					zap.String("task_mode", s.TaskMode),
+					zap.String("task_flow", s.TaskFlow),
+					zap.String("schema_name_s", s.SeqMigrateTask.SchemaNameS),
+					zap.String("sequence_name_s", s.SeqMigrateTask.SequenceNameS),
+					zap.String("schema_name_t", s.SeqMigrateTask.SchemaNameT),
+					zap.String("sequence_sql_t", s.SeqMigrateTask.TargetSqlDigest),
+					zap.String("task_stage", "sequence create failed"),
+					zap.Error(errMsg))
+
 				_, err = model.GetISequenceMigrateTaskRW().UpdateSequenceMigrateTask(txnCtx, &task.SequenceMigrateTask{
 					TaskName:      s.TaskName,
 					SchemaNameS:   s.SeqMigrateTask.SchemaNameS,
@@ -677,13 +717,15 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] failed: [%v]",
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate sync database failed, cost [%v]",
 						stringutil.CurrentTimeFormatString(),
 						stringutil.StringLower(constant.TaskModeSequenceMigrate),
 						s.TaskName,
+						s.TaskFlow,
 						s.SeqMigrateTask.SchemaNameS,
 						s.SeqMigrateTask.SequenceNameS,
-						errMsg),
+						duration,
+					),
 				})
 				if err != nil {
 					return err
@@ -699,12 +741,16 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 		_, err = s.DatasourceT.ExecContext(s.Ctx, s.SeqMigrateTask.TargetSqlDigest)
 		if err != nil {
 			errMsg := fmt.Errorf("the datasource exec sync sequence [%v] failed: [%v]", s.SeqMigrateTask.SequenceNameS, err)
-			logger.Warn("sequence migrate task create failed",
-				zap.String("task_name", s.SeqMigrateTask.TaskName),
+
+			logger.Error("sequence migrate task processor",
+				zap.String("task_name", s.TaskName),
 				zap.String("task_mode", s.TaskMode),
 				zap.String("task_flow", s.TaskFlow),
+				zap.String("schema_name_s", s.SeqMigrateTask.SchemaNameS),
 				zap.String("sequence_name_s", s.SeqMigrateTask.SequenceNameS),
+				zap.String("schema_name_t", s.SeqMigrateTask.SchemaNameT),
 				zap.String("sequence_sql_t", s.SeqMigrateTask.TargetSqlDigest),
+				zap.String("task_stage", "sequence create failed"),
 				zap.Error(errMsg))
 
 			err = model.Transaction(s.Ctx, func(txnCtx context.Context) error {
@@ -727,13 +773,15 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 					TaskName:    s.TaskName,
 					SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-					LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence [%s] failed: [%v]",
+					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate sync database failed, cost [%v]",
 						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(constant.TaskModeStructMigrate),
+						stringutil.StringLower(constant.TaskModeSequenceMigrate),
 						s.TaskName,
+						s.TaskFlow,
 						s.SeqMigrateTask.SchemaNameS,
 						s.SeqMigrateTask.SequenceNameS,
-						errMsg),
+						duration,
+					),
 				})
 				if err != nil {
 					return err
@@ -766,12 +814,15 @@ func (s *SequenceMigrateDatabase) SyncSequenceDatabase() error {
 			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SeqMigrateTask.SchemaNameS,
-				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] schema_name_s [%v] sequence success, cost [%v]",
+				LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] schema_name_s [%s] sequence_name_s [%s] migrate sync database success, cost [%v]",
 					stringutil.CurrentTimeFormatString(),
-					stringutil.StringLower(constant.TaskModeStructMigrate),
+					stringutil.StringLower(constant.TaskModeSequenceMigrate),
 					s.TaskName,
+					s.TaskFlow,
 					s.SeqMigrateTask.SchemaNameS,
-					duration),
+					s.SeqMigrateTask.SequenceNameS,
+					duration,
+				),
 			})
 			if err != nil {
 				return err

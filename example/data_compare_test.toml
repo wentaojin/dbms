@@ -1,6 +1,6 @@
 task-name = "compare-task01"
-datasource-name-s = "tidb161"
-datasource-name-t = "oracle151"
+datasource-name-s = "pg117"
+datasource-name-t = "tidb161"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -16,9 +16,9 @@ case-field-rule-s = "0"
 case-field-rule-t = "2"
 
 [schema-route-rule]
-schema-name-s = "ucccis"
-schema-name-t = "SCOTT"
-include-table-s =  ["t8"]
+schema-name-s = "marvin"
+schema-name-t = "ucccis"
+include-table-s =  ["users","marvin10"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
