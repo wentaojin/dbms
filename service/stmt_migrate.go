@@ -257,6 +257,11 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 			return err
 		}
 
+		enablePrepareStmt, err := strconv.ParseBool(paramMap[constant.ParamNameStmtMigrateEnablePrepareStmt])
+		if err != nil {
+			return err
+		}
+
 		param = &pb.StatementMigrateParam{
 			TableThread:          tableThread,
 			WriteThread:          writeThread,
@@ -270,6 +275,7 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 			EnableCheckpoint:     enableCheckpoint,
 			EnableConsistentRead: enableConsistentRead,
 			EnableSafeMode:       enableSafeMode,
+			EnablePrepareStmt:    enablePrepareStmt,
 		}
 
 		schemaRouteRule, dataMigrateRules, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -661,6 +667,13 @@ func getStmtMigrateTasKParams(ctx context.Context, taskName string) (*pb.Stateme
 				return taskParam, err
 			}
 			taskParam.EnableSafeMode = enableSafeMode
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateEnablePrepareStmt) {
+			enablePrepareStmt, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.EnablePrepareStmt = enablePrepareStmt
 		}
 	}
 	return taskParam, nil

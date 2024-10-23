@@ -640,6 +640,7 @@ message StatementMigrateParam {
   bool enableConsistentRead = 10;
   bool enableSafeMode = 11;
   uint64 writeThread = 12;
+  bool enablePrepareStmt = 13;
 }
 
 message CsvMigrateParam{

@@ -18,7 +18,7 @@ case-field-rule-t = "2"
 [schema-route-rule]
 schema-name-s = "marvin"
 schema-name-t = "ucccis"
-include-table-s =  ["users","marvin10"]
+include-table-s =  ["marvin10"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
@@ -55,7 +55,7 @@ table-thread = 100
 # 数据写入批量大小
 batch-size = 50
 # 表内 SQL 执行并发数，表示同时多少并发 SQL 读取上下游表数据，可动态变更
-sql-thread = 16
+sql-thread = 2
 # 数据校验写 meta 数据库并发数
 write-thread = 4
 # 数据对比范围 chunk 行数
@@ -69,7 +69,7 @@ sql-hint-t = ""
 only-compare-row = false
 # calltimeout，单位：秒
 call-timeout = 36000
-enable-checkpoint = true
+enable-checkpoint = false
 # only upstream oracle 参数生效
 # 是否一致性读 ORA（自动获取上游当前的 SCN 一致性读）
 enable-consistent-read = false
@@ -92,4 +92,4 @@ repair-stmt-flow = "upstream"
 # 创建 index MYSQL 兼容性数据库示例：
 # CREATE INDEX idx_t99_nlstest ON t99(CONVERT(c1, USING 'UTF8MB4'));
 enable-collation-setting = false
-disable-md5-checksum = true
+disable-md5-checksum = false

@@ -350,7 +350,7 @@ func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName strin
 	col.table_name AS "TABLE_NAME",
 	col.column_name AS "COLUMN_NAME",
 	col.data_type AS "DATA_TYPE",
-	COALESCE(col.character_maximum_length,0) AS "CHAR_LENGTH",
+	COALESCE(col.character_maximum_length,0) AS "DATA_LENGTH",
 	COALESCE(col.numeric_precision,0) AS "DATA_PRECISION",
 	COALESCE(col.numeric_scale,0) AS "DATA_SCALE",
 	COALESCE(col.datetime_precision,0) AS "DATETIME_PRECISION",
@@ -1245,7 +1245,7 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interfac
 					rowData[columnNameOrderIndexMap[colName]] = `NULL`
 				}
 			} else {
-				if err = d.Recursive(
+				if err = d.RecursiveCSV(
 					columnNameOrderIndexMap[colName],
 					taskFlow,
 					colName,
@@ -1282,7 +1282,7 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interfac
 	return nil
 }
 
-func (d *Database) Recursive(columnOrder int, taskFlow, columnName, dbCharsetS, dbCharsetT, dbTypes string, valRes interface{}, rowData []string, separator, delimiter string, escapeBackslash bool) error {
+func (d *Database) RecursiveCSV(columnOrder int, taskFlow, columnName, dbCharsetS, dbCharsetT, dbTypes string, valRes interface{}, rowData []string, separator, delimiter string, escapeBackslash bool) error {
 	v := reflect.ValueOf(valRes)
 	switch v.Kind() {
 	case reflect.Int16, reflect.Int32, reflect.Int64:
@@ -1358,7 +1358,7 @@ func (d *Database) Recursive(columnOrder int, taskFlow, columnName, dbCharsetS, 
 			}
 		}
 	case reflect.Interface:
-		if err := d.Recursive(columnOrder, taskFlow, columnName, dbCharsetS, dbCharsetT, dbTypes, v.Elem().Interface(), rowData, separator, delimiter, escapeBackslash); err != nil {
+		if err := d.RecursiveCSV(columnOrder, taskFlow, columnName, dbCharsetS, dbCharsetT, dbTypes, v.Elem().Interface(), rowData, separator, delimiter, escapeBackslash); err != nil {
 			return err
 		}
 	default:

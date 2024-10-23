@@ -322,7 +322,7 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 				&mapping.Column{
 					ColumnName:        c["COLUMN_NAME"],
 					Datatype:          c["DATA_TYPE"],
-					CharLength:        c["CHAR_LENGTH"],
+					CharLength:        c["DATA_LENGTH"],
 					DataPrecision:     c["DATA_PRECISION"],
 					DataScale:         c["DATA_SCALE"],
 					DataDefault:       columnDefaultValues,

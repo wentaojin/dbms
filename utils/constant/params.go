@@ -69,6 +69,7 @@ const (
 	ParamNameStmtMigrateEnableCheckpoint     = "enableCheckpoint"
 	ParamNameStmtMigrateEnableConsistentRead = "enableConsistentRead"
 	ParamNameStmtMigrateEnableSafeMode       = "enableSafeMode"
+	ParamNameStmtMigrateEnablePrepareStmt    = "enablePrepareStmt"
 
 	// ParamValueDataMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

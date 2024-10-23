@@ -1095,6 +1095,8 @@ components:
           type: boolean
         enableSafeMode:
           type: boolean
+        enablePrepareStmt:
+           type: boolean       
     DataCompareRule:
       type: object
       properties:

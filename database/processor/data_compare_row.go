@@ -587,10 +587,10 @@ FROM
 		}
 		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
 			execQueryS = fmt.Sprintf(`SELECT
-	TO_CHAR(COALESCE(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'99999999')+
-	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'99999999')+
-	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'99999999')+ 
-	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'99999999'))),0)) AS ROWSCHECKSUM
+	COALESCE(SUM(('x'||SUBSTR(subq."ROWSCHECKSUM", 1, 8))::BIT(32)::BIGINT +
+	('x'||SUBSTR(subq."ROWSCHECKSUM", 9, 8))::BIT(32)::BIGINT +
+	('x'||SUBSTR(subq."ROWSCHECKSUM", 17, 8))::BIT(32)::BIGINT + 
+	('x'||SUBSTR(subq."ROWSCHECKSUM", 25, 8))::BIT(32)::BIGINT),0)::TEXT AS "ROWSCHECKSUM"
 FROM
 	(%v) subq`, execQueryS)
 		}
@@ -666,10 +666,10 @@ FROM
 		}
 		if strings.EqualFold(r.Dmt.CompareMethod, constant.DataCompareMethodDatabaseCheckMD5) {
 			execQueryT = fmt.Sprintf(`SELECT
-	TO_CHAR(COALESCE(TO_NUMBER(SUM(TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 1, 8),'99999999')+
-	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 9, 8),'99999999')+
-	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 17, 8),'99999999')+ 
-	TO_NUMBER(SUBSTR(subq.ROWSCHECKSUM, 25, 8),'99999999'))),0)) AS ROWSCHECKSUM
+	COALESCE(SUM(('x'||SUBSTR(subq."ROWSCHECKSUM", 1, 8))::BIT(32)::BIGINT +
+	('x'||SUBSTR(subq."ROWSCHECKSUM", 9, 8))::BIT(32)::BIGINT +
+	('x'||SUBSTR(subq."ROWSCHECKSUM", 17, 8))::BIT(32)::BIGINT + 
+	('x'||SUBSTR(subq."ROWSCHECKSUM", 25, 8))::BIT(32)::BIGINT),0)::TEXT AS "ROWSCHECKSUM"
 FROM
 	(%v) subq`, execQueryT)
 		}

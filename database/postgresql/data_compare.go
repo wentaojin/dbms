@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math"
+	"reflect"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -257,7 +259,7 @@ func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS stri
 	col.table_name AS "TABLE_NAME",
 	col.column_name AS "COLUMN_NAME",
 	col.data_type AS "DATA_TYPE",
-	COALESCE(col.character_maximum_length,0) AS "CHAR_LENGTH",
+	COALESCE(col.character_maximum_length,0) AS "DATA_LENGTH",
 	COALESCE(col.numeric_precision,0) AS "DATA_PRECISION",
 	COALESCE(col.numeric_scale,0) AS "DATA_SCALE",
 	COALESCE(col.datetime_precision,0) AS "DATETIME_PRECISION",
@@ -462,11 +464,10 @@ func (d *Database) GetDatabaseTableCompareRow(querySQL string, queryArgs ...any)
 
 func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
 	var (
-		rowData       []string
-		columnNames   []string
-		databaseTypes []string
-		err           error
-		crc32Sum      uint32
+		rowData     []string
+		columnNames []string
+		err         error
+		crc32Sum    uint32
 	)
 
 	var crc32Val uint32 = 0
@@ -523,13 +524,12 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 			return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
 		}
 		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
-		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
 	}
 
 	columnNums := len(columnNames)
 
 	// data scan
-	rawResult := make([][]byte, columnNums)
+	rawResult := make([]interface{}, columnNums)
 	valuePtrs := make([]interface{}, columnNums)
 	for i, _ := range columnNames {
 		valuePtrs[i] = &rawResult[i]
@@ -542,38 +542,17 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 		}
 
 		for i, colName := range columnNames {
-			val := rawResult[i]
-			// ORACLE database NULL and "" are the same, but postgres database NULL and "" are the different
-			if val == nil {
+			valRes := rawResult[i]
+			// postgres database NULL and "" are differently
+			if stringutil.IsValueNil(valRes) {
+				// ORACLE database NULL and "" are the same, but postgres database NULL and "" are the different
 				rowData = append(rowData, `NULL`)
-			} else if stringutil.BytesToString(val) == "" {
-				rowData = append(rowData, "")
 			} else {
-				switch databaseTypes[i] {
-				case constant.BuildInPostgresDatatypeInteger,
-					constant.BuildInPostgresDatatypeSmallInt,
-					constant.BuildInPostgresDatatypeBigInt,
-					constant.BuildInPostgresDatatypeNumeric,
-					constant.BuildInPostgresDatatypeDecimal,
-					constant.BuildInPostgresDatatypeMoney,
-					constant.BuildInPostgresDatatypeReal,
-					constant.BuildInPostgresDatatypeDoublePrecision:
-					rfs, err := decimal.NewFromString(stringutil.BytesToString(val))
-					if err != nil {
-						return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaseTypes[i], val, err)
-					}
-					rowData = append(rowData, rfs.String())
-				default:
-					convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
-					if err != nil {
-						return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
-					}
-					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
-					if err != nil {
-						return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
-					}
-					rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+				str, err := d.RecursiveCRC(colName, dbCharsetS, dbCharsetT, valRes)
+				if err != nil {
+					return nil, crc32Sum, nil, err
 				}
+				rowData = append(rowData, str)
 			}
 		}
 
@@ -603,6 +582,42 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 	}
 
 	return columnNames, crc32Sum, batchRowsM, nil
+}
+
+func (d *Database) RecursiveCRC(columnName, dbCharsetS, dbCharsetT string, valRes interface{}) (string, error) {
+	v := reflect.ValueOf(valRes)
+	switch v.Kind() {
+	case reflect.Int16, reflect.Int32, reflect.Int64:
+		return decimal.NewFromInt(v.Int()).String(), nil
+	case reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return strconv.FormatUint(v.Uint(), 10), nil
+	case reflect.Float32, reflect.Float64:
+		return decimal.NewFromFloat(v.Float()).String(), nil
+	case reflect.Bool:
+		return strconv.FormatBool(v.Bool()), nil
+	case reflect.String:
+		// postgres database NULL and "" are differently, so "" no special attention is required
+		var convertTargetRaw []byte
+		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(v.String()), dbCharsetS, constant.CharsetUTF8MB4)
+		if err != nil {
+			return "", fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+		}
+		convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+		if err != nil {
+			return "", fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+		}
+		return fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)), nil
+	case reflect.Array, reflect.Slice:
+		return fmt.Sprintf("'%v'", stringutil.BytesToString(v.Bytes())), nil
+	case reflect.Interface:
+		str, err := d.RecursiveCRC(columnName, dbCharsetS, dbCharsetT, v.Elem().Interface())
+		if err != nil {
+			return str, err
+		}
+		return str, nil
+	default:
+		return "", fmt.Errorf("column [%v] column_value [%v] column_kind [%v] not support, please contact author or exclude", columnName, v.String(), v.Kind())
+	}
 }
 
 func (d *Database) getDatabaseTableColumnStatisticsBucket(schemaNameS, tableNameS string) (map[string]float64, map[string][]string, error) {

@@ -594,7 +594,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 					stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.DBCharsetT)), nil
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 			return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
-				fmt.Sprintf(`MD5(CONVERT_TO(%s,'%s')) AS ROWSCHECKSUM`,
+				fmt.Sprintf(`MD5(CONVERT_TO(%s,'%s')) AS "ROWSCHECKSUM"`,
 					stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.PostgreSQLCharsetUTF8),
 				stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
 				fmt.Sprintf(`MD5(CONVERT(CONCAT(%s) USING '%s')) AS ROWSCHECKSUM`,
@@ -604,7 +604,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 				fmt.Sprintf(`MD5(CONVERT(CONCAT(%s) USING '%s')) AS ROWSCHECKSUM`,
 					stringutil.StringJoin(columnNameSilSC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4),
 				stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
-				fmt.Sprintf(`MD5(CONVERT_TO(%s,'%s')) AS ROWSCHECKSUM`,
+				fmt.Sprintf(`MD5(CONVERT_TO(%s,'%s')) AS "ROWSCHECKSUM"`,
 					stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.PostgreSQLCharsetUTF8), nil
 		default:
 			return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] return isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
@@ -627,7 +627,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 				stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.DBCharsetT)), nil
 	case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 		return stringutil.StringJoin(columnNameSilSO, constant.StringSeparatorComma),
-			fmt.Sprintf(`TO_CHAR(COALESCE(SUM(CRC32(CONVERT_TO(%s,'%s'))),0)) AS ROWSCHECKSUM`,
+			fmt.Sprintf(`COALESCE(SUM(CRC32(CONVERT_TO(%s,'%s'))),0)::TEXT AS "ROWSCHECKSUM"`,
 				stringutil.StringJoin(columnNameSilSC, constant.StringSplicingSymbol), constant.PostgreSQLCharsetUTF8),
 			stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
 			fmt.Sprintf(`CAST(IFNULL(SUM(CRC32(CONVERT(CONCAT(%s) USING '%s'))),0) AS CHAR) AS ROWSCHECKSUM`,
@@ -637,7 +637,7 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			fmt.Sprintf(`CAST(IFNULL(SUM(CRC32(CONVERT(CONCAT(%s) USING '%s'))),0) AS CHAR) AS ROWSCHECKSUM`,
 				stringutil.StringJoin(columnNameSilSC, constant.StringSeparatorComma), constant.MYSQLCharsetUTF8MB4),
 			stringutil.StringJoin(columnNameSliTO, constant.StringSeparatorComma),
-			fmt.Sprintf(`TO_CHAR(COALESCE(SUM(CRC32(CONVERT_TO(%s,'%s'))),0)) AS ROWSCHECKSUM`,
+			fmt.Sprintf(`COALESCE(SUM(CRC32(CONVERT_TO(%s,'%s'))),0)::TEXT AS "ROWSCHECKSUM"`,
 				stringutil.StringJoin(columnNameSliTC, constant.StringSplicingSymbol), constant.PostgreSQLCharsetUTF8), nil
 	default:
 		return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] return isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)

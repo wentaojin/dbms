@@ -485,6 +485,7 @@ func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutSt
 			EnableCheckpoint:     *req.StatementMigrateParam.EnableCheckpoint,
 			EnableConsistentRead: *req.StatementMigrateParam.EnableConsistentRead,
 			EnableSafeMode:       *req.StatementMigrateParam.EnableSafeMode,
+			EnablePrepareStmt:    *req.StatementMigrateParam.EnablePrepareStmt,
 		},
 	})
 	if err != nil {

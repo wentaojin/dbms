@@ -635,21 +635,25 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		zap.String("task_flow", cmt.Task.TaskFlow),
 		zap.String("schema_name_s", s.SchemaNameS),
 		zap.String("table_name_s", s.TableNameS),
-		zap.String("migrate_flag", summary.MigrateFlag))
+		zap.String("migrate_flag", summary.MigrateFlag),
+		zap.Bool("enable_prepare_stmt", cmt.StmtParams.EnablePrepareStmt))
 
 	switch cmt.Task.TaskFlow {
 	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
-		limitOne, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(cmt.Ctx, &task.DataMigrateTask{
-			TaskName:    s.TaskName,
-			SchemaNameS: s.SchemaNameS,
-			TableNameS:  s.TableNameS})
-		if err != nil {
-			return err
-		}
-		sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, cmt.StmtParams.SqlHintT, limitOne.ColumnDetailT, int(cmt.StmtParams.BatchSize), true)
-		sqlTSmt, err = cmt.DatabaseT.PrepareContext(cmt.Ctx, sqlStr)
-		if err != nil {
-			return err
+		if cmt.StmtParams.EnablePrepareStmt {
+			limitOne, err := model.GetIDataMigrateTaskRW().GetDataMigrateTask(cmt.Ctx, &task.DataMigrateTask{
+				TaskName:    s.TaskName,
+				SchemaNameS: s.SchemaNameS,
+				TableNameS:  s.TableNameS})
+			if err != nil {
+				return err
+			}
+			sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, cmt.StmtParams.SqlHintT, limitOne.ColumnDetailT, int(cmt.StmtParams.BatchSize), true)
+
+			sqlTSmt, err = cmt.DatabaseT.PrepareContext(cmt.Ctx, sqlStr)
+			if err != nil {
+				return err
+			}
 		}
 
 		dbTypeS := stringutil.StringSplit(cmt.Task.TaskFlow, constant.StringSeparatorAite)[0]

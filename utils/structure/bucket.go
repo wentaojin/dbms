@@ -190,7 +190,7 @@ func (h *Selectivity) TransSelectivityRule(taskFlow, dbTypeT, dbCharsetS string,
 		ColumnCollationRule:   columnCollationM,
 		DatetimePrecisionRule: columnDatePrecisionM,
 	}
-	logger.Info("data compare task init table chunk",
+	logger.Debug("data compare task init table chunk",
 		zap.Any("upstream selectivity", h),
 		zap.Any("downstream selectivity rule", rule))
 	return rule, nil

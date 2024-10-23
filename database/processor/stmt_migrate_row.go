@@ -149,6 +149,7 @@ func (r *StmtMigrateRow) MigrateRead() error {
 		}
 	}
 
+	// TODO: close prepare stmt
 	err = r.DatabaseS.GetDatabaseTableChunkData(execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] args [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, queryCondArgsS, err)
