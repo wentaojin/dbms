@@ -317,30 +317,37 @@ func (smt *SqlMigrateTask) Process() error {
 					return errW
 				}
 
-				sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(dt.SchemaNameT, dt.TableNameT, smt.TaskParams.SqlHintT, dt.ColumnDetailT, int(smt.TaskParams.BatchSize), true)
+				var stmt *sql.Stmt
+				switch smt.Task.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(dt.SchemaNameT, dt.TableNameT, smt.TaskParams.SqlHintT, dt.ColumnDetailT, int(smt.TaskParams.BatchSize), true)
 
-				stmt, err := smt.DatabaseT.PrepareContext(smt.Ctx, sqlStr)
-				if err != nil {
-					return err
+					stmt, err = smt.DatabaseT.PrepareContext(smt.Ctx, sqlStr)
+					if err != nil {
+						return err
+					}
+					defer stmt.Close()
+				default:
+					return fmt.Errorf("the sql migrate task [%s] task_flow [%s] isn't support, please contact author or reselect", smt.Task.TaskName, smt.Task.TaskFlow)
 				}
-				defer stmt.Close()
 
 				err = database.IDataMigrateProcess(&SqlMigrateRow{
-					Ctx:           smt.Ctx,
-					TaskMode:      smt.Task.TaskMode,
-					TaskFlow:      smt.Task.TaskFlow,
-					Smt:           dt,
-					DatabaseS:     smt.DatabaseS,
-					DatabaseT:     smt.DatabaseT,
-					DatabaseTStmt: stmt,
-					DBCharsetS:    constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(smt.DBCharsetS)],
-					DBCharsetT:    stringutil.StringUpper(smt.DBCharsetT),
-					SqlThreadT:    int(smt.TaskParams.SqlThreadT),
-					BatchSize:     int(smt.TaskParams.BatchSize),
-					CallTimeout:   int(smt.TaskParams.CallTimeout),
-					SafeMode:      smt.TaskParams.EnableSafeMode,
-					ReadChan:      make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
-					WriteChan:     make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+					Ctx:               smt.Ctx,
+					TaskMode:          smt.Task.TaskMode,
+					TaskFlow:          smt.Task.TaskFlow,
+					Smt:               dt,
+					DatabaseS:         smt.DatabaseS,
+					DatabaseT:         smt.DatabaseT,
+					DatabaseTStmt:     stmt,
+					DBCharsetS:        constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(smt.DBCharsetS)],
+					DBCharsetT:        stringutil.StringUpper(smt.DBCharsetT),
+					SqlThreadT:        int(smt.TaskParams.SqlThreadT),
+					BatchSize:         int(smt.TaskParams.BatchSize),
+					CallTimeout:       int(smt.TaskParams.CallTimeout),
+					SafeMode:          smt.TaskParams.EnableSafeMode,
+					ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+					WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+					EnablePrepareStmt: smt.TaskParams.EnablePrepareStmt,
 				})
 				if err != nil {
 					return err

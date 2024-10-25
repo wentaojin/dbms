@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/service"
 
@@ -48,6 +49,7 @@ type SqlMigrateParam struct {
 	EnableCheckpoint     bool   `toml:"enable-checkpoint" json:"enableCheckpoint"`
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
 	EnableSafeMode       bool   `toml:"enable-safe-mode" json:"enableSafeMode"`
+	EnablePrepareStmt    bool   `toml:"enable-prepare-stmt" json:"enablePrepareStmt"`
 }
 
 func (s *SqlConfig) String() string {

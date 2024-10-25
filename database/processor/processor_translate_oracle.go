@@ -24,7 +24,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func GenOracleCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int, safeMode bool) string {
+func GenOracleCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, safeMode bool, columnDataCounts ...int) string {
 	var (
 		prefixSQL                     string
 		columnDetailTSli              []string
@@ -48,8 +48,12 @@ func GenOracleCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint str
 			restoreColDatas []string
 			usingQueries    []string
 		)
-		for i := 0; i < columnDataCounts; i++ {
-			restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
+		if len(columnDataCounts) > 0 {
+			for i := 0; i < columnDataCounts[0]; i++ {
+				restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
+			}
+		} else {
+			restoreColDatas = columnDataString
 		}
 
 		for _, c := range restoreColDatas {
@@ -73,8 +77,12 @@ WHEN NOT MATCHED THEN
 
 	} else {
 		var restoreColDatas []string
-		for i := 0; i < columnDataCounts; i++ {
-			restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
+		if len(columnDataCounts) > 0 {
+			for i := 0; i < columnDataCounts[0]; i++ {
+				restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
+			}
+		} else {
+			restoreColDatas = columnDataString
 		}
 
 		if len(restoreColDatas) > 1 {

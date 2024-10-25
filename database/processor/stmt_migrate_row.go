@@ -39,21 +39,22 @@ import (
 )
 
 type StmtMigrateRow struct {
-	Ctx           context.Context
-	TaskMode      string
-	TaskFlow      string
-	Dmt           *task.DataMigrateTask
-	DatabaseS     database.IDatabase
-	DatabaseT     database.IDatabase
-	DatabaseTStmt *sql.Stmt
-	DBCharsetS    string
-	DBCharsetT    string
-	SqlThreadT    int
-	BatchSize     int
-	CallTimeout   int
-	SafeMode      bool
-	ReadChan      chan []interface{}
-	WriteChan     chan []interface{}
+	Ctx               context.Context
+	TaskMode          string
+	TaskFlow          string
+	Dmt               *task.DataMigrateTask
+	DatabaseS         database.IDatabase
+	DatabaseT         database.IDatabase
+	DatabaseTStmt     *sql.Stmt
+	DBCharsetS        string
+	DBCharsetT        string
+	SqlThreadT        int
+	BatchSize         int
+	CallTimeout       int
+	SafeMode          bool
+	EnablePrepareStmt bool
+	ReadChan          chan []interface{}
+	WriteChan         chan []interface{}
 }
 
 func (r *StmtMigrateRow) MigrateRead() error {
@@ -149,10 +150,16 @@ func (r *StmtMigrateRow) MigrateRead() error {
 		}
 	}
 
-	// TODO: close prepare stmt
-	err = r.DatabaseS.GetDatabaseTableChunkData(execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
-	if err != nil {
-		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] args [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, queryCondArgsS, err)
+	if r.EnablePrepareStmt && r.DatabaseTStmt != nil {
+		err = r.DatabaseS.GetDatabaseTableStmtData(execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
+		if err != nil {
+			return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] args [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, queryCondArgsS, err)
+		}
+	} else {
+		err = r.DatabaseS.GetDatabaseTableNonStmtData(r.TaskFlow, execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
+		if err != nil {
+			return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] args [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, queryCondArgsS, err)
+		}
 	}
 
 	endTime := time.Now()
@@ -209,23 +216,46 @@ func (r *StmtMigrateRow) MigrateApply() error {
 	for dataC := range r.WriteChan {
 		vals := dataC
 		g.Go(func() error {
-			// prepare exec
-			if len(vals) == argRowsNums {
-				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
-				if err != nil {
-					return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute params [%v] failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, vals, err)
-				}
-			} else {
-				bathSize := len(vals) / columnDetailSCounts
-				switch r.TaskFlow {
-				case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
-					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.Dmt.SqlHintT, r.Dmt.ColumnDetailT, bathSize, r.SafeMode)
-					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
+			if r.EnablePrepareStmt && r.DatabaseTStmt != nil {
+				// prepare exec
+				if len(vals) == argRowsNums {
+					_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
 					if err != nil {
 						return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute params [%v] failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, vals, err)
 					}
+				} else {
+					bathSize := len(vals) / columnDetailSCounts
+					switch r.TaskFlow {
+					case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+						sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.Dmt.SqlHintT, r.Dmt.ColumnDetailT, bathSize, r.SafeMode)
+						_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
+						if err != nil {
+							return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute params [%v] failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, vals, err)
+						}
+					default:
+						return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
+					}
+				}
+			} else {
+				switch {
+				case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+					var newColumnDetailT []string
+					for _, c := range stringutil.StringSplit(r.Dmt.ColumnDetailT, constant.StringSeparatorComma) {
+						newColumnDetailT = append(newColumnDetailT, stringutil.TrimIfBothExist(c, '`'))
+					}
+					_, err := r.DatabaseT.ExecContext(r.Ctx, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+						r.Dmt.SchemaNameT,
+						r.Dmt.TableNameT,
+						r.Dmt.SqlHintT,
+						newColumnDetailT,
+						vals[0].([]string),
+						r.SafeMode,
+					))
+					if err != nil {
+						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.TaskMode, r.TaskFlow, err)
+					}
 				default:
-					return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
+					return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.TaskMode, r.TaskFlow)
 				}
 			}
 			return nil

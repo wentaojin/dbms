@@ -384,6 +384,21 @@ func StringItemsFilterDifference(originItems, excludeItems []string) []string {
 	return strset.Difference(s1, s2).List()
 }
 
+// TrimIfBothExist Determine whether a specific character exists at the beginning and end of the string, and if so, remove these characters.
+func TrimIfBothExist(s string, ch rune) string {
+	if len(s) < 2 {
+		return s // 字符串太短，无法去除首位字符
+	}
+
+	first := rune(s[0])
+	last := rune(s[len(s)-1])
+
+	if first == ch && last == ch {
+		return s[1 : len(s)-1]
+	}
+	return s
+}
+
 // StringItemsFilterIntersection used for filter intersection items in the two items, and return new array string
 func StringItemsFilterIntersection(originItems, newItems []string) []string {
 	s1 := set.NewStringSet()

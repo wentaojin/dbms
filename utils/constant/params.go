@@ -115,6 +115,7 @@ const (
 	ParamNameSqlMigrateEnableConsistentRead = "enableConsistentRead"
 	ParamNameSqlMigrateEnableSafeMode       = "enableSafeMode"
 	ParamNameSqlMigrateEnableCheckpoint     = "enableCheckpoint"
+	ParamNameSqlMigrateEnablePrepareStmt    = "enablePrepareStmt"
 
 	// ParamValueSqlMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin

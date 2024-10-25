@@ -67,7 +67,7 @@ func genMYSQLCompatibleDatabasePrepareBindVarStmt(columns, bindVarBatch int) str
 	return exstrings.Join(bindVars, ",")
 }
 
-func GenMYSQLCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int, safeMode bool) string {
+func GenMYSQLCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, safeMode bool, columnDataCounts ...int) string {
 	var (
 		prefixSQL        string
 		columnDetailTSli []string
@@ -90,16 +90,24 @@ func GenMYSQLCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint stri
 		}
 	}
 
-	var restoreColDatas []string
-	for i := 0; i < columnDataCounts; i++ {
-		restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
+	var suffixVal []string
+
+	// data verify
+	if len(columnDataCounts) > 0 {
+		var restoreColDatas []string
+		for i := 0; i < columnDataCounts[0]; i++ {
+			restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
+		}
+
+		for _, vals := range restoreColDatas {
+			suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
+		}
+		return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma), constant.StringSeparatorSemicolon)
 	}
 
-	var suffixVal []string
-	for _, vals := range restoreColDatas {
+	for _, vals := range columnDataString {
 		suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
 	}
-
 	return stringutil.StringBuilder(prefixSQL, stringutil.StringJoin(suffixVal, constant.StringSeparatorComma), constant.StringSeparatorSemicolon)
 }
 

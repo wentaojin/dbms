@@ -32,21 +32,22 @@ import (
 )
 
 type SqlMigrateRow struct {
-	Ctx           context.Context
-	TaskMode      string
-	TaskFlow      string
-	Smt           *task.SqlMigrateTask
-	DatabaseS     database.IDatabase
-	DatabaseT     database.IDatabase
-	DatabaseTStmt *sql.Stmt
-	DBCharsetS    string
-	DBCharsetT    string
-	SqlThreadT    int
-	BatchSize     int
-	CallTimeout   int
-	SafeMode      bool
-	ReadChan      chan []interface{}
-	WriteChan     chan []interface{}
+	Ctx               context.Context
+	TaskMode          string
+	TaskFlow          string
+	Smt               *task.SqlMigrateTask
+	DatabaseS         database.IDatabase
+	DatabaseT         database.IDatabase
+	DatabaseTStmt     *sql.Stmt
+	DBCharsetS        string
+	DBCharsetT        string
+	SqlThreadT        int
+	BatchSize         int
+	CallTimeout       int
+	SafeMode          bool
+	EnablePrepareStmt bool
+	ReadChan          chan []interface{}
+	WriteChan         chan []interface{}
 }
 
 func (r *SqlMigrateRow) MigrateRead() error {
@@ -75,9 +76,16 @@ func (r *SqlMigrateRow) MigrateRead() error {
 		zap.String("sql_query_s", execQuerySQL),
 		zap.String("startTime", startTime.String()))
 
-	err = r.DatabaseS.GetDatabaseTableChunkData(execQuerySQL, nil, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Smt.ColumnDetailO, r.ReadChan)
-	if err != nil {
-		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
+	if r.EnablePrepareStmt && r.DatabaseTStmt != nil {
+		err = r.DatabaseS.GetDatabaseTableStmtData(execQuerySQL, nil, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Smt.ColumnDetailO, r.ReadChan)
+		if err != nil {
+			return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
+		}
+	} else {
+		err = r.DatabaseS.GetDatabaseTableNonStmtData(r.TaskFlow, execQuerySQL, nil, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Smt.ColumnDetailO, r.ReadChan)
+		if err != nil {
+			return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] execute failed: %v", r.Smt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, err)
+		}
 	}
 
 	endTime := time.Now()
@@ -122,24 +130,46 @@ func (r *SqlMigrateRow) MigrateApply() error {
 		vals := dataC
 		g.Go(func() error {
 			// prepare exec
-			if len(vals) == preArgNums {
-				_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
-				if err != nil {
-					return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)
+			if r.EnablePrepareStmt && r.DatabaseTStmt != nil {
+				if len(vals) == preArgNums {
+					_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
+					if err != nil {
+						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)
+					}
+				} else {
+					bathSize := len(vals) / columnDetailSCounts
+					switch {
+					case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+						sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Smt.SchemaNameT, r.Smt.TableNameT, r.Smt.SqlHintT, r.Smt.ColumnDetailT, bathSize, r.SafeMode)
+						_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
+						if err != nil {
+							return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)
+						}
+					default:
+						return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow)
+					}
 				}
 			} else {
-				bathSize := len(vals) / columnDetailSCounts
 				switch {
 				case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
-					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Smt.SchemaNameT, r.Smt.TableNameT, r.Smt.SqlHintT, r.Smt.ColumnDetailT, bathSize, r.SafeMode)
-					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr, vals...)
+					var newColumnDetailT []string
+					for _, c := range stringutil.StringSplit(r.Smt.ColumnDetailT, constant.StringSeparatorComma) {
+						newColumnDetailT = append(newColumnDetailT, stringutil.TrimIfBothExist(c, '`'))
+					}
+					_, err := r.DatabaseT.ExecContext(r.Ctx, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+						r.Smt.SchemaNameT,
+						r.Smt.TableNameT,
+						r.Smt.SqlHintT,
+						newColumnDetailT,
+						vals[0].([]string),
+						r.SafeMode,
+					))
 					if err != nil {
 						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)
 					}
 				default:
 					return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow)
 				}
-
 			}
 			return nil
 		})

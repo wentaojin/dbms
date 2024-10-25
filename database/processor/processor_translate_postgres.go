@@ -23,7 +23,7 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
-func GenPostgresCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, columnDataCounts int, safeMode bool) string {
+func GenPostgresCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint string, columnDetailSlice []string, columnDataString []string, safeMode bool, columnDataCounts ...int) string {
 	var (
 		prefixSQL        string
 		columnDetailTSli []string
@@ -38,14 +38,20 @@ func GenPostgresCompatibleDatabaseInsertStmtSQL(schemaName, tableName, sqlHint s
 		prefixSQL = stringutil.StringBuilder("INSERT ", sqlHint, " INTO `", schemaName, "`.`", tableName, "` (", stringutil.StringJoin(columnDetailTSli, constant.StringSeparatorComma), `)`, ` VALUES `)
 	}
 
-	var restoreColDatas []string
-	for i := 0; i < columnDataCounts; i++ {
-		restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
-	}
-
 	var suffixVal []string
-	for _, vals := range restoreColDatas {
-		suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
+	if len(columnDataCounts) > 0 {
+		var restoreColDatas []string
+		for i := 0; i < columnDataCounts[0]; i++ {
+			restoreColDatas = append(restoreColDatas, stringutil.StringJoin(columnDataString, constant.StringSeparatorComma))
+		}
+
+		for _, vals := range restoreColDatas {
+			suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
+		}
+	} else {
+		for _, vals := range columnDataString {
+			suffixVal = append(suffixVal, stringutil.StringBuilder(`(`, vals, `)`))
+		}
 	}
 
 	if safeMode {

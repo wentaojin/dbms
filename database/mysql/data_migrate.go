@@ -126,7 +126,12 @@ func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName str
 	panic("implement me")
 }
 
-func (d *Database) GetDatabaseTableChunkData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error {
+func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailS string, dataChan chan []interface{}) error {
 	//TODO implement me
 	panic("implement me")
 }

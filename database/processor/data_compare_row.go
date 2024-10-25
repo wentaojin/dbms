@@ -1275,7 +1275,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenOracleCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
@@ -1285,7 +1285,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
@@ -1295,7 +1295,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenPostgresCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
@@ -1305,7 +1305,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 		case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenPostgresCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
@@ -1325,7 +1325,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
@@ -1335,7 +1335,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
@@ -1345,7 +1345,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenPostgresCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
@@ -1355,7 +1355,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
@@ -1800,7 +1800,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenOracleCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
@@ -1810,7 +1810,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 		case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
@@ -1820,7 +1820,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenPostgresCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
@@ -1830,7 +1830,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 		case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
 			if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowDownstream) {
 				addDetails = append(addDetails, GenPostgresCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				delDetails = append(delDetails, GenMYSQLCompatibleDatabaseDeleteStmtSQL(
 					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv)))
@@ -1851,7 +1851,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenOracleCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
@@ -1861,7 +1861,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
@@ -1871,7 +1871,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenPostgresCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}
@@ -1881,7 +1881,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 					r.Dmt.SchemaNameT, r.Dmt.TableNameT, "", columnNameT, stringutil.StringSplit(dk, r.Separator), int(dv)))
 			} else if strings.EqualFold(r.RepairStmtFlow, constant.DataCompareRepairStmtFlowUpstream) {
 				addDetails = append(addDetails, GenMYSQLCompatibleDatabaseInsertStmtSQL(
-					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), int(dv), false))
+					r.Dmt.SchemaNameS, r.Dmt.TableNameS, "", columnNameS, stringutil.StringSplit(dk, r.Separator), false, int(dv)))
 			} else {
 				return fmt.Errorf("the data compare task [%s] task_flow [%s] param repair-stmt-flow [%s] isn't support, please contact author or reselect", r.Dmt.TaskName, r.TaskFlow, r.RepairStmtFlow)
 			}

@@ -732,21 +732,22 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 				zap.String("chunk_id_s", dt.ChunkID))
 
 			err = database.IDataMigrateProcess(&StmtMigrateRow{
-				Ctx:           cmt.Ctx,
-				TaskMode:      cmt.Task.TaskMode,
-				TaskFlow:      cmt.Task.TaskFlow,
-				Dmt:           dt,
-				DatabaseS:     cmt.DatabaseS,
-				DatabaseT:     cmt.DatabaseT,
-				DatabaseTStmt: sqlTSmt,
-				DBCharsetS:    convertDBCharsetS,
-				DBCharsetT:    stringutil.StringUpper(cmt.DBCharsetT),
-				SqlThreadT:    int(cmt.StmtParams.SqlThreadT),
-				BatchSize:     int(cmt.StmtParams.BatchSize),
-				CallTimeout:   int(cmt.StmtParams.CallTimeout),
-				SafeMode:      cmt.StmtParams.EnableSafeMode,
-				ReadChan:      make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
-				WriteChan:     make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+				Ctx:               cmt.Ctx,
+				TaskMode:          cmt.Task.TaskMode,
+				TaskFlow:          cmt.Task.TaskFlow,
+				Dmt:               dt,
+				DatabaseS:         cmt.DatabaseS,
+				DatabaseT:         cmt.DatabaseT,
+				DatabaseTStmt:     sqlTSmt,
+				DBCharsetS:        convertDBCharsetS,
+				DBCharsetT:        stringutil.StringUpper(cmt.DBCharsetT),
+				SqlThreadT:        int(cmt.StmtParams.SqlThreadT),
+				BatchSize:         int(cmt.StmtParams.BatchSize),
+				CallTimeout:       int(cmt.StmtParams.CallTimeout),
+				SafeMode:          cmt.StmtParams.EnableSafeMode,
+				EnablePrepareStmt: cmt.StmtParams.EnablePrepareStmt,
+				ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+				WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 			})
 			if err != nil {
 				return err

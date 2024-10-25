@@ -1352,6 +1352,8 @@ components:
           type: boolean
         enableCheckpoint:
           type: boolean
+        enablePrepareStmt:
+          type: boolean         
     StructMigrateParam:
       type: object
       properties:
