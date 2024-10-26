@@ -1282,7 +1282,7 @@ func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryA
 
 		// batch
 		if len(batchRowsData) == batchSize {
-			batchRowsDataChanTemp = append(batchRowsDataChanTemp, rowData)
+			batchRowsDataChanTemp = append(batchRowsDataChanTemp, batchRowsData)
 
 			dataChan <- batchRowsDataChanTemp
 
@@ -1298,7 +1298,7 @@ func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryA
 
 	// non-batch batch
 	if len(batchRowsData) > 0 {
-		batchRowsDataChanTemp = append(batchRowsDataChanTemp, rowData)
+		batchRowsDataChanTemp = append(batchRowsDataChanTemp, batchRowsData)
 		dataChan <- batchRowsDataChanTemp
 	}
 

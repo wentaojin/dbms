@@ -75,4 +75,4 @@ enable-consistent-read = false
 # 是否 safe-mode , false -> insert into, true -> repalce into
 enable-safe-mode = false
 # 是否开启 prepare stmt
-enable-prepare-stmt = true
+enable-prepare-stmt = false

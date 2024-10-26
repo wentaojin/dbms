@@ -156,19 +156,20 @@ func (r *SqlMigrateRow) MigrateApply() error {
 					for _, c := range stringutil.StringSplit(r.Smt.ColumnDetailT, constant.StringSeparatorComma) {
 						newColumnDetailT = append(newColumnDetailT, stringutil.TrimIfBothExist(c, '`'))
 					}
-					_, err := r.DatabaseT.ExecContext(r.Ctx, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					sqlStr := GenMYSQLCompatibleDatabaseInsertStmtSQL(
 						r.Smt.SchemaNameT,
 						r.Smt.TableNameT,
 						r.Smt.SqlHintT,
 						newColumnDetailT,
 						vals[0].([]string),
 						r.SafeMode,
-					))
+					)
+					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr)
 					if err != nil {
-						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, err)
+						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert sql query [%s] execute failed: %v", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow, sqlStr, err)
 					}
 				default:
-					return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow)
+					return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] sql query isn't support, please contact author", r.Smt.TaskName, r.Smt.SchemaNameT, r.Smt.TableNameT, r.TaskMode, r.TaskFlow)
 				}
 			}
 			return nil

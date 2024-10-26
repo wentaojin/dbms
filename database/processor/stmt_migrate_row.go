@@ -233,29 +233,30 @@ func (r *StmtMigrateRow) MigrateApply() error {
 							return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute params [%v] failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, vals, err)
 						}
 					default:
-						return fmt.Errorf("oracle current task [%s] schema [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
+						return fmt.Errorf("the task_name [%s] schema_name_s [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
 					}
 				}
 			} else {
-				switch {
-				case strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(r.TaskFlow, constant.TaskFlowOracleToMySQL):
+				switch r.TaskFlow {
+				case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 					var newColumnDetailT []string
 					for _, c := range stringutil.StringSplit(r.Dmt.ColumnDetailT, constant.StringSeparatorComma) {
 						newColumnDetailT = append(newColumnDetailT, stringutil.TrimIfBothExist(c, '`'))
 					}
-					_, err := r.DatabaseT.ExecContext(r.Ctx, GenMYSQLCompatibleDatabaseInsertStmtSQL(
+					sqlStr := GenMYSQLCompatibleDatabaseInsertStmtSQL(
 						r.Dmt.SchemaNameT,
 						r.Dmt.TableNameT,
 						r.Dmt.SqlHintT,
 						newColumnDetailT,
 						vals[0].([]string),
 						r.SafeMode,
-					))
+					)
+					_, err := r.DatabaseT.ExecContext(r.Ctx, sqlStr)
 					if err != nil {
-						return fmt.Errorf("the task [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute failed: %v", r.Dmt.TaskName, r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.TaskMode, r.TaskFlow, err)
+						return fmt.Errorf("the task [%s] schema_name_s [%s] table_name_s [%s] task_mode [%s] task_flow [%v] tagert sql [%s] execute failed: %v", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.TaskMode, r.TaskFlow, sqlStr, err)
 					}
 				default:
-					return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.TaskMode, r.TaskFlow)
+					return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] sql query isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.TaskMode, r.TaskFlow)
 				}
 			}
 			return nil

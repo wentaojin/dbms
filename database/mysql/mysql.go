@@ -30,8 +30,8 @@ import (
 )
 
 const (
-	MYSQLDatabaseMaxIdleConn     = 512
-	MYSQLDatabaseMaxConn         = 1024
+	MYSQLDatabaseMaxIdleConn     = 1024
+	MYSQLDatabaseMaxConn         = 4096
 	MYSQLDatabaseConnMaxLifeTime = 300 * time.Second
 	MYSQLDatabaseConnMaxIdleTime = 200 * time.Second
 )
