@@ -22,8 +22,6 @@ import (
 
 	"gorm.io/gorm"
 
-	"gorm.io/gorm/clause"
-
 	"github.com/wentaojin/dbms/model/common"
 )
 
@@ -43,13 +41,7 @@ func (rw *RWStructMigrateTaskRule) TableName(ctx context.Context) string {
 }
 
 func (rw *RWStructMigrateTaskRule) CreateTaskStructRule(ctx context.Context, data *TaskStructRule) (*TaskStructRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "column_type_s"}},
-		UpdateAll: true,
-	}, clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "default_value_s"}},
-		UpdateAll: true,
-	}).Create(data).Error
+	err := rw.DB(ctx).Create(data).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -105,13 +97,7 @@ func (rw *RWStructMigrateSchemaRule) TableName(ctx context.Context) string {
 }
 
 func (rw *RWStructMigrateSchemaRule) CreateSchemaStructRule(ctx context.Context, data *SchemaStructRule) (*SchemaStructRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "column_type_s"}},
-		UpdateAll: true,
-	}, clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "default_value_s"}},
-		UpdateAll: true,
-	}).Create(data).Error
+	err := rw.DB(ctx).Create(data).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -176,13 +162,7 @@ func (rw *RWStructMigrateTableRule) TableName(ctx context.Context) string {
 }
 
 func (rw *RWStructMigrateTableRule) CreateTableStructRule(ctx context.Context, data *TableStructRule) (*TableStructRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "column_type_s"}},
-		UpdateAll: true,
-	}, clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "default_value_s"}},
-		UpdateAll: true,
-	}).Create(data).Error
+	err := rw.DB(ctx).Create(data).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -247,15 +227,7 @@ func (rw *RWStructMigrateColumnRule) TableName(ctx context.Context) string {
 }
 
 func (rw *RWStructMigrateColumnRule) CreateColumnStructRule(ctx context.Context, data *ColumnStructRule) (*ColumnStructRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{
-			{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "column_name_s"}, {Name: "column_type_s"}},
-		UpdateAll: true,
-	}, clause.OnConflict{
-		Columns: []clause.Column{
-			{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "column_name_s"}, {Name: "default_value_s"}},
-		UpdateAll: true,
-	}).Create(data).Error
+	err := rw.DB(ctx).Create(data).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -320,11 +292,7 @@ func (rw *RWStructMigrateTableAttrsRule) TableName(ctx context.Context) string {
 }
 
 func (rw *RWStructMigrateTableAttrsRule) CreateTableAttrsRule(ctx context.Context, data *TableAttrsRule) (*TableAttrsRule, error) {
-	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{
-			{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}},
-		UpdateAll: true,
-	}).Create(data).Error
+	err := rw.DB(ctx).Create(data).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -347,9 +315,16 @@ func (rw *RWStructMigrateTableAttrsRule) ListTableAttrsRule(ctx context.Context,
 	return dataS, nil
 }
 
-func (rw *RWStructMigrateTableAttrsRule) GetTableAttrsRule(ctx context.Context, data *TableAttrsRule) (*TableAttrsRule, error) {
-	var dataS *TableAttrsRule
-	err := rw.DB(ctx).Model(&TableAttrsRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", data.TaskName, data.SchemaNameS, data.TableNameS).Find(&dataS).Error
+func (rw *RWStructMigrateTableAttrsRule) GetTableAttrsRule(ctx context.Context, data *TableAttrsRule) ([]*TableAttrsRule, error) {
+	var dataS []*TableAttrsRule
+	err := rw.DB(ctx).Model(&TableAttrsRule{}).Where(
+		rw.DB(ctx).Model(&TableAttrsRule{}).
+			Where("task_name = ? AND schema_name_s = ?", data.TaskName, data.SchemaNameS).
+			Where(
+				rw.DB(ctx).Model(&TableAttrsRule{}).
+					Where("table_name_s = ?", data.TableNameS).
+					Or("table_name_s = ?", "*")),
+	).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

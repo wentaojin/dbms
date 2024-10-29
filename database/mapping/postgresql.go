@@ -35,7 +35,7 @@ func PostgresDatabaseTableColumnMapMYSQLCompatibleDatatypeRule(taskFlow string, 
 		buildInColumnType string
 	)
 
-	charLength, err := strconv.Atoi(c.CharLength)
+	charLength, err := strconv.Atoi(c.DataLength)
 	if err != nil {
 		return originColumnType, buildInColumnType, fmt.Errorf("column [%s] data_length string to int failed: %v", c.ColumnName, err)
 	}

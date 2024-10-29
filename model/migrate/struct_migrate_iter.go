@@ -51,7 +51,7 @@ type IStructMigrateColumnRule interface {
 type IStructMigrateTableAttrsRule interface {
 	CreateTableAttrsRule(ctx context.Context, data *TableAttrsRule) (*TableAttrsRule, error)
 	ListTableAttrsRule(ctx context.Context, page uint64, pageSize uint64) ([]*TableAttrsRule, error)
-	GetTableAttrsRule(ctx context.Context, data *TableAttrsRule) (*TableAttrsRule, error)
+	GetTableAttrsRule(ctx context.Context, data *TableAttrsRule) ([]*TableAttrsRule, error)
 	DeleteTableAttrsRule(ctx context.Context, taskName []string) error
 	FindTableAttrsRule(ctx context.Context, taskName string) ([]*TableAttrsRule, error)
 }

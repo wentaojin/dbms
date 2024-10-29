@@ -1556,21 +1556,6 @@ func (d *Database) RecursiveCSV(columnOrder int, taskFlow, columnName, dbCharset
 	return nil
 }
 
-func (d *Database) FindDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) GetDatabaseTableColumnAttribute(schemaNameS, tableNameS, columnNameS string, collationS bool) ([]map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *Database) GetDatabaseTableColumnBucket(schemaNameS, tableNameS string, columnNameS, datatypeS string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (d *Database) GetDatabaseTablePartitionExpress(schemaName string, tableName string) ([]map[string]string, error) {
 	//TODO implement me
 	panic("implement me")

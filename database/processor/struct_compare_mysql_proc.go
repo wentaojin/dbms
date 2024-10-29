@@ -18,8 +18,9 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/model/rule"
 	"strings"
+
+	"github.com/wentaojin/dbms/model/rule"
 
 	"github.com/wentaojin/dbms/database/mapping"
 
@@ -503,7 +504,7 @@ func (p *MySQLProcessor) GenDatabaseTableForeignConstraintDetail() (map[string]s
 			ReferencedTableName:   c["RTABLE_NAME"],
 			ReferencedColumnName:  stringutil.StringJoin(rIndexColumns, constant.StringSeparatorComplexSymbol),
 			DeleteRule:            c["DELETE_RULE"],
-			UpdateRule:            c["UPDATE_RULE"], // database oracle isn'p.supported update rule
+			UpdateRule:            c["UPDATE_RULE"], // database oracle isn't supported update rule
 		}
 	}
 
@@ -564,7 +565,7 @@ func (p *MySQLProcessor) genMYSQLCompatibleDatabaseMappingOracleTableColumnChars
 	)
 
 	if !strings.EqualFold(columnCharset, "UNKNOWN") {
-		if val, ok := constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][stringutil.StringUpper(p.DBCharset)]; ok {
+		if val, ok := constant.MigrateTableStructureDatabaseCharsetMap[p.TaskFlow][stringutil.StringUpper(columnCharset)]; ok {
 			charset = val
 		} else {
 			return charset, collation, fmt.Errorf("the mysql compatible database schema [%s] table [%s] column [%s] charset [%v] table collation [%s] mapping failed", p.SchemaName, p.TableName, columnName, p.DBCharset, columnCollation)

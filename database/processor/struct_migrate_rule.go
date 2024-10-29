@@ -322,7 +322,7 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 				&mapping.Column{
 					ColumnName:        c["COLUMN_NAME"],
 					Datatype:          c["DATA_TYPE"],
-					CharLength:        c["DATA_LENGTH"],
+					DataLength:        c["DATA_LENGTH"],
 					DataPrecision:     c["DATA_PRECISION"],
 					DataScale:         c["DATA_SCALE"],
 					DataDefault:       columnDefaultValues,
@@ -367,7 +367,7 @@ func (r *StructMigrateRule) GetTableColumnRule() (map[string]string, map[string]
 }
 
 func (r *StructMigrateRule) GetTableAttributesRule() (string, error) {
-	attr, err := model.GetIStructMigrateTableAttrsRuleRW().GetTableAttrsRule(r.Ctx, &migrate.TableAttrsRule{
+	attrs, err := model.GetIStructMigrateTableAttrsRuleRW().GetTableAttrsRule(r.Ctx, &migrate.TableAttrsRule{
 		TaskName:    r.TaskName,
 		SchemaNameS: r.SchemaNameS,
 		TableNameS:  r.TableNameS,
@@ -378,7 +378,22 @@ func (r *StructMigrateRule) GetTableAttributesRule() (string, error) {
 
 	switch r.TaskFlow {
 	case constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToTiDB:
-		return attr.TableAttrT, nil
+		tableNameAttr := make(map[string]string)
+		for _, attr := range attrs {
+			tableNameAttr[attr.TableNameS] = attr.TableAttrT
+		}
+
+		if len(tableNameAttr) > 0 {
+			// prority table -> *
+			if val, ok := tableNameAttr[r.TableNameS]; ok {
+				return val, nil
+			}
+			if val, ok := tableNameAttr[constant.StringSeparatorAsterisk]; ok {
+				return val, nil
+			}
+			return "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] schema_name_s [%s] taskflow [%s] table_name_s [%s] attributes rule get failed, please contact author", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TaskFlow, r.TableNameS)
+		}
+		return "", nil
 	default:
 		logger.Warn("get table rule",
 			zap.String("task_name", r.TableNameS),

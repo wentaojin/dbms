@@ -19,12 +19,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/wentaojin/dbms/database/processor"
-	"github.com/wentaojin/dbms/database/taskflow"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/database/processor"
+	"github.com/wentaojin/dbms/database/taskflow"
 
 	"github.com/wentaojin/dbms/model/common"
 
@@ -652,7 +653,8 @@ func StartStructCompareTask(ctx context.Context, taskName, workerAddr string) er
 		}
 	}
 
-	if strings.EqualFold(sourceDatasource.DbType, constant.DatabaseTypeOracle) {
+	switch taskInfo.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 		logger.Info("struct compare task process task", zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow))
 		taskTime := time.Now()
 		sc := &taskflow.StructCompareTask{
@@ -669,7 +671,7 @@ func StartStructCompareTask(ctx context.Context, taskName, workerAddr string) er
 		logger.Info("struct compare task process task",
 			zap.String("task_name", taskInfo.TaskName), zap.String("task_mode", taskInfo.TaskMode), zap.String("task_flow", taskInfo.TaskFlow),
 			zap.String("cost", time.Now().Sub(taskTime).String()))
-	} else {
+	default:
 		return fmt.Errorf("current struct compare task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}
 
