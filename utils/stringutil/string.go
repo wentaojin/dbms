@@ -875,6 +875,20 @@ func escapeBackslashCSV(s []byte, delimiterCsv, separatorCsv string) string {
 	return bf.String()
 }
 
+func EscapeDatabaseSingleQuotesSpecialLetters(bs []byte, escapeStr rune) string {
+	var b strings.Builder
+
+	for _, r := range bytes.Runes(bs) {
+		if r == '\'' {
+			b.WriteRune(escapeStr)
+			b.WriteRune(r)
+		} else {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 // If there are special characters, add \ directly before the special characters.
 /**
 Determine whether it is a letter: unicode.IsLetter(v)

@@ -114,8 +114,8 @@ func (t *Table) CompareTableComment() string {
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
 		b.WriteString("*/\n")
 
-		switch {
-		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
+		switch t.TaskFlow {
+		case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 			b.WriteString(fmt.Sprintf("ALTER TABLE %s.%s COMMENT '%s';\n", t.Target.SchemaName, t.Target.TableName, t.Source.TableComment))
 		}
 
@@ -164,8 +164,8 @@ func (t *Table) CompareTableCharsetCollation() string {
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
 		b.WriteString("*/\n")
 
-		switch {
-		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL):
+		switch t.TaskFlow {
+		case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 			b.WriteString(fmt.Sprintf("ALTER TABLE %s.%s CHARACTER SET %s COLLATE %s;\n\n", t.Target.SchemaName, t.Target.TableName, dbCharsetT, dbCollationT))
 		}
 
@@ -226,8 +226,8 @@ func (t *Table) CompareTableColumnCharsetCollation() string {
 				fmt.Sprintf("%s %s", colName, colInfo.Datatype),
 				"Manual Modify Table Column Charset Collation"})
 
-			switch {
-			case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+			switch t.TaskFlow {
+			case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 				sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s MODIFY %s %s CHARACTER SET %s COLLATE %s;", t.Target.SchemaName, t.Target.TableName, colName, colInfo.Datatype, colInfo.Charset, colInfo.Collation))
 			}
 		}
@@ -366,9 +366,9 @@ func (t *Table) CompareTablePrimaryConstraint() (string, error) {
 		b.WriteString("/*\n")
 		b.WriteString(fmt.Sprintf("the task [%s] task_flow [%s] database table primary constraint isn't different\n", t.TaskName, t.TaskFlow))
 
-		// check primary key different, but constraint key same (oracle -> tidb/mysql)
-		switch {
-		case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+		// check primary key different, but constraint key same
+		switch t.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 			var (
 				delKey string
 				addKey string
@@ -408,13 +408,13 @@ func (t *Table) CompareTablePrimaryConstraint() (string, error) {
 					"Manual Drop Primary Constraint",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s DROP PRIMARY KEY;\n", t.Target.SchemaName, t.Target.TableName))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] primary constraint [%v] assert ConstraintPrimary failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] primary constraint [%v] assert ConstraintPrimary failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		for consName, consCol := range addTCons {
@@ -426,13 +426,13 @@ func (t *Table) CompareTablePrimaryConstraint() (string, error) {
 					"Manual Add Primary Constraint",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD PRIMARY KEY (%s);\n", t.Target.SchemaName, t.Target.TableName, val.ConstraintColumn))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] primary constraint [%v] assert ConstraintPrimary failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] primary constraint [%v] assert ConstraintPrimary failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
@@ -487,13 +487,13 @@ func (t *Table) CompareTableUniqueConstraint() (string, error) {
 					"Manual Drop Unique Constraint",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s DROP KEY %s;\n", t.Target.SchemaName, t.Target.TableName, consName))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] unique constraint [%v] assert ConstraintUnique failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] unique constraint [%v] assert ConstraintUnique failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		for consName, consCol := range addTCons {
@@ -505,13 +505,13 @@ func (t *Table) CompareTableUniqueConstraint() (string, error) {
 					"Manual Add Unique Constraint",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD CONSTRAINT %s UNIQUE (%s);\n", t.Target.SchemaName, t.Target.TableName, consName, val.ConstraintColumn))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] unique constraint [%v] assert ConstraintUnique failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] unique constraint [%v] assert ConstraintUnique failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
@@ -566,13 +566,13 @@ func (t *Table) CompareTableForeignConstraint() (string, error) {
 					"Manual Drop Foreign Constraint",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s DROP FOREIGN KEY %s;\n", t.Target.SchemaName, t.Target.TableName, consName))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] foreign constraint [%v] assert ConstraintForeign failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] foreign constraint [%v] assert ConstraintForeign failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		for consName, consCol := range addTCons {
@@ -584,8 +584,8 @@ func (t *Table) CompareTableForeignConstraint() (string, error) {
 					"Manual Add Foreign Constraint",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					if val.DeleteRule != "" {
 						sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD FOREIGN KEY (%s) REFERENCES %s.%s(%s) ON DELETE %s;\n", t.Target.SchemaName, t.Target.TableName, consName, val.ReferencedTableSchema, val.ReferencedTableName, val.ReferencedColumnName, val.DeleteRule))
 					}
@@ -598,7 +598,7 @@ func (t *Table) CompareTableForeignConstraint() (string, error) {
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] foreign constraint [%v] assert ConstraintForeign failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] foreign constraint [%v] assert ConstraintForeign failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
@@ -653,13 +653,13 @@ func (t *Table) CompareTableCheckConstraint() (string, error) {
 					"Manual Drop Check Constraint",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s DROP CHECK KEY %s;\n", t.Target.SchemaName, t.Target.TableName, consName))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] check constraint [%v] assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] check constraint [%v] assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		for consName, consCol := range addTCons {
@@ -671,13 +671,13 @@ func (t *Table) CompareTableCheckConstraint() (string, error) {
 					"Manual Add Check Constraint",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD CONSTRAINT %s CHECK %s;\n", t.Target.SchemaName, t.Target.TableName, consName, val.ConstraintExpression))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] check constraint [%v] assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] check constraint [%v] assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
@@ -734,13 +734,13 @@ func (t *Table) CompareTableIndexDetail() (string, error) {
 					"Manual Drop Table Index",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s DROP INDEX %s;", t.Target.SchemaName, t.Target.TableName, consName))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] index detail [%v] assert Index failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] index detail [%v] assert Index failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		for consName, consCol := range addTCons {
@@ -754,8 +754,8 @@ func (t *Table) CompareTableIndexDetail() (string, error) {
 					"Manual Add Table Index",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 					if val.Uniqueness == "UNIQUE" && val.IndexType == "NORMAL" {
 						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s.%s (%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
 						continue
@@ -784,11 +784,53 @@ func (t *Table) CompareTableIndexDetail() (string, error) {
 						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE INDEX %s ON %s.%s (%s) INDEXTYPE IS %s.%s PARAMETERS ('%s');\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn, val.DomainIndexOwner, val.DomainIndexName, val.DomainParameters))
 						continue
 					}
-					return b.String(), fmt.Errorf("the oracle schema [%s] table [%s] compare failed, not support index: [%v]", t.Target.SchemaName, t.Target.TableName, t.Source.String(constant.StructCompareIndexStructureJSONFormat))
+					return b.String(), fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] compare failed, not support index: [%v]", t.Source.SchemaName, t.Source.TableName, t.Source.String(constant.StructCompareIndexStructureJSONFormat))
+				case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+					if val.Uniqueness == "UNIQUE" && val.IndexType == "BTREE" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s.%s (%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "UNIQUE" && val.IndexType == "HASH" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s.%s USING HASH(%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "UNIQUE" && val.IndexType == "GIST" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s.%s USING HASH(%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "UNIQUE" && val.IndexType == "SPGIST" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s.%s USING SPGIST(%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "UNIQUE" && val.IndexType == "GIN" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s.%s USING GIN(%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "NONUNIQUE" && val.IndexType == "BTREE" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE INDEX %s ON %s.%s (%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "NONUNIQUE" && val.IndexType == "HASH" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE INDEX %s ON %s.%s USING HASH(%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "NONUNIQUE" && val.IndexType == "GIST" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE INDEX %s ON %s.%s USING HASH(%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "NONUNIQUE" && val.IndexType == "SPGIST" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE INDEX %s ON %s.%s USING SPGIST(%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					if val.Uniqueness == "NONUNIQUE" && val.IndexType == "GIN" {
+						sqlStrs = append(sqlStrs, fmt.Sprintf("CREATE INDEX %s ON %s.%s USING GIN(%s);\n", consName, t.Target.SchemaName, t.Target.TableName, val.IndexColumn))
+						continue
+					}
+					return b.String(), fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] compare failed, not support index: [%v]", t.Source.SchemaName, t.Source.TableName, t.Source.String(constant.StructCompareIndexStructureJSONFormat))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] check constraint [%v] assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] check constraint [%v] assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, consCol, reflect.TypeOf(consCol))
 		}
 
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
@@ -851,13 +893,13 @@ func (t *Table) CompareTableColumnDetail() (string, error) {
 					"Manual Drop Table Column",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s DROP COLUMN %s;", t.Target.SchemaName, t.Target.TableName, colName))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] column detail [%v] drop assert NewColumn failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, colInfo, reflect.TypeOf(colInfo))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] column detail [%v] drop assert NewColumn failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, colInfo, reflect.TypeOf(colInfo))
 		}
 
 		for colName, colInfo := range addTCons {
@@ -870,13 +912,13 @@ func (t *Table) CompareTableColumnDetail() (string, error) {
 					"Manual Add Table Column",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s ADD COLUMN %s %s;", t.Target.SchemaName, t.Target.TableName, colName, t.genAlterTableColumnDetail(val)))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] column detail [%v] add assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, colName, reflect.TypeOf(colInfo))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] column detail [%v] add assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, colName, reflect.TypeOf(colInfo))
 		}
 
 		for colName, colInfo := range modTCons {
@@ -889,13 +931,13 @@ func (t *Table) CompareTableColumnDetail() (string, error) {
 					"Manual Modify Table Column",
 				})
 
-				switch {
-				case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
+				switch t.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 					sqlStrs = append(sqlStrs, fmt.Sprintf("ALTER TABLE %s.%s MODIFY COLUMN %s %s;", t.Target.SchemaName, t.Target.TableName, colName, t.genAlterTableColumnDetail(val)))
 				}
 				continue
 			}
-			return "", fmt.Errorf("the oracle schema [%s] table [%s] column detail [%v] modify assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, colName, reflect.TypeOf(colInfo))
+			return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] column detail [%v] modify assert ConstraintCheck failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, colName, reflect.TypeOf(colInfo))
 		}
 
 		b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
@@ -953,7 +995,7 @@ func (t *Table) CompareTablePartitionDetail() (string, error) {
 					b.WriteString(t.Target.String(constant.StructComparePartitionStructureJSONFormat) + "\n\n")
 					continue
 				}
-				return "", fmt.Errorf("the oracle schema [%s] table [%s] paritions [%v] assert Partition failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, p, reflect.TypeOf(p))
+				return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] paritions [%v] assert Partition failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, p, reflect.TypeOf(p))
 			}
 
 			if len(delParts) > 0 {
@@ -970,7 +1012,7 @@ func (t *Table) CompareTablePartitionDetail() (string, error) {
 					b.WriteString(t.Target.String(constant.StructComparePartitionStructureJSONFormat) + "\n\n")
 					continue
 				}
-				return "", fmt.Errorf("the oracle schema [%s] table [%s] paritions [%v] assert Partition failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, p, reflect.TypeOf(p))
+				return "", fmt.Errorf("the source schema_name_s [%s] table_name_s [%s] paritions [%v] assert Partition failed, type: [%v]", t.Source.SchemaName, t.Source.TableName, p, reflect.TypeOf(p))
 			}
 			b.WriteString(fmt.Sprintf("%v\n", tw.Render()))
 			b.WriteString("*/\n")
@@ -992,12 +1034,13 @@ func (t *Table) CompareTablePartitionDetail() (string, error) {
 
 func (t *Table) genAlterTableColumnDetail(newColumn structure.NewColumn) string {
 	var sqlSuffix string
-	switch {
-	case strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToMySQL) || strings.EqualFold(t.TaskFlow, constant.TaskFlowOracleToTiDB):
-		if newColumn.Charset == "UNKNOWN" && newColumn.Collation == "UNKNOWN" {
-			sqlSuffix = fmt.Sprintf("%s %s", newColumn.Datatype, t.genTableColumnDefaultCommentMeta(newColumn.NULLABLE, newColumn.Comment, newColumn.DataDefault))
+	switch t.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+		if (newColumn.Charset == "UNKNOWN" && newColumn.Collation == "UNKNOWN") || (newColumn.Charset == "" && newColumn.Collation == "") {
+			sqlSuffix = fmt.Sprintf("%s %s", newColumn.Datatype, t.genTableColumnDefaultCommentMeta(newColumn.NULLABLE,
+				stringutil.EscapeDatabaseSingleQuotesSpecialLetters([]byte(newColumn.Comment), '\''), newColumn.DataDefault))
 		} else {
-			sqlSuffix = fmt.Sprintf("%s CHARACTER SET %s COLLATE %s %s", newColumn.Datatype, newColumn.Charset, newColumn.Collation, t.genTableColumnDefaultCommentMeta(newColumn.NULLABLE, newColumn.Comment, newColumn.DataDefault))
+			sqlSuffix = fmt.Sprintf("%s CHARACTER SET %s COLLATE %s %s", newColumn.Datatype, newColumn.Charset, newColumn.Collation, t.genTableColumnDefaultCommentMeta(newColumn.NULLABLE, stringutil.EscapeDatabaseSingleQuotesSpecialLetters([]byte(newColumn.Comment), '\''), newColumn.DataDefault))
 		}
 	}
 	return sqlSuffix

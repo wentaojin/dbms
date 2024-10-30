@@ -362,7 +362,7 @@ func (d *Database) GetDatabaseTableColumnInfo(schemaName string, tableName strin
 	COALESCE(col.column_default,'NULLSTRING') AS "DATA_DEFAULT",
 	COALESCE(col.character_set_name,'UNKNOWN') AS "CHARSET",
 	COALESCE(col.collation_name,'UNKNOWN') AS "COLLATION",
-	temp.column_comment as "COMMENT"
+	temp.column_comment as "COMMENTS"
 from
 	information_schema.columns col
 join (
@@ -1557,6 +1557,106 @@ func (d *Database) RecursiveCSV(columnOrder int, taskFlow, columnName, dbCharset
 }
 
 func (d *Database) GetDatabaseTablePartitionExpress(schemaName string, tableName string) ([]map[string]string, error) {
-	//TODO implement me
-	panic("implement me")
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`WITH partition_normals AS (
+select
+    n.nspname as "SCHEMA_NAME",
+    c.relname AS "TABLE_NAME",
+    CASE p.partstrat
+        WHEN 'r' THEN 'RANGE'
+        WHEN 'l' THEN 'LIST'
+        WHEN 'h' THEN 'HASH'
+        ELSE NULL
+    END AS "PARTITION_METHOD",
+    a.attname AS "PARTITION_EXPRESSION"
+FROM
+    pg_partitioned_table p
+JOIN
+    pg_class c ON p.partrelid = c.oid
+JOIN
+    pg_namespace n ON c.relnamespace = n.oid
+CROSS JOIN LATERAL unnest(p.partattrs) WITH ORDINALITY AS u(partattr, idx)
+JOIN
+    pg_attribute a ON a.attrelid = p.partrelid AND a.attnum = u.partattr
+WHERE
+    c.relname = '%s' AND
+    n.nspname = '%s'
+    AND p.partexprs IS NULL
+),
+partition_exprs AS (
+  SELECT
+    n.nspname AS "SCHEMA_NAME",                                                           
+    c.relname AS "TABLE_NAME",
+    CASE p.partstrat                                          
+        WHEN 'r' THEN 'RANGE'
+        WHEN 'l' THEN 'LIST'
+        WHEN 'h' THEN 'HASH'
+        ELSE NULL
+    END AS "PARTITION_METHOD",
+    pg_get_expr(p.partexprs, p.partrelid) AS "PARTITION_EXPRESSION"
+FROM                    
+    pg_partitioned_table p   
+JOIN
+    pg_class c ON p.partrelid = c.oid
+JOIN
+    pg_namespace n ON c.relnamespace = n.oid
+WHERE
+    c.relname = '%s' AND
+    n.nspname = '%s'
+    AND p.partexprs IS NOT NULL
+)
+select * from partition_normals
+union 
+select * from partition_exprs`, tableName, schemaName, tableName, schemaName))
+	if err != nil {
+		return nil, err
+	}
+
+	var result []map[string]string
+	for _, r := range res {
+		if r["PARTITION_EXPRESSION"] == "NULLABLE" && r["PARTITION_METHOD"] == "NULLABLE" {
+			// skip ignore
+			continue
+		} else {
+			result = append(result, r)
+		}
+	}
+	return result, nil
+
+	//_, res, err = d.GeneralQuery(fmt.Sprintf(` SELECT
+	//	    nmsp.nspname AS "SCHEMA_NAME",
+	//	    tbl.relname AS "TABLE_NAME",
+	//	    CASE part.partstrat
+	//	        WHEN 'r' THEN 'RANGE'
+	//	        WHEN 'l' THEN 'LIST'
+	//	        when 'h' THEN 'HASH'
+	//	    END AS subpartition_strategy,
+	//	    pg_get_expr(c.relpartbound, c.oid, true) AS subpartition_key
+	//
+	// FROM
+	//
+	//	pg_partitioned_table part
+	//
+	// JOIN
+	//
+	//	pg_class tbl ON part.partrelid = tbl.oid
+	//
+	// JOIN
+	//
+	//	pg_namespace nmsp ON tbl.relnamespace = nmsp.oid
+	//
+	// JOIN
+	//
+	//	pg_inherits inh ON inh.inhparent = tbl.oid
+	//
+	// JOIN
+	//
+	//	pg_class c ON c.oid = inh.inhrelid
+	//
+	// WHERE
+	//
+	//	    tbl.relname = '%s'
+	//	    AND nmsp.nspname = '%s'`, tableName, schemaName))
+	//		if err != nil {
+	//			return nil, err
+	//		}
 }

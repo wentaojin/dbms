@@ -271,7 +271,7 @@ func (d *Database) GetDatabaseTableColumnProperties(schemaNameS, tableNameS stri
 	COALESCE(col.column_default,'NULLSTRING') AS "DATA_DEFAULT",
 	COALESCE(col.character_set_name,'UNKNOWN') AS "CHARSET",
 	COALESCE(col.collation_name,'UNKNOWN') AS "COLLATION",
-	temp.column_comment as "COMMENT"
+	temp.column_comment as "COMMENTS"
 from
 	information_schema.columns col
 join (

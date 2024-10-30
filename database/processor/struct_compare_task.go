@@ -32,6 +32,7 @@ import (
 	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
+	"github.com/wentaojin/dbms/utils/structure"
 	"go.uber.org/zap"
 )
 
@@ -460,35 +461,56 @@ func (dmt *StructCompareTask) Process() error {
 				return errW
 			}
 
-			switch {
-			case strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(dmt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
+			switch dmt.Task.TaskFlow {
+			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 				upProcTime := time.Now()
-				oracleProcessor, err := database.IStructCompareProcessor(&OracleProcessor{
-					Ctx:                      dmt.Ctx,
-					TaskName:                 dmt.Task.TaskName,
-					TaskFlow:                 dmt.Task.TaskFlow,
-					SchemaName:               dt.SchemaNameS,
-					TableName:                dt.TableNameS,
-					DBCharset:                dmt.DBCharsetS,
-					Database:                 dmt.DatabaseS,
-					BuildinDatatypeRules:     dmt.BuildInDatatypeRulesS,
-					BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesS,
-					ColumnRouteRules:         make(map[string]string),
-					IsBaseline:               true,
-				}, dmt.TaskParams.IgnoreCaseCompare)
-				if err != nil {
-					return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeS, err)
+				var upstreamProcessor *structure.Table
+				if strings.EqualFold(dmt.DBTypeS, constant.DatabaseTypeOracle) {
+					upstreamProcessor, err = database.IStructCompareProcessor(&OracleProcessor{
+						Ctx:                      dmt.Ctx,
+						TaskName:                 dmt.Task.TaskName,
+						TaskFlow:                 dmt.Task.TaskFlow,
+						SchemaName:               dt.SchemaNameS,
+						TableName:                dt.TableNameS,
+						DBCharset:                dmt.DBCharsetS,
+						Database:                 dmt.DatabaseS,
+						BuildinDatatypeRules:     dmt.BuildInDatatypeRulesS,
+						BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesS,
+						ColumnRouteRules:         make(map[string]string),
+						IsBaseline:               true,
+					}, dmt.TaskParams.IgnoreCaseCompare)
+					if err != nil {
+						return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeS, err)
+					}
+				} else if strings.EqualFold(dmt.DBTypeS, constant.DatabaseTypePostgresql) {
+					upstreamProcessor, err = database.IStructCompareProcessor(&PostgresProcessor{
+						Ctx:                      dmt.Ctx,
+						TaskName:                 dmt.Task.TaskName,
+						TaskFlow:                 dmt.Task.TaskFlow,
+						SchemaName:               dt.SchemaNameS,
+						TableName:                dt.TableNameS,
+						DBCharset:                dmt.DBCharsetS,
+						Database:                 dmt.DatabaseS,
+						BuildinDatatypeRules:     dmt.BuildInDatatypeRulesS,
+						BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesS,
+						ColumnRouteRules:         make(map[string]string),
+						IsBaseline:               true,
+					}, dmt.TaskParams.IgnoreCaseCompare)
+					if err != nil {
+						return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeS, err)
+					}
 				}
+
 				logger.Info("struct compare task processor",
 					zap.String("task_name", dmt.Task.TaskName),
 					zap.String("task_mode", dmt.Task.TaskMode),
 					zap.String("task_flow", dmt.Task.TaskFlow),
-					zap.Any("upstream", oracleProcessor),
+					zap.Any("upstream", upstreamProcessor),
 					zap.String("cost", time.Now().Sub(upProcTime).String()))
 
 				// oracle baseline, mysql not configure task and not configure rules
 				downProcTime := time.Now()
-				mysqlProcessor, err := database.IStructCompareProcessor(&MySQLProcessor{
+				downstreamProcessor, err := database.IStructCompareProcessor(&MySQLProcessor{
 					Ctx:                      dmt.Ctx,
 					TaskName:                 dmt.Task.TaskName,
 					TaskFlow:                 dmt.Task.TaskFlow,
@@ -509,14 +531,14 @@ func (dmt *StructCompareTask) Process() error {
 					zap.String("task_name", dmt.Task.TaskName),
 					zap.String("task_mode", dmt.Task.TaskMode),
 					zap.String("task_flow", dmt.Task.TaskFlow),
-					zap.Any("downstream", mysqlProcessor),
+					zap.Any("downstream", downstreamProcessor),
 					zap.String("cost", time.Now().Sub(downProcTime).String()))
 
 				compareDetail, err := database.IStructCompareTable(&Table{
 					TaskName: dmt.Task.TaskName,
 					TaskFlow: dmt.Task.TaskFlow,
-					Source:   oracleProcessor,
-					Target:   mysqlProcessor,
+					Source:   upstreamProcessor,
+					Target:   downstreamProcessor,
 				})
 				if err != nil {
 					return fmt.Errorf("the struct compare table processor failed: %v", err)
@@ -622,7 +644,7 @@ func (dmt *StructCompareTask) Process() error {
 	for _, r := range g.Wait() {
 		if r.Err != nil {
 			smt := r.Task.(*task.StructCompareTask)
-			logger.Warn("struct compare task process tables",
+			logger.Error("struct compare task process tables",
 				zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow),
 				zap.String("schema_name_s", smt.SchemaNameS),
 				zap.String("table_name_s", smt.TableNameS),

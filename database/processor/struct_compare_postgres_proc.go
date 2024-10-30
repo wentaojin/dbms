@@ -86,7 +86,7 @@ func (p *PostgresProcessor) GenDatabaseTableComment() (string, error) {
 	if len(comment) == 0 {
 		return "", nil
 	}
-	return comment[0]["COMMENT"], nil
+	return comment[0]["COMMENTS"], nil
 }
 
 func (p *PostgresProcessor) GenDatabaseTableColumnDetail() (map[string]structure.NewColumn, map[string]map[string]structure.OldColumn, error) {
@@ -157,7 +157,7 @@ func (p *PostgresProcessor) GenDatabaseTableColumnDetail() (map[string]structure
 		}
 		columnDefaultValue := stringutil.BytesToString(defaultValUtf8Raw)
 
-		commentUtf8Raw, err := stringutil.CharsetConvert([]byte(c["COMMENT"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(p.DBCharset)], constant.CharsetUTF8MB4)
+		commentUtf8Raw, err := stringutil.CharsetConvert([]byte(c["COMMENTS"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(p.DBCharset)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return nil, nil, fmt.Errorf("[GenDatabaseTableColumnDetail] postgres schema [%s] table [%s] column [%s] charset [%v] convert [UTFMB4] failed, error: %v", p.SchemaName, p.TableName, p.DBCharset, c["COLUMN_NAME"], err)
 		}
@@ -628,8 +628,8 @@ func (p *PostgresProcessor) GenDatabaseTablePartitionDetail() ([]structure.Parti
 		partitions = append(partitions, structure.Partition{
 			PartitionKey:     c["PARTITION_EXPRESS"],
 			PartitionType:    c["PARTITIONING_TYPE"],
-			SubPartitionKey:  c["SUBPARTITION_EXPRESS"],
-			SubPartitionType: c["SUBPARTITIONING_TYPE"],
+			SubPartitionKey:  "", // postgres ""
+			SubPartitionType: "", // postgres ""
 		})
 	}
 

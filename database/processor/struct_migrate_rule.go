@@ -419,14 +419,14 @@ func (r *StructMigrateRule) GetTableCommentRule() (string, error) {
 		if err != nil {
 			return tableComment, fmt.Errorf("[GetTableCommentRule] the upstream database schema [%s] table [%s] comments [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.TableCommentAttrs[0]["COMMENTS"], r.DBCharsetS, err)
 		}
-		tableComment = stringutil.BytesToString(convertUtf8Raw)
+		tableComment = stringutil.EscapeDatabaseSingleQuotesSpecialLetters(convertUtf8Raw, '\'')
 		return tableComment, nil
 	case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(r.TableCommentAttrs[0]["COMMENTS"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 		if err != nil {
 			return tableComment, fmt.Errorf("[GetTableCommentRule] the upstream database schema [%s] table [%s] comments [%s] charset [%v] convert [UTF8MB4] failed, error: %v", r.SchemaNameS, r.TableNameS, r.TableCommentAttrs[0]["COMMENTS"], r.DBCharsetS, err)
 		}
-		tableComment = stringutil.BytesToString(convertUtf8Raw)
+		tableComment = stringutil.EscapeDatabaseSingleQuotesSpecialLetters(convertUtf8Raw, '\'')
 		return tableComment, nil
 	default:
 		return tableComment, fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
@@ -593,7 +593,7 @@ func (r *StructMigrateRule) GetTableColumnCommentRule() (map[string]string, erro
 				return columnCommentMap, fmt.Errorf("[GetTableColumnCommentRule] the upstream database schema [%s] table [%s] column [%s] comment [%s] charset convert failed, %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], rowCol["COMMENTS"], err)
 			}
 
-			columnComment = stringutil.BytesToString(commentUtf8Raw)
+			columnComment = stringutil.EscapeDatabaseSingleQuotesSpecialLetters(commentUtf8Raw, '\'')
 		case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(rowCol["COLUMN_NAME"]), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
@@ -606,7 +606,7 @@ func (r *StructMigrateRule) GetTableColumnCommentRule() (map[string]string, erro
 				return columnCommentMap, fmt.Errorf("[GetTableColumnCommentRule] the upstream database schema [%s] table [%s] column [%s] comment [%s] charset convert failed, %v", r.SchemaNameS, r.TableNameS, rowCol["COLUMN_NAME"], rowCol["COMMENTS"], err)
 			}
 
-			columnComment = stringutil.BytesToString(commentUtf8Raw)
+			columnComment = stringutil.EscapeDatabaseSingleQuotesSpecialLetters(commentUtf8Raw, '\'')
 		default:
 			return nil, fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 		}
