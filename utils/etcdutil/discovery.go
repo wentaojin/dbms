@@ -170,7 +170,7 @@ func (d *Discovery) Del(key string) {
 }
 
 // Assign used for get free status service instance addr
-func (d *Discovery) Assign(taskName string) (string, error) {
+func (d *Discovery) Assign(taskName, assignHost string) (string, error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
@@ -179,6 +179,7 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 		return "", fmt.Errorf("the discovery machine assign marshal json string failed: %v", err)
 	}
 
+	// for tasks in stopped, failed, or bound status, return the current worker directly.
 	key, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, taskName))
 	if err != nil {
 		return "", err
@@ -196,6 +197,7 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 		return workerAddr, nil
 	}
 
+	// give persistent state high priority
 	keys, err := GetKey(d.etcdClient, constant.DefaultInstanceTaskReferencesPrefixKey, clientv3.WithPrefix())
 	if err != nil {
 		return "", err
@@ -244,11 +246,12 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 					if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
 						if t, ok := hasExistedWorkerTaskM[w.Addr]; ok {
 							if t == taskName {
+								logger.Info("the worker assign task",
+									zap.String("machine menus", jsonMachines),
+									zap.String("assign worker", w.Addr))
 								return w.Addr, nil
 							}
-							return "", fmt.Errorf("[csv enable import feature] the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. The worker assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
 						}
-
 						switch {
 						case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
 							return w.Addr, nil
@@ -289,9 +292,11 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 					// double check
 					if existTask, ok := hasExistedWorkerTaskM[elem]; ok {
 						if existTask == taskName {
+							logger.Info("the worker assign task",
+								zap.String("machine menus", jsonMachines),
+								zap.String("assign worker", elem))
 							return elem, nil
 						}
-						return "", fmt.Errorf("[csv enable import feature] the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. The worker assign is abnormal. Please contact the author or try again", elem, existTask, taskName)
 					}
 
 					logger.Info("the worker assign task",
@@ -303,6 +308,73 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 
 			return "", fmt.Errorf("the host address [%s] where the current datasource_name_t [%s] is located does not exist in the list of registered worker hosts. Please expand the worker instance on the host [%s] where datasource_name_t [%s] is located or set the params [enable-import-feature = false] and rerun the task", datasourceT.Host, datasourceT.DatasourceName, datasourceT.Host, datasourceT.DatasourceName)
 		}
+	}
+
+	// prioritize the tasks of the specified host. When the tasks of the specified host do not exist, report error.
+	if !strings.EqualFold(assignHost, "") {
+		if insts, ok := d.machines[assignHost]; ok {
+			var usableWorkers []string
+			busyWorkers := 0
+			for _, w := range insts {
+				if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
+					if t, ok := hasExistedWorkerTaskM[w.Addr]; ok {
+						if t == taskName {
+							logger.Info("the worker assign task",
+								zap.String("machine menus", jsonMachines),
+								zap.String("assign worker", w.Addr))
+							return w.Addr, nil
+						}
+					}
+					switch {
+					case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
+						return w.Addr, nil
+					case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, taskName):
+						return w.Addr, nil
+					case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, taskName):
+						return w.Addr, nil
+					case strings.EqualFold(w.State, constant.DefaultInstanceFreeState) && strings.EqualFold(w.TaskName, ""):
+						usableWorkers = append(usableWorkers, w.Addr)
+					case strings.EqualFold(w.State, constant.DefaultInstanceBoundState) && strings.EqualFold(w.TaskName, ""):
+						usableWorkers = append(usableWorkers, w.Addr)
+					case strings.EqualFold(w.State, constant.DefaultInstanceFailedState) && strings.EqualFold(w.TaskName, ""):
+						usableWorkers = append(usableWorkers, w.Addr)
+					case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, ""):
+						usableWorkers = append(usableWorkers, w.Addr)
+					default:
+						busyWorkers++
+					}
+				}
+			}
+
+			if len(usableWorkers) == 0 {
+				jsonMachines, err := stringutil.MarshalJSON(d.machines[assignHost])
+				if err != nil {
+					return "", fmt.Errorf("the discovery machine assign marshal json string failed: %v", err)
+				}
+
+				return "", fmt.Errorf("the work instances have assign tasks with in the assign machine [%s]. There are currently no available work instance machines. Please wait to register or expand the work instance, display the machine assign details: \n%s", assignHost, jsonMachines)
+			}
+
+			elem, err := stringutil.GetRandomElem(usableWorkers)
+			if err != nil {
+				return "", err
+			}
+
+			if t, ok := hasExistedWorkerTaskM[elem]; ok {
+				if t == taskName {
+					logger.Info("the worker assign task",
+						zap.String("machine menus", jsonMachines),
+						zap.String("assign worker", elem))
+					return elem, nil
+				}
+			}
+
+			logger.Info("the worker assign task",
+				zap.String("machine menus", jsonMachines),
+				zap.String("assign worker", elem))
+			return elem, nil
+		}
+		return "", fmt.Errorf("the currently specified host [%s] does not exist. Please wait to register or expand the work instance.", assignHost)
 	}
 
 	// the machine worker statistics, exclude the master role
@@ -317,9 +389,11 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 			if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
 				if t, ok := hasExistedWorkerTaskM[w.Addr]; ok {
 					if t == taskName {
+						logger.Info("the worker assign task",
+							zap.String("machine menus", jsonMachines),
+							zap.String("assign worker", w.Addr))
 						return w.Addr, nil
 					}
-					return "", fmt.Errorf("[filtering for minimum workload] the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. The worker assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
 				}
 				switch {
 				case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
@@ -360,9 +434,11 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 		if strings.EqualFold(w.Role, constant.DefaultInstanceRoleWorker) {
 			if t, ok := hasExistedWorkerTaskM[w.Addr]; ok {
 				if t == taskName {
+					logger.Info("the worker assign task",
+						zap.String("machine menus", jsonMachines),
+						zap.String("assign worker", w.Addr))
 					return w.Addr, nil
 				}
-				return "", fmt.Errorf("[assigning for minimum workload] the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. The worker assign is abnormal. Please contact the author or try again", w.Addr, t, taskName)
 			}
 			switch {
 			case strings.EqualFold(w.State, constant.DefaultInstanceStoppedState) && strings.EqualFold(w.TaskName, taskName):
@@ -396,9 +472,11 @@ func (d *Discovery) Assign(taskName string) (string, error) {
 
 	if t, ok := hasExistedWorkerTaskM[elem]; ok {
 		if t == taskName {
+			logger.Info("the worker assign task",
+				zap.String("machine menus", jsonMachines),
+				zap.String("assign worker", elem))
 			return elem, nil
 		}
-		return "", fmt.Errorf("[random for minimum workload] the current worker [%s] is already occupied by task [%s]. It is forbidden to provide services for the submitted task [%s]. The worker assign is abnormal. Please contact the author or try again", elem, t, taskName)
 	}
 
 	logger.Info("the worker assign task",

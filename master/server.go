@@ -18,7 +18,6 @@ package master
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/proto/pb"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -26,6 +25,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/wentaojin/dbms/proto/pb"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	ginzap "github.com/gin-contrib/zap"
@@ -326,7 +327,7 @@ func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*
 		return service.StopTask(ctx, s.etcdClient, req)
 	case constant.TaskOperationCrontabSubmit:
 		return service.AddCronTask(ctx, s.cron, s.etcdClient, req,
-			service.NewCronjob(s.etcdClient, s.discWorkers, req.TaskName))
+			service.NewCronjob(s.etcdClient, s.discWorkers, req.TaskName, req.AssignHost))
 		// cleanup tasks are used for scheduled job tasks that are running.
 	case constant.TaskOperationCrontabClear:
 		return service.ClearCronTask(ctx, s.cron, s.etcdClient, req)

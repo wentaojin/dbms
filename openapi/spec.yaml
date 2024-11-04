@@ -1604,6 +1604,10 @@ components:
         express:
           type: string
           format: string
+        assignHost:
+          type: string
+          nullable: true
+          format: string          
     RequestPostParam:
       type: object
       properties:

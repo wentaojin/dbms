@@ -18,6 +18,7 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/robfig/cron/v3"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/etcdutil"
@@ -65,7 +66,7 @@ func (c *Crontab) Load(expressPrefixKey string) error {
 				return fmt.Errorf("the task [%s] load value unmarshal failed, disable delete task, error: %v", taskName, err)
 			}
 
-			_, err = c.cron.AddJob(expr.Express, NewCronjob(c.etcdClient, c.discoveries, taskName))
+			_, err = c.cron.AddJob(expr.Express, NewCronjob(c.etcdClient, c.discoveries, expr.TaskName, expr.AssignHost))
 			if err != nil {
 				return err
 			}
