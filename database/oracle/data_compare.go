@@ -82,7 +82,7 @@ func (d *Database) GetDatabaseTableStatisticsBucket(schemaNameS, tableNameS stri
 	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
 	INDEX_NAME,
 	DISTINCT_KEYS,
-	NUM_ROWS
+	NVL(NUM_ROWS,0) AS NUM_ROWS
 FROM DBA_IND_STATISTICS
 WHERE TABLE_OWNER = '%s' 
   AND TABLE_NAME = '%s' 
