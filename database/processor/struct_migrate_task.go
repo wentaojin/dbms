@@ -18,9 +18,12 @@ package processor
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/model/rule"
 	"golang.org/x/sync/errgroup"
@@ -1143,7 +1146,15 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 				} else {
 					cacheFlag = fmt.Sprintf("CACHE %v", seqRes[0]["CACHE_SIZE"])
 				}
-				if seqRes[0]["MAX_VALUE"] == "9999999999999999999999999999" {
+				maxVal, err := decimal.NewFromString(seqRes[0]["MAX_VALUE"])
+				if err != nil {
+					return fmt.Errorf("parse sequence string value [%s] failed: %v", seqRes[0]["MAX_VALUE"], err)
+				}
+				maxBigint, err := decimal.NewFromString(strconv.FormatInt(math.MaxInt64, 10))
+				if err != nil {
+					return fmt.Errorf("parse max int64 string value [%s] failed: %v", strconv.FormatInt(math.MaxInt64, 10), err)
+				}
+				if maxVal.GreaterThanOrEqual(maxBigint) {
 					maxValue = "NOMAXVALUE"
 				} else {
 					maxValue = fmt.Sprintf("MAXVALUE %v", seqRes[0]["MAX_VALUE"])
