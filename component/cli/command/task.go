@@ -79,7 +79,7 @@ func (a *AppTaskStart) Cmd() *cobra.Command {
 		SilenceUsage:     true,
 	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "operate task name")
-	cmd.Flags().StringVarP(&a.assginHost, "assignHost", "host", "", "configure assign host")
+	cmd.Flags().StringVarP(&a.assginHost, "hostIP", "H", "", "configure assign host")
 	return cmd
 }
 
@@ -434,7 +434,7 @@ func (a *AppTaskCrontabSubmit) Cmd() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "operate task name")
 	cmd.Flags().StringVarP(&a.express, "express", "e", "", "crontab task setting")
-	cmd.Flags().StringVarP(&a.assignHost, "assignHost", "host", "", "crontab task assign host")
+	cmd.Flags().StringVarP(&a.assignHost, "hostIP", "H", "", "crontab task assign host")
 	return cmd
 }
 
