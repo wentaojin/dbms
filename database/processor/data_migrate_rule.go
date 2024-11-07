@@ -229,7 +229,7 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			}
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 
-			columnNameS, err := OptimizerOracleDataMigrateColumnS(columnName, rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
+			columnNameS, err := OptimizerOracleDataMigrateColumnS(stringutil.StringBuilder(constant.StringSeparatorDoubleQuotes, columnName, constant.StringSeparatorDoubleQuotes), rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
 			if err != nil {
 				return "", "", "", "", err
 			}
@@ -241,7 +241,7 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			}
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 
-			columnNameS, err := OptimizerPostgresDataMigrateColumnS(columnName, rowCol["DATA_TYPE"], rowCol["DATETIME_PRECISION"])
+			columnNameS, err := OptimizerPostgresDataMigrateColumnS(stringutil.StringBuilder(constant.StringSeparatorDoubleQuotes, columnName, constant.StringSeparatorDoubleQuotes), rowCol["DATA_TYPE"], rowCol["DATETIME_PRECISION"])
 			if err != nil {
 				return "", "", "", "", err
 			}

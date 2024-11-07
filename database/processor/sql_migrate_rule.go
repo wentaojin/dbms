@@ -118,7 +118,7 @@ func (r *SqlMigrateRule) GenSqlMigrateTableColumnRule() (string, string, string,
 
 		columnNameSliO = append(columnNameSliO, columnName)
 
-		columnNameS, err := OptimizerOracleDataMigrateColumnS(columnName, columnTypeMap[c], columnScaleMap[c])
+		columnNameS, err := OptimizerOracleDataMigrateColumnS(stringutil.StringBuilder(constant.StringSeparatorDoubleQuotes, columnName, constant.StringSeparatorDoubleQuotes), columnTypeMap[c], columnScaleMap[c])
 		if err != nil {
 			return "", "", "", err
 		}

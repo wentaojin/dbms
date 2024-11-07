@@ -72,51 +72,51 @@ func OptimizerOracleDataMigrateColumnS(columnName, datatype, dataScale string) (
 	switch strings.ToUpper(datatype) {
 	// numeric type
 	case constant.BuildInOracleDatatypeNumber:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	case constant.BuildInOracleDatatypeDecimal, constant.BuildInOracleDatatypeDec, constant.BuildInOracleDatatypeDoublePrecision,
 		constant.BuildInOracleDatatypeFloat, constant.BuildInOracleDatatypeInteger, constant.BuildInOracleDatatypeInt,
 		constant.BuildInOracleDatatypeReal, constant.BuildInOracleDatatypeNumeric, constant.BuildInOracleDatatypeBinaryFloat,
 		constant.BuildInOracleDatatypeBinaryDouble, constant.BuildInOracleDatatypeSmallint:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// character datatype
 	case constant.BuildInOracleDatatypeCharacter, constant.BuildInOracleDatatypeLong, constant.BuildInOracleDatatypeNcharVarying,
 		constant.BuildInOracleDatatypeVarchar, constant.BuildInOracleDatatypeChar, constant.BuildInOracleDatatypeNchar, constant.BuildInOracleDatatypeVarchar2, constant.BuildInOracleDatatypeNvarchar2, constant.BuildInOracleDatatypeNclob,
 		constant.BuildInOracleDatatypeClob:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	case constant.BuildInOracleDatatypeBfile:
 		// bfile can convert blob through to_lob, current keep store bfilename
 		// https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/TO_BLOB-bfile.html#GUID-232A1599-53C9-464B-904F-4DBA336B4EBC
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	case constant.BuildInOracleDatatypeRowid, constant.BuildInOracleDatatypeUrowid:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 		// xmltype datatype
 	case constant.BuildInOracleDatatypeXmltype:
-		return fmt.Sprintf(` XMLSERIALIZE(CONTENT "%s" AS CLOB) AS "%s"`, columnName, columnName), nil
+		return fmt.Sprintf(` XMLSERIALIZE(CONTENT %s AS CLOB) AS %s`, columnName, columnName), nil
 	// binary datatype
 	case constant.BuildInOracleDatatypeBlob, constant.BuildInOracleDatatypeLongRAW, constant.BuildInOracleDatatypeRaw:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// time datatype
 	case constant.BuildInOracleDatatypeDate:
-		return stringutil.StringBuilder(`TO_CHAR("`, columnName, `",'yyyy-mm-dd hh24:mi:ss') AS "`, columnName, `"`), nil
+		return stringutil.StringBuilder(`TO_CHAR(`, columnName, `,'yyyy-mm-dd hh24:mi:ss') AS `, columnName), nil
 	// other datatype
 	default:
 		if strings.Contains(datatype, "INTERVAL") {
-			return stringutil.StringBuilder(`TO_CHAR("`, columnName, `") AS "`, columnName, `"`), nil
+			return stringutil.StringBuilder(`TO_CHAR(`, columnName, `) AS `, columnName), nil
 		} else if strings.Contains(datatype, "TIMESTAMP") {
 			dataScaleV, err := strconv.Atoi(dataScale)
 			if err != nil {
 				return "", fmt.Errorf("aujust oracle timestamp datatype scale [%s] strconv.Atoi failed: %v", dataScale, err)
 			}
 			if dataScaleV == 0 {
-				return stringutil.StringBuilder(`TO_CHAR("`, columnName, `",'yyyy-mm-dd hh24:mi:ss') AS "`, columnName, `"`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, columnName, `,'yyyy-mm-dd hh24:mi:ss') AS `, columnName), nil
 			} else if dataScaleV > 0 && dataScaleV <= 6 {
-				return stringutil.StringBuilder(`TO_CHAR("`, columnName,
-					`",'yyyy-mm-dd hh24:mi:ss.ff`, strconv.Itoa(dataScaleV), `') AS "`, columnName, `"`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, columnName,
+					`,'yyyy-mm-dd hh24:mi:ss.ff`, strconv.Itoa(dataScaleV), `') AS `, columnName), nil
 			} else {
-				return stringutil.StringBuilder(`TO_CHAR("`, columnName, `",'yyyy-mm-dd hh24:mi:ss.ff6') AS "`, columnName, `"`), nil
+				return stringutil.StringBuilder(`TO_CHAR(`, columnName, `,'yyyy-mm-dd hh24:mi:ss.ff6') AS `, columnName), nil
 			}
 		} else {
-			return stringutil.StringBuilder(`"`, columnName, `"`), nil
+			return columnName, nil
 		}
 	}
 }

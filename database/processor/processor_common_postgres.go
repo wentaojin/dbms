@@ -76,18 +76,18 @@ func OptimizerPostgresDataMigrateColumnS(columnName, datatype, datetimePrecision
 		constant.BuildInPostgresDatatypeMoney,
 		constant.BuildInPostgresDatatypeReal,
 		constant.BuildInPostgresDatatypeDoublePrecision:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// character datatype
 	case constant.BuildInPostgresDatatypeCharacter,
 		constant.BuildInPostgresDatatypeCharacterVarying,
 		constant.BuildInPostgresDatatypeText:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// date datatype
 	case constant.BuildInPostgresDatatypeDate:
-		return stringutil.StringBuilder(`TO_CHAR("`, columnName, `",'yyyy-mm-dd') AS "`, columnName, `"`), nil
+		return stringutil.StringBuilder(`TO_CHAR(`, columnName, `,'yyyy-mm-dd') AS `, columnName), nil
 	// boolean
 	case constant.BuildInPostgresDatatypeBoolean:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// time datatype
 	case constant.BuildInPostgresDatatypeTimeWithoutTimeZone,
 		constant.BuildInPostgresDatatypeTimestampWithoutTimeZone,
@@ -115,7 +115,7 @@ func OptimizerPostgresDataMigrateColumnS(columnName, datatype, datetimePrecision
 			  3 |   |            |
 			  4 | t | 2024-10-14 | 2024-10-14 02:44:47.FF4
 		*/
-		return stringutil.StringBuilder(`TO_CHAR("`, columnName, `",'yyyy-mm-dd hh24:mi:ss.us') AS "`, columnName, `"`), nil
+		return stringutil.StringBuilder(`TO_CHAR(`, columnName, `,'yyyy-mm-dd hh24:mi:ss.us') AS `, columnName), nil
 
 	// geometry datatype
 	case constant.BuildInPostgresDatatypePoint,
@@ -125,33 +125,33 @@ func OptimizerPostgresDataMigrateColumnS(columnName, datatype, datetimePrecision
 		constant.BuildInPostgresDatatypePath,
 		constant.BuildInPostgresDatatypePolygon,
 		constant.BuildInPostgresDatatypeCircle:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// network addr datatype
 	case constant.BuildInPostgresDatatypeCidr,
 		constant.BuildInPostgresDatatypeInet,
 		constant.BuildInPostgresDatatypeMacaddr:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// bit datatype
 	case constant.BuildInPostgresDatatypeBit:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// text search datatype
 	case constant.BuildInPostgresDatatypeTsvector,
 		constant.BuildInPostgresDatatypeTsquery:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// xmltype datatype
 	case constant.BuildInOracleDatatypeXmltype:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	case constant.BuildInPostgresDatatypeBytea,
 		constant.BuildInPostgresDatatypeUuid,
 		constant.BuildInPostgresDatatypeXml,
 		constant.BuildInPostgresDatatypeJson,
 		constant.BuildInPostgresDatatypeArray:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	case constant.BuildInPostgresDatatypeTxidSnapshot:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	// other datatype
 	default:
-		return stringutil.StringBuilder(`"`, columnName, `"`), nil
+		return columnName, nil
 	}
 }
 

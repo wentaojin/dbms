@@ -312,41 +312,57 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		columnNameSilSC, columnNameSilSO, columnNameSliTC, columnNameSliTO, ignoreTypes []string
 	)
 
+	// downstream oracle
 	// find the oracle long/ long raw / bfile datatype, rollback to crc32
-	downstreamOracleDatatypeRollback := make(map[string]string)
-	downstreamOracleDateDatatype := make(map[string]string)
-	downstreamOracleCharDatatype := make(map[string]string)
-	downstreamOracleTimestampDatatype := make(map[string]string)
+	downstreamDBDatatypeRollback := make(map[string]string)
+	downstreamDBDateDatatype := make(map[string]string)
+	downstreamDBCharDatatype := make(map[string]string)
+	downstreamDBTimestampDatatype := make(map[string]string)
 
-	downstreamPostgresBooleanDatatype := make(map[string]string)
+	// downstream postgres
+	downstreamDBBooleanDatatype := make(map[string]string)
 
-	if strings.EqualFold(r.TaskFlow, constant.TaskFlowTiDBToOracle) || strings.EqualFold(r.TaskFlow, constant.TaskFlowMySQLToOracle) {
+	switch r.TaskFlow {
+	case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
 		targetColumnInfos, err := r.DatabaseT.GetDatabaseTableColumnInfo(r.SchemaNameT, r.TableNameT)
 		if err != nil {
 			return "", "", "", "", err
 		}
 		for _, c := range targetColumnInfos {
 			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeLong) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeLongRAW) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeBfile) {
-				downstreamOracleDatatypeRollback[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+				downstreamDBDatatypeRollback[c["COLUMN_NAME"]] = c["DATA_TYPE"]
 			}
 			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeChar) || strings.EqualFold(c["DATA_TYPE"], constant.BuildInOracleDatatypeCharacter) {
-				downstreamOracleCharDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+				downstreamDBCharDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
 			}
 			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportDateSubtypes, c["DATA_TYPE"]) {
-				downstreamOracleDateDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+				downstreamDBDateDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
 			}
 			if stringutil.IsContainedString(constant.DataCompareOracleDatabaseSupportTimestampSubtypes, c["DATA_TYPE"]) {
-				downstreamOracleTimestampDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+				downstreamDBTimestampDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
 			}
 		}
-	} else if strings.EqualFold(r.TaskFlow, constant.TaskFlowTiDBToPostgres) || strings.EqualFold(r.TaskFlow, constant.TaskFlowMySQLToPostgres) {
+	case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
 		targetColumnInfos, err := r.DatabaseT.GetDatabaseTableColumnInfo(r.SchemaNameT, r.TableNameT)
 		if err != nil {
 			return "", "", "", "", err
 		}
 		for _, c := range targetColumnInfos {
 			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInPostgresDatatypeBoolean) {
-				downstreamPostgresBooleanDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+				downstreamDBBooleanDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+			}
+			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInPostgresDatatypeCharacter) {
+				downstreamDBBooleanDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
+			}
+		}
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+		targetColumnInfos, err := r.DatabaseT.GetDatabaseTableColumnInfo(r.SchemaNameT, r.TableNameT)
+		if err != nil {
+			return "", "", "", "", err
+		}
+		for _, c := range targetColumnInfos {
+			if strings.EqualFold(c["DATA_TYPE"], constant.BuildInMySQLDatatypeChar) {
+				downstreamDBCharDatatype[c["COLUMN_NAME"]] = c["DATA_TYPE"]
 			}
 		}
 	}
@@ -398,19 +414,29 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 
 		switch r.TaskFlow {
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
-			columnNameSO, err := OptimizerOracleDataMigrateColumnS(columnNameS, datatypeS, dataScaleS)
+			var columnNameSO string
+			if strings.EqualFold(datatypeS, constant.BuildInOracleDatatypeChar) || strings.EqualFold(datatypeS, constant.BuildInOracleDatatypeCharacter) {
+				columnNameSO, err = OptimizerOracleDataMigrateColumnS(fmt.Sprintf("RTRIM(%s%s%s)", constant.StringSeparatorDoubleQuotes, columnNameS, constant.StringSeparatorDoubleQuotes), datatypeS, dataScaleS)
+			} else {
+				columnNameSO, err = OptimizerOracleDataMigrateColumnS(stringutil.StringBuilder(constant.StringSeparatorDoubleQuotes, columnNameS, constant.StringSeparatorDoubleQuotes), datatypeS, dataScaleS)
+			}
 			if err != nil {
 				return "", "", "", "", err
 			}
 			columnNameSilSO = append(columnNameSilSO, columnNameSO)
 		case constant.TaskFlowTiDBToOracle, constant.TaskFlowTiDBToPostgres:
-			columnNameSO, err := OptimizerMYSQLCompatibleDataMigrateColumnS(columnNameS, datatypeS, rowCol["DATETIME_PRECISION"])
+			columnNameSO, err := OptimizerMYSQLCompatibleDataMigrateColumnS(stringutil.StringBuilder(constant.StringSeparatorBacktick, columnNameS, constant.StringSeparatorBacktick), datatypeS, rowCol["DATETIME_PRECISION"])
 			if err != nil {
 				return "", "", "", "", err
 			}
 			columnNameSilSO = append(columnNameSilSO, columnNameSO)
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
-			columnNameSO, err := OptimizerPostgresDataMigrateColumnS(columnNameS, datatypeS, dataScaleS)
+			var columnNameSO string
+			if strings.EqualFold(datatypeS, constant.BuildInPostgresDatatypeCharacter) {
+				columnNameSO, err = OptimizerPostgresDataMigrateColumnS(fmt.Sprintf("RTRIM(%s%s%s)", constant.StringSeparatorDoubleQuotes, columnNameS, constant.StringSeparatorDoubleQuotes), datatypeS, dataScaleS)
+			} else {
+				columnNameSO, err = OptimizerPostgresDataMigrateColumnS(stringutil.StringBuilder(constant.StringSeparatorDoubleQuotes, columnNameS, constant.StringSeparatorDoubleQuotes), datatypeS, dataScaleS)
+			}
 			if err != nil {
 				return "", "", "", "", err
 			}
@@ -440,10 +466,10 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 				columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorBacktick, val, constant.StringSeparatorBacktick)
 			case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
-				if _, rollback := downstreamOracleDatatypeRollback[val]; rollback {
+				if _, rollback := downstreamDBDatatypeRollback[val]; rollback {
 					isRollbackOracle = true
 				}
-				if _, okTime := downstreamOracleTimestampDatatype[val]; okTime {
+				if _, okTime := downstreamDBTimestampDatatype[val]; okTime {
 					datetimePrecision := rowCol["DATETIME_PRECISION"]
 
 					datetimePrecisionS, err := strconv.ParseInt(datetimePrecision, 10, 64)
@@ -451,10 +477,10 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 						return "", "", "", "", err
 					}
 					columnNameT = stringutil.StringBuilder(`NVL(TO_CHAR("`, val, `",'YYYY-MM-DD HH24:MI:SS.FF`, strconv.FormatInt(datetimePrecisionS, 10), `'),'0')`)
-				} else if _, okDate := downstreamOracleDateDatatype[val]; okDate {
+				} else if _, okDate := downstreamDBDateDatatype[val]; okDate {
 					columnNameT = stringutil.StringBuilder(`NVL(TO_CHAR("`, val, `",'YYYY-MM-DD HH24:MI:SS'),'0')`)
 				} else {
-					if _, okChar := downstreamOracleCharDatatype[val]; okChar {
+					if _, okChar := downstreamDBCharDatatype[val]; okChar {
 						// check whether the data type of the tidb field is char. If it is char, the data verification oracle needs to RTRIM the spaces（Leading spaces are not truncated at Oracle and TIDB/MYSQL）
 						// 1. Oracle char data is written in fixed length. If the length is not enough, spaces are added. For query conditions, spaces are automatically added to the fixed length, and the data is automatically filled with spaces.
 						// 2. Tidb char data is written in fixed length. If the length is not enough, spaces are added. For query conditions, spaces are not automatically added, and the data is not filled with spaces.
@@ -469,10 +495,22 @@ func (r *DataCompareRule) GenSchemaTableColumnSelectRule() (string, string, stri
 					}
 				}
 			case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
-				if _, isBoolean := downstreamPostgresBooleanDatatype[val]; isBoolean {
+				if _, isBoolean := downstreamDBBooleanDatatype[val]; isBoolean {
 					isBooleanPostgres = true
 				}
-				columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+				if _, okChar := downstreamDBCharDatatype[val]; okChar {
+					// check whether the data type of the tidb field is char. If it is char, the data verification postgres needs to RTRIM the spaces（Leading spaces are not truncated at Postgres and TIDB/MYSQL）
+					// 1. Postgres char data is written in fixed length. If the length is not enough, spaces are added. For query conditions, spaces are automatically added to the fixed length, and the data is automatically filled with spaces.
+					// 2. Tidb char data is written in fixed length. If the length is not enough, spaces are added. For query conditions, spaces are not automatically added, and the data is not filled with spaces.
+					// 3. Varchar2 vs varchar, both behave the same, no difference
+					if strings.EqualFold(datatypeS, constant.BuildInMySQLDatatypeChar) {
+						columnNameT = fmt.Sprintf("RTRIM(%s%s%s)", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+					} else {
+						columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+					}
+				} else {
+					columnNameT = fmt.Sprintf("%s%s%s", constant.StringSeparatorDoubleQuotes, val, constant.StringSeparatorDoubleQuotes)
+				}
 			default:
 				return "", "", "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.SchemaNameS, r.TaskFlow)
 			}

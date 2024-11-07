@@ -39,7 +39,7 @@ func OptimizerMYSQLCompatibleDataMigrateColumnS(columnName, datatype, datetimePr
 		constant.BuildInMySQLDatatypeDoublePrecision,
 		constant.BuildInMySQLDatatypeFloat,
 		constant.BuildInMySQLDatatypeReal:
-		return stringutil.StringBuilder("`", columnName, "`"), nil
+		return columnName, nil
 	// character datatype
 	case constant.BuildInMySQLDatatypeChar,
 		constant.BuildInMySQLDatatypeLongText,
@@ -47,7 +47,7 @@ func OptimizerMYSQLCompatibleDataMigrateColumnS(columnName, datatype, datetimePr
 		constant.BuildInMySQLDatatypeText,
 		constant.BuildInMySQLDatatypeTinyText,
 		constant.BuildInMySQLDatatypeVarchar:
-		return stringutil.StringBuilder("`", columnName, "`"), nil
+		return columnName, nil
 	// binary datatype
 	case constant.BuildInMySQLDatatypeBinary,
 		constant.BuildInMySQLDatatypeVarbinary,
@@ -55,12 +55,12 @@ func OptimizerMYSQLCompatibleDataMigrateColumnS(columnName, datatype, datetimePr
 		constant.BuildInMySQLDatatypeLongBlob,
 		constant.BuildInMySQLDatatypeMediumBlob,
 		constant.BuildInMySQLDatatypeTinyBlob:
-		return stringutil.StringBuilder("`", columnName, "`"), nil
+		return columnName, nil
 	// time datatype
 	case constant.BuildInMySQLDatatypeDate,
 		constant.BuildInMySQLDatatypeTime,
 		constant.BuildInMySQLDatatypeYear:
-		return stringutil.StringBuilder("`", columnName, "`"), nil
+		return columnName, nil
 	case constant.BuildInMySQLDatatypeDatetime,
 		constant.BuildInMySQLDatatypeTimestamp:
 		datetimeP, err := strconv.Atoi(datetimePrecision)
@@ -68,19 +68,19 @@ func OptimizerMYSQLCompatibleDataMigrateColumnS(columnName, datatype, datetimePr
 			return "", fmt.Errorf("aujust mysql compatible timestamp datatype scale [%s] strconv.Atoi failed: %v", datetimePrecision, err)
 		}
 		if datetimeP == 0 {
-			return fmt.Sprintf("IFNULL(DATE_FORMAT(`%s`, '%%Y-%%m-%%d %%H:%%i:%%s'),'0') AS %s", columnName, columnName), nil
+			return fmt.Sprintf("IFNULL(DATE_FORMAT(%s, '%%Y-%%m-%%d %%H:%%i:%%s'),'0') AS %s", columnName, columnName), nil
 		} else {
-			return fmt.Sprintf("IFNULL(CONCAT(DATE_FORMAT(`%s`, '%%Y-%%m-%%d %%T.'),LPAD(SUBSTRING(TIME_FORMAT(`%s`, '%%f'), 1, %s), %s, '0')),'0') AS `%s`", columnName, columnName, datetimePrecision, datetimePrecision, columnName), nil
+			return fmt.Sprintf("IFNULL(CONCAT(DATE_FORMAT(%s, '%%Y-%%m-%%d %%T.'),LPAD(SUBSTRING(TIME_FORMAT(%s, '%%f'), 1, %s), %s, '0')),'0') AS %s", columnName, columnName, datetimePrecision, datetimePrecision, columnName), nil
 		}
 	case constant.BuildInMySQLDatatypeBit:
-		return stringutil.StringBuilder("`", columnName, "`"), nil
+		return columnName, nil
 	// ORACLE ISN'T SUPPORT
 	case constant.BuildInMySQLDatatypeSet,
 		constant.BuildInMySQLDatatypeEnum:
-		return stringutil.StringBuilder("`", columnName, "`"), nil
+		return columnName, nil
 	// other datatype
 	default:
-		return stringutil.StringBuilder("`", columnName, "`"), nil
+		return columnName, nil
 	}
 }
 
