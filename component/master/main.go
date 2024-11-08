@@ -20,11 +20,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/wentaojin/dbms/signal"
 	"github.com/wentaojin/dbms/version"
 
 	"go.uber.org/zap"
-
-	"github.com/wentaojin/dbms/signal"
 
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/master"
@@ -42,16 +41,16 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	signal.SetupSignalHandler(func() {
+		cancel()
+	})
+
 	srv := master.NewServer(cfg)
 	err := srv.Start(ctx)
 	if err != nil {
 		logger.Fatal("server start failed", zap.Error(err))
 		os.Exit(1)
 	}
-
-	signal.SetupSignalHandler(func() {
-		cancel()
-	})
 
 	<-ctx.Done()
 

@@ -284,25 +284,41 @@ func (d *Discovery) Assign(taskName, assignHost string) (string, error) {
 					return "", fmt.Errorf("there are not avaliable instance in the datasource_name_t [%s] machine [%s] currently, the csv migrate task [enable-import-feature = true] require need bound datasource_name_t machine worker, Please scale-out worker instance in the machine [%s] or set the params  [enable-import-feature = false]",
 						datasourceT.DatasourceName, datasourceT.Host, datasourceT.Host)
 				default:
-					elem, err := stringutil.GetRandomElem(csvFreeWorker)
-					if err != nil {
-						return "", err
-					}
-
-					// double check
-					if existTask, ok := hasExistedWorkerTaskM[elem]; ok {
-						if existTask == taskName {
-							logger.Info("the worker assign task",
-								zap.String("machine menus", jsonMachines),
-								zap.String("assign worker", elem))
-							return elem, nil
+					for {
+						elem, err := stringutil.GetRandomElem(csvFreeWorker)
+						if err != nil {
+							return "", err
 						}
-					}
 
-					logger.Info("the worker assign task",
-						zap.String("machine menus", jsonMachines),
-						zap.String("assign worker", elem))
-					return elem, nil
+						// double check
+						if existTask, ok := hasExistedWorkerTaskM[elem]; ok {
+							if existTask == taskName {
+								logger.Info("the worker assign task",
+									zap.String("machine menus", jsonMachines),
+									zap.String("assign worker", elem))
+								return elem, nil
+							}
+						}
+
+						key, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, elem))
+						if err != nil {
+							return "", err
+						}
+						// if the register key does not exist, remove the element from csvFreeWorker
+						if len(key.Kvs) == 0 {
+							csvFreeWorker = stringutil.StringSliceRemoveElement(csvFreeWorker, elem)
+							// all workers are unavailable, exit the loop
+							if len(csvFreeWorker) == 0 {
+								return "", fmt.Errorf("all worker instances are in DOWN state and cannot provide normal services. Please check the worker instance status.")
+							}
+							continue
+						}
+
+						logger.Info("the worker assign task",
+							zap.String("machine menus", jsonMachines),
+							zap.String("assign worker", elem))
+						return elem, nil
+					}
 				}
 			}
 
@@ -355,24 +371,40 @@ func (d *Discovery) Assign(taskName, assignHost string) (string, error) {
 				return "", fmt.Errorf("the work instances have assign tasks with in the assign machine [%s]. There are currently no available work instance machines. Please wait to register or expand the work instance, display the machine assign details: \n%s", assignHost, jsonMachines)
 			}
 
-			elem, err := stringutil.GetRandomElem(usableWorkers)
-			if err != nil {
-				return "", err
-			}
-
-			if t, ok := hasExistedWorkerTaskM[elem]; ok {
-				if t == taskName {
-					logger.Info("the worker assign task",
-						zap.String("machine menus", jsonMachines),
-						zap.String("assign worker", elem))
-					return elem, nil
+			for {
+				elem, err := stringutil.GetRandomElem(usableWorkers)
+				if err != nil {
+					return "", err
 				}
-			}
 
-			logger.Info("the worker assign task",
-				zap.String("machine menus", jsonMachines),
-				zap.String("assign worker", elem))
-			return elem, nil
+				if t, ok := hasExistedWorkerTaskM[elem]; ok {
+					if t == taskName {
+						logger.Info("the worker assign task",
+							zap.String("machine menus", jsonMachines),
+							zap.String("assign worker", elem))
+						return elem, nil
+					}
+				}
+
+				key, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, elem))
+				if err != nil {
+					return "", err
+				}
+				// if the register key does not exist, remove the element from csvFreeWorker
+				if len(key.Kvs) == 0 {
+					usableWorkers = stringutil.StringSliceRemoveElement(usableWorkers, elem)
+					// all workers are unavailable, exit the loop
+					if len(usableWorkers) == 0 {
+						return "", fmt.Errorf("all worker instances are in DOWN state and cannot provide normal services. Please check the worker instance status.")
+					}
+					continue
+				}
+
+				logger.Info("the worker assign task",
+					zap.String("machine menus", jsonMachines),
+					zap.String("assign worker", elem))
+				return elem, nil
+			}
 		}
 		return "", fmt.Errorf("the currently specified host [%s] does not exist. Please wait to register or expand the work instance.", assignHost)
 	}
@@ -465,24 +497,39 @@ func (d *Discovery) Assign(taskName, assignHost string) (string, error) {
 		return "", fmt.Errorf("there are not free instance in the least busy machine [%s] currently, total workers [%d] busy workers [%d] free workers [%d], Please waiting or scale-out worker instance", leastBusyMachine, len(d.machines[leastBusyMachine]), len(busyWorkers), len(freeWorkers))
 	}
 
-	elem, err := stringutil.GetRandomElem(freeWorkers)
-	if err != nil {
-		return "", err
-	}
-
-	if t, ok := hasExistedWorkerTaskM[elem]; ok {
-		if t == taskName {
-			logger.Info("the worker assign task",
-				zap.String("machine menus", jsonMachines),
-				zap.String("assign worker", elem))
-			return elem, nil
+	for {
+		elem, err := stringutil.GetRandomElem(freeWorkers)
+		if err != nil {
+			return "", err
 		}
-	}
 
-	logger.Info("the worker assign task",
-		zap.String("machine menus", jsonMachines),
-		zap.String("assign worker", elem))
-	return elem, nil
+		if t, ok := hasExistedWorkerTaskM[elem]; ok {
+			if t == taskName {
+				logger.Info("the worker assign task",
+					zap.String("machine menus", jsonMachines),
+					zap.String("assign worker", elem))
+				return elem, nil
+			}
+		}
+
+		key, err := GetKey(d.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, elem))
+		if err != nil {
+			return "", err
+		}
+		// if the register key does not exist, remove the element from csvFreeWorker
+		if len(key.Kvs) == 0 {
+			freeWorkers = stringutil.StringSliceRemoveElement(freeWorkers, elem)
+			// all workers are unavailable, exit the loop
+			if len(freeWorkers) == 0 {
+				return "", fmt.Errorf("all worker instances are in DOWN state and cannot provide normal services. Please check the worker instance status.")
+			}
+			continue
+		}
+		logger.Info("the worker assign task",
+			zap.String("machine menus", jsonMachines),
+			zap.String("assign worker", elem))
+		return elem, nil
+	}
 }
 
 // Close used for close service

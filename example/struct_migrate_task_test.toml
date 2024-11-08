@@ -6,7 +6,7 @@ comment = "测试数据源"
 [struct-migrate-param]
 migrate-thread = 10
 create-if-not-exist = true
-enable-direct-create = true
+enable-direct-create = false
 enable-checkpoint = false
 # calltimeout，单位：秒
 call-timeout = 36000
