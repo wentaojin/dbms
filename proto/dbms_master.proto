@@ -485,7 +485,7 @@ message OperateTaskRequest {
   string operate = 1;
   string taskName = 2;
   string express = 3;
-  string assignHost = 4;
+  string hostIP = 4;
 }
 message OperateTaskResponse {
  Response response = 1;

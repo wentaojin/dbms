@@ -170,7 +170,7 @@ func (d *Discovery) Del(key string) {
 }
 
 // Assign used for get free status service instance addr
-func (d *Discovery) Assign(taskName, assignHost string) (string, error) {
+func (d *Discovery) Assign(taskName, hostIP string) (string, error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
@@ -327,8 +327,8 @@ func (d *Discovery) Assign(taskName, assignHost string) (string, error) {
 	}
 
 	// prioritize the tasks of the specified host. When the tasks of the specified host do not exist, report error.
-	if !strings.EqualFold(assignHost, "") {
-		if insts, ok := d.machines[assignHost]; ok {
+	if !strings.EqualFold(hostIP, "") {
+		if insts, ok := d.machines[hostIP]; ok {
 			var usableWorkers []string
 			busyWorkers := 0
 			for _, w := range insts {
@@ -363,12 +363,12 @@ func (d *Discovery) Assign(taskName, assignHost string) (string, error) {
 			}
 
 			if len(usableWorkers) == 0 {
-				jsonMachines, err := stringutil.MarshalJSON(d.machines[assignHost])
+				jsonMachines, err := stringutil.MarshalJSON(d.machines[hostIP])
 				if err != nil {
 					return "", fmt.Errorf("the discovery machine assign marshal json string failed: %v", err)
 				}
 
-				return "", fmt.Errorf("the work instances have assign tasks with in the assign machine [%s]. There are currently no available work instance machines. Please wait to register or expand the work instance, display the machine assign details: \n%s", assignHost, jsonMachines)
+				return "", fmt.Errorf("the work instances have assign tasks with in the assign machine [%s]. There are currently no available work instance machines. Please wait to register or expand the work instance, display the machine assign details: \n%s", hostIP, jsonMachines)
 			}
 
 			for {
@@ -406,7 +406,7 @@ func (d *Discovery) Assign(taskName, assignHost string) (string, error) {
 				return elem, nil
 			}
 		}
-		return "", fmt.Errorf("the currently specified host [%s] does not exist. Please wait to register or expand the work instance.", assignHost)
+		return "", fmt.Errorf("the currently specified host [%s] does not exist. Please wait to register or expand the work instance.", hostIP)
 	}
 
 	// the machine worker statistics, exclude the master role

@@ -66,7 +66,7 @@ func (c *Crontab) Load(expressPrefixKey string) error {
 				return fmt.Errorf("the task [%s] load value unmarshal failed, disable delete task, error: %v", taskName, err)
 			}
 
-			_, err = c.cron.AddJob(expr.Express, NewCronjob(c.etcdClient, c.discoveries, expr.TaskName, expr.AssignHost))
+			_, err = c.cron.AddJob(expr.Express, NewCronjob(c.etcdClient, c.discoveries, expr.TaskName, expr.HostIP))
 			if err != nil {
 				return err
 			}

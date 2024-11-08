@@ -61,8 +61,8 @@ func (a *AppTask) RunE(cmd *cobra.Command, args []string) error {
 
 type AppTaskStart struct {
 	*AppTask
-	task       string
-	assginHost string
+	task   string
+	hostIP string
 }
 
 func (a *AppTask) AppTaskStart() component.Cmder {
@@ -79,7 +79,7 @@ func (a *AppTaskStart) Cmd() *cobra.Command {
 		SilenceUsage:     true,
 	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "operate task name")
-	cmd.Flags().StringVarP(&a.assginHost, "hostIP", "H", "", "configure assign host")
+	cmd.Flags().StringVar(&a.hostIP, "host", "", "configure assign host")
 	return cmd
 }
 
@@ -100,7 +100,7 @@ func (a *AppTaskStart) RunE(cmd *cobra.Command, args []string) error {
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationStart
 	bodyReq["express"] = ""
-	bodyReq["assignHost"] = a.assginHost
+	bodyReq["hostIP"] = a.hostIP
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
@@ -173,7 +173,7 @@ func (a *AppTaskStop) RunE(cmd *cobra.Command, args []string) error {
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationStop
 	bodyReq["express"] = ""
-	bodyReq["assignHost"] = ""
+	bodyReq["hostIP"] = ""
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
@@ -245,7 +245,7 @@ func (a *AppTaskDelete) RunE(cmd *cobra.Command, args []string) error {
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationDelete
 	bodyReq["express"] = ""
-	bodyReq["assignHost"] = ""
+	bodyReq["hostIP"] = ""
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
@@ -414,9 +414,9 @@ func (a *AppTaskCrontab) RunE(cmd *cobra.Command, args []string) error {
 
 type AppTaskCrontabSubmit struct {
 	*AppTaskCrontab
-	task       string
-	express    string
-	assignHost string
+	task    string
+	express string
+	hostIP  string
 }
 
 func (a *AppTaskCrontab) AppTaskCrontabSubmit() component.Cmder {
@@ -434,7 +434,7 @@ func (a *AppTaskCrontabSubmit) Cmd() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "operate task name")
 	cmd.Flags().StringVarP(&a.express, "express", "e", "", "crontab task setting")
-	cmd.Flags().StringVarP(&a.assignHost, "hostIP", "H", "", "crontab task assign host")
+	cmd.Flags().StringVar(&a.hostIP, "host", "", "crontab task assign host")
 	return cmd
 }
 
@@ -461,7 +461,7 @@ func (a *AppTaskCrontabSubmit) RunE(cmd *cobra.Command, args []string) error {
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationCrontabSubmit
 	bodyReq["express"] = a.express
-	bodyReq["assignHost"] = a.assignHost
+	bodyReq["hostIP"] = a.hostIP
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {
@@ -533,7 +533,7 @@ func (a *AppTaskCrontabClear) RunE(cmd *cobra.Command, args []string) error {
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationCrontabClear
 	bodyReq["express"] = ""
-	bodyReq["assignHost"] = ""
+	bodyReq["hostIP"] = ""
 
 	jsonStr, err := stringutil.MarshalJSON(bodyReq)
 	if err != nil {

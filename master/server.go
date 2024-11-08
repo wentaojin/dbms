@@ -327,7 +327,7 @@ func (s *Server) OperateTask(ctx context.Context, req *pb.OperateTaskRequest) (*
 		return service.StopTask(ctx, s.etcdClient, req)
 	case constant.TaskOperationCrontabSubmit:
 		return service.AddCronTask(ctx, s.cron, s.etcdClient, req,
-			service.NewCronjob(s.etcdClient, s.discWorkers, req.TaskName, req.AssignHost))
+			service.NewCronjob(s.etcdClient, s.discWorkers, req.TaskName, req.HostIP))
 		// cleanup tasks are used for scheduled job tasks that are running.
 	case constant.TaskOperationCrontabClear:
 		return service.ClearCronTask(ctx, s.cron, s.etcdClient, req)

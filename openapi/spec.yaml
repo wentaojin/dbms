@@ -1604,7 +1604,7 @@ components:
         express:
           type: string
           format: string
-        assignHost:
+        hostIP:
           type: string
           nullable: true
           format: string          

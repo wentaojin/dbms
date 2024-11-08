@@ -65,7 +65,7 @@ func StartTask(ctx context.Context, cli *clientv3.Client, discoveries *etcdutil.
 		}
 	}
 
-	workerAddr, err := discoveries.Assign(req.TaskName, req.AssignHost)
+	workerAddr, err := discoveries.Assign(req.TaskName, req.HostIP)
 	if err != nil {
 		return &pb.OperateTaskResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusFailed,
@@ -467,16 +467,16 @@ type Cronjob struct {
 	cli         *clientv3.Client
 	discoveries *etcdutil.Discovery
 	taskName    string
-	assignHost  string
+	hostIP      string
 }
 
 func NewCronjob(
-	cli *clientv3.Client, discoveries *etcdutil.Discovery, taskName, assignHost string) *Cronjob {
+	cli *clientv3.Client, discoveries *etcdutil.Discovery, taskName, hostIP string) *Cronjob {
 	return &Cronjob{
 		cli:         cli,
 		discoveries: discoveries,
 		taskName:    taskName,
-		assignHost:  assignHost,
+		hostIP:      hostIP,
 	}
 }
 
@@ -485,10 +485,10 @@ func (c *Cronjob) Run() {
 	// rpc error: code = Canceled desc = context canceled
 	// resolved using context.TODO()
 	_, err := StartTask(context.TODO(), c.cli, c.discoveries, &pb.OperateTaskRequest{
-		Operate:    constant.TaskOperationStart,
-		TaskName:   c.taskName,
-		Express:    "crontab", // only avoid start the task error
-		AssignHost: c.assignHost,
+		Operate:  constant.TaskOperationStart,
+		TaskName: c.taskName,
+		Express:  "crontab", // only avoid start the task error
+		HostIP:   c.hostIP,
 	})
 	if err != nil {
 		logger.Warn("the crontab task start failed, If need, please retry submit crontab task",
@@ -509,10 +509,10 @@ func (c *Cronjob) Run() {
 
 // Express used to the store key-value information
 type Express struct {
-	TaskName   string
-	EntryID    cron.EntryID
-	Express    string
-	AssignHost string
+	TaskName string
+	EntryID  cron.EntryID
+	Express  string
+	HostIP   string
 }
 
 func (e *Express) String() string {
@@ -554,8 +554,8 @@ func AddCronTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req *p
 			err = stringutil.UnmarshalJSON(resp.Value, &expr)
 			if err != nil {
 				var msg string
-				if !strings.EqualFold(expr.AssignHost, "") {
-					msg = fmt.Sprintf("the task [%s] and express [%s] and assign_host [%s] unmarshal failed, disable repeat create crontab task. If need, please delete the task [%s] and retry crontab task", req.TaskName, req.Express, req.AssignHost, req.TaskName)
+				if !strings.EqualFold(expr.HostIP, "") {
+					msg = fmt.Sprintf("the task [%s] and express [%s] and assign_host [%s] unmarshal failed, disable repeat create crontab task. If need, please delete the task [%s] and retry crontab task", req.TaskName, req.Express, req.HostIP, req.TaskName)
 				} else {
 					msg = fmt.Sprintf("the task [%s] and express [%s] unmarshal failed, disable repeat create crontab task. If need, please delete the task [%s] and retry crontab task", req.TaskName, req.Express, req.TaskName)
 				}
@@ -566,8 +566,8 @@ func AddCronTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req *p
 			}
 			if strings.EqualFold(expr.TaskName, req.TaskName) && strings.EqualFold(expr.Express, req.Express) {
 				var msg string
-				if !strings.EqualFold(expr.AssignHost, "") {
-					msg = fmt.Sprintf("the task [%s] and express [%v] and assign_host [%s] has be submited, disable repeat create crontab task. If need, please delete the task [%s] and retry crontab task", req.TaskName, req.Express, req.AssignHost, req.TaskName)
+				if !strings.EqualFold(expr.HostIP, "") {
+					msg = fmt.Sprintf("the task [%s] and express [%v] and assign_host [%s] has be submited, disable repeat create crontab task. If need, please delete the task [%s] and retry crontab task", req.TaskName, req.Express, req.HostIP, req.TaskName)
 				} else {
 					msg = fmt.Sprintf("the task [%s] and express [%v] has be submited, disable repeat create crontab task. If need, please delete the task [%s] and retry crontab task", req.TaskName, req.Express, req.TaskName)
 				}
@@ -589,10 +589,10 @@ func AddCronTask(ctx context.Context, c *cron.Cron, cli *clientv3.Client, req *p
 	}
 
 	newExprVal := &Express{
-		TaskName:   req.TaskName,
-		EntryID:    newEntryID,
-		Express:    req.Express,
-		AssignHost: req.AssignHost,
+		TaskName: req.TaskName,
+		EntryID:  newEntryID,
+		Express:  req.Express,
+		HostIP:   req.HostIP,
 	}
 	_, err = etcdutil.PutKey(cli, stringutil.StringBuilder(constant.DefaultMasterCrontabExpressPrefixKey, req.TaskName), newExprVal.String())
 	if err != nil {
