@@ -878,6 +878,7 @@ func (s *Server) operateTask(ctx context.Context, req openapi.APIPostTaskJSONReq
 		Operate:  *req.Operate,
 		TaskName: *req.TaskName,
 		Express:  *req.Express,
+		HostIP:   *req.HostIP,
 	})
 	if err != nil {
 		return "", err
