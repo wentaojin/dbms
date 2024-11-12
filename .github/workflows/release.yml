@@ -54,7 +54,7 @@ jobs:
           echo "ldflags=${LDFLAGS}" >> $GITHUB_ENV
       - name: Install Cross Platform Environment
         run: |
-          go install src.techknowlogick.com/xgo@latest
+          go install src.techknowlogick.com/xgo@v1.7.0+1.19.5
       - name: Cross Platform Compile Linux amd64
         run: |
           cd ${{ github.workspace }}
