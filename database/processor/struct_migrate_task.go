@@ -18,8 +18,6 @@ package processor
 import (
 	"context"
 	"fmt"
-	"math"
-	"strconv"
 	"strings"
 	"time"
 
@@ -1150,9 +1148,10 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 				if err != nil {
 					return fmt.Errorf("parse sequence string value [%s] failed: %v", seqRes[0]["MAX_VALUE"], err)
 				}
-				maxBigint, err := decimal.NewFromString(strconv.FormatInt(math.MaxInt64, 10))
+				// Bigint Max -> MaxInt64
+				maxBigint, err := decimal.NewFromString("9223372036854775807")
 				if err != nil {
-					return fmt.Errorf("parse max int64 string value [%s] failed: %v", strconv.FormatInt(math.MaxInt64, 10), err)
+					return fmt.Errorf("parse max int64 string value [9223372036854775807] failed: %v", err)
 				}
 				if maxVal.GreaterThanOrEqual(maxBigint) {
 					maxValue = "NOMAXVALUE"
