@@ -1148,17 +1148,6 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 				if err != nil {
 					return fmt.Errorf("parse sequence string value [%s] failed: %v", seqRes[0]["MAX_VALUE"], err)
 				}
-				// mysql compatible sequence max value is math.MaxInt64 (bigint)
-				// build report
-				// github.com/scylladb/go-set@v1.0.2 cannot use math.MaxInt64 (untyped int constant 9223372036854775807) as int value in assignment (overflows)
-				// upgrade github.com/scylladb/go-set@master fixed build normal, but dbms-master glibc version require `GLIBC_2.38' (./dbms-master: /lib64/libc.so.6: version `GLIBC_2.38' not found (required by ./dbms-master))
-				// maxBigint, err := decimal.NewFromString(strconv.FormatInt(math.MaxInt64, 10))
-				// if err != nil {
-				// 	return fmt.Errorf("parse max int64 string value [%s] failed: %v", strconv.FormatInt(math.MaxInt64, 10), err)
-				// }
-				// if maxVal.GreaterThanOrEqual(maxBigint) {
-				// 	maxValue = "NOMAXVALUE"
-				// } else {
 				maxValue = fmt.Sprintf("MAXVALUE %v", maxVal)
 				// }
 
