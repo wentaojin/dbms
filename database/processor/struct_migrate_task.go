@@ -18,8 +18,6 @@ package processor
 import (
 	"context"
 	"fmt"
-	"math"
-	"strconv"
 	"strings"
 	"time"
 
@@ -1153,17 +1151,16 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 				// mysql compatible sequence max value is math.MaxInt64 (bigint)
 				// build report
 				// github.com/scylladb/go-set@v1.0.2 cannot use math.MaxInt64 (untyped int constant 9223372036854775807) as int value in assignment (overflows)
-				// upgrade github.com/scylladb/go-set@master build normal, but dbms-master glibc version require `GLIBC_2.38' (./dbms-master: /lib64/libc.so.6: version `GLIBC_2.38' not found (required by ./dbms-master))
-				// the production line operating system may not have such a high glibc version, so max.Int is currently used instead.
-				maxBigint, err := decimal.NewFromString(strconv.FormatInt(math.MaxInt, 10))
-				if err != nil {
-					return fmt.Errorf("parse max int64 string value [%s] failed: %v", strconv.FormatInt(math.MaxInt, 10), err)
-				}
-				if maxVal.GreaterThanOrEqual(maxBigint) {
-					maxValue = "NOMAXVALUE"
-				} else {
-					maxValue = fmt.Sprintf("MAXVALUE %v", seqRes[0]["MAX_VALUE"])
-				}
+				// upgrade github.com/scylladb/go-set@master fixed build normal, but dbms-master glibc version require `GLIBC_2.38' (./dbms-master: /lib64/libc.so.6: version `GLIBC_2.38' not found (required by ./dbms-master))
+				// maxBigint, err := decimal.NewFromString(strconv.FormatInt(math.MaxInt64, 10))
+				// if err != nil {
+				// 	return fmt.Errorf("parse max int64 string value [%s] failed: %v", strconv.FormatInt(math.MaxInt64, 10), err)
+				// }
+				// if maxVal.GreaterThanOrEqual(maxBigint) {
+				// 	maxValue = "NOMAXVALUE"
+				// } else {
+				maxValue = fmt.Sprintf("MAXVALUE %v", maxVal)
+				// }
 
 				if st.TaskParams.CreateIfNotExist {
 					smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
