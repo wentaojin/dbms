@@ -27,7 +27,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 	"unicode"
 	"unsafe"
@@ -806,15 +805,6 @@ func PathNotExistOrCreate(path string) error {
 		}
 	}
 	return err
-}
-
-// GetDiskUsage used for get the current dir disk usage size
-func GetDiskUsage(path string) (*syscall.Statfs_t, error) {
-	statfs := &syscall.Statfs_t{}
-	if err := syscall.Statfs(path, statfs); err != nil {
-		return statfs, fmt.Errorf("get dir [%v] disk usage size failed: %v", path, err)
-	}
-	return statfs, nil
 }
 
 // EscapeBinaryCSV used for bytes to string

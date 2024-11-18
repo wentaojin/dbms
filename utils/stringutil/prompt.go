@@ -20,25 +20,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"syscall"
 
 	"github.com/fatih/color"
-	"golang.org/x/term"
 )
-
-// PromptForPassword reads a password input from console
-func PromptForPassword(format string, a ...any) string {
-	defer fmt.Println("")
-
-	fmt.Printf(format, a...)
-
-	input, err := term.ReadPassword(syscall.Stdin)
-
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(strings.Trim(string(input), "\n"))
-}
 
 // PromptForConfirmAnswer accepts string from console by user, default to empty and only return
 // true if the user input is exactly the same as pre-defined answer.

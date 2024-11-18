@@ -58,10 +58,10 @@ jobs:
       - name: Cross Platform Compile Linux amd64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=linux/amd64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=linux/amd64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=linux/amd64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=linux/amd64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=linux/amd64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=linux/amd64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=linux/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=linux/amd64 -pkg component/cli ${{ github.workspace }}
           
           ls -lnrt ${{ github.workspace }}/bin
           
@@ -101,10 +101,10 @@ jobs:
       - name: Cross Platform Compile Linux arm64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=linux/arm64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=linux/arm64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=linux/arm64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=linux/arm64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=linux/arm64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=linux/arm64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
           sudo mv ${{ github.workspace }}/bin/dbms-master-linux-arm64 ${{ github.workspace }}/bin/dbms-master 
@@ -142,10 +142,10 @@ jobs:
       - name: Cross Platform Compile Darwin amd64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=darwin/amd64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=darwin/amd64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=darwin/amd64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=darwin/amd64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=darwin/amd64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=darwin/amd64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
           sudo mv ${{ github.workspace }}/bin/dbms-master-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-master 
@@ -183,10 +183,10 @@ jobs:
       - name: Cross Platform Compile Darwin arm64
         run: |
           cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=darwin/arm64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=darwin/arm64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=darwin/arm64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=darwin/arm64 -pkg component/master ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=darwin/arm64 -pkg component/worker ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=darwin/arm64 -pkg component/cluster ${{ github.workspace }}
+          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
 
           ls -lnrt ${{ github.workspace }}/bin
           sudo mv ${{ github.workspace }}/bin/dbms-master-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-master 

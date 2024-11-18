@@ -548,7 +548,7 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 		if err != nil {
 			return err
 		}
-		statfs, err := stringutil.GetDiskUsage(cmt.CsvParams.OutputDir)
+		totalSpace, freeSpace, err := stringutil.GetDiskUsage(cmt.CsvParams.OutputDir)
 		if err != nil {
 			return err
 		}
@@ -559,8 +559,6 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 		}
 		estmTableSizeMB := summary.TableSizeS * diskFactor
 
-		totalSpace := statfs.Blocks * uint64(statfs.Bsize) / 1024 / 1024
-		freeSpace := statfs.Bfree * uint64(statfs.Bsize) / 1024 / 1024
 		usedSpace := totalSpace - freeSpace
 
 		if freeSpace < uint64(estmTableSizeMB) {
