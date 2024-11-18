@@ -33,49 +33,42 @@ jobs:
         with:
           fetch-depth: 1
           path: ${{ github.workspace }}
-      - name: Build Golang Environment
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.22'
-          cache: true
-      - name: View Golang Environment
+      - name: Remove Old Docker Environment
         run: |
-          go version
-          go env
-      - name: Generate Golang Ldflags
-        id: genLdflags
+          sudo apt-get update
+          sudo apt remove docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc
+      - name: Prepare New Docker Environment
         run: |
-          CODEREPO="github.com/${{ github.repository }}"
-          COMMIT="-X \"${CODEREPO}/version.Version=`git describe --always --no-match --tags --dirty="-dev"`\""
-          BUILDTS="-X \"${CODEREPO}/version.BuildTS=`TZ=CST-8 date '+%Y-%m-%d %H:%M:%S'`\""
-          GITHASH="-X \"${CODEREPO}/version.GitHash=`git rev-parse HEAD`\""
-          GITREF="-X \"${CODEREPO}/version.GitBranch=`git rev-parse --abbrev-ref HEAD`\""
-          LDFLAGS="-w -s ${COMMIT} ${BUILDTS} ${GITHASH} ${GITREF}"
-          echo "ldflags=${LDFLAGS}" >> $GITHUB_ENV
-      - name: Install Cross Platform Environment
+          sudo apt-get update
+          sudo apt install ca-certificates curl gnupg lsb-release
+          sudo install -m 0755 -d /etc/apt/keyrings
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      - name: View New Docker Environment
         run: |
-          go install src.techknowlogick.com/xgo@latest
-      - name: Cross Platform Compile Linux amd64
+          sudo docker -v
+          sudo docker info
+      - name: Build Cross Platform Environment
         run: |
-          cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=linux/amd64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=linux/amd64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=linux/amd64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=linux/amd64 -pkg component/cli ${{ github.workspace }}
-          
-          ls -lnrt ${{ github.workspace }}/bin
-          
-          sudo mv ${{ github.workspace }}/bin/dbms-master-linux-amd64 ${{ github.workspace }}/bin/dbms-master 
-          sudo mv ${{ github.workspace }}/bin/dbms-worker-linux-amd64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-cluster-linux-amd64 ${{ github.workspace }}/bin/dbms-cluster 
-          sudo mv ${{ github.workspace }}/bin/dbms-ctl-linux-amd64 ${{ github.workspace }}/bin/dbms-ctl 
+          sudo docker build -f build.dockerfile -t build_docker_img .
+      - name: Build Cross Platform DBMS Binary
+        run: |
+          sudo mkdir -p ${{ github.workspace }}/gocache
+          sudo docker run --rm -v ${{ github.workspace }}/gocache:/gocache build_docker_img
+
+          sudo mkdir -p ${{ github.workspace }}/build
+          sudo chmod -R 777 ${{ github.workspace }}/build
+      - name: Pack Platform DBMS Linux AMD64
+        run: |
+          ls -lnrt ${{ github.workspace }}/gocache/linux/amd64
           
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/example
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/instantclient
-          sudo chmod -R 777 ${{ github.workspace }}/build
           
-          cd ${{ github.workspace }}/bin
+          cd ${{ github.workspace }}/gocache/linux/amd64
           pwd
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-master-${{ github.ref_name }}-linux-amd64.tar.gz dbms-master
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64/dbms-worker-${{ github.ref_name }}-linux-amd64.tar.gz dbms-worker
@@ -93,31 +86,15 @@ jobs:
           sudo tar -zcvf dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz dbms-community-${{ github.ref_name }}-linux-amd64/
 
           ls -lnrt ${{ github.workspace }}/build
-          ls -lnrt ${{ github.workspace }}/bin
-          sudo rm -rf ${{ github.workspace }}/bin/*
-          
-          ls -lnrt ${{ github.workspace }}/bin
-
-      - name: Cross Platform Compile Linux arm64
+      - name: Pack Platform DBMS Linux ARM64
         run: |
-          cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=linux/arm64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=linux/arm64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=linux/arm64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=linux/arm64 -pkg component/cli ${{ github.workspace }}
+          ls -lnrt ${{ github.workspace }}/gocache/linux/arm64
 
-          ls -lnrt ${{ github.workspace }}/bin
-          sudo mv ${{ github.workspace }}/bin/dbms-master-linux-arm64 ${{ github.workspace }}/bin/dbms-master 
-          sudo mv ${{ github.workspace }}/bin/dbms-worker-linux-arm64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-cluster-linux-arm64 ${{ github.workspace }}/bin/dbms-cluster
-          sudo mv ${{ github.workspace }}/bin/dbms-ctl-linux-arm64 ${{ github.workspace }}/bin/dbms-ctl 
-          
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/example
           sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/instantclient
-          sudo chmod -R 777 ${{ github.workspace }}/build
 
-          cd ${{ github.workspace }}/bin
+          cd ${{ github.workspace }}/gocache/linux/arm64
           pwd
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-master-${{ github.ref_name }}-linux-arm64.tar.gz dbms-master
           sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64/dbms-worker-${{ github.ref_name }}-linux-arm64.tar.gz dbms-worker
@@ -134,92 +111,56 @@ jobs:
           sudo tar -zcvf dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz dbms-community-${{ github.ref_name }}-linux-arm64/
 
           ls -lnrt ${{ github.workspace }}/build
-          ls -lnrt ${{ github.workspace }}/bin
-          sudo rm -rf ${{ github.workspace }}/bin/*
-
-          ls -lnrt ${{ github.workspace }}/bin
-
-      - name: Cross Platform Compile Darwin amd64
+      - name: Pack Platform DBMS Windows AMD64
         run: |
-          cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=darwin/amd64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=darwin/amd64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=darwin/amd64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=darwin/amd64 -pkg component/cli ${{ github.workspace }}
+          ls -lnrt ${{ github.workspace }}/gocache/windows/amd64
 
-          ls -lnrt ${{ github.workspace }}/bin
-          sudo mv ${{ github.workspace }}/bin/dbms-master-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-master 
-          sudo mv ${{ github.workspace }}/bin/dbms-worker-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-cluster-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-cluster 
-          sudo mv ${{ github.workspace }}/bin/dbms-ctl-darwin-10.12-amd64 ${{ github.workspace }}/bin/dbms-ctl 
-          
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/example
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/instantclient
-          sudo chmod -R 777 ${{ github.workspace }}/build
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/example
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/instantclient
 
-          cd ${{ github.workspace }}/bin
+          cd ${{ github.workspace }}/gocache/windows/amd64
           pwd
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-master-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-master
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-worker-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-worker
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-cluster-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-cluster
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/dbms-ctl-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-ctl
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-master-${{ github.ref_name }}-windows-amd64.tar.gz dbms-master
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-worker-${{ github.ref_name }}-windows-amd64.tar.gz dbms-worker
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-cluster-${{ github.ref_name }}-windows-amd64.tar.gz dbms-cluster
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-ctl-${{ github.ref_name }}-windows-amd64.tar.gz dbms-ctl
 
-          sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/example/
-          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/
-          sudo cp -r ${{ github.workspace }}/instantclient/instantclient-v19.8.0-darwin-amd64.tar.gz ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/instantclient/
+          sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/example/
+          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/
+          sudo cp -r ${{ github.workspace }}/instantclient/instantclient-v19.8.0-windows-amd64.tar.gz ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/instantclient/
 
-          sudo chmod +x ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64/local_install.sh
+          sudo chmod +x ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/local_install.sh
           cd ${{ github.workspace }}/build
           pwd
-          sudo tar -zcvf dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz dbms-community-${{ github.ref_name }}-darwin-amd64/
+          sudo tar -zcvf dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz dbms-community-${{ github.ref_name }}-windows-amd64/
 
           ls -lnrt ${{ github.workspace }}/build
-          ls -lnrt ${{ github.workspace }}/bin
-          sudo rm -rf ${{ github.workspace }}/bin/*
-
-          ls -lnrt ${{ github.workspace }}/bin
-
-      - name: Cross Platform Compile Darwin arm64
+      - name: Pack Platform DBMS Windows 386
         run: |
-          cd ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-master -targets=darwin/arm64 -pkg component/master ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-worker -targets=darwin/arm64 -pkg component/worker ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-cluster -targets=darwin/arm64 -pkg component/cluster ${{ github.workspace }}
-          xgo -ldflags='${{ env.ldflags }}' -trimpath -buildmode=default -dest bin -go go-1.22.x -out=dbms-ctl -targets=darwin/arm64 -pkg component/cli ${{ github.workspace }}
+          ls -lnrt ${{ github.workspace }}/gocache/windows/386
 
-          ls -lnrt ${{ github.workspace }}/bin
-          sudo mv ${{ github.workspace }}/bin/dbms-master-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-master 
-          sudo mv ${{ github.workspace }}/bin/dbms-worker-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-worker 
-          sudo mv ${{ github.workspace }}/bin/dbms-cluster-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-cluster 
-          sudo mv ${{ github.workspace }}/bin/dbms-ctl-darwin-10.12-arm64 ${{ github.workspace }}/bin/dbms-ctl 
-          
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/example
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/instantclient
-          sudo chmod -R 777 ${{ github.workspace }}/build
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/example
+          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/instantclient
 
-          cd ${{ github.workspace }}/bin
+          cd ${{ github.workspace }}/gocache/windows/386
           pwd
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-master-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-master
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-worker-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-worker
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-cluster-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-cluster
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/dbms-ctl-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-ctl
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/dbms-master-${{ github.ref_name }}-windows-386.tar.gz dbms-master
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/dbms-worker-${{ github.ref_name }}-windows-386.tar.gz dbms-worker
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/dbms-cluster-${{ github.ref_name }}-windows-386.tar.gz dbms-cluster
+          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/dbms-ctl-${{ github.ref_name }}-windows-386.tar.gz dbms-ctl
 
-          sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/example/
-          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/
-          sudo cp -r ${{ github.workspace }}/instantclient/instantclient-v19.8.0-darwin-arm64.tar.gz ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/instantclient/
+          sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/example/
+          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/
+          sudo cp -r ${{ github.workspace }}/instantclient/instantclient-v19.8.0-windows-386.tar.gz ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/instantclient/
 
-          sudo chmod +x ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64/local_install.sh
+          sudo chmod +x ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/local_install.sh
           cd ${{ github.workspace }}/build
           pwd
-          sudo tar -zcvf dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz dbms-community-${{ github.ref_name }}-darwin-arm64/
+          sudo tar -zcvf dbms-community-${{ github.ref_name }}-windows-386.tar.gz dbms-community-${{ github.ref_name }}-windows-386/
 
           ls -lnrt ${{ github.workspace }}/build
-          ls -lnrt ${{ github.workspace }}/bin
-          sudo rm -rf ${{ github.workspace }}/bin/*
-
-          ls -lnrt ${{ github.workspace }}/bin
       - name: Build Release Changelog
         id: github_release
         uses: mikepenz/release-changelog-builder-action@v4
@@ -271,5 +212,5 @@ jobs:
           files: |
             ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz
             ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz
-            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-amd64.tar.gz
-            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-darwin-arm64.tar.gz
+            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz
+            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386.tar.gz

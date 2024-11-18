@@ -19,14 +19,14 @@ ENV TZ=Asia/Shanghai
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Remove ol sources.list and configure azure mirrors
-RUN mv /etc/apt/sources.list /etc/apt/sources-bak.list
-RUN { \
-    echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse'; \
-    echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse'; \
-    echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse'; \
-    echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted universe multiverse'; \
-    echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse'; \
-} > /etc/apt/sources.list
+# RUN mv /etc/apt/sources.list /etc/apt/sources-bak.list
+# RUN { \
+#     echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse'; \
+#     echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse'; \
+#     echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse'; \
+#     echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic-proposed main restricted universe multiverse'; \
+#     echo 'deb http://azure.archive.ubuntu.com/ubuntu/ bionic-backports main restricted universe multiverse'; \
+# } > /etc/apt/sources.list
 
 RUN apt-get update \
     && apt-get install -y tzdata build-essential curl ca-certificates xz-utils cpio wget zip unzip p7zip git mercurial bzr texinfo help2man \
@@ -65,16 +65,3 @@ ENV PATH=/usr/local/gcc-linaro-6.5.0-2018.12-x86_64_aarch64-linux-gnu/bin:$PATH
 RUN wget -q https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
     rm -rf go${GO_VERSION}.linux-amd64.tar.gz
-
-# Create a working directory
-ENV APP_WORK_DIR=/dbms
-RUN mkdir -p ${APP_WORK_DIR}
-WORKDIR ${APP_WORK_DIR}
-
-# Copy code
-COPY . .
-RUN go mod download
-
-RUN chmod +x ${APP_WORK_DIR}/build.sh
-
-CMD ["/dbms/build.sh"]
