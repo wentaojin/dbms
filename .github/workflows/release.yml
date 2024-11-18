@@ -106,56 +106,6 @@ jobs:
           sudo tar -zcvf dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz dbms-community-${{ github.ref_name }}-linux-arm64/
 
           ls -lnrt ${{ github.workspace }}/build
-      - name: Pack Platform DBMS Windows AMD64
-        run: |
-          ls -lnrt ${{ github.workspace }}/gocache/windows/amd64
-
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/example
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/instantclient
-
-          cd ${{ github.workspace }}/gocache/windows/amd64
-          pwd
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-master-${{ github.ref_name }}-windows-amd64.tar.gz dbms-master
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-worker-${{ github.ref_name }}-windows-amd64.tar.gz dbms-worker
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-cluster-${{ github.ref_name }}-windows-amd64.tar.gz dbms-cluster
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/dbms-ctl-${{ github.ref_name }}-windows-amd64.tar.gz dbms-ctl
-
-          sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/example/
-          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/
-          sudo cp -r ${{ github.workspace }}/instantclient/instantclient-v19.8.0-windows-amd64.tar.gz ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/instantclient/
-
-          sudo chmod +x ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64/local_install.sh
-          cd ${{ github.workspace }}/build
-          pwd
-          sudo tar -zcvf dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz dbms-community-${{ github.ref_name }}-windows-amd64/
-
-          ls -lnrt ${{ github.workspace }}/build
-      - name: Pack Platform DBMS Windows 386
-        run: |
-          ls -lnrt ${{ github.workspace }}/gocache/windows/386
-
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/example
-          sudo mkdir -p ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/instantclient
-
-          cd ${{ github.workspace }}/gocache/windows/386
-          pwd
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/dbms-master-${{ github.ref_name }}-windows-386.tar.gz dbms-master
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/dbms-worker-${{ github.ref_name }}-windows-386.tar.gz dbms-worker
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/dbms-cluster-${{ github.ref_name }}-windows-386.tar.gz dbms-cluster
-          sudo tar -zcvf ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/dbms-ctl-${{ github.ref_name }}-windows-386.tar.gz dbms-ctl
-
-          sudo cp -r ${{ github.workspace }}/example/* ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/example/
-          sudo cp -r ${{ github.workspace }}/local_install.sh ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/
-          sudo cp -r ${{ github.workspace }}/instantclient/instantclient-v19.8.0-windows-386.tar.gz ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/instantclient/
-
-          sudo chmod +x ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386/local_install.sh
-          cd ${{ github.workspace }}/build
-          pwd
-          sudo tar -zcvf dbms-community-${{ github.ref_name }}-windows-386.tar.gz dbms-community-${{ github.ref_name }}-windows-386/
-
-          ls -lnrt ${{ github.workspace }}/build
       - name: Build Release Changelog
         id: github_release
         uses: mikepenz/release-changelog-builder-action@v4

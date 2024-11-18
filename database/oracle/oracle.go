@@ -23,13 +23,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/godror/godror"
+	"github.com/godror/godror/dsn"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 
 	"github.com/wentaojin/dbms/model/datasource"
-
-	"github.com/godror/godror"
-	"github.com/godror/godror/dsn"
 )
 
 type Database struct {
