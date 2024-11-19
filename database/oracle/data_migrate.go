@@ -51,7 +51,12 @@ func (d *Database) GetDatabaseConsistentPos(ctx context.Context, tx *sql.Tx) (st
 }
 
 func (d *Database) GetDatabaseTableColumnNameTableDimensions(schemaName, tableName string) ([]string, error) {
-	rows, err := d.QueryContext(d.Ctx, fmt.Sprintf(`SELECT * FROM "%s"."%s" WHERE ROWNUM = 1`, schemaName, tableName))
+	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, fmt.Sprintf(`SELECT * FROM "%s"."%s" WHERE ROWNUM = 1`, schemaName, tableName))
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +70,12 @@ func (d *Database) GetDatabaseTableColumnNameTableDimensions(schemaName, tableNa
 }
 
 func (d *Database) GetDatabaseTableColumnNameSqlDimensions(sqlStr string) ([]string, map[string]string, map[string]string, error) {
-	rows, err := d.QueryContext(d.Ctx, fmt.Sprintf(`SELECT * FROM (%v) WHERE ROWNUM = 1`, sqlStr))
+	deadline := time.Now().Add(time.Duration(d.CallTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, fmt.Sprintf(`SELECT * FROM (%v) WHERE ROWNUM = 1`, sqlStr))
 	if err != nil {
 		return nil, nil, nil, err
 	}
