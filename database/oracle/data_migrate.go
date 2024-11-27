@@ -582,11 +582,12 @@ func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryA
 					// binary data -> raw、long raw、blob
 					switch {
 					case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-						convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(val)), constant.CharsetUTF8MB4, dbCharsetT)
+						convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.BytesToString(val)), constant.CharsetUTF8MB4, dbCharsetT)
 						if err != nil {
 							return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 						}
-						rowData[columnNameOrderIndexMap[colName]] = fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw))
+
+						rowData[columnNameOrderIndexMap[colName]] = fmt.Sprintf("'%v'", stringutil.SpecialLettersMySQLCompatibleDatabase(convertTargetRaw))
 					default:
 						return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
 					}
