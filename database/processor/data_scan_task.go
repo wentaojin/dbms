@@ -26,12 +26,12 @@ import (
 	"github.com/golang/snappy"
 	"github.com/google/uuid"
 	"github.com/wentaojin/dbms/database"
-	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/rule"
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/proto/pb"
+	"github.com/wentaojin/dbms/thread"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"github.com/wentaojin/dbms/utils/structure"
@@ -522,99 +522,117 @@ func (dst *DataScanTask) Process(s *WaitingRecs) error {
 		zap.String("schema_name_s", s.SchemaNameS),
 		zap.String("table_name_s", s.TableNameS))
 
-	g := errconcurrent.NewGroup()
+	g := thread.NewGroup()
 	g.SetLimit(int(dst.TaskParams.SqlThreadS))
-	for _, j := range migrateTasks {
-		gTime := time.Now()
-		g.Go(j, gTime, func(j interface{}) error {
-			dt := j.(*task.DataScanTask)
-			errW := model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
-					&task.DataScanTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus": constant.TaskDatabaseStatusRunning,
+	go func() {
+		for _, j := range migrateTasks {
+			g.Go(j, func(j interface{}) error {
+				dt := j.(*task.DataScanTask)
+				gTime := time.Now()
+				errW := model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
+					_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
+						&task.DataScanTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+						map[string]interface{}{
+							"TaskStatus": constant.TaskDatabaseStatusRunning,
+						})
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] data scan task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(dst.Task.TaskMode),
+							dt.TaskName,
+							dst.Task.TaskFlow,
+							dt.SchemaNameS,
+							dt.TableNameS,
+							dt.ChunkDetailS),
 					})
-				if err != nil {
-					return err
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+				if errW != nil {
+					return errW
 				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    dt.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data scan task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(dst.Task.TaskMode),
-						dt.TaskName,
-						dst.Task.TaskFlow,
-						dt.SchemaNameS,
-						dt.TableNameS,
-						dt.ChunkDetailS),
+
+				err = database.IDataScanProcess(&DataScanRow{
+					Ctx:        dst.Ctx,
+					StartTime:  gTime,
+					TaskName:   dt.TaskName,
+					TaskMode:   dst.Task.TaskMode,
+					TaskFlow:   dst.Task.TaskFlow,
+					Dst:        dt,
+					DatabaseS:  dst.DatabaseS,
+					DBCharsetS: dst.DBCharsetS,
 				})
 				if err != nil {
 					return err
 				}
 				return nil
 			})
-			if errW != nil {
-				return errW
-			}
+		}
+		g.Wait()
+	}()
 
-			err = database.IDataScanProcess(&DataScanRow{
-				Ctx:        dst.Ctx,
-				StartTime:  gTime,
-				TaskName:   dt.TaskName,
-				TaskMode:   dst.Task.TaskMode,
-				TaskFlow:   dst.Task.TaskFlow,
-				Dst:        dt,
-				DatabaseS:  dst.DatabaseS,
-				DBCharsetS: dst.DBCharsetS,
-			})
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-	}
-
-	for _, r := range g.Wait() {
-		if r.Err != nil {
-			mt := r.Task.(*task.DataScanTask)
-			logger.Warn("data scan task process tables",
-				zap.String("task_name", mt.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow),
+	for res := range g.ResultC {
+		if res.Error != nil {
+			mt := res.Task.(*task.DataScanTask)
+			logger.Error("data scan task process tables",
+				zap.String("task_name", mt.TaskName),
+				zap.String("task_mode", dst.Task.TaskMode),
+				zap.String("task_flow", dst.Task.TaskFlow),
 				zap.String("schema_name_s", mt.SchemaNameS),
 				zap.String("table_name_s", mt.TableNameS),
-				zap.Error(r.Err))
+				zap.Error(res.Error))
 
-			errW := model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
-					&task.DataScanTask{TaskName: mt.TaskName, SchemaNameS: mt.SchemaNameS, TableNameS: mt.TableNameS, ChunkID: mt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus":  constant.TaskDatabaseStatusFailed,
-						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-						"ErrorDetail": r.Err.Error(),
+			if err := thread.Retry(
+				&thread.RetryConfig{
+					MaxRetries: thread.DefaultThreadErrorMaxRetries,
+					Delay:      thread.DefaultThreadErrorRereyDelay,
+				},
+				func(err error) bool {
+					return true
+				},
+				func() error {
+					errW := model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetIDataScanTaskRW().UpdateDataScanTask(txnCtx,
+							&task.DataScanTask{TaskName: mt.TaskName, SchemaNameS: mt.SchemaNameS, TableNameS: mt.TableNameS, ChunkID: mt.ChunkID},
+							map[string]interface{}{
+								"TaskStatus":  constant.TaskDatabaseStatusFailed,
+								"Duration":    res.Duration,
+								"ErrorDetail": res.Error.Error(),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName:    mt.TaskName,
+							SchemaNameS: mt.SchemaNameS,
+							TableNameS:  mt.TableNameS,
+							LogDetail: fmt.Sprintf("%v [%v] data scan task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(dst.Task.TaskMode),
+								mt.TaskName,
+								dst.Task.TaskFlow,
+								mt.SchemaNameS,
+								mt.TableNameS),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
 					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    mt.TaskName,
-					SchemaNameS: mt.SchemaNameS,
-					TableNameS:  mt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data scan task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(dst.Task.TaskMode),
-						mt.TaskName,
-						dst.Task.TaskFlow,
-						mt.SchemaNameS,
-						mt.TableNameS),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
+					if errW != nil {
+						return errW
+					}
+					return nil
+				}); err != nil {
+				return err
 			}
 		}
 	}

@@ -24,12 +24,12 @@ import (
 	"time"
 
 	"github.com/wentaojin/dbms/database"
-	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/rule"
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/proto/pb"
+	"github.com/wentaojin/dbms/thread"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"go.uber.org/zap"
@@ -281,152 +281,169 @@ func (smt *SqlMigrateTask) Process() error {
 		zap.String("task_mode", smt.Task.TaskMode),
 		zap.String("task_flow", smt.Task.TaskFlow))
 
-	g := errconcurrent.NewGroup()
+	g := thread.NewGroup()
 	g.SetLimit(int(smt.TaskParams.SqlThreadS))
-	for _, job := range migrateTasks {
-		gTime := time.Now()
-		g.Go(job, gTime, func(job interface{}) error {
-			dt := job.(*task.SqlMigrateTask)
-			switch {
-			case strings.EqualFold(smt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(smt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
-				errW := model.Transaction(smt.Ctx, func(txnCtx context.Context) error {
-					_, err = model.GetISqlMigrateTaskRW().UpdateSqlMigrateTask(txnCtx,
-						&task.SqlMigrateTask{TaskName: dt.TaskName, SchemaNameT: dt.SchemaNameT, TableNameT: dt.TableNameT, SqlQueryS: dt.SqlQueryS},
-						map[string]interface{}{
-							"TaskStatus": constant.TaskDatabaseStatusRunning,
+
+	go func() {
+		for _, job := range migrateTasks {
+			g.Go(job, func(job interface{}) error {
+				dt := job.(*task.SqlMigrateTask)
+				gTime := time.Now()
+				switch {
+				case strings.EqualFold(smt.Task.TaskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(smt.Task.TaskFlow, constant.TaskFlowOracleToMySQL):
+					errW := model.Transaction(smt.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetISqlMigrateTaskRW().UpdateSqlMigrateTask(txnCtx,
+							&task.SqlMigrateTask{TaskName: dt.TaskName, SchemaNameT: dt.SchemaNameT, TableNameT: dt.TableNameT, SqlQueryS: dt.SqlQueryS},
+							map[string]interface{}{
+								"TaskStatus": constant.TaskDatabaseStatusRunning,
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName: dt.TaskName,
+							LogDetail: fmt.Sprintf("%v [%v] sql migrate task [%v] taskflow [%v] schema_name_t [%v] table_name_t [%v] start",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(smt.Task.TaskMode),
+								dt.TaskName,
+								smt.Task.TaskFlow,
+								dt.SchemaNameT,
+								dt.TableNameT),
 						})
-					if err != nil {
-						return err
+						if err != nil {
+							return err
+						}
+						return nil
+					})
+					if errW != nil {
+						return errW
 					}
-					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-						TaskName: dt.TaskName,
-						LogDetail: fmt.Sprintf("%v [%v] sql migrate task [%v] taskflow [%v] schema_name_t [%v] table_name_t [%v] start",
-							stringutil.CurrentTimeFormatString(),
-							stringutil.StringLower(smt.Task.TaskMode),
-							dt.TaskName,
-							smt.Task.TaskFlow,
-							dt.SchemaNameT,
-							dt.TableNameT),
+
+					var stmt *sql.Stmt
+					switch smt.Task.TaskFlow {
+					case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+						sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(dt.SchemaNameT, dt.TableNameT, smt.TaskParams.SqlHintT, dt.ColumnDetailT, int(smt.TaskParams.BatchSize), true)
+
+						stmt, err = smt.DatabaseT.PrepareContext(smt.Ctx, sqlStr)
+						if err != nil {
+							return err
+						}
+						defer stmt.Close()
+					default:
+						return fmt.Errorf("the sql migrate task [%s] task_flow [%s] isn't support, please contact author or reselect", smt.Task.TaskName, smt.Task.TaskFlow)
+					}
+
+					err = database.IDataMigrateProcess(&SqlMigrateRow{
+						Ctx:               smt.Ctx,
+						TaskMode:          smt.Task.TaskMode,
+						TaskFlow:          smt.Task.TaskFlow,
+						Smt:               dt,
+						DatabaseS:         smt.DatabaseS,
+						DatabaseT:         smt.DatabaseT,
+						DatabaseTStmt:     stmt,
+						DBCharsetS:        constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(smt.DBCharsetS)],
+						DBCharsetT:        stringutil.StringUpper(smt.DBCharsetT),
+						SqlThreadT:        int(smt.TaskParams.SqlThreadT),
+						BatchSize:         int(smt.TaskParams.BatchSize),
+						CallTimeout:       int(smt.TaskParams.CallTimeout),
+						SafeMode:          smt.TaskParams.EnableSafeMode,
+						ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+						WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+						EnablePrepareStmt: smt.TaskParams.EnablePrepareStmt,
 					})
 					if err != nil {
 						return err
 					}
-					return nil
-				})
-				if errW != nil {
-					return errW
-				}
 
-				var stmt *sql.Stmt
-				switch smt.Task.TaskFlow {
-				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
-					sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(dt.SchemaNameT, dt.TableNameT, smt.TaskParams.SqlHintT, dt.ColumnDetailT, int(smt.TaskParams.BatchSize), true)
-
-					stmt, err = smt.DatabaseT.PrepareContext(smt.Ctx, sqlStr)
-					if err != nil {
-						return err
+					errW = model.Transaction(smt.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetISqlMigrateTaskRW().UpdateSqlMigrateTask(txnCtx,
+							&task.SqlMigrateTask{TaskName: dt.TaskName, SchemaNameT: dt.SchemaNameT, TableNameT: dt.TableNameT, SqlQueryS: dt.SqlQueryS},
+							map[string]interface{}{
+								"TaskStatus": constant.TaskDatabaseStatusSuccess,
+								"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName: dt.TaskName,
+							LogDetail: fmt.Sprintf("%v [%v] sql migrate task [%v] taskflow [%v] schema_name_t [%v] table_name_t [%v] success",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(smt.Task.TaskMode),
+								dt.TaskName,
+								smt.Task.TaskFlow,
+								dt.SchemaNameT,
+								dt.TableNameT),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
+					})
+					if errW != nil {
+						return errW
 					}
-					defer stmt.Close()
 				default:
-					return fmt.Errorf("the sql migrate task [%s] task_flow [%s] isn't support, please contact author or reselect", smt.Task.TaskName, smt.Task.TaskFlow)
+					return fmt.Errorf("oracle current task [%s] task_mode [%s] task_flow [%s] column rule isn't support, please contact author", smt.Task.TaskName, smt.Task.TaskMode, smt.Task.TaskFlow)
 				}
+				return nil
+			})
+		}
+		g.Wait()
+	}()
 
-				err = database.IDataMigrateProcess(&SqlMigrateRow{
-					Ctx:               smt.Ctx,
-					TaskMode:          smt.Task.TaskMode,
-					TaskFlow:          smt.Task.TaskFlow,
-					Smt:               dt,
-					DatabaseS:         smt.DatabaseS,
-					DatabaseT:         smt.DatabaseT,
-					DatabaseTStmt:     stmt,
-					DBCharsetS:        constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(smt.DBCharsetS)],
-					DBCharsetT:        stringutil.StringUpper(smt.DBCharsetT),
-					SqlThreadT:        int(smt.TaskParams.SqlThreadT),
-					BatchSize:         int(smt.TaskParams.BatchSize),
-					CallTimeout:       int(smt.TaskParams.CallTimeout),
-					SafeMode:          smt.TaskParams.EnableSafeMode,
-					ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
-					WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
-					EnablePrepareStmt: smt.TaskParams.EnablePrepareStmt,
-				})
-				if err != nil {
-					return err
-				}
-
-				errW = model.Transaction(smt.Ctx, func(txnCtx context.Context) error {
-					_, err = model.GetISqlMigrateTaskRW().UpdateSqlMigrateTask(txnCtx,
-						&task.SqlMigrateTask{TaskName: dt.TaskName, SchemaNameT: dt.SchemaNameT, TableNameT: dt.TableNameT, SqlQueryS: dt.SqlQueryS},
-						map[string]interface{}{
-							"TaskStatus": constant.TaskDatabaseStatusSuccess,
-							"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
-						})
-					if err != nil {
-						return err
-					}
-					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-						TaskName: dt.TaskName,
-						LogDetail: fmt.Sprintf("%v [%v] sql migrate task [%v] taskflow [%v] schema_name_t [%v] table_name_t [%v] success",
-							stringutil.CurrentTimeFormatString(),
-							stringutil.StringLower(smt.Task.TaskMode),
-							dt.TaskName,
-							smt.Task.TaskFlow,
-							dt.SchemaNameT,
-							dt.TableNameT),
-					})
-					if err != nil {
-						return err
-					}
-					return nil
-				})
-				if errW != nil {
-					return errW
-				}
-			default:
-				return fmt.Errorf("oracle current task [%s] task_mode [%s] task_flow [%s] column rule isn't support, please contact author", smt.Task.TaskName, smt.Task.TaskMode, smt.Task.TaskFlow)
-			}
-			return nil
-		})
-	}
-
-	for _, r := range g.Wait() {
-		if r.Err != nil {
-			esmt := r.Task.(*task.SqlMigrateTask)
-			logger.Warn("sql migrate task process sql",
+	for res := range g.ResultC {
+		if res.Error != nil {
+			esmt := res.Task.(*task.SqlMigrateTask)
+			logger.Error("sql migrate task process sql",
 				zap.String("task_name", smt.Task.TaskName),
 				zap.String("task_mode", smt.Task.TaskMode),
 				zap.String("task_flow", smt.Task.TaskFlow),
 				zap.String("schema_name_t", esmt.SchemaNameT),
 				zap.String("table_name_t", esmt.TableNameT),
-				zap.Error(r.Err))
+				zap.Error(res.Error))
 
-			errW := model.Transaction(smt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetISqlMigrateTaskRW().UpdateSqlMigrateTask(txnCtx,
-					&task.SqlMigrateTask{TaskName: esmt.TaskName, SchemaNameT: esmt.SchemaNameT, TableNameT: esmt.TableNameT, SqlQueryS: esmt.SqlQueryS},
-					map[string]interface{}{
-						"TaskStatus":  constant.TaskDatabaseStatusFailed,
-						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-						"ErrorDetail": r.Err.Error(),
+			if err := thread.Retry(
+				&thread.RetryConfig{
+					MaxRetries: thread.DefaultThreadErrorMaxRetries,
+					Delay:      thread.DefaultThreadErrorRereyDelay,
+				},
+				func(err error) bool {
+					return true
+				},
+				func() error {
+					errW := model.Transaction(smt.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetISqlMigrateTaskRW().UpdateSqlMigrateTask(txnCtx,
+							&task.SqlMigrateTask{TaskName: esmt.TaskName, SchemaNameT: esmt.SchemaNameT, TableNameT: esmt.TableNameT, SqlQueryS: esmt.SqlQueryS},
+							map[string]interface{}{
+								"TaskStatus":  constant.TaskDatabaseStatusFailed,
+								"Duration":    res.Duration,
+								"ErrorDetail": res.Error.Error(),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName: esmt.TaskName,
+							LogDetail: fmt.Sprintf("%v [%v] sql migrate task [%v] taskflow [%v] schema_name_t [%v] table_name_t [%v] failed, please see [sql_migrate_task] detail",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(smt.Task.TaskMode),
+								esmt.TaskName,
+								smt.Task.TaskFlow,
+								esmt.SchemaNameT,
+								esmt.TableNameT),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
 					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName: esmt.TaskName,
-					LogDetail: fmt.Sprintf("%v [%v] sql migrate task [%v] taskflow [%v] schema_name_t [%v] table_name_t [%v] failed, please see [sql_migrate_task] detail",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(smt.Task.TaskMode),
-						esmt.TaskName,
-						smt.Task.TaskFlow,
-						esmt.SchemaNameT,
-						esmt.TableNameT),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
+					if errW != nil {
+						return errW
+					}
+					return nil
+				}); err != nil {
+				return err
 			}
 		}
 	}

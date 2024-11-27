@@ -13,12 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package errconcurrent
+package thread
 
 import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/wentaojin/dbms/utils/constant"
 )
 
 type token struct{}
@@ -29,16 +31,14 @@ type Group struct {
 
 	sem chan token
 
-	mu *sync.Mutex
-
-	Results []Result
+	ResultC chan Result
 }
 
 // A Result is from the group
 type Result struct {
-	Task interface{}
-	Time time.Time
-	Err  error
+	Task     interface{}
+	Duration string // unit: seconds
+	Error    error
 }
 
 func (g *Group) done() {
@@ -48,23 +48,16 @@ func (g *Group) done() {
 	g.wg.Done()
 }
 
-// NewGroup returns a new Group and an associated Context derived from ctx.
-//
-// The derived Context is canceled the first time a function passed to Go
-// returns a non-nil error or the first time Wait returns, whichever occurs
-// first.
 func NewGroup() *Group {
-	return &Group{
-		mu: new(sync.Mutex),
-	}
+	return &Group{}
 }
 
 // Wait blocks until all function calls from the Go method have returned, then
 // returns the first non-nil error (if any) from them.
-func (g *Group) Wait() []Result {
+func (g *Group) Wait() {
 	g.wg.Wait()
 	close(g.sem)
-	return g.Results
+	close(g.ResultC)
 }
 
 // Go calls the given function in a new goroutine.
@@ -73,25 +66,25 @@ func (g *Group) Wait() []Result {
 //
 // The first call to return a non-nil error cancels the group's context, if the
 // group was created by calling WithContext. The error will be returned by Wait.
-func (g *Group) Go(job interface{}, st time.Time, fn func(job interface{}) error) {
+func (g *Group) Go(job interface{}, fn func(job interface{}) error) {
 	if g.sem != nil {
 		g.sem <- token{}
 	}
 
 	g.wg.Add(1)
-	go func(job interface{}, st time.Time) {
+	go func(job interface{}) {
 		defer g.done()
 
+		startTime := time.Now()
+
 		if err := fn(job); err != nil {
-			g.mu.Lock()
-			g.Results = append(g.Results, Result{
-				Task: job,
-				Time: st,
-				Err:  err,
-			})
-			g.mu.Unlock()
+			g.ResultC <- Result{
+				Task:     job,
+				Duration: fmt.Sprintf("%f", time.Now().Sub(startTime).Seconds()),
+				Error:    err,
+			}
 		}
-	}(job, st)
+	}(job)
 }
 
 // SetLimit limits the number of active goroutines in this group to at most n.
@@ -104,10 +97,15 @@ func (g *Group) Go(job interface{}, st time.Time, fn func(job interface{}) error
 func (g *Group) SetLimit(n int) {
 	if n < 0 {
 		g.sem = nil
+		g.ResultC = make(chan Result, constant.DefaultMigrateTaskQueueSize)
 		return
 	}
 	if len(g.sem) != 0 {
 		panic(fmt.Errorf("errgroup: modify limit while %v goroutines in the group are still active", len(g.sem)))
 	}
 	g.sem = make(chan token, n)
+
+	// Avoid slow database operations that cause synchronization blocking of other processes, the channel buffer is set to 2 times the number of threads.
+	g.ResultC = make(chan Result, n*2)
+
 }

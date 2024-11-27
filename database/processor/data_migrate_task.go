@@ -26,12 +26,12 @@ import (
 	"github.com/golang/snappy"
 	"github.com/google/uuid"
 	"github.com/wentaojin/dbms/database"
-	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/rule"
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/proto/pb"
+	"github.com/wentaojin/dbms/thread"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"github.com/wentaojin/dbms/utils/structure"
@@ -214,6 +214,7 @@ func (cmt *DataMigrateTask) Init() error {
 		zap.String("schema_name_s", cmt.SchemaNameS),
 		zap.String("schema_name_t", cmt.SchemaNameT),
 		zap.String("task_stage", "init concurrency start"))
+
 	g, gCtx := errgroup.WithContext(cmt.Ctx)
 	g.SetLimit(int(cmt.StmtParams.TableThread))
 
@@ -684,122 +685,124 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		zap.String("schema_name_s", s.SchemaNameS),
 		zap.String("table_name_s", s.TableNameS))
 
-	g := errconcurrent.NewGroup()
+	g := thread.NewGroup()
 	g.SetLimit(int(cmt.StmtParams.SqlThreadS))
 
-	for _, j := range migrateTasks {
-		gTime := time.Now()
-		g.Go(j, gTime, func(j interface{}) error {
-			dt := j.(*task.DataMigrateTask)
-			startTime := time.Now()
-			errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-				_, err := model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-					&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus": constant.TaskDatabaseStatusRunning,
+	go func() {
+		for _, j := range migrateTasks {
+			g.Go(j, func(j interface{}) error {
+				dt := j.(*task.DataMigrateTask)
+				gTime := time.Now()
+				errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+					_, err := model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+						&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+						map[string]interface{}{
+							"TaskStatus": constant.TaskDatabaseStatusRunning,
+						})
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(cmt.Task.TaskMode),
+							dt.TaskName,
+							cmt.Task.TaskFlow,
+							dt.SchemaNameS,
+							dt.TableNameS,
+							dt.ChunkDetailS),
 					})
-				if err != nil {
-					return err
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+				if errW != nil {
+					return errW
 				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    dt.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(cmt.Task.TaskMode),
-						dt.TaskName,
-						cmt.Task.TaskFlow,
-						dt.SchemaNameS,
-						dt.TableNameS,
-						dt.ChunkDetailS),
+
+				logger.Warn("data migrate task chunks processing",
+					zap.String("task_name", cmt.Task.TaskName),
+					zap.String("task_mode", cmt.Task.TaskMode),
+					zap.String("task_flow", cmt.Task.TaskFlow),
+					zap.String("schema_name_s", s.SchemaNameS),
+					zap.String("table_name_s", s.TableNameS),
+					zap.String("chunk_id_s", dt.ChunkID))
+
+				err = database.IDataMigrateProcess(&StmtMigrateRow{
+					Ctx:               cmt.Ctx,
+					TaskMode:          cmt.Task.TaskMode,
+					TaskFlow:          cmt.Task.TaskFlow,
+					Dmt:               dt,
+					DatabaseS:         cmt.DatabaseS,
+					DatabaseT:         cmt.DatabaseT,
+					DatabaseTStmt:     sqlTSmt,
+					DBCharsetS:        convertDBCharsetS,
+					DBCharsetT:        stringutil.StringUpper(cmt.DBCharsetT),
+					SqlThreadT:        int(cmt.StmtParams.SqlThreadT),
+					BatchSize:         int(cmt.StmtParams.BatchSize),
+					CallTimeout:       int(cmt.StmtParams.CallTimeout),
+					SafeMode:          cmt.StmtParams.EnableSafeMode,
+					EnablePrepareStmt: cmt.StmtParams.EnablePrepareStmt,
+					ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+					WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 				})
 				if err != nil {
 					return err
 				}
-				return nil
-			})
-			if errW != nil {
-				return errW
-			}
 
-			logger.Warn("data migrate task chunks processing",
-				zap.String("task_name", cmt.Task.TaskName),
-				zap.String("task_mode", cmt.Task.TaskMode),
-				zap.String("task_flow", cmt.Task.TaskFlow),
-				zap.String("schema_name_s", s.SchemaNameS),
-				zap.String("table_name_s", s.TableNameS),
-				zap.String("chunk_id_s", dt.ChunkID))
-
-			err = database.IDataMigrateProcess(&StmtMigrateRow{
-				Ctx:               cmt.Ctx,
-				TaskMode:          cmt.Task.TaskMode,
-				TaskFlow:          cmt.Task.TaskFlow,
-				Dmt:               dt,
-				DatabaseS:         cmt.DatabaseS,
-				DatabaseT:         cmt.DatabaseT,
-				DatabaseTStmt:     sqlTSmt,
-				DBCharsetS:        convertDBCharsetS,
-				DBCharsetT:        stringutil.StringUpper(cmt.DBCharsetT),
-				SqlThreadT:        int(cmt.StmtParams.SqlThreadT),
-				BatchSize:         int(cmt.StmtParams.BatchSize),
-				CallTimeout:       int(cmt.StmtParams.CallTimeout),
-				SafeMode:          cmt.StmtParams.EnableSafeMode,
-				EnablePrepareStmt: cmt.StmtParams.EnablePrepareStmt,
-				ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
-				WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
-			})
-			if err != nil {
-				return err
-			}
-
-			errW = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-					&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus": constant.TaskDatabaseStatusSuccess,
-						"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+				errW = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+					_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+						&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+						map[string]interface{}{
+							"TaskStatus": constant.TaskDatabaseStatusSuccess,
+							"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+						})
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(cmt.Task.TaskMode),
+							dt.TaskName,
+							cmt.Task.TaskFlow,
+							dt.SchemaNameS,
+							dt.TableNameS,
+							dt.ChunkDetailS),
 					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    dt.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(cmt.Task.TaskMode),
-						dt.TaskName,
-						cmt.Task.TaskFlow,
-						dt.SchemaNameS,
-						dt.TableNameS,
-						dt.ChunkDetailS),
+					if err != nil {
+						return err
+					}
+					return nil
 				})
-				if err != nil {
-					return err
+				if errW != nil {
+					return errW
 				}
+
+				logger.Info("data migrate task chunks processing",
+					zap.String("task_name", cmt.Task.TaskName),
+					zap.String("task_mode", cmt.Task.TaskMode),
+					zap.String("task_flow", cmt.Task.TaskFlow),
+					zap.String("schema_name_s", s.SchemaNameS),
+					zap.String("table_name_s", s.TableNameS),
+					zap.String("chunk_id_s", dt.ChunkID),
+					zap.String("cost", time.Now().Sub(gTime).String()))
 				return nil
 			})
-			if errW != nil {
-				return errW
-			}
+		}
+		g.Wait()
+	}()
 
-			logger.Warn("data migrate task chunks processing",
-				zap.String("task_name", cmt.Task.TaskName),
-				zap.String("task_mode", cmt.Task.TaskMode),
-				zap.String("task_flow", cmt.Task.TaskFlow),
-				zap.String("schema_name_s", s.SchemaNameS),
-				zap.String("table_name_s", s.TableNameS),
-				zap.String("chunk_id_s", dt.ChunkID),
-				zap.String("cost", time.Now().Sub(startTime).String()))
-			return nil
-		})
-	}
-
-	for _, r := range g.Wait() {
-		if r.Err != nil {
-			smt := r.Task.(*task.DataMigrateTask)
+	for res := range g.ResultC {
+		if res.Error != nil {
+			smt := res.Task.(*task.DataMigrateTask)
 			logger.Error("data migrate task chunk processing",
 				zap.String("task_name", cmt.Task.TaskName),
 				zap.String("task_mode", cmt.Task.TaskMode),
@@ -807,38 +810,50 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 				zap.String("schema_name_s", smt.SchemaNameS),
 				zap.String("table_name_s", smt.TableNameS),
 				zap.String("chunk_id_s", smt.ChunkID),
-				zap.Error(r.Err))
-
-			errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-					&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus":  constant.TaskDatabaseStatusFailed,
-						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-						"ErrorDetail": r.Err.Error(),
+				zap.Error(res.Error))
+			if err := thread.Retry(
+				&thread.RetryConfig{
+					MaxRetries: thread.DefaultThreadErrorMaxRetries,
+					Delay:      thread.DefaultThreadErrorRereyDelay,
+				},
+				func(err error) bool {
+					return true
+				},
+				func() error {
+					errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+							&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
+							map[string]interface{}{
+								"TaskStatus":  constant.TaskDatabaseStatusFailed,
+								"Duration":    res.Duration,
+								"ErrorDetail": res.Error.Error(),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName:    smt.TaskName,
+							SchemaNameS: smt.SchemaNameS,
+							TableNameS:  smt.TableNameS,
+							LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(cmt.Task.TaskMode),
+								smt.TaskName,
+								cmt.Task.TaskFlow,
+								smt.SchemaNameS,
+								smt.TableNameS),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
 					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    smt.TaskName,
-					SchemaNameS: smt.SchemaNameS,
-					TableNameS:  smt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(cmt.Task.TaskMode),
-						smt.TaskName,
-						cmt.Task.TaskFlow,
-						smt.SchemaNameS,
-						smt.TableNameS),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
+					if errW != nil {
+						return errW
+					}
+					return nil
+				}); err != nil {
+				return err
 			}
 		}
 	}

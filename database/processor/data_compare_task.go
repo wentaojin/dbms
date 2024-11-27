@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wentaojin/dbms/errconcurrent"
+	"github.com/wentaojin/dbms/thread"
 	"github.com/wentaojin/dbms/utils/structure"
 
 	"github.com/golang/snappy"
@@ -453,133 +453,153 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 		zap.String("schema_name_s", s.SchemaNameS),
 		zap.String("table_name_s", s.TableNameS))
 
-	g := errconcurrent.NewGroup()
+	g := thread.NewGroup()
 	g.SetLimit(int(dmt.TaskParams.SqlThread))
-	for _, j := range migrateTasks {
-		gTime := time.Now()
-		g.Go(j, gTime, func(j interface{}) error {
-			dt := j.(*task.DataCompareTask)
-			errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-					&task.DataCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus": constant.TaskDatabaseStatusRunning,
+
+	go func() {
+		for _, j := range migrateTasks {
+			g.Go(j, func(j interface{}) error {
+				dt := j.(*task.DataCompareTask)
+
+				gTime := time.Now()
+				errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+					_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
+						&task.DataCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+						map[string]interface{}{
+							"TaskStatus": constant.TaskDatabaseStatusRunning,
+						})
+					if err != nil {
+						return err
+					}
+					// clear data compare chunk result
+					err = model.GetIDataCompareResultRW().DeleteDataCompareResult(txnCtx, &task.DataCompareResult{
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						ChunkID:     dt.ChunkID,
 					})
-				if err != nil {
-					return err
-				}
-				// clear data compare chunk result
-				err = model.GetIDataCompareResultRW().DeleteDataCompareResult(txnCtx, &task.DataCompareResult{
-					TaskName:    dt.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-					ChunkID:     dt.ChunkID,
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName:    dt.TaskName,
+						SchemaNameS: dt.SchemaNameS,
+						TableNameS:  dt.TableNameS,
+						LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(dmt.Task.TaskMode),
+							dt.TaskName,
+							dmt.Task.TaskFlow,
+							dt.SchemaNameS,
+							dt.TableNameS,
+							dt.ChunkDetailS),
+					})
+					if err != nil {
+						return err
+					}
+					return nil
 				})
-				if err != nil {
-					return err
+				if errW != nil {
+					return errW
 				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    dt.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(dmt.Task.TaskMode),
-						dt.TaskName,
-						dmt.Task.TaskFlow,
-						dt.SchemaNameS,
-						dt.TableNameS,
-						dt.ChunkDetailS),
+
+				var dbCharsetS, dbCharsetT string
+				switch dmt.Task.TaskFlow {
+				case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
+					dbCharsetS = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
+					dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
+				case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
+					dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
+					dbCharsetT = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
+				case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+					dbCharsetS = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
+					dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
+				case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+					dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
+					dbCharsetT = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
+				default:
+					return fmt.Errorf("the task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", dmt.Task.TaskName, dt.SchemaNameS, dmt.Task.TaskFlow)
+				}
+
+				err = database.IDataCompareProcess(&DataCompareRow{
+					Ctx:            dmt.Ctx,
+					TaskMode:       dmt.Task.TaskMode,
+					TaskFlow:       dmt.Task.TaskFlow,
+					StartTime:      gTime,
+					Dmt:            dt,
+					DatabaseS:      dmt.DatabaseS,
+					DatabaseT:      dmt.DatabaseT,
+					BatchSize:      int(dmt.TaskParams.BatchSize),
+					WriteThread:    int(dmt.TaskParams.WriteThread),
+					CallTimeout:    int(dmt.TaskParams.CallTimeout),
+					DBCharsetS:     dbCharsetS,
+					DBCharsetT:     dbCharsetT,
+					RepairStmtFlow: dmt.TaskParams.RepairStmtFlow,
+					Separator:      dmt.TaskParams.Separator,
 				})
 				if err != nil {
 					return err
 				}
 				return nil
 			})
-			if errW != nil {
-				return errW
-			}
+		}
+		g.Wait()
+	}()
 
-			var dbCharsetS, dbCharsetT string
-			switch dmt.Task.TaskFlow {
-			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
-				dbCharsetS = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
-				dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-			case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
-				dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
-				dbCharsetT = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-			case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
-				dbCharsetS = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
-				dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-			case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
-				dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
-				dbCharsetT = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-			default:
-				return fmt.Errorf("the task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", dmt.Task.TaskName, dt.SchemaNameS, dmt.Task.TaskFlow)
-			}
-
-			err = database.IDataCompareProcess(&DataCompareRow{
-				Ctx:            dmt.Ctx,
-				TaskMode:       dmt.Task.TaskMode,
-				TaskFlow:       dmt.Task.TaskFlow,
-				StartTime:      gTime,
-				Dmt:            dt,
-				DatabaseS:      dmt.DatabaseS,
-				DatabaseT:      dmt.DatabaseT,
-				BatchSize:      int(dmt.TaskParams.BatchSize),
-				WriteThread:    int(dmt.TaskParams.WriteThread),
-				CallTimeout:    int(dmt.TaskParams.CallTimeout),
-				DBCharsetS:     dbCharsetS,
-				DBCharsetT:     dbCharsetT,
-				RepairStmtFlow: dmt.TaskParams.RepairStmtFlow,
-				Separator:      dmt.TaskParams.Separator,
-			})
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-	}
-
-	for _, r := range g.Wait() {
-		if r.Err != nil {
-			smt := r.Task.(*task.DataCompareTask)
-			logger.Warn("data compare task process tables",
-				zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow),
+	for res := range g.ResultC {
+		if res.Error != nil {
+			smt := res.Task.(*task.DataCompareTask)
+			logger.Error("data compare task process tables",
+				zap.String("task_name", dmt.Task.TaskName),
+				zap.String("task_mode", dmt.Task.TaskMode),
+				zap.String("task_flow", dmt.Task.TaskFlow),
 				zap.String("schema_name_s", smt.SchemaNameS),
 				zap.String("table_name_s", smt.TableNameS),
-				zap.Error(r.Err))
+				zap.Error(res.Error))
 
-			errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
-					&task.DataCompareTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
-					map[string]interface{}{
-						"TaskStatus":  constant.TaskDatabaseStatusFailed,
-						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-						"ErrorDetail": r.Err.Error(),
+			if err := thread.Retry(
+				&thread.RetryConfig{
+					MaxRetries: thread.DefaultThreadErrorMaxRetries,
+					Delay:      thread.DefaultThreadErrorRereyDelay,
+				},
+				func(err error) bool {
+					return true
+				},
+				func() error {
+					errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetIDataCompareTaskRW().UpdateDataCompareTask(txnCtx,
+							&task.DataCompareTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
+							map[string]interface{}{
+								"TaskStatus":  constant.TaskDatabaseStatusFailed,
+								"Duration":    res.Duration,
+								"ErrorDetail": res.Error.Error(),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName:    smt.TaskName,
+							SchemaNameS: smt.SchemaNameS,
+							TableNameS:  smt.TableNameS,
+							LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_compare_task] detail",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(dmt.Task.TaskMode),
+								smt.TaskName,
+								dmt.Task.TaskFlow,
+								smt.SchemaNameS,
+								smt.TableNameS),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
 					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    smt.TaskName,
-					SchemaNameS: smt.SchemaNameS,
-					TableNameS:  smt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] data compare task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_compare_task] detail",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(dmt.Task.TaskMode),
-						smt.TaskName,
-						dmt.Task.TaskFlow,
-						smt.SchemaNameS,
-						smt.TableNameS),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
+					if errW != nil {
+						return errW
+					}
+					return nil
+				}); err != nil {
+				return err
 			}
 		}
 	}

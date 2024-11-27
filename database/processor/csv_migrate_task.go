@@ -27,12 +27,12 @@ import (
 	"github.com/golang/snappy"
 	"github.com/google/uuid"
 	"github.com/wentaojin/dbms/database"
-	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/rule"
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/proto/pb"
+	"github.com/wentaojin/dbms/thread"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"github.com/wentaojin/dbms/utils/structure"
@@ -628,135 +628,153 @@ func (cmt *CsvMigrateTask) Process(s *WaitingRecs) error {
 			return fmt.Errorf("the task_name [%s] schema_name_s [%s] task_mode [%s] task_flow [%s] prepare isn't support, please contact author", cmt.Task.TaskName, s.SchemaNameS, cmt.Task.TaskMode, cmt.Task.TaskFlow)
 		}
 
-		g := errconcurrent.NewGroup()
+		g := thread.NewGroup()
 		g.SetLimit(int(cmt.CsvParams.SqlThreadS))
 
-		for _, j := range migrateTasks {
-			gTime := time.Now()
-			g.Go(j, gTime, func(j interface{}) error {
-				dt := j.(*task.DataMigrateTask)
-				errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-					_, err := model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-						&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-						map[string]interface{}{
-							"TaskStatus": constant.TaskDatabaseStatusRunning,
+		go func() {
+			for _, j := range migrateTasks {
+				g.Go(j, func(j interface{}) error {
+					gTime := time.Now()
+					dt := j.(*task.DataMigrateTask)
+					errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+						_, err := model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+							map[string]interface{}{
+								"TaskStatus": constant.TaskDatabaseStatusRunning,
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName:    dt.TaskName,
+							SchemaNameS: dt.SchemaNameS,
+							TableNameS:  dt.TableNameS,
+							LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(cmt.Task.TaskMode),
+								dt.TaskName,
+								cmt.Task.TaskFlow,
+								dt.SchemaNameS,
+								dt.TableNameS,
+								dt.ChunkDetailS),
 						})
-					if err != nil {
-						return err
+						if err != nil {
+							return err
+						}
+						return nil
+					})
+					if errW != nil {
+						return errW
 					}
-					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-						TaskName:    dt.TaskName,
-						SchemaNameS: dt.SchemaNameS,
-						TableNameS:  dt.TableNameS,
-						LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] start",
-							stringutil.CurrentTimeFormatString(),
-							stringutil.StringLower(cmt.Task.TaskMode),
-							dt.TaskName,
-							cmt.Task.TaskFlow,
-							dt.SchemaNameS,
-							dt.TableNameS,
-							dt.ChunkDetailS),
+
+					err = database.IDataMigrateProcess(&CsvMigrateRow{
+						Ctx:        cmt.Ctx,
+						TaskMode:   cmt.Task.TaskMode,
+						TaskFlow:   cmt.Task.TaskFlow,
+						BufioSize:  constant.DefaultMigrateTaskBufferIOSize,
+						Dmt:        dt,
+						DatabaseS:  cmt.DatabaseS,
+						DBCharsetS: convertDBCharsetS,
+						DBCharsetT: stringutil.StringUpper(cmt.DBCharsetT),
+						TaskParams: cmt.CsvParams,
+						ReadChan:   make(chan []string, constant.DefaultMigrateTaskQueueSize),
+						WriteChan:  make(chan string, constant.DefaultMigrateTaskQueueSize),
 					})
 					if err != nil {
 						return err
 					}
-					return nil
-				})
-				if errW != nil {
-					return errW
-				}
 
-				err = database.IDataMigrateProcess(&CsvMigrateRow{
-					Ctx:        cmt.Ctx,
-					TaskMode:   cmt.Task.TaskMode,
-					TaskFlow:   cmt.Task.TaskFlow,
-					BufioSize:  constant.DefaultMigrateTaskBufferIOSize,
-					Dmt:        dt,
-					DatabaseS:  cmt.DatabaseS,
-					DBCharsetS: convertDBCharsetS,
-					DBCharsetT: stringutil.StringUpper(cmt.DBCharsetT),
-					TaskParams: cmt.CsvParams,
-					ReadChan:   make(chan []string, constant.DefaultMigrateTaskQueueSize),
-					WriteChan:  make(chan string, constant.DefaultMigrateTaskQueueSize),
-				})
-				if err != nil {
-					return err
-				}
-
-				errW = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-					_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-						&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
-						map[string]interface{}{
-							"TaskStatus": constant.TaskDatabaseStatusSuccess,
-							"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+					errW = model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+							&task.DataMigrateTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS, ChunkID: dt.ChunkID},
+							map[string]interface{}{
+								"TaskStatus": constant.TaskDatabaseStatusSuccess,
+								"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName:    dt.TaskName,
+							SchemaNameS: dt.SchemaNameS,
+							TableNameS:  dt.TableNameS,
+							LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(cmt.Task.TaskMode),
+								dt.TaskName,
+								cmt.Task.TaskFlow,
+								dt.SchemaNameS,
+								dt.TableNameS,
+								dt.ChunkDetailS),
 						})
-					if err != nil {
-						return err
-					}
-					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-						TaskName:    dt.TaskName,
-						SchemaNameS: dt.SchemaNameS,
-						TableNameS:  dt.TableNameS,
-						LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] chunk [%s] success",
-							stringutil.CurrentTimeFormatString(),
-							stringutil.StringLower(cmt.Task.TaskMode),
-							dt.TaskName,
-							cmt.Task.TaskFlow,
-							dt.SchemaNameS,
-							dt.TableNameS,
-							dt.ChunkDetailS),
+						if err != nil {
+							return err
+						}
+						return nil
 					})
-					if err != nil {
-						return err
+					if errW != nil {
+						return errW
 					}
 					return nil
 				})
-				if errW != nil {
-					return errW
-				}
-				return nil
-			})
-		}
+			}
 
-		for _, r := range g.Wait() {
-			if r.Err != nil {
-				smt := r.Task.(*task.DataMigrateTask)
-				logger.Warn("csv migrate task process tables",
-					zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
+			g.Wait()
+		}()
+
+		for res := range g.ResultC {
+			if res.Error != nil {
+				smt := res.Task.(*task.DataMigrateTask)
+				logger.Error("csv migrate task process tables",
+					zap.String("task_name", cmt.Task.TaskName),
+					zap.String("task_mode", cmt.Task.TaskMode),
+					zap.String("task_flow", cmt.Task.TaskFlow),
 					zap.String("schema_name_s", smt.SchemaNameS),
 					zap.String("table_name_s", smt.TableNameS),
-					zap.Error(r.Err))
+					zap.Error(res.Error))
 
-				errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-					_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
-						&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
-						map[string]interface{}{
-							"TaskStatus":  constant.TaskDatabaseStatusFailed,
-							"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-							"ErrorDetail": r.Err.Error(),
-						})
-					if err != nil {
-						return err
-					}
-					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-						TaskName:    smt.TaskName,
-						SchemaNameS: smt.SchemaNameS,
-						TableNameS:  smt.TableNameS,
-						LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
-							stringutil.CurrentTimeFormatString(),
-							stringutil.StringLower(cmt.Task.TaskMode),
-							smt.TaskName,
-							cmt.Task.TaskFlow,
-							smt.SchemaNameS,
-							smt.TableNameS),
-					})
-					if err != nil {
-						return err
-					}
-					return nil
-				})
-				if errW != nil {
-					return errW
+				if err := thread.Retry(
+					&thread.RetryConfig{
+						MaxRetries: thread.DefaultThreadErrorMaxRetries,
+						Delay:      thread.DefaultThreadErrorRereyDelay,
+					},
+					func(err error) bool {
+						return true
+					},
+					func() error {
+						if errW := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+							_, err = model.GetIDataMigrateTaskRW().UpdateDataMigrateTask(txnCtx,
+								&task.DataMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS, ChunkID: smt.ChunkID},
+								map[string]interface{}{
+									"TaskStatus":  constant.TaskDatabaseStatusFailed,
+									"Duration":    res.Duration,
+									"ErrorDetail": res.Error.Error(),
+								})
+							if err != nil {
+								return err
+							}
+							_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+								TaskName:    smt.TaskName,
+								SchemaNameS: smt.SchemaNameS,
+								TableNameS:  smt.TableNameS,
+								LogDetail: fmt.Sprintf("%v [%v] csv migrate task [%v] taskflow [%v] source table [%v.%v] failed, please see [data_migrate_task] detail",
+									stringutil.CurrentTimeFormatString(),
+									stringutil.StringLower(cmt.Task.TaskMode),
+									smt.TaskName,
+									cmt.Task.TaskFlow,
+									smt.SchemaNameS,
+									smt.TableNameS),
+							})
+							if err != nil {
+								return err
+							}
+							return nil
+						}); errW != nil {
+							return errW
+						}
+						return nil
+					}); err != nil {
+					return err
 				}
 			}
 		}

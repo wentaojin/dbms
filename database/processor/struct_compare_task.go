@@ -23,13 +23,13 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/wentaojin/dbms/database"
-	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/buildin"
 	"github.com/wentaojin/dbms/model/rule"
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/proto/pb"
+	"github.com/wentaojin/dbms/thread"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"github.com/wentaojin/dbms/utils/structure"
@@ -419,197 +419,26 @@ func (dmt *StructCompareTask) Process() error {
 		zap.String("task_flow", dmt.Task.TaskFlow),
 		zap.String("schema_name_s", dmt.SchemaNameS))
 
-	g := errconcurrent.NewGroup()
+	g := thread.NewGroup()
 	g.SetLimit(int(dmt.TaskParams.CompareThread))
-	for _, j := range migrateTasks {
-		gTime := time.Now()
-		g.Go(j, gTime, func(j interface{}) error {
-			dt := j.(*task.StructCompareTask)
-			logger.Info("struct compare task process table",
-				zap.String("task_name", dmt.Task.TaskName),
-				zap.String("task_mode", dmt.Task.TaskMode),
-				zap.String("task_flow", dmt.Task.TaskFlow),
-				zap.String("schema_name_s", dmt.SchemaNameS),
-				zap.String("table_name_s", dt.TableNameS))
-			errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIStructCompareTaskRW().UpdateStructCompareTask(txnCtx,
-					&task.StructCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS},
-					map[string]interface{}{
-						"TaskStatus": constant.TaskDatabaseStatusRunning,
-					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    dt.TaskName,
-					SchemaNameS: dt.SchemaNameS,
-					TableNameS:  dt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] struct compare task [%v] taskflow [%v] source table [%v.%v] compare start",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(dmt.Task.TaskMode),
-						dt.TaskName,
-						dmt.Task.TaskFlow,
-						dt.SchemaNameS,
-						dt.TableNameS),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
-			}
 
-			switch dmt.Task.TaskFlow {
-			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
-				upProcTime := time.Now()
-				var upstreamProcessor *structure.Table
-				if strings.EqualFold(dmt.DBTypeS, constant.DatabaseTypeOracle) {
-					upstreamProcessor, err = database.IStructCompareProcessor(&OracleProcessor{
-						Ctx:                      dmt.Ctx,
-						TaskName:                 dmt.Task.TaskName,
-						TaskFlow:                 dmt.Task.TaskFlow,
-						SchemaName:               dt.SchemaNameS,
-						TableName:                dt.TableNameS,
-						DBCharset:                dmt.DBCharsetS,
-						Database:                 dmt.DatabaseS,
-						BuildinDatatypeRules:     dmt.BuildInDatatypeRulesS,
-						BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesS,
-						ColumnRouteRules:         make(map[string]string),
-						IsBaseline:               true,
-					}, dmt.TaskParams.IgnoreCaseCompare)
-					if err != nil {
-						return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeS, err)
-					}
-				} else if strings.EqualFold(dmt.DBTypeS, constant.DatabaseTypePostgresql) {
-					upstreamProcessor, err = database.IStructCompareProcessor(&PostgresProcessor{
-						Ctx:                      dmt.Ctx,
-						TaskName:                 dmt.Task.TaskName,
-						TaskFlow:                 dmt.Task.TaskFlow,
-						SchemaName:               dt.SchemaNameS,
-						TableName:                dt.TableNameS,
-						DBCharset:                dmt.DBCharsetS,
-						Database:                 dmt.DatabaseS,
-						BuildinDatatypeRules:     dmt.BuildInDatatypeRulesS,
-						BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesS,
-						ColumnRouteRules:         make(map[string]string),
-						IsBaseline:               true,
-					}, dmt.TaskParams.IgnoreCaseCompare)
-					if err != nil {
-						return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeS, err)
-					}
-				}
+	go func() {
+		for _, j := range migrateTasks {
+			g.Go(j, func(j interface{}) error {
+				dt := j.(*task.StructCompareTask)
+				gTime := time.Now()
 
-				logger.Info("struct compare task processor",
+				logger.Info("struct compare task process table",
 					zap.String("task_name", dmt.Task.TaskName),
 					zap.String("task_mode", dmt.Task.TaskMode),
 					zap.String("task_flow", dmt.Task.TaskFlow),
-					zap.Any("upstream", upstreamProcessor),
-					zap.String("cost", time.Now().Sub(upProcTime).String()))
-
-				// oracle baseline, mysql not configure task and not configure rules
-				downProcTime := time.Now()
-				downstreamProcessor, err := database.IStructCompareProcessor(&MySQLProcessor{
-					Ctx:                      dmt.Ctx,
-					TaskName:                 dmt.Task.TaskName,
-					TaskFlow:                 dmt.Task.TaskFlow,
-					SchemaName:               dt.SchemaNameT,
-					TableName:                dt.TableNameT,
-					DBCharset:                dmt.DBCharsetT,
-					Database:                 dmt.DatabaseT,
-					BuildinDatatypeRules:     dmt.BuildInDatatypeRulesT,
-					BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesT,
-					ColumnRouteRules:         make(map[string]string),
-					IsBaseline:               false,
-				}, dmt.TaskParams.IgnoreCaseCompare)
-				if err != nil {
-					return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeT, err)
-				}
-
-				logger.Info("struct compare task processor",
-					zap.String("task_name", dmt.Task.TaskName),
-					zap.String("task_mode", dmt.Task.TaskMode),
-					zap.String("task_flow", dmt.Task.TaskFlow),
-					zap.Any("downstream", downstreamProcessor),
-					zap.String("cost", time.Now().Sub(downProcTime).String()))
-
-				compareDetail, err := database.IStructCompareTable(&Table{
-					TaskName: dmt.Task.TaskName,
-					TaskFlow: dmt.Task.TaskFlow,
-					Source:   upstreamProcessor,
-					Target:   downstreamProcessor,
-				})
-				if err != nil {
-					return fmt.Errorf("the struct compare table processor failed: %v", err)
-				}
-				if strings.EqualFold(compareDetail, "") {
-					errW = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
-						_, err = model.GetIStructCompareTaskRW().UpdateStructCompareTask(txnCtx,
-							&task.StructCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS},
-							map[string]interface{}{
-								"TaskStatus": constant.TaskDatabaseStatusEqual,
-								"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
-							})
-						if err != nil {
-							return err
-						}
-						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-							TaskName:    dt.TaskName,
-							SchemaNameS: dt.SchemaNameS,
-							TableNameS:  dt.TableNameS,
-							LogDetail: fmt.Sprintf("%v [%v] struct compare task [%v] taskflow [%v] source table [%v.%v] compare equal, please see [struct_compare_task] detail",
-								stringutil.CurrentTimeFormatString(),
-								stringutil.StringLower(constant.TaskModeStructCompare),
-								dt.TaskName,
-								dmt.Task.TaskMode,
-								dt.SchemaNameS,
-								dt.TableNameS),
-						})
-						if err != nil {
-							return err
-						}
-						return nil
-					})
-					if errW != nil {
-						return errW
-					}
-					return nil
-				}
-
-				originStructS, err := dmt.DatabaseS.GetDatabaseTableOriginStruct(dt.SchemaNameS, dt.TableNameS, "TABLE")
-				if err != nil {
-					return fmt.Errorf("the struct compare table get source origin struct failed: %v", err)
-				}
-				originStructT, err := dmt.DatabaseT.GetDatabaseTableOriginStruct(dt.SchemaNameT, dt.TableNameT, "")
-				if err != nil {
-					return fmt.Errorf("the struct compare table get target origin struct failed: %v", err)
-				}
-
-				encOriginS := snappy.Encode(nil, []byte(originStructS))
-				encryptOriginS, err := stringutil.Encrypt(stringutil.BytesToString(encOriginS), []byte(constant.DefaultDataEncryptDecryptKey))
-				if err != nil {
-					return err
-				}
-				encOriginT := snappy.Encode(nil, []byte(originStructT))
-				encryptOriginT, err := stringutil.Encrypt(stringutil.BytesToString(encOriginT), []byte(constant.DefaultDataEncryptDecryptKey))
-				if err != nil {
-					return err
-				}
-				encCompareDetail := snappy.Encode(nil, []byte(compareDetail))
-				encryptCompareDetail, err := stringutil.Encrypt(stringutil.BytesToString(encCompareDetail), []byte(constant.DefaultDataEncryptDecryptKey))
-				if err != nil {
-					return err
-				}
-				errW = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+					zap.String("schema_name_s", dmt.SchemaNameS),
+					zap.String("table_name_s", dt.TableNameS))
+				errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
 					_, err = model.GetIStructCompareTaskRW().UpdateStructCompareTask(txnCtx,
 						&task.StructCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS},
 						map[string]interface{}{
-							"TaskStatus":      constant.TaskDatabaseStatusNotEqual,
-							"SourceSqlDigest": encryptOriginS,
-							"TargetSqlDigest": encryptOriginT,
-							"CompareDetail":   encryptCompareDetail,
-							"Duration":        fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+							"TaskStatus": constant.TaskDatabaseStatusRunning,
 						})
 					if err != nil {
 						return err
@@ -618,7 +447,7 @@ func (dmt *StructCompareTask) Process() error {
 						TaskName:    dt.TaskName,
 						SchemaNameS: dt.SchemaNameS,
 						TableNameS:  dt.TableNameS,
-						LogDetail: fmt.Sprintf("%v [%v] struct compare task [%v] taskflow [%v] source table [%v.%v] compare equal, please see [struct_compare_task] detail",
+						LogDetail: fmt.Sprintf("%v [%v] struct compare task [%v] taskflow [%v] source table [%v.%v] compare start",
 							stringutil.CurrentTimeFormatString(),
 							stringutil.StringLower(dmt.Task.TaskMode),
 							dt.TaskName,
@@ -634,52 +463,243 @@ func (dmt *StructCompareTask) Process() error {
 				if errW != nil {
 					return errW
 				}
-				return nil
-			default:
-				return fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", dmt.Task.TaskName, dt.SchemaNameS, dmt.Task.TaskFlow)
-			}
-		})
-	}
 
-	for _, r := range g.Wait() {
-		if r.Err != nil {
-			smt := r.Task.(*task.StructCompareTask)
+				switch dmt.Task.TaskFlow {
+				case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+					upProcTime := time.Now()
+					var upstreamProcessor *structure.Table
+					if strings.EqualFold(dmt.DBTypeS, constant.DatabaseTypeOracle) {
+						upstreamProcessor, err = database.IStructCompareProcessor(&OracleProcessor{
+							Ctx:                      dmt.Ctx,
+							TaskName:                 dmt.Task.TaskName,
+							TaskFlow:                 dmt.Task.TaskFlow,
+							SchemaName:               dt.SchemaNameS,
+							TableName:                dt.TableNameS,
+							DBCharset:                dmt.DBCharsetS,
+							Database:                 dmt.DatabaseS,
+							BuildinDatatypeRules:     dmt.BuildInDatatypeRulesS,
+							BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesS,
+							ColumnRouteRules:         make(map[string]string),
+							IsBaseline:               true,
+						}, dmt.TaskParams.IgnoreCaseCompare)
+						if err != nil {
+							return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeS, err)
+						}
+					} else if strings.EqualFold(dmt.DBTypeS, constant.DatabaseTypePostgresql) {
+						upstreamProcessor, err = database.IStructCompareProcessor(&PostgresProcessor{
+							Ctx:                      dmt.Ctx,
+							TaskName:                 dmt.Task.TaskName,
+							TaskFlow:                 dmt.Task.TaskFlow,
+							SchemaName:               dt.SchemaNameS,
+							TableName:                dt.TableNameS,
+							DBCharset:                dmt.DBCharsetS,
+							Database:                 dmt.DatabaseS,
+							BuildinDatatypeRules:     dmt.BuildInDatatypeRulesS,
+							BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesS,
+							ColumnRouteRules:         make(map[string]string),
+							IsBaseline:               true,
+						}, dmt.TaskParams.IgnoreCaseCompare)
+						if err != nil {
+							return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeS, err)
+						}
+					}
+
+					logger.Info("struct compare task processor",
+						zap.String("task_name", dmt.Task.TaskName),
+						zap.String("task_mode", dmt.Task.TaskMode),
+						zap.String("task_flow", dmt.Task.TaskFlow),
+						zap.Any("upstream", upstreamProcessor),
+						zap.String("cost", time.Now().Sub(upProcTime).String()))
+
+					// oracle baseline, mysql not configure task and not configure rules
+					downProcTime := time.Now()
+					downstreamProcessor, err := database.IStructCompareProcessor(&MySQLProcessor{
+						Ctx:                      dmt.Ctx,
+						TaskName:                 dmt.Task.TaskName,
+						TaskFlow:                 dmt.Task.TaskFlow,
+						SchemaName:               dt.SchemaNameT,
+						TableName:                dt.TableNameT,
+						DBCharset:                dmt.DBCharsetT,
+						Database:                 dmt.DatabaseT,
+						BuildinDatatypeRules:     dmt.BuildInDatatypeRulesT,
+						BuildinDefaultValueRules: dmt.BuildInDefaultValueRulesT,
+						ColumnRouteRules:         make(map[string]string),
+						IsBaseline:               false,
+					}, dmt.TaskParams.IgnoreCaseCompare)
+					if err != nil {
+						return fmt.Errorf("the struct compare processor database [%s] failed: %v", dmt.DBTypeT, err)
+					}
+
+					logger.Info("struct compare task processor",
+						zap.String("task_name", dmt.Task.TaskName),
+						zap.String("task_mode", dmt.Task.TaskMode),
+						zap.String("task_flow", dmt.Task.TaskFlow),
+						zap.Any("downstream", downstreamProcessor),
+						zap.String("cost", time.Now().Sub(downProcTime).String()))
+
+					compareDetail, err := database.IStructCompareTable(&Table{
+						TaskName: dmt.Task.TaskName,
+						TaskFlow: dmt.Task.TaskFlow,
+						Source:   upstreamProcessor,
+						Target:   downstreamProcessor,
+					})
+					if err != nil {
+						return fmt.Errorf("the struct compare table processor failed: %v", err)
+					}
+					if strings.EqualFold(compareDetail, "") {
+						errW = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+							_, err = model.GetIStructCompareTaskRW().UpdateStructCompareTask(txnCtx,
+								&task.StructCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS},
+								map[string]interface{}{
+									"TaskStatus": constant.TaskDatabaseStatusEqual,
+									"Duration":   fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+								})
+							if err != nil {
+								return err
+							}
+							_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+								TaskName:    dt.TaskName,
+								SchemaNameS: dt.SchemaNameS,
+								TableNameS:  dt.TableNameS,
+								LogDetail: fmt.Sprintf("%v [%v] struct compare task [%v] taskflow [%v] source table [%v.%v] compare equal, please see [struct_compare_task] detail",
+									stringutil.CurrentTimeFormatString(),
+									stringutil.StringLower(constant.TaskModeStructCompare),
+									dt.TaskName,
+									dmt.Task.TaskMode,
+									dt.SchemaNameS,
+									dt.TableNameS),
+							})
+							if err != nil {
+								return err
+							}
+							return nil
+						})
+						if errW != nil {
+							return errW
+						}
+						return nil
+					}
+
+					originStructS, err := dmt.DatabaseS.GetDatabaseTableOriginStruct(dt.SchemaNameS, dt.TableNameS, "TABLE")
+					if err != nil {
+						return fmt.Errorf("the struct compare table get source origin struct failed: %v", err)
+					}
+					originStructT, err := dmt.DatabaseT.GetDatabaseTableOriginStruct(dt.SchemaNameT, dt.TableNameT, "")
+					if err != nil {
+						return fmt.Errorf("the struct compare table get target origin struct failed: %v", err)
+					}
+
+					encOriginS := snappy.Encode(nil, []byte(originStructS))
+					encryptOriginS, err := stringutil.Encrypt(stringutil.BytesToString(encOriginS), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					encOriginT := snappy.Encode(nil, []byte(originStructT))
+					encryptOriginT, err := stringutil.Encrypt(stringutil.BytesToString(encOriginT), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					encCompareDetail := snappy.Encode(nil, []byte(compareDetail))
+					encryptCompareDetail, err := stringutil.Encrypt(stringutil.BytesToString(encCompareDetail), []byte(constant.DefaultDataEncryptDecryptKey))
+					if err != nil {
+						return err
+					}
+					errW = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetIStructCompareTaskRW().UpdateStructCompareTask(txnCtx,
+							&task.StructCompareTask{TaskName: dt.TaskName, SchemaNameS: dt.SchemaNameS, TableNameS: dt.TableNameS},
+							map[string]interface{}{
+								"TaskStatus":      constant.TaskDatabaseStatusNotEqual,
+								"SourceSqlDigest": encryptOriginS,
+								"TargetSqlDigest": encryptOriginT,
+								"CompareDetail":   encryptCompareDetail,
+								"Duration":        fmt.Sprintf("%f", time.Now().Sub(gTime).Seconds()),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName:    dt.TaskName,
+							SchemaNameS: dt.SchemaNameS,
+							TableNameS:  dt.TableNameS,
+							LogDetail: fmt.Sprintf("%v [%v] struct compare task [%v] taskflow [%v] source table [%v.%v] compare equal, please see [struct_compare_task] detail",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(dmt.Task.TaskMode),
+								dt.TaskName,
+								dmt.Task.TaskFlow,
+								dt.SchemaNameS,
+								dt.TableNameS),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
+					})
+					if errW != nil {
+						return errW
+					}
+					return nil
+				default:
+					return fmt.Errorf("oracle current task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", dmt.Task.TaskName, dt.SchemaNameS, dmt.Task.TaskFlow)
+				}
+			})
+		}
+		g.Wait()
+	}()
+
+	for res := range g.ResultC {
+		if res.Error != nil {
+			smt := res.Task.(*task.StructCompareTask)
 			logger.Error("struct compare task process tables",
-				zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow),
+				zap.String("task_name", dmt.Task.TaskName),
+				zap.String("task_mode", dmt.Task.TaskMode),
+				zap.String("task_flow", dmt.Task.TaskFlow),
 				zap.String("schema_name_s", smt.SchemaNameS),
 				zap.String("table_name_s", smt.TableNameS),
-				zap.Error(r.Err))
+				zap.Error(res.Error))
 
-			errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIStructCompareTaskRW().UpdateStructCompareTask(txnCtx,
-					&task.StructCompareTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS},
-					map[string]interface{}{
-						"TaskStatus":  constant.TaskDatabaseStatusFailed,
-						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-						"ErrorDetail": r.Err.Error(),
+			if err := thread.Retry(
+				&thread.RetryConfig{
+					MaxRetries: thread.DefaultThreadErrorMaxRetries,
+					Delay:      thread.DefaultThreadErrorRereyDelay,
+				},
+				func(err error) bool {
+					return true
+				},
+				func() error {
+					errW := model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetIStructCompareTaskRW().UpdateStructCompareTask(txnCtx,
+							&task.StructCompareTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS},
+							map[string]interface{}{
+								"TaskStatus":  constant.TaskDatabaseStatusFailed,
+								"Duration":    res.Duration,
+								"ErrorDetail": res.Error.Error(),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName:    smt.TaskName,
+							SchemaNameS: smt.SchemaNameS,
+							TableNameS:  smt.TableNameS,
+							LogDetail: fmt.Sprintf("%v [%v] struct compare task [%v] taskflow [%v] source table [%v.%v] failed, please see [struct_compare_task] detail",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(dmt.Task.TaskMode),
+								smt.TaskName,
+								dmt.Task.TaskFlow,
+								smt.SchemaNameS,
+								smt.TableNameS),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
 					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName:    smt.TaskName,
-					SchemaNameS: smt.SchemaNameS,
-					TableNameS:  smt.TableNameS,
-					LogDetail: fmt.Sprintf("%v [%v] struct compare task [%v] taskflow [%v] source table [%v.%v] failed, please see [struct_compare_task] detail",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(dmt.Task.TaskMode),
-						smt.TaskName,
-						dmt.Task.TaskFlow,
-						smt.SchemaNameS,
-						smt.TableNameS),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
+					if errW != nil {
+						return errW
+					}
+					return nil
+				}); err != nil {
+				return err
 			}
 		}
 	}

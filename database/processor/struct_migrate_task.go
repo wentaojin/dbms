@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/wentaojin/dbms/errconcurrent"
 	"github.com/wentaojin/dbms/model/rule"
+	"github.com/wentaojin/dbms/thread"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/wentaojin/dbms/model/buildin"
@@ -527,23 +527,26 @@ func (st *StructMigrateTask) processStructMigrate() error {
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("task_stage", "struct concurrency start"))
 
-	g := errconcurrent.NewGroup()
+	g := thread.NewGroup()
 	g.SetLimit(int(st.TaskParams.MigrateThread))
 
-	for _, job := range migrateTasks {
-		gTime := time.Now()
-		g.Go(job, gTime, func(job interface{}) error {
-			smt := job.(*task.StructMigrateTask)
-			err = st.structMigrateStart(smt)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-	}
-	for _, r := range g.Wait() {
-		if r.Err != nil {
-			smt := r.Task.(*task.StructMigrateTask)
+	go func() {
+		for _, job := range migrateTasks {
+			g.Go(job, func(job interface{}) error {
+				smt := job.(*task.StructMigrateTask)
+				err = st.structMigrateStart(smt)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+		g.Wait()
+	}()
+
+	for res := range g.ResultC {
+		if res.Error != nil {
+			smt := res.Task.(*task.StructMigrateTask)
 			logger.Error("struct migrate task processor",
 				zap.String("task_name", st.Task.TaskName),
 				zap.String("task_mode", st.Task.TaskMode),
@@ -551,39 +554,51 @@ func (st *StructMigrateTask) processStructMigrate() error {
 				zap.String("schema_name_s", st.SchemaNameS),
 				zap.String("schema_name_t", st.SchemaNameT),
 				zap.String("task_stage", "struct concurrency failed"),
-				zap.Error(r.Err))
+				zap.Error(res.Error))
 
-			errW := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(txnCtx,
-					&task.StructMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS},
-					map[string]interface{}{
-						"TaskStatus":  constant.TaskDatabaseStatusFailed,
-						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-						"ErrorDetail": r.Err.Error(),
+			if err := thread.Retry(
+				&thread.RetryConfig{
+					MaxRetries: thread.DefaultThreadErrorMaxRetries,
+					Delay:      thread.DefaultThreadErrorRereyDelay,
+				},
+				func(err error) bool {
+					return true
+				},
+				func() error {
+					errW := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetIStructMigrateTaskRW().UpdateStructMigrateTask(txnCtx,
+							&task.StructMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, TableNameS: smt.TableNameS},
+							map[string]interface{}{
+								"TaskStatus":  constant.TaskDatabaseStatusFailed,
+								"Duration":    res.Duration,
+								"ErrorDetail": res.Error.Error(),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName: st.Task.TaskName,
+							LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] table_name_s [%s] migrate failed, please see [struct_migrate_task] detail",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(constant.TaskModeStructMigrate),
+								st.Task.TaskName,
+								st.Task.TaskFlow,
+								st.Task.WorkerAddr,
+								st.SchemaNameS,
+								smt.TableNameS,
+							),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
 					})
-				if err != nil {
-					return err
-				}
-
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName: st.Task.TaskName,
-					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] table_name_s [%s] migrate failed, please see [struct_migrate_task] detail",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(constant.TaskModeStructMigrate),
-						st.Task.TaskName,
-						st.Task.TaskFlow,
-						st.Task.WorkerAddr,
-						st.SchemaNameS,
-						smt.TableNameS,
-					),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
+					if errW != nil {
+						return errW
+					}
+					return nil
+				}); err != nil {
+				return err
 			}
 		}
 	}
@@ -1058,144 +1073,146 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("task_stage", "sequence concurrency start"))
 
-	g := errconcurrent.NewGroup()
+	g := thread.NewGroup()
 	g.SetLimit(int(st.TaskParams.MigrateThread))
 
-	for _, job := range migrateTasks {
-		gTime := time.Now()
-		g.Go(job, gTime, func(job interface{}) error {
-			smt := job.(*task.SequenceMigrateTask)
+	go func() {
+		for _, job := range migrateTasks {
+			g.Go(job, func(job interface{}) error {
+				smt := job.(*task.SequenceMigrateTask)
 
-			logger.Warn("sequence migrate task processor",
-				zap.String("task_name", st.Task.TaskName),
-				zap.String("task_mode", st.Task.TaskMode),
-				zap.String("task_flow", st.Task.TaskFlow),
-				zap.String("schema_name_s", st.SchemaNameS),
-				zap.String("sequence_name_s", smt.SequenceNameS),
-				zap.String("schema_name_t", st.SchemaNameT),
-				zap.String("task_stage", "sequence record processing"))
+				logger.Warn("sequence migrate task processor",
+					zap.String("task_name", st.Task.TaskName),
+					zap.String("task_mode", st.Task.TaskMode),
+					zap.String("task_flow", st.Task.TaskFlow),
+					zap.String("schema_name_s", st.SchemaNameS),
+					zap.String("sequence_name_s", smt.SequenceNameS),
+					zap.String("schema_name_t", st.SchemaNameT),
+					zap.String("task_stage", "sequence record processing"))
 
-			err = model.Transaction(st.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetISequenceMigrateTaskRW().UpdateSequenceMigrateTask(txnCtx, &task.SequenceMigrateTask{
-					TaskName:      smt.TaskName,
-					SchemaNameS:   smt.SchemaNameS,
-					SequenceNameS: smt.SequenceNameS,
-				}, map[string]interface{}{
-					"TaskStatus": constant.TaskDatabaseStatusRunning,
+				err = model.Transaction(st.Ctx, func(txnCtx context.Context) error {
+					_, err = model.GetISequenceMigrateTaskRW().UpdateSequenceMigrateTask(txnCtx, &task.SequenceMigrateTask{
+						TaskName:      smt.TaskName,
+						SchemaNameS:   smt.SchemaNameS,
+						SequenceNameS: smt.SequenceNameS,
+					}, map[string]interface{}{
+						"TaskStatus": constant.TaskDatabaseStatusRunning,
+					})
+					if err != nil {
+						return err
+					}
+					_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+						TaskName: st.Task.TaskName,
+						LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] sequence_name_s [%s] migrate starting",
+							stringutil.CurrentTimeFormatString(),
+							stringutil.StringLower(constant.TaskModeSequenceMigrate),
+							st.Task.TaskName,
+							st.Task.TaskFlow,
+							st.Task.WorkerAddr,
+							st.SchemaNameS,
+							smt.SequenceNameS,
+						),
+					})
+					if err != nil {
+						return err
+					}
+					return nil
 				})
 				if err != nil {
 					return err
 				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName: st.Task.TaskName,
-					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] sequence_name_s [%s] migrate starting",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(constant.TaskModeSequenceMigrate),
-						st.Task.TaskName,
-						st.Task.TaskFlow,
-						st.Task.WorkerAddr,
-						st.SchemaNameS,
-						smt.SequenceNameS,
-					),
-				})
+
+				seqRes, err := st.DatabaseS.GetDatabaseSequenceName(st.SchemaNameS, smt.SequenceNameS)
 				if err != nil {
 					return err
 				}
+				if len(seqRes) == 0 {
+					return fmt.Errorf("the database schema_name_s [%s] sequence_name_s [%s] not exist", st.SchemaNameS, smt.SequenceNameS)
+				}
+				lastNumber, err := stringutil.StrconvIntBitSize(seqRes[0]["LAST_NUMBER"], 64)
+				if err != nil {
+					return err
+				}
+				cacheSize, err := stringutil.StrconvIntBitSize(seqRes[0]["CACHE_SIZE"], 64)
+				if err != nil {
+					return err
+				}
+				// disable cache
+				if cacheSize == 0 {
+					lastNumber = lastNumber + 5000
+				} else {
+					lastNumber = lastNumber + (cacheSize * 2)
+				}
+
+				switch st.Task.TaskFlow {
+				case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+					var (
+						cycleFlag string
+						cacheFlag string
+						maxValue  string
+					)
+					if strings.EqualFold(seqRes[0]["CYCLE_FLAG"], "N") {
+						cycleFlag = "NOCYCLE"
+					} else {
+						cycleFlag = "CYCLE"
+					}
+					if cacheSize == 0 {
+						cacheFlag = "NOCACHE"
+					} else {
+						cacheFlag = fmt.Sprintf("CACHE %v", seqRes[0]["CACHE_SIZE"])
+					}
+					maxVal, err := decimal.NewFromString(seqRes[0]["MAX_VALUE"])
+					if err != nil {
+						return fmt.Errorf("parse sequence string value [%s] failed: %v", seqRes[0]["MAX_VALUE"], err)
+					}
+					// mysql compatible sequence max value is math.MaxInt64 (bigint)
+					// build report
+					// github.com/scylladb/go-set@v1.0.2 cannot use math.MaxInt64 (untyped int constant 9223372036854775807) as int value in assignment (overflows)
+					// upgrade github.com/scylladb/go-set@master build normal, but dbms-master glibc version require `GLIBC_2.38' (./dbms-master: /lib64/libc.so.6: version `GLIBC_2.38' not found (required by ./dbms-master))
+					// ubuntu build environment 18.04 is OK
+					maxBigint, err := decimal.NewFromString(strconv.FormatInt(math.MaxInt64, 10))
+					if err != nil {
+						return fmt.Errorf("parse max int64 string value [%s] failed: %v", strconv.FormatInt(math.MaxInt64, 10), err)
+					}
+					if maxVal.GreaterThanOrEqual(maxBigint) {
+						maxValue = "NOMAXVALUE"
+					} else {
+						maxValue = fmt.Sprintf("MAXVALUE %v", seqRes[0]["MAX_VALUE"])
+					}
+
+					if st.TaskParams.CreateIfNotExist {
+						smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
+						smt.TargetSqlDigest = fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
+					} else {
+						smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
+						smt.TargetSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
+					}
+				default:
+					return fmt.Errorf("the task [%v] task_flow [%v] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskFlow)
+				}
+
+				err = st.sequenceMigrateStart(smt)
+				if err != nil {
+					return err
+				}
+
+				logger.Warn("sequence migrate task processor",
+					zap.String("task_name", st.Task.TaskName),
+					zap.String("task_mode", st.Task.TaskMode),
+					zap.String("task_flow", st.Task.TaskFlow),
+					zap.String("schema_name_s", st.SchemaNameS),
+					zap.String("sequence_name_s", smt.SequenceNameS),
+					zap.String("schema_name_t", st.SchemaNameT),
+					zap.String("task_stage", "sequence record processed"))
 				return nil
 			})
-			if err != nil {
-				return err
-			}
+		}
+		g.Wait()
+	}()
 
-			seqRes, err := st.DatabaseS.GetDatabaseSequenceName(st.SchemaNameS, smt.SequenceNameS)
-			if err != nil {
-				return err
-			}
-			if len(seqRes) == 0 {
-				return fmt.Errorf("the database schema_name_s [%s] sequence_name_s [%s] not exist", st.SchemaNameS, smt.SequenceNameS)
-			}
-			lastNumber, err := stringutil.StrconvIntBitSize(seqRes[0]["LAST_NUMBER"], 64)
-			if err != nil {
-				return err
-			}
-			cacheSize, err := stringutil.StrconvIntBitSize(seqRes[0]["CACHE_SIZE"], 64)
-			if err != nil {
-				return err
-			}
-			// disable cache
-			if cacheSize == 0 {
-				lastNumber = lastNumber + 5000
-			} else {
-				lastNumber = lastNumber + (cacheSize * 2)
-			}
-
-			switch st.Task.TaskFlow {
-			case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB, constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
-				var (
-					cycleFlag string
-					cacheFlag string
-					maxValue  string
-				)
-				if strings.EqualFold(seqRes[0]["CYCLE_FLAG"], "N") {
-					cycleFlag = "NOCYCLE"
-				} else {
-					cycleFlag = "CYCLE"
-				}
-				if cacheSize == 0 {
-					cacheFlag = "NOCACHE"
-				} else {
-					cacheFlag = fmt.Sprintf("CACHE %v", seqRes[0]["CACHE_SIZE"])
-				}
-				maxVal, err := decimal.NewFromString(seqRes[0]["MAX_VALUE"])
-				if err != nil {
-					return fmt.Errorf("parse sequence string value [%s] failed: %v", seqRes[0]["MAX_VALUE"], err)
-				}
-				// mysql compatible sequence max value is math.MaxInt64 (bigint)
-				// build report
-				// github.com/scylladb/go-set@v1.0.2 cannot use math.MaxInt64 (untyped int constant 9223372036854775807) as int value in assignment (overflows)
-				// upgrade github.com/scylladb/go-set@master build normal, but dbms-master glibc version require `GLIBC_2.38' (./dbms-master: /lib64/libc.so.6: version `GLIBC_2.38' not found (required by ./dbms-master))
-				// the production line operating system may not have such a high glibc version, so max.Int is currently used instead.
-				//
-				maxBigint, err := decimal.NewFromString(strconv.FormatInt(math.MaxInt, 10))
-				if err != nil {
-					return fmt.Errorf("parse max int64 string value [%s] failed: %v", strconv.FormatInt(math.MaxInt, 10), err)
-				}
-				if maxVal.GreaterThanOrEqual(maxBigint) {
-					maxValue = "NOMAXVALUE"
-				} else {
-					maxValue = fmt.Sprintf("MAXVALUE %v", seqRes[0]["MAX_VALUE"])
-				}
-
-				if st.TaskParams.CreateIfNotExist {
-					smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
-					smt.TargetSqlDigest = fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
-				} else {
-					smt.SourceSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameS, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
-					smt.TargetSqlDigest = fmt.Sprintf(`CREATE SEQUENCE %s.%s START %v INCREMENT %v MINVALUE %v %v %v %v;`, st.SchemaNameT, seqRes[0]["SEQUENCE_NAME"], lastNumber, seqRes[0]["INCREMENT_BY"], seqRes[0]["MIN_VALUE"], maxValue, cacheFlag, cycleFlag)
-				}
-			default:
-				return fmt.Errorf("the task [%v] task_flow [%v] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskFlow)
-			}
-
-			err = st.sequenceMigrateStart(smt)
-			if err != nil {
-				return err
-			}
-
-			logger.Warn("sequence migrate task processor",
-				zap.String("task_name", st.Task.TaskName),
-				zap.String("task_mode", st.Task.TaskMode),
-				zap.String("task_flow", st.Task.TaskFlow),
-				zap.String("schema_name_s", st.SchemaNameS),
-				zap.String("sequence_name_s", smt.SequenceNameS),
-				zap.String("schema_name_t", st.SchemaNameT),
-				zap.String("task_stage", "sequence record processed"))
-			return nil
-		})
-	}
-	for _, r := range g.Wait() {
-		if r.Err != nil {
-			smt := r.Task.(*task.SequenceMigrateTask)
+	for res := range g.ResultC {
+		if res.Error != nil {
+			smt := res.Task.(*task.SequenceMigrateTask)
 			logger.Error("sequence migrate task processor",
 				zap.String("task_name", st.Task.TaskName),
 				zap.String("task_mode", st.Task.TaskMode),
@@ -1204,38 +1221,51 @@ func (st *StructMigrateTask) processSequenceMigrate() error {
 				zap.String("sequence_name_s", smt.SequenceNameS),
 				zap.String("schema_name_t", st.SchemaNameT),
 				zap.String("task_stage", "sequence migrate error"),
-				zap.Error(r.Err))
+				zap.Error(res.Error))
 
-			errW := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
-				_, err = model.GetISequenceMigrateTaskRW().UpdateSequenceMigrateTask(txnCtx,
-					&task.SequenceMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, SequenceNameS: smt.SequenceNameS},
-					map[string]interface{}{
-						"TaskStatus":  constant.TaskDatabaseStatusFailed,
-						"Duration":    fmt.Sprintf("%f", time.Now().Sub(r.Time).Seconds()),
-						"ErrorDetail": r.Err.Error(),
+			if err := thread.Retry(
+				&thread.RetryConfig{
+					MaxRetries: thread.DefaultThreadErrorMaxRetries,
+					Delay:      thread.DefaultThreadErrorRereyDelay,
+				},
+				func(err error) bool {
+					return true
+				},
+				func() error {
+					errW := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
+						_, err = model.GetISequenceMigrateTaskRW().UpdateSequenceMigrateTask(txnCtx,
+							&task.SequenceMigrateTask{TaskName: smt.TaskName, SchemaNameS: smt.SchemaNameS, SequenceNameS: smt.SequenceNameS},
+							map[string]interface{}{
+								"TaskStatus":  constant.TaskDatabaseStatusFailed,
+								"Duration":    res.Duration,
+								"ErrorDetail": res.Error.Error(),
+							})
+						if err != nil {
+							return err
+						}
+						_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+							TaskName: st.Task.TaskName,
+							LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] sequence_name_s [%s] migrate failed, please see [sequence_migrate_task] detail",
+								stringutil.CurrentTimeFormatString(),
+								stringutil.StringLower(constant.TaskModeSequenceMigrate),
+								st.Task.TaskName,
+								st.Task.TaskFlow,
+								st.Task.WorkerAddr,
+								st.SchemaNameS,
+								smt.SequenceNameS,
+							),
+						})
+						if err != nil {
+							return err
+						}
+						return nil
 					})
-				if err != nil {
-					return err
-				}
-				_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-					TaskName: st.Task.TaskName,
-					LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] sequence_name_s [%s] migrate failed, please see [sequence_migrate_task] detail",
-						stringutil.CurrentTimeFormatString(),
-						stringutil.StringLower(constant.TaskModeSequenceMigrate),
-						st.Task.TaskName,
-						st.Task.TaskFlow,
-						st.Task.WorkerAddr,
-						st.SchemaNameS,
-						smt.SequenceNameS,
-					),
-				})
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-			if errW != nil {
-				return errW
+					if errW != nil {
+						return errW
+					}
+					return nil
+				}); err != nil {
+				return err
 			}
 		}
 	}
