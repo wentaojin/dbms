@@ -366,16 +366,25 @@ var MigrateTableStructureDatabaseCollationMap = map[string]map[string]map[string
 		"ZH_TW.UTF8": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
+		"ZH_TW.UTF-8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
+		},
 		"ZH_CN": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 		"ZH_CN.UTF8": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
+		"ZH_CN.UTF-8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
+		},
 		"EN_US": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 		"EN_US.UTF8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
+		},
+		"EN_US.UTF-8": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 	},
@@ -392,16 +401,25 @@ var MigrateTableStructureDatabaseCollationMap = map[string]map[string]map[string
 		"ZH_TW.UTF8": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
+		"ZH_TW.UTF-8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
+		},
 		"ZH_CN": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 		"ZH_CN.UTF8": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
+		"ZH_CN.UTF-8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
+		},
 		"EN_US": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 		"EN_US.UTF8": {
+			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
+		},
+		"EN_US.UTF-8": {
 			MYSQLCharsetUTF8MB4: "UTF8MB4_0900_AI_CI",
 		},
 	},

@@ -57,7 +57,7 @@ func InspectPostgresMigrateTask(taskName, taskFlow, taskMode string, databaseS d
 			return "", err
 		}
 		if _, ok := constant.MigrateTableStructureDatabaseCollationMap[taskFlow][stringutil.StringUpper(dbCollation)]; !ok {
-			return "", fmt.Errorf("postgres database collation [%v] isn't support, only support collation [c,posix,zh_TW,zh_TW.utf8,zh_CN,zh_CN.utf8,en_US.utf8]", dbCollation)
+			return "", fmt.Errorf("postgres database collation [%v] isn't support, only support collation [c,posix,zh_TW,zh_TW.UTF-8,zh_TW.UTF8,zh_CN,zh_CN.UTF-8,zh_CN.UTF8,en_US.UTF-8,en_US.UTF8]", dbCollation)
 		}
 
 		return dbCollation, nil
