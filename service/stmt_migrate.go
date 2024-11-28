@@ -543,7 +543,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 		return err
 	}
 
-	logger.Info("struct migrate task success",
+	logger.Info("stmt migrate task success",
 		zap.String("task_name", taskName),
 		zap.String("task_mode", taskInfo.TaskMode),
 		zap.String("task_flow", taskInfo.TaskFlow),

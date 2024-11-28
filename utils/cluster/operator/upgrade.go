@@ -46,18 +46,7 @@ func Upgrade(
 		}
 		logger.Infof("Upgrading component %s", component.ComponentName())
 
-		// some instances are upgraded after others
-		deferInstances := make([]cluster.Instance, 0)
-
 		for _, instance := range instances {
-			if err := upgradeInstance(ctx, topo, instance, options, tlsCfg); err != nil {
-				return err
-			}
-		}
-
-		// process deferred instances
-		for _, instance := range deferInstances {
-			logger.Debugf("Upgrading deferred instance %s...", instance.InstanceName())
 			if err := upgradeInstance(ctx, topo, instance, options, tlsCfg); err != nil {
 				return err
 			}
