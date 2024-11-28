@@ -347,7 +347,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 				stringutil.StringLower(constant.TaskModeStmtMigrate),
 				taskInfo.TaskName,
 				taskInfo.TaskFlow,
-				taskInfo.WorkerAddr,
+				workerAddr,
 			),
 		})
 		if err != nil {
@@ -383,7 +383,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 			stringutil.StringLower(constant.TaskModeStmtMigrate),
 			taskInfo.TaskName,
 			taskInfo.TaskFlow,
-			taskInfo.WorkerAddr,
+			workerAddr,
 		),
 	})
 	if err != nil {
@@ -481,7 +481,7 @@ func StartStmtMigrateTask(ctx context.Context, taskName, workerAddr string) erro
 					stringutil.StringLower(constant.TaskModeStmtMigrate),
 					taskInfo.TaskName,
 					taskInfo.TaskFlow,
-					taskInfo.WorkerAddr,
+					workerAddr,
 					migrateFailedResults,
 					migrateWaitResults,
 					migrateRunResults,

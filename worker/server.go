@@ -686,10 +686,9 @@ func (s *Server) handlePanicRecover(ctx context.Context, t *task.Task) {
 			}
 			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
 				TaskName: t.TaskName,
-				LogDetail: fmt.Sprintf("%v [%v] the worker [%s] task [%v] running [%v], error: [%v], stack: %v",
+				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] running [%v], error: [%v], stack: %v",
 					stringutil.CurrentTimeFormatString(),
 					stringutil.StringLower(t.TaskMode),
-					t.WorkerAddr,
 					stringutil.StringLower(constant.TaskDatabaseStatusFailed),
 					t.TaskName,
 					r,

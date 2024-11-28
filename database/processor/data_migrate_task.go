@@ -649,7 +649,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 			if err != nil {
 				return err
 			}
-			sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(s.SchemaNameT, s.TableNameT, cmt.StmtParams.SqlHintT, limitOne.ColumnDetailT, int(cmt.StmtParams.BatchSize), true)
+			sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(limitOne.SchemaNameT, limitOne.TableNameT, cmt.StmtParams.SqlHintT, limitOne.ColumnDetailT, int(cmt.StmtParams.BatchSize), true)
 
 			sqlTSmt, err = cmt.DatabaseT.PrepareContext(cmt.Ctx, sqlStr)
 			if err != nil {
