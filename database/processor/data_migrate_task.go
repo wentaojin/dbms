@@ -226,7 +226,7 @@ func (cmt *DataMigrateTask) Init() error {
 				return gCtx.Err()
 			default:
 				initTableTime := time.Now()
-				s, err := model.GetIDataMigrateSummaryRW().GetDataMigrateSummary(gCtx, &task.DataMigrateSummary{
+				initDone, err := model.GetIDataMigrateSummaryRW().GetDataMigrateSummary(gCtx, &task.DataMigrateSummary{
 					TaskName:    cmt.Task.TaskName,
 					SchemaNameS: cmt.SchemaNameS,
 					TableNameS:  sourceTable,
@@ -234,14 +234,14 @@ func (cmt *DataMigrateTask) Init() error {
 				if err != nil {
 					return err
 				}
-				if strings.EqualFold(s.InitFlag, constant.TaskInitStatusFinished) {
+				if strings.EqualFold(initDone.InitFlag, constant.TaskInitStatusFinished) {
 					// the database task has init flag,skip
 					wr := &WaitingRecs{
-						TaskName:    s.TaskName,
-						SchemaNameS: s.SchemaNameS,
-						TableNameS:  s.TableNameS,
-						SchemaNameT: s.SchemaNameT,
-						TableNameT:  s.TableNameT,
+						TaskName:    initDone.TaskName,
+						SchemaNameS: initDone.SchemaNameS,
+						TableNameS:  initDone.TableNameS,
+						SchemaNameT: initDone.SchemaNameT,
+						TableNameT:  initDone.TableNameT,
 					}
 					select {
 					case cmt.ResumeC <- wr:
@@ -378,11 +378,11 @@ func (cmt *DataMigrateTask) Init() error {
 					}
 
 					wr := &WaitingRecs{
-						TaskName:    s.TaskName,
-						SchemaNameS: s.SchemaNameS,
-						TableNameS:  s.TableNameS,
-						SchemaNameT: s.SchemaNameT,
-						TableNameT:  s.TableNameT,
+						TaskName:    cmt.Task.TaskName,
+						SchemaNameS: attsRule.SchemaNameS,
+						TableNameS:  attsRule.TableNameS,
+						SchemaNameT: attsRule.SchemaNameT,
+						TableNameT:  attsRule.TableNameT,
 					}
 					select {
 					case cmt.WaiterC <- wr:
