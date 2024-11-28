@@ -236,22 +236,22 @@ func (cmt *DataMigrateTask) Init() error {
 				}
 				if strings.EqualFold(s.InitFlag, constant.TaskInitStatusFinished) {
 					// the database task has init flag,skip
-					// the database task has init flag,skip
-					select {
-					case cmt.ResumeC <- &WaitingRecs{
+					wr := &WaitingRecs{
 						TaskName:    s.TaskName,
 						SchemaNameS: s.SchemaNameS,
 						TableNameS:  s.TableNameS,
 						SchemaNameT: s.SchemaNameT,
 						TableNameT:  s.TableNameT,
-					}:
+					}
+					select {
+					case cmt.ResumeC <- wr:
 						logger.Info("data migrate task resume send",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
 							zap.String("schema_name_s", cmt.SchemaNameS),
 							zap.String("schema_name_t", cmt.SchemaNameT),
-							zap.String("table_name_s", sourceTable),
+							zap.String("send_records", wr.String()),
 							zap.String("task_stage", "send resume channel"))
 					default:
 						_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
@@ -269,7 +269,7 @@ func (cmt *DataMigrateTask) Init() error {
 							zap.String("task_flow", cmt.Task.TaskFlow),
 							zap.String("schema_name_s", cmt.SchemaNameS),
 							zap.String("schema_name_t", cmt.SchemaNameT),
-							zap.String("table_name_s", sourceTable),
+							zap.String("skip_records", wr.String()),
 							zap.String("task_stage", "skip send resume channel"))
 					}
 					return nil
@@ -377,21 +377,22 @@ func (cmt *DataMigrateTask) Init() error {
 						return err
 					}
 
-					select {
-					case cmt.WaiterC <- &WaitingRecs{
+					wr := &WaitingRecs{
 						TaskName:    s.TaskName,
 						SchemaNameS: s.SchemaNameS,
 						TableNameS:  s.TableNameS,
 						SchemaNameT: s.SchemaNameT,
 						TableNameT:  s.TableNameT,
-					}:
+					}
+					select {
+					case cmt.WaiterC <- wr:
 						logger.Info("data migrate task wait send",
 							zap.String("task_name", cmt.Task.TaskName),
 							zap.String("task_mode", cmt.Task.TaskMode),
 							zap.String("task_flow", cmt.Task.TaskFlow),
 							zap.String("schema_name_s", cmt.SchemaNameS),
 							zap.String("schema_name_t", cmt.SchemaNameT),
-							zap.String("table_name_s", sourceTable),
+							zap.String("send_records", wr.String()),
 							zap.String("task_stage", "send wait channel"))
 					default:
 						_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(gCtx, &task.DataMigrateSummary{
@@ -409,7 +410,7 @@ func (cmt *DataMigrateTask) Init() error {
 							zap.String("task_flow", cmt.Task.TaskFlow),
 							zap.String("schema_name_s", cmt.SchemaNameS),
 							zap.String("schema_name_t", cmt.SchemaNameT),
-							zap.String("table_name_s", sourceTable),
+							zap.String("skip_records", wr.String()),
 							zap.String("task_stage", "skip send wait channel"))
 					}
 					return nil
@@ -1121,20 +1122,22 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		return err
 	}
 
-	select {
-	case cmt.WaiterC <- &WaitingRecs{
+	wr := &WaitingRecs{
 		TaskName:    cmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
 		TableNameS:  attsRule.TableNameS,
 		SchemaNameT: attsRule.SchemaNameT,
 		TableNameT:  attsRule.TableNameT,
-	}:
+	}
+
+	select {
+	case cmt.WaiterC <- wr:
 		logger.Info("data migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
-			zap.String("schema_name_s", cmt.SchemaNameS),
-			zap.String("table_name_s", attsRule.TableNameS))
+			zap.String("send_records", wr.String()),
+			zap.String("task_stage", "process_statistics_scan"))
 	default:
 		_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(ctx, &task.DataMigrateSummary{
 			TaskName:    cmt.Task.TaskName,
@@ -1151,6 +1154,7 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 			zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", attsRule.SchemaNameS),
 			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("skip_records", wr.String()),
 			zap.String("action", "skip send"))
 	}
 	return nil
@@ -1226,20 +1230,21 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 		return err
 	}
 
-	select {
-	case cmt.WaiterC <- &WaitingRecs{
+	wr := &WaitingRecs{
 		TaskName:    cmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
 		TableNameS:  attsRule.TableNameS,
 		SchemaNameT: attsRule.SchemaNameT,
 		TableNameT:  attsRule.TableNameT,
-	}:
+	}
+	select {
+	case cmt.WaiterC <- wr:
 		logger.Info("data migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
-			zap.String("schema_name_s", cmt.SchemaNameS),
-			zap.String("table_name_s", attsRule.TableNameS))
+			zap.String("send_records", wr.String()),
+			zap.String("task_stage", "process_table_scan"))
 	default:
 		_, err = model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(ctx, &task.DataMigrateSummary{
 			TaskName:    cmt.Task.TaskName,
@@ -1256,6 +1261,7 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 			zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", attsRule.SchemaNameS),
 			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("skip_records", wr.String()),
 			zap.String("action", "skip send"))
 	}
 	return nil
@@ -1367,20 +1373,21 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 		return err
 	}
 
-	select {
-	case cmt.WaiterC <- &WaitingRecs{
+	wr := &WaitingRecs{
 		TaskName:    cmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
 		TableNameS:  attsRule.TableNameS,
 		SchemaNameT: attsRule.SchemaNameT,
 		TableNameT:  attsRule.TableNameT,
-	}:
+	}
+	select {
+	case cmt.WaiterC <- wr:
 		logger.Info("data migrate task wait send",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
 			zap.String("task_flow", cmt.Task.TaskFlow),
-			zap.String("schema_name_s", cmt.SchemaNameS),
-			zap.String("table_name_s", attsRule.TableNameS))
+			zap.String("send_records", wr.String()),
+			zap.String("task_stage", "process_chunk_scan"))
 	default:
 		_, err := model.GetIDataMigrateSummaryRW().UpdateDataMigrateSummary(ctx, &task.DataMigrateSummary{
 			TaskName:    cmt.Task.TaskName,
@@ -1397,6 +1404,7 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 			zap.String("task_flow", cmt.Task.TaskFlow),
 			zap.String("schema_name_s", attsRule.SchemaNameS),
 			zap.String("table_name_s", attsRule.TableNameS),
+			zap.String("skip_records", wr.String()),
 			zap.String("action", "skip send"))
 	}
 	return nil

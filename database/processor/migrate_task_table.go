@@ -15,10 +15,17 @@ limitations under the License.
 */
 package processor
 
+import "github.com/wentaojin/dbms/utils/stringutil"
+
 type WaitingRecs struct {
 	TaskName    string
 	SchemaNameS string
 	TableNameS  string
 	SchemaNameT string
 	TableNameT  string
+}
+
+func (w *WaitingRecs) String() string {
+	jsStr, _ := stringutil.MarshalIndentJSON(w)
+	return jsStr
 }
