@@ -576,6 +576,8 @@ func (cmt *DataMigrateTask) Last() error {
 			TaskName:    f.TaskName,
 			SchemaNameS: f.SchemaNameS,
 			TableNameS:  f.TableNameS,
+			SchemaNameT: f.SchemaNameT,
+			TableNameT:  f.TableNameT,
 		})
 		if err != nil {
 			return err
