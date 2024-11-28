@@ -1,6 +1,6 @@
 task-name = "dmt_33to45"
-datasource-name-s = "pg117"
-datasource-name-t = "tidb161"
+datasource-name-s = "ora151"
+datasource-name-t = "tidb186"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -16,22 +16,18 @@ case-field-rule-s = "0"
 case-field-rule-t = "0"
 
 [schema-route-rule]
-schema-name-s = "marvin"
-schema-name-t = "ucccis"
+schema-name-s = "SCOTT"
+schema-name-t = "simple"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["marvin10"]
+include-table-s = ["MARVIN01"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
 
 [[schema-route-rule.table-route-rules]]
-table-name-s = "MARVIN00"
-table-name-t = "STEVEN00"
-column-route-rules = {"NAME" = "T_NAME00"}
-[[schema-route-rule.table-route-rules]]
-table-name-s = "MARVIN01"
-table-name-t = "STEVEN01"
-column-route-rules = {"NAME" = "t_name00"}
+table-name-s = ""
+table-name-t = ""
+column-route-rules = {}
 
 [[data-migrate-rules]]
 table-name-s = "MARVIN00"
@@ -75,4 +71,4 @@ enable-consistent-read = false
 # 是否 safe-mode , false -> insert into, true -> repalce into
 enable-safe-mode = false
 # 是否开启 prepare stmt
-enable-prepare-stmt = false
+enable-prepare-stmt = true

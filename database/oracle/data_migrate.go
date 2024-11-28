@@ -330,7 +330,7 @@ func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interfa
 		for i, colName := range columnNameOrders {
 			valRes := values[i]
 			if stringutil.IsValueNil(valRes) {
-				//rowsMap[cols[i]] = `NULL` -> sql
+				//rowsMap[cols[i]] = `NULL` -> sql mode
 				rowData[columnNameOrderIndexMap[colName]] = nil
 			} else {
 				value := reflect.ValueOf(valRes).Interface()
@@ -404,6 +404,18 @@ func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interfa
 						}
 						rowData[columnNameOrderIndexMap[colName]] = stringutil.BytesToString(convertTargetRaw)
 					}
+				case []uint8:
+					// binary data -> raw、long raw、blob
+					convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+					}
+					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+					if err != nil {
+						return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+					}
+
+					rowData[columnNameOrderIndexMap[colName]] = convertTargetRaw
 				default:
 					rowData[columnNameOrderIndexMap[colName]] = val
 				}
@@ -582,7 +594,11 @@ func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryA
 					// binary data -> raw、long raw、blob
 					switch {
 					case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-						convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.BytesToString(val)), constant.CharsetUTF8MB4, dbCharsetT)
+						convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+						if err != nil {
+							return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+						}
+						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
 						if err != nil {
 							return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 						}
