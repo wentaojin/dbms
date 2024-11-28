@@ -16,8 +16,10 @@ limitations under the License.
 package thread
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/wentaojin/dbms/logger"
+	"go.uber.org/zap"
 )
 
 const (
@@ -46,7 +48,10 @@ func Retry(config *RetryConfig, shouldRetry ShouldRetry, fn func() error) (err e
 			break
 		}
 		attempts++
-		fmt.Printf("Attempt %d failed, retrying in %v...\n", attempts, config.Delay)
+		logger.Info("attempt error retrying",
+			zap.Int("max-retries", config.MaxRetries),
+			zap.Duration("retry-delay", config.Delay),
+			zap.Int("current-retrying", attempts))
 		time.Sleep(config.Delay)
 	}
 
