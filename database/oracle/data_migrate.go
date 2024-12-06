@@ -770,7 +770,15 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interfac
 					}
 				case []uint8:
 					// binary data -> raw、long raw、blob
-					rowData[columnNameOrderIndexMap[colName]] = stringutil.EscapeBinaryCSV(val, escapeBackslash, delimiter, separator)
+					convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+					}
+					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+					if err != nil {
+						return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+					}
+					rowData[columnNameOrderIndexMap[colName]] = stringutil.EscapeBinaryCSV(convertTargetRaw, escapeBackslash, delimiter, separator)
 				case int64:
 					rowData[columnNameOrderIndexMap[colName]] = decimal.NewFromInt(val).String()
 				case uint64:

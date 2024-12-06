@@ -1,8 +1,7 @@
-task-name = "csv-task01"
-datasource-name-s = "pg117"
-datasource-name-t = "tidb161"
+task-name = "csv-task00"
+datasource-name-s = "ora151"
+datasource-name-t = "tidb186"
 comment = "测试数据源"
-
 
 [case-field-rule]
 # 控制配置文件内所有 *-s 参数配置值以及 column-route-rules 中的 key 值
@@ -17,11 +16,11 @@ case-field-rule-s = "0"
 case-field-rule-t = "2"
 
 [schema-route-rule]
-schema-name-s = "marvin"
-schema-name-t = "ucccis"
+schema-name-s = "SCOTT"
+schema-name-t = "simple"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["marvin00","users"]
+include-table-s = ["MARVIN01"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
