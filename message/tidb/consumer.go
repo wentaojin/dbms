@@ -694,8 +694,19 @@ func (cg *ConsumerGroup) CommitMessage(ctx context.Context, msg kafka.Message) e
 			}
 			// execute DDL Event
 			if rewrite != nil {
-				if _, err := cg.databaseT.ExecContext(ctx, rewrite.RewriteDdlText); err != nil {
-					return fmt.Errorf("the dowstream database rewrite sql [%v] digest [%s] commit_ts [%d] exec failed, please check whether the statement is rewritten correctly , error detail [%v]", todoDDL.DdlQuery, encrStr, todoDDL.CommitTs, err)
+				if rewrite.DdlDigest != "" {
+					if _, err := cg.databaseT.ExecContext(ctx, rewrite.RewriteDdlText); err != nil {
+						return fmt.Errorf("the dowstream database rewrite sql [%v] digest [%s] commit_ts [%d] exec failed, please check whether the statement is rewritten correctly , error detail [%v]", todoDDL.DdlQuery, encrStr, todoDDL.CommitTs, err)
+					}
+				} else {
+					logger.Warn("ddl event coordinator skip",
+						zap.String("task_name", cg.task.TaskName),
+						zap.String("task_flow", cg.task.TaskFlow),
+						zap.String("task_mode", cg.task.TaskMode),
+						zap.String("topic", msg.Topic),
+						zap.String("ddl_digest", encrStr),
+						zap.String("ddl_events", todoDDL.String()),
+						zap.String("message_action", "skip"))
 				}
 			} else {
 				if _, err := cg.databaseT.ExecContext(ctx, todoDDL.DdlQuery); err != nil {
@@ -714,6 +725,7 @@ func (cg *ConsumerGroup) CommitMessage(ctx context.Context, msg kafka.Message) e
 					zap.String("task_mode", cg.task.TaskMode),
 					zap.String("topic", msg.Topic),
 					zap.Int("partition", p),
+					zap.String("ddl_digest", encrStr),
 					zap.String("ddl_events", todoDDL.String()),
 					zap.String("message_action", "resume"))
 				if err := cg.Resume(p); err != nil {

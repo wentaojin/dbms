@@ -186,3 +186,21 @@ func GetCdcConsume(serverAddr string, name string) error {
 	fmt.Printf("Response:     %s\n", formattedJSON)
 	return nil
 }
+
+func RewriteCdcConsume(serverAddr string, taskName, topic, ddlDigest, rewriteText string) error {
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("consume"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(taskName))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("rewrite"))
+
+	if err := service.RewriteCdcConsumeTask(context.Background(), serverAddr, taskName, topic, ddlDigest, rewriteText); err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("error encoding JSON: %v", err))
+		return nil
+	}
+
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", color.GreenString("the cdc consume task [%s] topic [%s] ddl digest [%v] rewrite configure success, please restart the cdc consume task", taskName, topic, ddlDigest))
+	return nil
+}

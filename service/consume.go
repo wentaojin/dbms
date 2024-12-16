@@ -28,6 +28,7 @@ import (
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/common"
+	"github.com/wentaojin/dbms/model/consume"
 	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/model/params"
 	"github.com/wentaojin/dbms/model/task"
@@ -372,6 +373,58 @@ func StopCdcConsumeTask(ctx context.Context, taskName string) error {
 		return nil
 	})
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RewriteCdcConsumeTask(ctx context.Context, serverAddr, taskName, topic, ddlDigest, rewriteText string) error {
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
+	if err != nil {
+		return err
+	}
+	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		// open database conn
+		var dbCfg *model.Database
+		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+		if err != nil {
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+		}
+		err = model.CreateDatabaseReadWrite(dbCfg)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	}
+	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeCdcConsume})
+	if err != nil {
+		return err
+	}
+
+	if strings.EqualFold(taskInfo.TaskName, "") {
+		return fmt.Errorf("the [%v] task [%v] is not existed, please create the task", stringutil.StringLower(taskInfo.TaskMode), taskInfo.TaskName)
+	}
+
+	decrStr, err := stringutil.Decrypt(ddlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
+	if err != nil {
+		return err
+	}
+	if _, err := model.GetIMsgDdlRewriteRW().CreateMsgDdlRewrite(ctx, &consume.MsgDdlRewrite{
+		TaskName:       taskName,
+		Topic:          topic,
+		DdlDigest:      ddlDigest,
+		OriginDdlText:  decrStr,
+		RewriteDdlText: rewriteText,
+	}); err != nil {
 		return err
 	}
 	return nil

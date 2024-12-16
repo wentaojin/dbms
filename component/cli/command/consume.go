@@ -167,3 +167,44 @@ func (a *AppConsumeGet) RunE(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
+
+type AppConsumeRewrite struct {
+	*AppConsume
+	task        string
+	topic       string
+	ddlDigest   string
+	rewriteText string
+}
+
+func (a *AppConsume) AppConsumeRewrite() component.Cmder {
+	return &AppConsumeRewrite{AppConsume: a}
+}
+
+func (a *AppConsumeRewrite) Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:              "rewrite",
+		Short:            "rewrite cluster cdc consume task ddl",
+		Long:             "rewrite cluster cdc consume task ddl",
+		RunE:             a.RunE,
+		TraverseChildren: true,
+		SilenceUsage:     true,
+	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "configure cdc consume task name")
+	cmd.Flags().StringVar(&a.task, "topic", "topic", "configure cdc consume task topic name")
+	cmd.Flags().StringVarP(&a.ddlDigest, "ddl-digest", "g", "", "configure cdc consume task ddl digest")
+	cmd.Flags().StringVarP(&a.rewriteText, "rewrite-text", "r", "", "configure cdc consume task ddl digest rewrite text")
+	return cmd
+}
+
+func (a *AppConsumeRewrite) RunE(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		if err := cmd.Help(); err != nil {
+			return err
+		}
+	}
+	err := migrate.RewriteCdcConsume(a.Server, a.task, a.topic, a.ddlDigest, a.rewriteText)
+	if err != nil {
+		return err
+	}
+	return nil
+}

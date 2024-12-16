@@ -22,6 +22,7 @@ import (
 
 	"github.com/wentaojin/dbms/model/common"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type RWMsgTopicPartition struct {
@@ -116,7 +117,10 @@ func (rw *RWMsgDdlRewrite) TableName(ctx context.Context) string {
 }
 
 func (rw *RWMsgDdlRewrite) CreateMsgDdlRewrite(ctx context.Context, data *MsgDdlRewrite) (*MsgDdlRewrite, error) {
-	err := rw.DB(ctx).Create(data).Error
+	err := rw.DB(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "topic"}, {Name: "ddl_digest"}},
+		UpdateAll: true,
+	}).Create(data).Error
 	if err != nil {
 		return nil, fmt.Errorf("create table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

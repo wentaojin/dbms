@@ -51,8 +51,8 @@ TiDB MIGRATE ORACLE、POSTGRES、MYSQL、TIDB 兼容性数据库，基于 TiCDC 
 - TiDB 集群上下游要求必须存在有效索引（主键或者 NOT NULL 唯一索引），否则不保证上下游数据一致性
 - TiDB 支持同步 DDL、DML Event，但不支持非表级别的同步，比如：CREATE DATABASE、DROP DATABASE、ALTER DATABASE 等数据实时同步
 - TiCDC changefeed large-message-handle-option claim-check 以及 handle-key-only 不支持配置，但支持 compression 压缩参数
-- TiCDC changefeed topic partition-num 参数值要求跟 Kafka 集群对应 topic 分区数相同，数据消费依赖 partition-num 自动协调多分区 DDL 同步，否则容易产生假死 Hang 暂停消费的状态，DDL 语句同步可能存在因语法不支持同步报错，可根据具体 DDL Rewrite 重写继续同步
-- 禁止 DDL 协调期间，进行 ticdc changefeed topic 扩容 partition 操作，否则会产生假死 Hang 暂停消费状态，数据无法同步
+- TiCDC changefeed topic partition-num 参数值要求跟 Kafka 集群对应 topic 分区数相同，数据消费依赖 partition-num 自动协调多分区 DDL 同步，DDL 语句同步可能存在因语法不支持同步报错，可根据具体 DDL rewrite 重写继续同步
+- 禁止 DDL 协调期间，进行 ticdc changefeed topic 扩容 partition 操作，否则容易产生某个分区因无法接受到 DDL 消息而假死 Hang 暂停消费的状态，数据无法同步
 - 非 DDL 协调期间，进行 ticdc changefeed topic 扩容 partition 操作，需要重启实时同步任务以便可自动识别新增分区，否则可能遗漏新扩容分区数据同步
 - Kafka 建议以集群模式且 partition 多副本形式运行， 以便 Kafka 节点实现高可用容灾
 - TiDB 全量数据迁移暂不支持，当前只支持增量数据实时同步功能
@@ -91,7 +91,7 @@ dispatchers = [
 ```
 3. Kafka 集群参数关键参数(v3.9.0)
 
-num.partitions = ticdc changefeed partition-num
+num.partitions = ticdc changefeed partition-num （建议通过 ticdc changefeed 自动创建 topic 以及 partition-nums，否则需要人为控制 kafka =  ticdc partition 配置参数）
 
 message.max.bytes >= tidc changefeed max-message-bytes
 
