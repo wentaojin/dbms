@@ -18,9 +18,10 @@ package rule
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"golang.org/x/sync/errgroup"
-	"reflect"
 
 	"gorm.io/gorm/clause"
 
@@ -432,6 +433,15 @@ func (rw *RWColumnRouteRule) DeleteColumnRouteRule(ctx context.Context, taskName
 func (rw *RWColumnRouteRule) FindColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) ([]*ColumnRouteRule, error) {
 	var dataS []*ColumnRouteRule
 	err := rw.DB(ctx).Model(&ColumnRouteRule{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", rule.TaskName, rule.SchemaNameS, rule.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWColumnRouteRule) QueryColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) ([]*ColumnRouteRule, error) {
+	var dataS []*ColumnRouteRule
+	err := rw.DB(ctx).Model(&ColumnRouteRule{}).Where("task_name = ? AND schema_name_s = ?", rule.TaskName, rule.SchemaNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/model/buildin"
+	"github.com/wentaojin/dbms/model/consume"
 
 	"github.com/wentaojin/dbms/model/migrate"
 
@@ -102,6 +103,8 @@ type database struct {
 	dataScanSummaryRW             task.IDataScanSummary
 	dataScanTaskRW                task.IDataScanTask
 	dataScanRuleRW                rule.IDataScanRule
+	msgTopicPartitionRW           consume.IMsgTopicPartition
+	msgDdlRewriteRW               consume.IMsgDdlRewrite
 }
 
 // Database is database configuration.
@@ -266,6 +269,8 @@ func (d *database) initReaderWriters() {
 	DefaultDB.dataScanTaskRW = task.NewDataScanTaskRW(d.base)
 	DefaultDB.dataScanSummaryRW = task.NewDataScanSummaryRW(d.base)
 	DefaultDB.dataScanRuleRW = rule.NewDataScanRuleRW(d.base)
+	DefaultDB.msgTopicPartitionRW = consume.NewMsgTopicPartitionRW(d.base)
+	DefaultDB.msgDdlRewriteRW = consume.NewMsgDdlRewriteRW(d.base)
 }
 
 func (d *database) migrateStream(models ...interface{}) (err error) {
@@ -319,6 +324,8 @@ func (d *database) migrateTables() (err error) {
 		new(task.DataScanSummary),
 		new(task.DataScanTask),
 		new(rule.DataScanRule),
+		new(consume.MsgTopicPartition),
+		new(consume.MsgDdlRewrite),
 	)
 }
 
@@ -643,4 +650,12 @@ func GetIDataScanTaskRW() task.IDataScanTask {
 
 func GetIDataScanRuleRW() rule.IDataScanRule {
 	return DefaultDB.dataScanRuleRW
+}
+
+func GetIMsgTopicPartitionRW() consume.IMsgTopicPartition {
+	return DefaultDB.msgTopicPartitionRW
+}
+
+func GetIMsgDdlRewriteRW() consume.IMsgDdlRewrite {
+	return DefaultDB.msgDdlRewriteRW
 }

@@ -873,6 +873,64 @@ func (s *Server) listDataScanTask(ctx context.Context, req openapi.APIListDataSc
 	return "", errors.New(resp.Response.Message)
 }
 
+func (s *Server) upsertCdcConsumeTask(ctx context.Context, req openapi.APIPutCdcConsumeJSONRequestBody) (string, error) {
+	migrateSchemaRs := &pb.SchemaRouteRule{
+		SchemaNameS:   *req.SchemaRouteRule.SchemaNameS,
+		SchemaNameT:   *req.SchemaRouteRule.SchemaNameT,
+		IncludeTableS: *req.SchemaRouteRule.IncludeTableS,
+		ExcludeTableS: *req.SchemaRouteRule.ExcludeTableS,
+	}
+
+	resp, err := s.UpsertCdcConsumeTask(ctx, &pb.UpsertCdcConsumeTaskRequest{
+		TaskName:        *req.TaskName,
+		DatasourceNameS: *req.DatasourceNameS,
+		DatasourceNameT: *req.DatasourceNameT,
+		Comment:         *req.Comment,
+		CaseFieldRule:   &pb.CaseFieldRule{CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS},
+		SchemaRouteRule: migrateSchemaRs,
+		CdcConsumeParam: &pb.CdcConsumeParam{
+			TableThread:           *req.CdcConsumeParam.TableThread,
+			MessageCompression:    *req.CdcConsumeParam.MessageCompression,
+			IdleResolvedThreshold: *req.CdcConsumeParam.IdleResolvedThreshold,
+			CallTimeout:           *req.CdcConsumeParam.CallTimeout,
+			EnableCheckpoint:      *req.CdcConsumeParam.EnableCheckpoint,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) deleteCdcConsumeTask(ctx context.Context, req openapi.APIDeleteCdcConsumeJSONRequestBody) (string, error) {
+	resp, err := s.DeleteCdcConsumeTask(ctx, &pb.DeleteCdcConsumeTaskRequest{TaskName: *req.Param})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
+func (s *Server) listCdcConsumeTask(ctx context.Context, req openapi.APIListCdcConsumeJSONRequestBody) (string, error) {
+	resp, err := s.ShowCdcConsumeTask(ctx, &pb.ShowCdcConsumeTaskRequest{
+		TaskName: *req.Param,
+		Page:     *req.Page,
+		PageSize: *req.PageSize,
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.EqualFold(resp.Response.Result, openapi.ResponseResultStatusSuccess) {
+		return resp.Response.Message, nil
+	}
+	return "", errors.New(resp.Response.Message)
+}
+
 func (s *Server) operateTask(ctx context.Context, req openapi.APIPostTaskJSONRequestBody) (string, error) {
 	resp, err := s.OperateTask(ctx, &pb.OperateTaskRequest{
 		Operate:  *req.Operate,

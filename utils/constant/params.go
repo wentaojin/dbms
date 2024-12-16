@@ -192,3 +192,14 @@ const (
 	ParamValueDataScanCaseFieldRuleLower  = "1"
 	ParamValueDataScanCaseFieldRuleUpper  = "2"
 )
+
+// cdc consume parameters
+const (
+	ParamNameCdcConsumeTableThread           = "tableThread"
+	ParamNameCdcConsumeMessageCompression    = "messageCompression"
+	ParamNameCdcConsumeIdleResolvedThreshold = "idleResolvedThreshold"
+	ParamNameCdcConsumeCallTimeout           = "callTimeout"
+	ParamNameCdcConsumeServerAddress         = "serverAddress"
+	ParamNameCdcConsumeSubscribeTopic        = "subscribeTopic"
+	ParamNameCdcConsumeEnableCheckpoint      = "enableCheckpoint"
+)

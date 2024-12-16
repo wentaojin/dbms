@@ -17,6 +17,7 @@ package master
 
 import (
 	"context"
+
 	"github.com/wentaojin/dbms/proto/pb"
 
 	"github.com/wentaojin/dbms/openapi"
@@ -441,6 +442,48 @@ func (s *Server) ShowDataScanTask(ctx context.Context, req *pb.ShowDataScanTaskR
 		}}, err
 	}
 	return &pb.ShowDataScanTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) UpsertCdcConsumeTask(ctx context.Context, req *pb.UpsertCdcConsumeTaskRequest) (*pb.UpsertCdcConsumeTaskResponse, error) {
+	showMsg, err := service.UpsertCdcConsumeTask(ctx, req)
+	if err != nil {
+		return &pb.UpsertCdcConsumeTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.UpsertCdcConsumeTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: showMsg,
+	}}, nil
+}
+
+func (s *Server) DeleteCdcConsumeTask(ctx context.Context, req *pb.DeleteCdcConsumeTaskRequest) (*pb.DeleteCdcConsumeTaskResponse, error) {
+	delMsg, err := service.DeleteCdcConsumeTask(ctx, req)
+	if err != nil {
+		return &pb.DeleteCdcConsumeTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.DeleteCdcConsumeTaskResponse{Response: &pb.Response{
+		Result:  openapi.ResponseResultStatusSuccess,
+		Message: delMsg,
+	}}, nil
+}
+
+func (s *Server) ShowCdcConsumeTask(ctx context.Context, req *pb.ShowCdcConsumeTaskRequest) (*pb.ShowCdcConsumeTaskResponse, error) {
+	delMsg, err := service.ShowCdcConsumeTask(ctx, req)
+	if err != nil {
+		return &pb.ShowCdcConsumeTaskResponse{Response: &pb.Response{
+			Result:  openapi.ResponseResultStatusFailed,
+			Message: err.Error(),
+		}}, err
+	}
+	return &pb.ShowCdcConsumeTaskResponse{Response: &pb.Response{
 		Result:  openapi.ResponseResultStatusSuccess,
 		Message: delMsg,
 	}}, nil

@@ -49,6 +49,9 @@ const (
 	Master_UpsertDataScanTask_FullMethodName      = "/proto.Master/UpsertDataScanTask"
 	Master_DeleteDataScanTask_FullMethodName      = "/proto.Master/DeleteDataScanTask"
 	Master_ShowDataScanTask_FullMethodName        = "/proto.Master/ShowDataScanTask"
+	Master_UpsertCdcConsumeTask_FullMethodName    = "/proto.Master/UpsertCdcConsumeTask"
+	Master_DeleteCdcConsumeTask_FullMethodName    = "/proto.Master/DeleteCdcConsumeTask"
+	Master_ShowCdcConsumeTask_FullMethodName      = "/proto.Master/ShowCdcConsumeTask"
 	Master_OperateTask_FullMethodName             = "/proto.Master/OperateTask"
 )
 
@@ -86,6 +89,9 @@ type MasterClient interface {
 	UpsertDataScanTask(ctx context.Context, in *UpsertDataScanTaskRequest, opts ...grpc.CallOption) (*UpsertDataScanTaskResponse, error)
 	DeleteDataScanTask(ctx context.Context, in *DeleteDataScanTaskRequest, opts ...grpc.CallOption) (*DeleteDataScanTaskResponse, error)
 	ShowDataScanTask(ctx context.Context, in *ShowDataScanTaskRequest, opts ...grpc.CallOption) (*ShowDataScanTaskResponse, error)
+	UpsertCdcConsumeTask(ctx context.Context, in *UpsertCdcConsumeTaskRequest, opts ...grpc.CallOption) (*UpsertCdcConsumeTaskResponse, error)
+	DeleteCdcConsumeTask(ctx context.Context, in *DeleteCdcConsumeTaskRequest, opts ...grpc.CallOption) (*DeleteCdcConsumeTaskResponse, error)
+	ShowCdcConsumeTask(ctx context.Context, in *ShowCdcConsumeTaskRequest, opts ...grpc.CallOption) (*ShowCdcConsumeTaskResponse, error)
 	OperateTask(ctx context.Context, in *OperateTaskRequest, opts ...grpc.CallOption) (*OperateTaskResponse, error)
 }
 
@@ -397,6 +403,36 @@ func (c *masterClient) ShowDataScanTask(ctx context.Context, in *ShowDataScanTas
 	return out, nil
 }
 
+func (c *masterClient) UpsertCdcConsumeTask(ctx context.Context, in *UpsertCdcConsumeTaskRequest, opts ...grpc.CallOption) (*UpsertCdcConsumeTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpsertCdcConsumeTaskResponse)
+	err := c.cc.Invoke(ctx, Master_UpsertCdcConsumeTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) DeleteCdcConsumeTask(ctx context.Context, in *DeleteCdcConsumeTaskRequest, opts ...grpc.CallOption) (*DeleteCdcConsumeTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteCdcConsumeTaskResponse)
+	err := c.cc.Invoke(ctx, Master_DeleteCdcConsumeTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterClient) ShowCdcConsumeTask(ctx context.Context, in *ShowCdcConsumeTaskRequest, opts ...grpc.CallOption) (*ShowCdcConsumeTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ShowCdcConsumeTaskResponse)
+	err := c.cc.Invoke(ctx, Master_ShowCdcConsumeTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *masterClient) OperateTask(ctx context.Context, in *OperateTaskRequest, opts ...grpc.CallOption) (*OperateTaskResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OperateTaskResponse)
@@ -441,6 +477,9 @@ type MasterServer interface {
 	UpsertDataScanTask(context.Context, *UpsertDataScanTaskRequest) (*UpsertDataScanTaskResponse, error)
 	DeleteDataScanTask(context.Context, *DeleteDataScanTaskRequest) (*DeleteDataScanTaskResponse, error)
 	ShowDataScanTask(context.Context, *ShowDataScanTaskRequest) (*ShowDataScanTaskResponse, error)
+	UpsertCdcConsumeTask(context.Context, *UpsertCdcConsumeTaskRequest) (*UpsertCdcConsumeTaskResponse, error)
+	DeleteCdcConsumeTask(context.Context, *DeleteCdcConsumeTaskRequest) (*DeleteCdcConsumeTaskResponse, error)
+	ShowCdcConsumeTask(context.Context, *ShowCdcConsumeTaskRequest) (*ShowCdcConsumeTaskResponse, error)
 	OperateTask(context.Context, *OperateTaskRequest) (*OperateTaskResponse, error)
 	mustEmbedUnimplementedMasterServer()
 }
@@ -541,6 +580,15 @@ func (UnimplementedMasterServer) DeleteDataScanTask(context.Context, *DeleteData
 }
 func (UnimplementedMasterServer) ShowDataScanTask(context.Context, *ShowDataScanTaskRequest) (*ShowDataScanTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowDataScanTask not implemented")
+}
+func (UnimplementedMasterServer) UpsertCdcConsumeTask(context.Context, *UpsertCdcConsumeTaskRequest) (*UpsertCdcConsumeTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpsertCdcConsumeTask not implemented")
+}
+func (UnimplementedMasterServer) DeleteCdcConsumeTask(context.Context, *DeleteCdcConsumeTaskRequest) (*DeleteCdcConsumeTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteCdcConsumeTask not implemented")
+}
+func (UnimplementedMasterServer) ShowCdcConsumeTask(context.Context, *ShowCdcConsumeTaskRequest) (*ShowCdcConsumeTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShowCdcConsumeTask not implemented")
 }
 func (UnimplementedMasterServer) OperateTask(context.Context, *OperateTaskRequest) (*OperateTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OperateTask not implemented")
@@ -1106,6 +1154,60 @@ func _Master_ShowDataScanTask_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Master_UpsertCdcConsumeTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertCdcConsumeTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).UpsertCdcConsumeTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Master_UpsertCdcConsumeTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).UpsertCdcConsumeTask(ctx, req.(*UpsertCdcConsumeTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_DeleteCdcConsumeTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCdcConsumeTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).DeleteCdcConsumeTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Master_DeleteCdcConsumeTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).DeleteCdcConsumeTask(ctx, req.(*DeleteCdcConsumeTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Master_ShowCdcConsumeTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShowCdcConsumeTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).ShowCdcConsumeTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Master_ShowCdcConsumeTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).ShowCdcConsumeTask(ctx, req.(*ShowCdcConsumeTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Master_OperateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(OperateTaskRequest)
 	if err := dec(in); err != nil {
@@ -1250,6 +1352,18 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShowDataScanTask",
 			Handler:    _Master_ShowDataScanTask_Handler,
+		},
+		{
+			MethodName: "UpsertCdcConsumeTask",
+			Handler:    _Master_UpsertCdcConsumeTask_Handler,
+		},
+		{
+			MethodName: "DeleteCdcConsumeTask",
+			Handler:    _Master_DeleteCdcConsumeTask_Handler,
+		},
+		{
+			MethodName: "ShowCdcConsumeTask",
+			Handler:    _Master_ShowCdcConsumeTask_Handler,
 		},
 		{
 			MethodName: "OperateTask",

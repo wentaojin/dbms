@@ -28,6 +28,7 @@ const (
 	TaskModeDataCompare   = "DATA_COMPARE"
 	TaskModeStructCompare = "STRUCT_COMPARE"
 	TaskModeDataScan      = "DATA_SCAN"
+	TaskModeCdcConsume    = "CDC_CONSUME"
 )
 
 // Task represents a certain type of task run method
@@ -59,6 +60,8 @@ const (
 	TaskFlowPostgresToMySQL = "POSTGRES@MYSQL"
 	TaskFlowTiDBToPostgres  = "TIDB@POSTGRES"
 	TaskFlowMySQLToPostgres = "MYSQL@POSTGRES"
+	TaskFlowTiDBToTiDB      = "TIDB@TIDB"
+	TaskFlowTiDBToMYSQL     = "TIDB@MYSQL"
 )
 
 const (

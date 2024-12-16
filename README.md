@@ -52,12 +52,9 @@
   - Schema 表数据校验，支持 schema、表、列级别路由规则、配置上下游快照数据校验以及自定义筛选过滤字段
 - TiDB -> Postgres 兼容性数据库迁移服务
   - Schema 表数据校验，支持 schema、表、列级别路由规则、配置上下游快照数据校验以及自定义筛选过滤字段
+- TiDB -> Oracle、Postgres、MYSQL、TiDB 数据库实时同步
+  - 基于 TiCDC + Kafka 实时消费数据同步
 - ...
-
-**未来计划**
-- MYSQL 兼容性数据库表结构迁移至 ORACLE 数据库
-- MYSQL 兼容性数据库表结构与 ORACLE 数据库表结构对比
-- ORACLE 数据实时同步到 MYSQL 兼容性数据库（基于 logminer）
 
 ------
 ### Architecture 🌈
@@ -80,6 +77,10 @@ DBMS 数据库分布式迁移服务平台由 dbms-master、dbms-worker、dbms-ct
 [DBMS 数据源权限要求](doc/dbms_permissions.md)
 
 [ORACLE 迁移服务手册](doc/oracle_migrate_manual.md)
+
+[POSTGRES 迁移服务手册](doc/postgres_migrate_manual.md)
+
+[TiDB 迁移服务手册](doc/tidb_migrate_manual.md)
 
 -------
 ### Development 🧬

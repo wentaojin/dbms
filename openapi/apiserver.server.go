@@ -40,6 +40,15 @@ type ServerInterface interface {
 	// (PUT /task/assessMigrate)
 	APIPutAssessMigrate(c *gin.Context)
 
+	// (DELETE /task/cdcConsume)
+	APIDeleteCdcConsume(c *gin.Context)
+
+	// (POST /task/cdcConsume)
+	APIListCdcConsume(c *gin.Context)
+
+	// (PUT /task/cdcConsume)
+	APIPutCdcConsume(c *gin.Context)
+
 	// (DELETE /task/csvMigrate)
 	APIDeleteCsvMigrate(c *gin.Context)
 
@@ -241,6 +250,45 @@ func (siw *ServerInterfaceWrapper) APIPutAssessMigrate(c *gin.Context) {
 	}
 
 	siw.Handler.APIPutAssessMigrate(c)
+}
+
+// APIDeleteCdcConsume operation middleware
+func (siw *ServerInterfaceWrapper) APIDeleteCdcConsume(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIDeleteCdcConsume(c)
+}
+
+// APIListCdcConsume operation middleware
+func (siw *ServerInterfaceWrapper) APIListCdcConsume(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIListCdcConsume(c)
+}
+
+// APIPutCdcConsume operation middleware
+func (siw *ServerInterfaceWrapper) APIPutCdcConsume(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.APIPutCdcConsume(c)
 }
 
 // APIDeleteCsvMigrate operation middleware
@@ -553,6 +601,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/task/assessMigrate", wrapper.APIDeleteAssessMigrate)
 	router.POST(options.BaseURL+"/task/assessMigrate", wrapper.APIListAssessMigrate)
 	router.PUT(options.BaseURL+"/task/assessMigrate", wrapper.APIPutAssessMigrate)
+	router.DELETE(options.BaseURL+"/task/cdcConsume", wrapper.APIDeleteCdcConsume)
+	router.POST(options.BaseURL+"/task/cdcConsume", wrapper.APIListCdcConsume)
+	router.PUT(options.BaseURL+"/task/cdcConsume", wrapper.APIPutCdcConsume)
 	router.DELETE(options.BaseURL+"/task/csvMigrate", wrapper.APIDeleteCsvMigrate)
 	router.POST(options.BaseURL+"/task/csvMigrate", wrapper.APIListCsvMigrate)
 	router.PUT(options.BaseURL+"/task/csvMigrate", wrapper.APIPutCsvMigrate)

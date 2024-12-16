@@ -1186,6 +1186,77 @@ func (s *Server) APIPutDataScan(c *gin.Context) {
 	})
 }
 
+func (s *Server) APIDeleteCdcConsume(c *gin.Context) {
+	var req openapi.APIDeleteCdcConsumeJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	delMsg, err := s.deleteCdcConsumeTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusNoContent, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusNoContent, openapi.Response{
+		Code: http.StatusNoContent,
+		Data: delMsg,
+	})
+}
+
+func (s *Server) APIListCdcConsume(c *gin.Context) {
+	var req openapi.APIListCdcConsumeJSONRequestBody
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	listMsg, err := s.listCdcConsumeTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusCreated, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, openapi.Response{
+		Code: http.StatusCreated,
+		Data: listMsg,
+	})
+}
+
+func (s *Server) APIPutCdcConsume(c *gin.Context) {
+	var req openapi.APIPutCdcConsumeJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	upsertMsg, err := s.upsertCdcConsumeTask(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusOK, openapi.Response{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, openapi.Response{
+		Code: http.StatusOK,
+		Data: upsertMsg,
+	})
+}
+
 func (s *Server) APIPostTask(c *gin.Context) {
 	var req openapi.APIPostTaskJSONRequestBody
 	if err := c.Bind(&req); err != nil {

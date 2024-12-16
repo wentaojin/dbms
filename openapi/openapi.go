@@ -40,6 +40,7 @@ const (
 	APIAssessMigratePath = "assessMigrate"
 	APIStructComparePath = "structCompare"
 	APIDataScanPath      = "dataScan"
+	APICdcConsumePath    = "cdcConsume"
 )
 
 const (

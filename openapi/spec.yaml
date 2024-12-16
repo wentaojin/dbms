@@ -740,6 +740,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Response'
+  /task/cdcConsume:
+    put:
+      tags:
+        - cdcConsume
+      description: Put cdc consume task information
+      operationId: APIPutCdcConsume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CdcConsumeTask'
+      responses:
+        '200':
+          description: cdc consume task create success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    post:
+      tags:
+        - cdcConsume
+      description: List cdc consume task information
+      operationId: APIListCdcConsume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostParam'
+      responses:
+        '201':
+          description: page array of cdc consume task list success responses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+    delete:
+      tags:
+        - cdcConsume
+      description: Delete cdc consume rule information
+      operationId: APIDeleteCdcConsume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeleteParam'
+      responses:
+        '204':
+          description: rule delete success response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
   /task:
     post:
       tags:
@@ -1049,6 +1122,28 @@ components:
             $ref: '#/components/schemas/DataScanRule'
         dataScanParam:
           $ref: '#/components/schemas/DataScanParam'
+    CdcConsumeTask:
+      type: object
+      properties:
+        taskName:
+          type: string
+          format: string
+        datasourceNameS:
+          type: string
+          format: string
+        datasourceNameT:
+          type: string
+          format: string
+        comment:
+          type: string
+          nullable: true
+          format: string
+        caseFieldRule:
+          $ref: '#/components/schemas/CaseFieldRule'
+        schemaRouteRule:
+          $ref: '#/components/schemas/SchemaRouteRule'
+        cdcConsumeParam:
+          $ref: '#/components/schemas/CdcConsumeParam'                
     AssessMigrateParam:
       type: object
       properties:
@@ -1592,6 +1687,31 @@ components:
         tableSamplerateS:
           type: integer
           format: uint64
+    CdcConsumeParam:
+      type: object
+      properties:
+        tableThread:
+          type: integer
+          format: uint64
+        messageCompression:
+          type: string
+          format: string
+        idleResolvedThreshold:
+          type: integer
+          format: uint64
+        callTimeout:
+          type: integer
+          format: uint64
+        serverAddress:
+          type: array
+          items:
+            type: string
+            format: string
+        subscribeTopic:
+          type: string
+          format: string
+        enableCheckpoint:
+          type: boolean
     Task:
       type: object
       properties:

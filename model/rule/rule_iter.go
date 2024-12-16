@@ -63,6 +63,7 @@ type IColumnRouteRule interface {
 	ListColumnRouteRule(ctx context.Context, page uint64, pageSize uint64) ([]*ColumnRouteRule, error)
 	DeleteColumnRouteRule(ctx context.Context, taskNames []string) error
 	FindColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) ([]*ColumnRouteRule, error)
+	QueryColumnRouteRule(ctx context.Context, rule *ColumnRouteRule) ([]*ColumnRouteRule, error)
 }
 
 type IDataMigrateRule interface {

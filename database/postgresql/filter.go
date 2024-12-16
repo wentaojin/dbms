@@ -17,11 +17,12 @@ package postgresql
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/wentaojin/dbms/utils/filter"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"github.com/wentaojin/dbms/utils/structure"
 	"go.uber.org/zap"
-	"time"
 )
 
 func (d *Database) FilterDatabaseTable(sourceSchema string, includeTableS, excludeTableS []string) (*structure.TableObjects, error) {
@@ -210,8 +211,6 @@ func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporter
 			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
 	}
 	if len(normalViews) != 0 {
-		// DBA_TABLES Not Records
-		// VIEWS Records DBA_VIEWS
 		zap.L().Warn("table views",
 			zap.String("schema", sourceSchema),
 			zap.Strings("table view list", normalViews),
@@ -231,8 +230,6 @@ func (d *Database) FilterDatabaseIncompatibleTable(sourceSchema string, exporter
 			zap.String("schema", sourceSchema),
 			zap.Strings("materialized view list", materializedView),
 			zap.String("suggest", "if necessary, please manually process the tables in the above list"))
-		// DBA_TABLES
-		// exclude materialized view
 		exporterTables = stringutil.StringItemsFilterDifference(exporters, materializedView)
 	} else {
 		exporterTables = exporters
