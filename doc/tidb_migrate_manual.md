@@ -49,7 +49,7 @@ TiDB MIGRATE ORACLE、POSTGRES、MYSQL、TIDB 兼容性数据库，基于 TiCDC 
 <mark>NOTE:</mark>
 - TiDB 数据库版本必须是 v6.5.5 <= X < v7.0.0 或者 X >= v7.1.2 数据库版本 
 - TiDB 集群上下游要求必须存在有效索引（主键或者 NOT NULL 唯一索引），否则不保证上下游数据一致性
-- TiDB 支持同步 DDL、DML Event，但不支持非表级别的同步，比如：CREATE DATABASE、DROP DATABASE、ALTER DATABASE 等数据实时同步
+- TiDB 支持同步 DDL、DML Event，但不支持非表级别的同步，比如：CREATE DATABASE、DROP DATABASE、ALTER DATABASE、CREATE USER 等数据实时同步
 - TiCDC changefeed large-message-handle-option claim-check 以及 handle-key-only 不支持配置，但支持 compression 压缩参数
 - TiCDC changefeed topic partition-num 参数值要求跟 Kafka 集群对应 topic 分区数相同，数据消费依赖 partition-num 自动协调多分区 DDL 同步，DDL 语句同步可能存在因语法不支持同步报错，可根据具体 DDL rewrite 重写继续同步
 - 禁止 DDL 协调期间，进行 ticdc changefeed topic 扩容 partition 操作，否则容易产生某个分区因无法接受到 DDL 消息而假死 Hang 暂停消费的状态，数据无法同步
