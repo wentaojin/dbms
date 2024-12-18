@@ -889,6 +889,8 @@ func (s *Server) upsertCdcConsumeTask(ctx context.Context, req openapi.APIPutCdc
 		CaseFieldRule:   &pb.CaseFieldRule{CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS},
 		SchemaRouteRule: migrateSchemaRs,
 		CdcConsumeParam: &pb.CdcConsumeParam{
+			ServerAddress:         *req.CdcConsumeParam.ServerAddress,
+			SubscribeTopic:        *req.CdcConsumeParam.SubscribeTopic,
 			TableThread:           *req.CdcConsumeParam.TableThread,
 			MessageCompression:    *req.CdcConsumeParam.MessageCompression,
 			IdleResolvedThreshold: *req.CdcConsumeParam.IdleResolvedThreshold,

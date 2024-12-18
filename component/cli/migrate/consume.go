@@ -39,9 +39,13 @@ type CdcConsumeConfig struct {
 }
 
 type CdcConsumeParam struct {
-	TableThread         int    `toml:"table-thread" json:"tableThread"`
-	MessageComparession string `toml:"message-comparession" json:"messageComparession"`
-	IgnoreCaseCompare   int    `toml:"idle-resolved-threshold" json:"idleResolvedThreshold"`
+	ServerAddress         []string `toml:"server-address" json:"serverAddress"`
+	SubscribeTopic        string   `toml:"subscribe-topic" json:"subscribeTopic"`
+	TableThread           int      `toml:"table-thread" json:"tableThread"`
+	MessageCompression    string   `toml:"message-compression" json:"messageCompression"`
+	IdleResolvedThreshold int      `toml:"idle-resolved-threshold" json:"idleResolvedThreshold"`
+	CallTimeout           uint64   `toml:"call-timeout" json:"callTimeout"`
+	EnableCheckpoint      bool     `toml:"enable-checkpoint" json:"enableCheckpoint"`
 }
 
 func (s *CdcConsumeConfig) String() string {

@@ -31,7 +31,7 @@ table-name-t = ""
 column-route-rules = {}
 
 [cdc-consume-param]
-kafka-address = ["120.92.108.85:54323","120.92.108.85:54323","120.92.108.85:54323"]
+server-address = ["120.92.108.85:54323","120.92.108.85:54323","120.92.108.85:54323"]
 subscribe-topic = "cdc_marvin_topic"
 table-thread = 10
 # 参考上游数据是否开启压缩，设置对应压缩算法
