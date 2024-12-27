@@ -886,7 +886,10 @@ func (s *Server) upsertCdcConsumeTask(ctx context.Context, req openapi.APIPutCdc
 		DatasourceNameS: *req.DatasourceNameS,
 		DatasourceNameT: *req.DatasourceNameT,
 		Comment:         *req.Comment,
-		CaseFieldRule:   &pb.CaseFieldRule{CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS},
+		CaseFieldRule: &pb.CaseFieldRule{
+			CaseFieldRuleS: *req.CaseFieldRule.CaseFieldRuleS,
+			CaseFieldRuleT: *req.CaseFieldRule.CaseFieldRuleT,
+		},
 		SchemaRouteRule: migrateSchemaRs,
 		CdcConsumeParam: &pb.CdcConsumeParam{
 			ServerAddress:         *req.CdcConsumeParam.ServerAddress,
@@ -896,6 +899,7 @@ func (s *Server) upsertCdcConsumeTask(ctx context.Context, req openapi.APIPutCdc
 			IdleResolvedThreshold: *req.CdcConsumeParam.IdleResolvedThreshold,
 			CallTimeout:           *req.CdcConsumeParam.CallTimeout,
 			EnableCheckpoint:      *req.CdcConsumeParam.EnableCheckpoint,
+			EnableVirtualColumn:   *req.CdcConsumeParam.EnableVirtualColumn,
 		},
 	})
 	if err != nil {

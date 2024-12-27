@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
 func (d *Database) GetDatabaseRole() (string, error) {
@@ -39,7 +40,7 @@ func (d *Database) GetDatabaseVersion() (string, error) {
 	var version string
 	verinfos := strings.Split(res[0]["VERSION"], constant.MYSQLCompatibleDatabaseVersionDelimiter)
 
-	if strings.Contains(res[0]["VERSION"], constant.DatabaseTypeTiDB) {
+	if strings.Contains(stringutil.StringLower(res[0]["VERSION"]), stringutil.StringLower(constant.DatabaseTypeTiDB)) {
 		for _, ver := range verinfos {
 			if strings.HasPrefix(ver, "v") {
 				version = strings.TrimPrefix(ver, "v")

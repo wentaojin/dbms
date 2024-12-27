@@ -46,6 +46,7 @@ type CdcConsumeParam struct {
 	IdleResolvedThreshold int      `toml:"idle-resolved-threshold" json:"idleResolvedThreshold"`
 	CallTimeout           uint64   `toml:"call-timeout" json:"callTimeout"`
 	EnableCheckpoint      bool     `toml:"enable-checkpoint" json:"enableCheckpoint"`
+	EnableVirtualColumn   bool     `toml:"enable-virtual-column" json:"enableVirtualColumn"`
 }
 
 func (s *CdcConsumeConfig) String() string {

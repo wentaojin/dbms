@@ -1,6 +1,6 @@
 task-name = "cdc-task00"
-datasource-name-s = "ora151"
-datasource-name-t = "tidb186"
+datasource-name-s = "tidb85"
+datasource-name-t = "ora151"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -16,11 +16,11 @@ case-field-rule-s = "0"
 case-field-rule-t = "2"
 
 [schema-route-rule]
-schema-name-s = "SCOTT"
-schema-name-t = "simple"
+schema-name-s = "marvin"
+schema-name-t = "MARVIN"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["MARVIN01"]
+include-table-s = ["*"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
@@ -39,9 +39,14 @@ table-thread = 10
 message-compression = "none"
 # ticdc 数据同步
 # 避免由于 resolvedTs 前无数据而导致频繁刷新元数据，检查 <=resolvedTs 前是否有数据
-# 如果有数据，则立即刷新，如果连续 X 个 resolvedT 没有数据，则达到 X 个 resolvedT 时再刷新
-# ticdc 单个分区 ticdc 间隔生成 resolvedTs，约每 1 秒生成 1 个 resolvedTs，设置 300 代表约 5 min 刷新一次
-idle-resolved-threshold = 300
+# 如果有数据，则立即刷新，如果连续 X seconds resolvedT 没有数据，则达到 X seconds resolvedT 时再刷新
+# 单位：seconds
+idle-resolved-threshold = 60
 # calltimeout，单位：秒
 call-timeout = 36000
 enable-checkpoint = true
+# ticdc 不支持虚拟生成列的数据表同步，可能会引入上下游数据一致性问题，但支持存储 store 生成列的数据表同步
+# 对于 store 生成列同步，根据参数 enable-virtual-column 配置是否进行数据同步
+# 当下游表同样存在 virtual column，建议设置 false 即下游自动根据表达式自动计算生成，默认值 false
+# 当下游表不存在 virtual column，而使用普通数据类型代替，则建议设置 true，自适应下游数据类型调整同步消费
+enable-virtual-column = false

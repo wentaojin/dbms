@@ -46,7 +46,7 @@ func MsgConvRowChangedEvent(key *MessageEventKey, value *MessageRowEventValue) (
 		}
 		sortColumnArrays(preCols)
 		e.QueryType = message.DMLDeleteQueryType
-		e.ValidUniqColumns, e.ColumnNames, e.ColumnType, e.OldColumnData = GetTableSortedColumnChangedEvent(preCols)
+		e.ValidUniqColumns, e.Columns, e.ColumnType, e.OldColumnData = GetTableSortedColumnChangedEvent(preCols)
 	} else {
 		if len(value.Before) != 0 && len(value.Upsert) != 0 {
 			e.QueryType = message.DMLUpdateQueryType
@@ -66,7 +66,7 @@ func MsgConvRowChangedEvent(key *MessageEventKey, value *MessageRowEventValue) (
 
 		sortColumnArrays(cols)
 
-		e.ValidUniqColumns, e.ColumnNames, e.ColumnType, e.NewColumnData = GetTableSortedColumnChangedEvent(cols)
+		e.ValidUniqColumns, e.Columns, e.ColumnType, e.NewColumnData = GetTableSortedColumnChangedEvent(cols)
 
 	}
 	return e, nil
@@ -120,13 +120,18 @@ func codecColumns2RowChangeColumns(cols map[string]Column) ([]*ConvColumn, error
 	return sinkCols, nil
 }
 
-func GetTableSortedColumnChangedEvent(cols []*ConvColumn) ([]string, []string, map[string]string, map[string]interface{}) {
-	var validUniqColumns, columns []string
+func GetTableSortedColumnChangedEvent(cols []*ConvColumn) (map[string]interface{}, []*columnAttr, map[string]string, map[string]interface{}) {
+	var columns []*columnAttr
 	columnTys := make(map[string]string)
 	columnCd := make(map[string]interface{})
+	validUniqColumns := make(map[string]interface{})
 
 	for _, c := range cols {
-		columns = append(columns, c.ColumnName)
+		columns = append(columns, &columnAttr{
+			ColumnName:        c.ColumnName,
+			ColumnType:        c.ColumnType,
+			IsGeneratedColumn: c.ColumnFlag.IsGeneratedColumn(),
+		})
 		columnTys[c.ColumnName] = c.ColumnType
 		columnCd[c.ColumnName] = c.ColumnValue
 		/*
@@ -137,7 +142,7 @@ func GetTableSortedColumnChangedEvent(cols []*ConvColumn) ([]string, []string, m
 			Data synchronization TiCDC will select a valid index as the Handle Index. The HandleKeyFlag of the columns included in the Handle Index is set to 1.
 		*/
 		if c.ColumnFlag.IsHandleKey() {
-			validUniqColumns = append(validUniqColumns, c.ColumnName)
+			validUniqColumns[c.ColumnName] = c.ColumnValue
 		}
 	}
 	return validUniqColumns, columns, columnTys, columnCd

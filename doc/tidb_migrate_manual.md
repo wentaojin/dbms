@@ -47,15 +47,36 @@ TiDB MIGRATE ORACLE、POSTGRES、MYSQL、TIDB 兼容性数据库，基于 TiCDC 
 - 表维度并发消费，可自定义过滤筛选表同步
 
 <mark>NOTE:</mark>
-- TiDB 数据库版本必须是 v6.5.5 <= X < v7.0.0 或者 X >= v7.1.2 数据库版本 
-- TiDB 集群上下游要求必须存在有效索引（主键或者 NOT NULL 唯一索引），否则不保证上下游数据一致性
-- TiDB 支持同步 DDL、DML Event，但不支持非表级别的同步，比如：CREATE DATABASE、DROP DATABASE、ALTER DATABASE、CREATE USER 等数据实时同步
-- TiCDC changefeed large-message-handle-option claim-check 以及 handle-key-only 不支持配置，但支持 compression 压缩参数
-- TiCDC changefeed topic partition-num 参数值要求跟 Kafka 集群对应 topic 分区数相同，数据消费依赖 partition-num 自动协调多分区 DDL 同步，DDL 语句同步可能存在因语法不支持同步报错，可根据具体 DDL rewrite 重写继续同步
+- tidb 数据库版本必须是 v6.5.5 <= X < v7.0.0 或者 X >= v7.1.2 数据库版本 
+- tidb 集群上下游要求必须存在有效索引（主键或者 NOT NULL 唯一索引且不存在虚拟生成列），否则数据消费不保证上下游一致性
+- tidb 集群下游消费支持 oracle、postgres、mysql、tidb 数据库，oracle、postgres 数据库不支持特殊字段数据类型 enum、set 同步，而 mysql、tidb 数据库可正常支持
+  - 所有下游数据库 DELETE 语句统一以上游数据库消息有效索引字段（主键 OR NOT NULL 唯一索引）删除，原因尽可能规避下游数据库类似 TEXT、BLOB、LONG、LONG RAW 等大字段文本或者二进制数据字段类型，存在 WHERE 查询条件限制而删除报错（类似 oralce ORA-00932: inconsistent datatypes: expected - got XXXX）
+  - 所有下游数据库 NULL 以及空字符串按消息原值同步，需要注意 oracle NULL 以及空字符串是相等的，而 pg、mysql、tidb 数据库 NULL 以及空字符串是不相等的
+  - 下游数据库 oracle bfile 数据类型同步报错不支持，上游 tidb 常规用 varchar 存放文件路径或者 longtext / blob 存放数据，而下游 oracle bfile 存放文件指针
+  - tidb 数据库 date、datetime、timestamp、year 日期、时间数据类型，下游数据库同步消费差异
+    - oracle 数据库下游 date/datetime/timstamp -> date/timestamp（to_date 统一带时分秒、to_timstamp 统一带时分秒毫秒 6 位）、year -> date/timestamp/number（to_date、to_timstamp 只带年） 数据类型承载，自动自适应下游数据库对应字段进行额外格式化处理，其他数据类型承载不自动处理，原值写入
+    - postgres 数据库下游 date、timestamp、timestamp、int 数据类型承载，同时支持类似 mysql、tidb 数据库字符面量写入，比如：'2020-02-20', '2020-02-20 02:20:20', '2020-02-20 02:20:20', 无需额外处理
+    - mysql / tidb 数据库可直接兼容，无需额外处理
+  - tidb 数据库 time 时间数据类型，不仅可用于指示一天内的时间，还可用于指两个事件之间的时间间隔，下游数据库同步消费差异
+    - oracle 数据库下游 date、timestamp、interval day 数据类型承载，需自适应下游数据库对应字段进行额外格式化处理（to_date/to_timestamp 只带时分秒、 interval 格式化），其他数据类型承载不自动处理，原值写入
+    - postgres 数据库下游 time、interval 时间类型承载，需自适应下游数据库对应字段进行额外格式化处理（time 原值写入、 interval 格式化），其他数据类型承载不自动处理，原值写入
+    - mysql / tidb 数据库可直接兼容，无需额外处理
+- 除 mysql、tidb 以外的所有下游数据库 DELETE 语句 char 类型统一自适应字段长度自动补齐空格，以避免因空格缺失而导致数据无法正确处理问题（比如: oracle 数据库查询或者 DML 操作不会自动补空格），而 INSERT 语句以上游 tidb char 数据类型原值同步消费
+- ticdc 产生的消息事件同个字段类型 id 可能代表不同的数据类型，而不同数据类型对应下游数据库数据类型不一样，比如: text -> clob，blob -> blob，消费处理过程无法识别下游数据类型具体是哪个，需要基于下游元数据辨别，以区分什么类型数据形式（string or []byte）传递
+  -	TINYTEXT / TINYBLOB -> 249
+  - MEDIUMTEXT / MEDIUMBLOB -> 250
+  - LONGTEXT / LONGBLOB -> 251
+  - TEXT / BLOB -> 252
+- tidb 支持同步 DDL、DML Event，但不支持非表级别的同步，比如：CREATE DATABASE、DROP DATABASE、ALTER DATABASE、CREATE USER 等数据实时同步
+- ticdc changefeed large-message-handle-option claim-check 以及 handle-key-only 不支持配置，但支持 compression 压缩参数
+- ticdc changefeed topic partition-num 参数值要求跟 kafka 集群对应 topic 分区数相同，数据消费依赖 partition-num 自动协调多分区 DDL 同步，DDL 语句同步可能存在因语法不支持同步报错，可根据具体 DDL rewrite 重写继续同步，保留 rewrite 记录可重复多次生效
+- ticdc 不支持虚拟生成列的数据表同步，可能会引入上下游数据一致性问题，但支持存储 store 生成列的数据表同步，对于 store 生成列同步，根据参数 enable-virtual-column 配置是否进行数据同步
+  - 当下游表同样存在 virtual column，建议设置 false 即下游自动根据表达式自动计算生成，默认值 false
+  - 当下游表不存在 virtual column，而使用普通数据类型代替，则建议设置 true，自适应下游数据类型调整同步消费
 - 禁止 DDL 协调期间，进行 ticdc changefeed topic 扩容 partition 操作，否则容易产生某个分区因无法接受到 DDL 消息而假死 Hang 暂停消费的状态，数据无法同步
 - 非 DDL 协调期间，进行 ticdc changefeed topic 扩容 partition 操作，需要重启实时同步任务以便可自动识别新增分区，否则可能遗漏新扩容分区数据同步
-- Kafka 建议以集群模式且 partition 多副本形式运行， 以便 Kafka 节点实现高可用容灾
-- TiDB 全量数据迁移暂不支持，当前只支持增量数据实时同步功能
+- kafka 建议以集群模式且 partition 多副本形式运行， 以便 Kafka 节点实现高可用容灾
+- tidb 全量数据迁移暂不支持，当前只支持增量数据实时同步功能
 
 基于 TiCDC + Kafka 数据实时同步，关键参数建议：
 

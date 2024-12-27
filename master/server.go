@@ -312,6 +312,10 @@ func (s *Server) Close() {
 		logger.Info("the dbms-master server closed")
 	}()
 
+	if s.etcdClient != nil {
+		s.etcdClient.Close()
+	}
+
 	// close the etcd and other attached servers
 	if s.etcdSrv != nil {
 		s.etcdSrv.Close()

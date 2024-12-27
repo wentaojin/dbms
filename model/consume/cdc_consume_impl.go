@@ -66,7 +66,7 @@ func (rw *RWMsgTopicPartition) ListMsgTopicPartition(ctx context.Context, page u
 
 func (rw *RWMsgTopicPartition) GetMsgTopicPartition(ctx context.Context, data *MsgTopicPartition) (*MsgTopicPartition, error) {
 	var dataS []*MsgTopicPartition
-	err := rw.DB(ctx).Model(&MsgTopicPartition{}).Where("task_name = ? AND topic = ? and partitions = ?", data.TaskName, data.Topic, data.Partitions).Find(&dataS).Limit(1).Error
+	err := rw.DB(ctx).Model(&MsgTopicPartition{}).Where("task_name = ? AND topic = ? AND partitions = ?", data.TaskName, data.Topic, data.Partitions).Find(&dataS).Limit(1).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -94,7 +94,7 @@ func (rw *RWMsgTopicPartition) DeleteMsgTopicPartition(ctx context.Context, task
 }
 
 func (rw *RWMsgTopicPartition) UpdateMsgTopicPartition(ctx context.Context, data *MsgTopicPartition, updates map[string]interface{}) error {
-	err := rw.DB(ctx).Model(&MsgTopicPartition{}).Where("task_name = ? AND topic = ? and partitions = ?", data.TaskName, data.Topic, data.Partitions).Updates(updates).Error
+	err := rw.DB(ctx).Model(&MsgTopicPartition{}).Where("task_name = ? AND topic = ? AND partitions = ?", data.TaskName, data.Topic, data.Partitions).Updates(updates).Error
 	if err != nil {
 		return fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -118,7 +118,7 @@ func (rw *RWMsgDdlRewrite) TableName(ctx context.Context) string {
 
 func (rw *RWMsgDdlRewrite) CreateMsgDdlRewrite(ctx context.Context, data *MsgDdlRewrite) (*MsgDdlRewrite, error) {
 	err := rw.DB(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_name"}, {Name: "topic"}, {Name: "ddl_digest"}},
+		Columns:   []clause.Column{{Name: "task_name"}, {Name: "topic"}, {Name: "digest"}},
 		UpdateAll: true,
 	}).Create(data).Error
 	if err != nil {
@@ -154,15 +154,17 @@ func (rw *RWMsgDdlRewrite) QueryMsgDdlRewrite(ctx context.Context, data *MsgDdlR
 
 func (rw *RWMsgDdlRewrite) GetMsgDdlRewrite(ctx context.Context, data *MsgDdlRewrite) (*MsgDdlRewrite, error) {
 	var dataS []*MsgDdlRewrite
-	err := rw.DB(ctx).Model(&MsgDdlRewrite{}).Where("task_name = ? AND topic = ? AND ddl_digest = ?",
+	err := rw.DB(ctx).Model(&MsgDdlRewrite{}).Where("task_name = ? AND topic = ? AND digest = ?",
 		data.TaskName,
 		data.Topic,
-		data.DdlDigest).Find(&dataS).Limit(1).Error
+		data.Digest).Find(&dataS).Limit(1).Error
 	if err != nil {
 		return nil, fmt.Errorf("get table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	if len(dataS) > 1 {
 		return nil, fmt.Errorf("the table [%s] record counts [%d] are over one, should be one", rw.TableName(ctx), len(dataS))
+	} else if len(dataS) == 0 {
+		return nil, nil
 	}
 	return dataS[0], nil
 }
@@ -171,6 +173,25 @@ func (rw *RWMsgDdlRewrite) DeleteMsgDdlRewrite(ctx context.Context, taskName []s
 	err := rw.DB(ctx).Where("task_name IN (?)", taskName).Delete(&MsgDdlRewrite{}).Error
 	if err != nil {
 		return fmt.Errorf("delete table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWMsgDdlRewrite) DeleteMsgDdlRewriteByTopicPartition(ctx context.Context, data *MsgDdlRewrite) error {
+	err := rw.DB(ctx).Where("task_name = ? AND topic = ? AND digest = ?",
+		data.TaskName,
+		data.Topic,
+		data.Digest).Delete(&MsgDdlRewrite{}).Error
+	if err != nil {
+		return fmt.Errorf("delete table [%s] topic partiton record failed: %v", rw.TableName(ctx), err)
+	}
+	return nil
+}
+
+func (rw *RWMsgDdlRewrite) UpdateMsgTopicRewrite(ctx context.Context, data *MsgDdlRewrite, updates map[string]interface{}) error {
+	err := rw.DB(ctx).Model(&MsgDdlRewrite{}).Where("task_name = ? AND topic = ? AND digest = ?", data.TaskName, data.Topic, data.Digest).Updates(updates).Error
+	if err != nil {
+		return fmt.Errorf("update table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return nil
 }

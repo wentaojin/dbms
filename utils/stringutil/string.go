@@ -455,6 +455,53 @@ func StringSliceSplit(items []string, splitCounts int) [][]string {
 	return result
 }
 
+// ConvertTimeToSeconds Converts a time interval string to a number of seconds.
+func ConvertTimeToSeconds(timeStr string) (int, error) {
+	hours, minutes, seconds, isNegative, err := parseTimeToIntervals(timeStr)
+	if err != nil {
+		return 0, err
+	}
+
+	totalSeconds := hours*3600 + minutes*60 + seconds
+
+	if isNegative {
+		totalSeconds = -totalSeconds
+	}
+
+	return totalSeconds, nil
+}
+
+// parseTimeToIntervals parses the time interval string into integer values ​​of hours, minutes, and seconds, and returns whether it is a negative value.
+func parseTimeToIntervals(timeStr string) (int, int, int, bool, error) {
+	// check if it is a negative number, remove the minus sign if it exists
+	isNegative := strings.HasPrefix(timeStr, "-")
+	if isNegative {
+		timeStr = timeStr[1:]
+	}
+
+	parts := strings.Split(timeStr, ":")
+	if len(parts) != 3 {
+		return 0, 0, 0, false, fmt.Errorf("invalid time format")
+	}
+
+	hours, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, 0, false, fmt.Errorf("invalid hours part: %v", err)
+	}
+
+	minutes, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, 0, false, fmt.Errorf("invalid minutes part: %v", err)
+	}
+
+	seconds, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, 0, 0, false, fmt.Errorf("invalid seconds part: %v", err)
+	}
+
+	return hours, minutes, seconds, isNegative, nil
+}
+
 // AnySliceSplit used for the according to splitCounts, split slice
 func AnySliceSplit(value interface{}, batchSize int) []interface{} {
 	var result []interface{}

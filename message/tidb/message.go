@@ -74,10 +74,33 @@ func (c *Column) ConvRowChangeColumn(name string) (*ConvColumn, error) {
 	if c.ColumnValue == nil {
 		return col, nil
 	}
+
+	/*
+		BinaryFlag is meaningful only when the column is of BLOB/TEXT (including TINYBLOB/TINYTEXT, BINARY/CHAR, etc.) type.
+		When the upstream column is of BLOB type, BinaryFlag is set to 1; when the upstream column is of TEXT type, BinaryFlag is set to 0.
+	*/
 	switch c.ColumnType {
-	case TypeVarchar, TypeVarbinary, TypeChar:
+	case TypeVarchar, TypeVarbinary:
 		str := col.ColumnValue.(string)
 		var err error
+
+		// the value is encoded as UTF-8. When the upstream type is VARBINARY, the data has escaped invisible characters and needs to be reversed.
+		if c.ColumnFlag.IsBinary() {
+			str, err = strconv.Unquote("\"" + str + "\"")
+			if err != nil {
+				return col, fmt.Errorf("invalid column value [%s], strconv unquote failed: %v", c.String(), err)
+			}
+			col.ColumnValue = []byte(str)
+			col.ColumnType = TypeVarbinary.ColumnType()
+		} else {
+			col.ColumnValue = str
+			col.ColumnType = c.ColumnType.ColumnType()
+		}
+	case TypeChar:
+		str := col.ColumnValue.(string)
+		var err error
+
+		// the value is encoded as UTF-8. When the upstream type is BINARY, the data has escaped invisible characters and needs to be reversed.
 		if c.ColumnFlag.IsBinary() {
 			str, err = strconv.Unquote("\"" + str + "\"")
 			if err != nil {
@@ -89,6 +112,43 @@ func (c *Column) ConvRowChangeColumn(name string) (*ConvColumn, error) {
 			col.ColumnValue = str
 			col.ColumnType = c.ColumnType.ColumnType()
 		}
+	case TypeTinyBlob:
+		str := col.ColumnValue.(string)
+		if c.ColumnFlag.IsBinary() {
+			col.ColumnValue = []byte(str)
+			col.ColumnType = c.ColumnType.ColumnType()
+		} else {
+			col.ColumnValue = str
+			col.ColumnType = TypeTinyText.ColumnType()
+		}
+
+	case TypeMediumBlob:
+		str := col.ColumnValue.(string)
+		if c.ColumnFlag.IsBinary() {
+			col.ColumnValue = []byte(str)
+			col.ColumnType = c.ColumnType.ColumnType()
+		} else {
+			col.ColumnValue = str
+			col.ColumnType = TypeMediumText.ColumnType()
+		}
+	case TypeLongBlob:
+		str := col.ColumnValue.(string)
+		if c.ColumnFlag.IsBinary() {
+			col.ColumnValue = []byte(str)
+			col.ColumnType = c.ColumnType.ColumnType()
+		} else {
+			col.ColumnValue = str
+			col.ColumnType = TypeLongText.ColumnType()
+		}
+	case TypeBlob:
+		str := col.ColumnValue.(string)
+		if c.ColumnFlag.IsBinary() {
+			col.ColumnValue = []byte(str)
+			col.ColumnType = c.ColumnType.ColumnType()
+		} else {
+			col.ColumnValue = str
+			col.ColumnType = TypeText.ColumnType()
+		}
 	case TypeFloat:
 		col.ColumnValue = float32(col.ColumnValue.(float64))
 	case TypeYear:
@@ -99,7 +159,10 @@ func (c *Column) ConvRowChangeColumn(name string) (*ConvColumn, error) {
 			return col, fmt.Errorf("invalid column value for enum [%s], assert json.Number failed: %v", c.String(), err)
 		}
 		col.ColumnValue = uint64(val)
+	case TypeBit:
+		col.ColumnValue = strconv.FormatUint(col.ColumnValue.(uint64), 2)
 	}
+
 	return col, nil
 }
 

@@ -230,6 +230,10 @@ func ShowCdcConsumeTask(ctx context.Context, req *pb.ShowCdcConsumeTaskRequest) 
 		if err != nil {
 			return fmt.Errorf("parse enable_checkpoint err: %v", err)
 		}
+		enableVirtualColumn, err := strconv.ParseBool(paramMap[constant.ParamNameCdcConsumeEnableVirtualColumn])
+		if err != nil {
+			return fmt.Errorf("parse enable_virtual_column err: %v", err)
+		}
 
 		param = &pb.CdcConsumeParam{
 			TableThread:           tableThread,
@@ -239,6 +243,7 @@ func ShowCdcConsumeTask(ctx context.Context, req *pb.ShowCdcConsumeTaskRequest) 
 			SubscribeTopic:        paramMap[constant.ParamNameCdcConsumeSubscribeTopic],
 			ServerAddress:         stringutil.StringSplit(paramMap[constant.ParamNameCdcConsumeServerAddress], constant.StringSeparatorComma),
 			EnableCheckpoint:      enableCheckpoint,
+			EnableVirtualColumn:   enableVirtualColumn,
 		}
 
 		schemaRouteRule, _, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -414,19 +419,16 @@ func RewriteCdcConsumeTask(ctx context.Context, serverAddr, taskName, topic, ddl
 		return fmt.Errorf("the [%v] task [%v] is not existed, please create the task", stringutil.StringLower(taskInfo.TaskMode), taskInfo.TaskName)
 	}
 
-	decrStr, err := stringutil.Decrypt(ddlDigest, []byte(constant.DefaultDataEncryptDecryptKey))
-	if err != nil {
-		return err
-	}
-	if _, err := model.GetIMsgDdlRewriteRW().CreateMsgDdlRewrite(ctx, &consume.MsgDdlRewrite{
-		TaskName:       taskName,
-		Topic:          topic,
-		DdlDigest:      ddlDigest,
-		OriginDdlText:  decrStr,
-		RewriteDdlText: rewriteText,
+	if err := model.GetIMsgDdlRewriteRW().UpdateMsgTopicRewrite(ctx, &consume.MsgDdlRewrite{
+		TaskName: taskName,
+		Topic:    topic,
+		Digest:   ddlDigest,
+	}, map[string]interface{}{
+		"RewriteDdlText": rewriteText,
 	}); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -477,6 +479,13 @@ func getCdcConsumeTasKParams(ctx context.Context, taskName string) (*pb.CdcConsu
 				return taskParam, err
 			}
 			taskParam.EnableCheckpoint = enableCheckpoint
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCdcConsumeEnableVirtualColumn) {
+			enableVirtualColumn, err := strconv.ParseBool(p.ParamValue)
+			if err != nil {
+				return taskParam, err
+			}
+			taskParam.EnableVirtualColumn = enableVirtualColumn
 		}
 	}
 	return taskParam, nil

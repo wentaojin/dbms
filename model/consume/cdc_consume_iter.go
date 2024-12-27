@@ -32,4 +32,6 @@ type IMsgDdlRewrite interface {
 	QueryMsgDdlRewrite(ctx context.Context, data *MsgDdlRewrite) ([]*MsgDdlRewrite, error)
 	GetMsgDdlRewrite(ctx context.Context, data *MsgDdlRewrite) (*MsgDdlRewrite, error)
 	DeleteMsgDdlRewrite(ctx context.Context, taskName []string) error
+	DeleteMsgDdlRewriteByTopicPartition(ctx context.Context, data *MsgDdlRewrite) error
+	UpdateMsgTopicRewrite(ctx context.Context, data *MsgDdlRewrite, updates map[string]interface{}) error
 }

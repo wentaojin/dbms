@@ -54,15 +54,20 @@ import (
 type Server struct {
 	*Config
 
+	ctx context.Context
+
 	etcdClient *clientv3.Client
 
 	// the used for database connection ready
 	// before database connect success, worker disable service
 	dbConnReady *atomic.Bool
 
-	mu         sync.Mutex
+	mu sync.Mutex
+
 	cancelCtx  context.Context
 	cancelFunc context.CancelFunc
+
+	wg *sync.WaitGroup
 
 	grpcServer *grpc.Server
 
@@ -71,16 +76,18 @@ type Server struct {
 }
 
 // NewServer creates a new server
-func NewServer(cfg *Config) *Server {
+func NewServer(ctx context.Context, cfg *Config) *Server {
 	return &Server{
+		ctx:         ctx,
 		Config:      cfg,
 		mu:          sync.Mutex{},
+		wg:          &sync.WaitGroup{},
 		dbConnReady: new(atomic.Bool),
 	}
 }
 
 // Start starts to serving
-func (s *Server) Start(ctx context.Context) error {
+func (s *Server) Start() error {
 	err := s.initOption(configutil.WithWorkerName(s.WorkerOptions.Name),
 		configutil.WithWorkerAddr(s.WorkerOptions.WorkerAddr),
 		configutil.WithMasterEndpoint(s.WorkerOptions.Endpoint),
@@ -91,12 +98,12 @@ func (s *Server) Start(ctx context.Context) error {
 		return err
 	}
 
-	s.etcdClient, err = etcdutil.CreateClient(ctx, stringutil.WrapSchemes(s.WorkerOptions.Endpoint, false), nil)
+	s.etcdClient, err = etcdutil.CreateClient(s.ctx, stringutil.WrapSchemes(s.WorkerOptions.Endpoint, false), nil)
 	if err != nil {
 		return fmt.Errorf("create etcd client for [%v] failed: [%v]", s.WorkerOptions.Endpoint, err)
 	}
 
-	err = s.registerService(ctx)
+	err = s.registerService(s.ctx)
 	if err != nil {
 		return err
 	}
@@ -109,7 +116,7 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	select {
-	case <-ctx.Done():
+	case <-s.ctx.Done():
 		return nil
 	}
 }
@@ -234,8 +241,11 @@ func (s *Server) Close() {
 	if s.cancelFunc != nil {
 		s.cancelFunc()
 	}
+	if s.etcdClient != nil {
+		s.etcdClient.Close()
+	}
 	if s.grpcServer != nil {
-		s.grpcServer.GracefulStop()
+		s.grpcServer.Stop()
 	}
 }
 
@@ -259,11 +269,54 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 
 	switch stringutil.StringUpper(req.Operate) {
 	case constant.TaskOperationStart:
-		s.cancelCtx, s.cancelFunc = context.WithCancel(context.Background())
+		s.cancelCtx, s.cancelFunc = context.WithCancel(s.ctx)
+		s.wg.Add(1)
+		go func() {
+			defer func() {
+				if err := recover(); err != nil {
+					logger.Error("task paniced by handle error",
+						zap.String("task_name", t.TaskName),
+						zap.String("task_flow", t.TaskFlow),
+						zap.String("task_mode", t.TaskMode),
+						zap.String("worker", t.WorkerAddr),
+						zap.Any("panic", stringutil.BytesToString(debug.Stack())),
+						zap.Any("recover", err))
+				}
+				s.wg.Done()
+			}()
+
+			err := s.OperateStart(s.cancelCtx, t)
+			if err == nil {
+				return
+			}
+
+			switch err {
+			case context.Canceled:
+				// stop command context canceled ignore panic, only record handle painc error
+				if err := s.handleOperateError(s.ctx, t, err); err != nil {
+					panic(err)
+				}
+			default:
+				if err := s.handleOperateError(s.ctx, t, err); err != nil {
+					panic(err)
+				}
+				panic(err)
+			}
+
+			select {
+			case <-s.cancelCtx.Done():
+				logger.Error("task stopped by cancel task",
+					zap.String("task_name", t.TaskName),
+					zap.String("task_flow", t.TaskFlow),
+					zap.String("task_mode", t.TaskMode),
+					zap.String("worker", t.WorkerAddr),
+					zap.Error(s.cancelCtx.Err()))
+				return
+			}
+		}()
 
 		go func() {
-			defer s.handlePanicRecover(context.Background(), t)
-			s.OperateStart(s.cancelCtx, t)
+			s.wg.Wait()
 		}()
 
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
@@ -275,14 +328,14 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 		// the task is exits, stop the task
 		if s.cancelFunc != nil {
 			s.cancelFunc()
-			err = s.OperateStop(context.TODO(), t)
-			if err != nil {
-				return &pb.OperateWorkerResponse{Response: &pb.Response{
-					Result:  openapi.ResponseResultStatusFailed,
-					Message: err.Error(),
-				}}, err
-			}
 			s.cancelFunc = nil // reset
+		}
+		err = s.OperateStop(s.ctx, t)
+		if err != nil {
+			return &pb.OperateWorkerResponse{Response: &pb.Response{
+				Result:  openapi.ResponseResultStatusFailed,
+				Message: err.Error(),
+			}}, err
 		}
 		return &pb.OperateWorkerResponse{Response: &pb.Response{
 			Result:  openapi.ResponseResultStatusSuccess,
@@ -298,17 +351,9 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 
 		if s.cancelFunc != nil {
 			s.cancelFunc()
-			err = s.OperateStop(context.TODO(), t)
-			if err != nil {
-				return &pb.OperateWorkerResponse{Response: &pb.Response{
-					Result:  openapi.ResponseResultStatusFailed,
-					Message: err.Error(),
-				}}, err
-			}
 			s.cancelFunc = nil // reset
 		}
-
-		err = s.OperateDelete(context.TODO(), t)
+		err = s.OperateDelete(s.ctx, t)
 		if err != nil {
 			return &pb.OperateWorkerResponse{Response: &pb.Response{
 				Result:  openapi.ResponseResultStatusFailed,
@@ -327,82 +372,85 @@ func (s *Server) OperateWorker(ctx context.Context, req *pb.OperateWorkerRequest
 
 }
 
-func (s *Server) OperateStart(ctx context.Context, t *task.Task) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			switch stringutil.StringUpper(t.TaskMode) {
-			case constant.TaskModeAssessMigrate:
-				err := service.StartAssessMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
-				}
-			case constant.TaskModeStructMigrate:
-				err := service.StartStructMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
-				}
-			case constant.TaskModeStmtMigrate:
-				err := service.StartStmtMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
-				}
-			case constant.TaskModeCSVMigrate:
-				err := service.StartCsvMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
-				}
-			case constant.TaskModeSqlMigrate:
-				err := service.StartSqlMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
-				}
-			case constant.TaskModeDataCompare:
-				err := service.StartDataCompareTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
-				}
-			case constant.TaskModeStructCompare:
-				err := service.StartStructCompareTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
-				}
-			case constant.TaskModeDataScan:
-				err := service.StartDataScanTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					panic(err)
-				}
-			default:
-				panic(fmt.Errorf("the worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode))
-			}
+func (s *Server) OperateStart(ctx context.Context, t *task.Task) error {
+	logger.Info("task started by start command",
+		zap.String("task_name", t.TaskName),
+		zap.String("task_flow", t.TaskFlow),
+		zap.String("task_mode", t.TaskMode))
 
-			w := &etcdutil.Instance{
-				Addr:     s.WorkerOptions.WorkerAddr,
-				Role:     constant.DefaultInstanceRoleWorker,
-				State:    constant.DefaultInstanceFreeState,
-				TaskName: "",
-			}
-			_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
-			if err != nil {
-				panic(fmt.Errorf("the worker task [%v] finished, but the worker instance wirte [%v] value failed: [%v]", t.TaskName, w.String(), err))
-			}
+	switch stringutil.StringUpper(t.TaskMode) {
+	case constant.TaskModeAssessMigrate:
+		err := service.StartAssessMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	case constant.TaskModeStructMigrate:
+		err := service.StartStructMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	case constant.TaskModeStmtMigrate:
+		err := service.StartStmtMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	case constant.TaskModeCSVMigrate:
+		err := service.StartCsvMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	case constant.TaskModeSqlMigrate:
+		err := service.StartSqlMigrateTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	case constant.TaskModeDataCompare:
+		err := service.StartDataCompareTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	case constant.TaskModeStructCompare:
+		err := service.StartStructCompareTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	case constant.TaskModeDataScan:
+		err := service.StartDataScanTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	case constant.TaskModeCdcConsume:
+		err := service.StartCdcConsumeTask(ctx, t.TaskName, s.WorkerOptions.WorkerAddr)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("the worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode)
+	}
 
-			// task status double check
-			newTask, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: t.TaskName})
-			if err != nil {
-				panic(fmt.Errorf("the worker task [%v] finished, but the query worker task the database task_status failed: [%v]", t.TaskName, err))
-			}
-			if strings.EqualFold(newTask.TaskStatus, constant.TaskDatabaseStatusSuccess) {
-				_, err = etcdutil.DeleteKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName))
-				if err != nil {
-					panic(fmt.Errorf("the worker task [%v] success, but the worker refrenece delete [%v] value failed: [%v]", t.TaskName, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName), err))
-				}
-			}
-			s.cancelFunc()
+	w := &etcdutil.Instance{
+		Addr:     s.WorkerOptions.WorkerAddr,
+		Role:     constant.DefaultInstanceRoleWorker,
+		State:    constant.DefaultInstanceFreeState,
+		TaskName: "",
+	}
+	_, err := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+	if err != nil {
+		return fmt.Errorf("the worker task [%v] finished, but the worker instance wirte [%v] value failed: [%v]", t.TaskName, w.String(), err)
+	}
+
+	// task status double check
+	newTask, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: t.TaskName})
+	if err != nil {
+		return fmt.Errorf("the worker task [%v] finished, but the query worker task the database task_status failed: [%v]", t.TaskName, err)
+	}
+	if strings.EqualFold(newTask.TaskStatus, constant.TaskDatabaseStatusSuccess) {
+		_, err = etcdutil.DeleteKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName))
+		if err != nil {
+			return fmt.Errorf("the worker task [%v] success, but the worker refrenece delete [%v] value failed: [%v]", t.TaskName, stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, t.TaskName), err)
 		}
 	}
+	return nil
 }
 
 func (s *Server) OperateStop(ctx context.Context, t *task.Task) error {
@@ -447,6 +495,11 @@ func (s *Server) OperateStop(ctx context.Context, t *task.Task) error {
 		if err != nil {
 			return err
 		}
+	case constant.TaskModeCdcConsume:
+		err := service.StopCdcConsumeTask(ctx, t.TaskName)
+		if err != nil {
+			return err
+		}
 	default:
 		panic(fmt.Errorf("the worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode))
 	}
@@ -461,10 +514,10 @@ func (s *Server) OperateStop(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return err
 	}
-	logger.Error("the worker task stopped",
+	logger.Error("task stopped by stop command",
 		zap.String("task_name", t.TaskName),
-		zap.String("task_mode", t.TaskMode),
 		zap.String("task_flow", t.TaskFlow),
+		zap.String("task_mode", t.TaskMode),
 		zap.String("worker", w.String()))
 	return nil
 }
@@ -636,6 +689,11 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 		if err != nil {
 			return err
 		}
+	case constant.TaskModeCdcConsume:
+		_, err := service.DeleteCdcConsumeTask(ctx, &pb.DeleteCdcConsumeTaskRequest{TaskName: []string{t.TaskName}})
+		if err != nil {
+			return err
+		}
 	default:
 		panic(fmt.Errorf("the worker [%v] task [%v] mode [%v] is not support, please contact author or reselect", s.WorkerOptions.WorkerAddr, t.TaskName, t.TaskMode))
 	}
@@ -659,61 +717,66 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return err
 	}
-	logger.Error("the worker task deleted",
+	logger.Error("task deleted by delete command",
 		zap.String("task_name", t.TaskName),
-		zap.String("task_mode", t.TaskMode),
 		zap.String("task_flow", t.TaskFlow),
+		zap.String("task_mode", t.TaskMode),
 		zap.String("worker", w.String()))
 	return nil
 }
 
-func (s *Server) handlePanicRecover(ctx context.Context, t *task.Task) {
-	if r := recover(); r != nil {
-		// recover cancel
-		if s.cancelFunc != nil {
-			s.cancelFunc()
-		}
-
-		errTxn := model.Transaction(ctx, func(txnCtx context.Context) error {
-			_, err := model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
-				TaskName: t.TaskName,
-			}, map[string]interface{}{
-				"TaskStatus": constant.TaskDatabaseStatusFailed,
-				"EndTime":    time.Now(),
-			})
-			if err != nil {
-				return err
-			}
-			_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
-				TaskName: t.TaskName,
-				LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] running [%v], error: [%v], stack: %v",
-					stringutil.CurrentTimeFormatString(),
-					stringutil.StringLower(t.TaskMode),
-					stringutil.StringLower(constant.TaskDatabaseStatusFailed),
-					t.TaskName,
-					r,
-					stringutil.BytesToString(debug.Stack())),
-			})
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-
-		w := &etcdutil.Instance{
-			Addr:     s.WorkerOptions.WorkerAddr,
-			Role:     constant.DefaultInstanceRoleWorker,
-			State:    constant.DefaultInstanceFailedState,
-			TaskName: t.TaskName,
-		}
-		_, errPut := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
-
-		logger.Error("the worker running task panic",
-			zap.String("task_name", t.TaskName),
-			zap.String("worker_addr", s.WorkerOptions.WorkerAddr),
-			zap.Any("panic", r),
-			zap.Any("stack", stringutil.BytesToString(debug.Stack())),
-			zap.Any("errorTxn", errTxn),
-			zap.Any("errorPut", errPut))
+func (s *Server) handleOperateError(ctx context.Context, t *task.Task, err error) error {
+	if s.cancelFunc != nil {
+		s.cancelFunc()
+		s.cancelFunc = nil
 	}
+
+	// stop command send context.Canceled, task status should be constant.TaskDatabaseStatusStopped
+	var taskStatus string
+	if errors.Is(err, context.Canceled) {
+		taskStatus = constant.TaskDatabaseStatusStopped
+	} else {
+		taskStatus = constant.TaskDatabaseStatusFailed
+	}
+
+	errTxn := model.Transaction(ctx, func(txnCtx context.Context) error {
+		_, err := model.GetITaskRW().UpdateTask(txnCtx, &task.Task{
+			TaskName: t.TaskName,
+		}, map[string]interface{}{
+			"TaskStatus": taskStatus,
+			"EndTime":    time.Now(),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = model.GetITaskLogRW().CreateLog(txnCtx, &task.Log{
+			TaskName: t.TaskName,
+			LogDetail: fmt.Sprintf("%v [%v] the worker task [%v] running [%v], error: [%v], stack: %v",
+				stringutil.CurrentTimeFormatString(),
+				stringutil.StringLower(t.TaskMode),
+				stringutil.StringLower(taskStatus),
+				t.TaskName,
+				err,
+				stringutil.BytesToString(debug.Stack())),
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if errTxn != nil {
+		return fmt.Errorf("the task_name [%s] worker_addr [%s] running failed, update task failed status error: [%v]", t.TaskName, s.WorkerOptions.WorkerAddr, errTxn)
+	}
+
+	w := &etcdutil.Instance{
+		Addr:     s.WorkerOptions.WorkerAddr,
+		Role:     constant.DefaultInstanceRoleWorker,
+		State:    constant.DefaultInstanceFailedState,
+		TaskName: t.TaskName,
+	}
+	_, errPut := etcdutil.PutKey(s.etcdClient, stringutil.StringBuilder(constant.DefaultInstanceServiceRegisterPrefixKey, s.WorkerOptions.WorkerAddr), w.String())
+	if errPut != nil {
+		return fmt.Errorf("the task_name [%s] worker_addr [%s] running failed, put task failed status error: [%v]", t.TaskName, s.WorkerOptions.WorkerAddr, errPut)
+	}
+	return nil
 }

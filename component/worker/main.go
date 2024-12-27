@@ -44,8 +44,8 @@ func main() {
 		cancel()
 	})
 
-	srv := worker.NewServer(cfg)
-	err := srv.Start(ctx)
+	srv := worker.NewServer(ctx, cfg)
+	err := srv.Start()
 	if err != nil {
 		logger.Fatal("server start failed", zap.Error(err))
 		os.Exit(1)

@@ -29,6 +29,12 @@ var (
 		BuildInOracleDatatypeVarchar2,
 		BuildInOracleDatatypeVarchar,
 	}
+
+	OracleCompatibleDatabaseTableColumnBinaryDatatype = []string{
+		BuildInOracleDatatypeBlob,
+		BuildInOracleDatatypeRaw,
+		BuildInOracleDatatypeLongRAW,
+	}
 )
 
 const (

@@ -16,12 +16,14 @@ limitations under the License.
 package tidb
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/wentaojin/dbms/logger"
 	"go.uber.org/zap"
 )
+
+// global ddl coordinator
+var ddlCoordinator *DdlCoordinator
 
 type DdlCoordinator struct {
 	mu sync.Mutex `json:"-"`
@@ -43,11 +45,14 @@ type DdlCoordinator struct {
 	Ddls DDLChangedEvents `json:"Ddls"`
 }
 
-func NewDdlCoordinator(coords int) *DdlCoordinator {
+func NewDdlCoordinator() *DdlCoordinator {
 	return &DdlCoordinator{
-		CoordNums:    coords,
 		Coordinators: make(map[string][]int),
 	}
+}
+
+func (d *DdlCoordinator) SetCoords(coords int) {
+	d.CoordNums = coords
 }
 
 func (d *DdlCoordinator) IsDDLFlush(key *DDLChangedEvent) bool {
@@ -110,12 +115,6 @@ func (d *DdlCoordinator) Len(key *DDLChangedEvent) int {
 // append DDL wait to be handled, only consider the constraint among DDLs.
 // for DDL a / b received in the order, a.CommitTs < b.CommitTs should be true.
 func (d *DdlCoordinator) appendDDL(ddl *DDLChangedEvent) {
-	// DDL commitTs fallback, just crash it to indicate the bug.
-	if d.DdlWithMaxCommitTs != nil && ddl.CommitTs < d.DdlWithMaxCommitTs.CommitTs {
-		logger.Error("ddl event consume fallback", zap.String("events", ddl.String()))
-		panic(fmt.Errorf("ddl event consume fallback, events [%v], indicate the bug, please contact author", ddl.String()))
-	}
-
 	// A rename tables DDL job contains multiple DDL events with same CommitTs.
 	// So to tell if a DDL is redundant or not, we must check the equivalence of
 	// the current DDL and the DDL with max CommitTs.

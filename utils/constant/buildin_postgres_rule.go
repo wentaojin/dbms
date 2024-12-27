@@ -34,14 +34,28 @@ const (
 	PostgresDatabasePrimaryRole = "PRIMARY"
 )
 
-/*
-Postgres support the table column charset and collation datatype
-*/
-var PostgresDatabaseTableColumnSupportCharsetCollationDatatype = []string{
-	BuildInPostgresDatatypeText,
-	BuildInPostgresDatatypeCharacterVarying,
-	BuildInPostgresDatatypeCharacter,
-}
+var (
+	/*
+		Postgres support the table column charset and collation datatype
+	*/
+	PostgresDatabaseTableColumnSupportCharsetCollationDatatype = []string{
+		BuildInPostgresDatatypeText,
+		BuildInPostgresDatatypeCharacterVarying,
+		BuildInPostgresDatatypeCharacter,
+	}
+
+	PostgresDatabaseTableColumnBinaryDatatype = []string{
+		BuildInPostgresDatatypeBytea,
+	}
+
+	PostgresDatabaseTableColumnIntergerDatatype = []string{
+		BuildInPostgresDatatypeInteger,
+		BuildInPostgresDatatypeSmallInt,
+		BuildInPostgresDatatypeBigInt,
+		BuildInPostgresDatatypeNumeric,
+		BuildInPostgresDatatypeDecimal,
+	}
+)
 
 /*
 	Database Datatype

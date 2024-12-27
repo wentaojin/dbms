@@ -32,8 +32,8 @@ type MsgDdlRewrite struct {
 	ID             uint64 `gorm:"primary_key;autoIncrement;comment:id" json:"id"`
 	TaskName       string `gorm:"type:varchar(30);not null;uniqueIndex:uniq_task_topic_complex;comment:task name" json:"taskName"`
 	Topic          string `gorm:"type:varchar(100);not null;uniqueIndex:uniq_task_topic_complex;comment:subscribe topic name" json:"topic"`
-	DdlDigest      string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_task_topic_complex;comment:subscribe topic ddl digest" json:"ddlDigest"`
+	Digest         string `gorm:"type:varchar(300);not null;uniqueIndex:uniq_task_topic_complex;comment:subscribe topic digest" json:"digest"`
 	OriginDdlText  string `gorm:"type:longtext;not null;comment:subscribe topic origin ddl text" json:"originDdlText"`
-	RewriteDdlText string `gorm:"type:longtext;not null;comment:subscribe topic rewrite ddl text" json:"rewriteDdlText"`
+	RewriteDdlText string `gorm:"type:longtext;comment:subscribe topic rewrite ddl text" json:"rewriteDdlText"`
 	*common.Entity
 }

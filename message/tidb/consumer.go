@@ -17,9 +17,13 @@ package tidb
 
 import (
 	"context"
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 	"github.com/wentaojin/dbms/database"
@@ -36,29 +40,115 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var consumers *Consumers
+
+type Consumers struct {
+	mu        sync.Mutex
+	consumers map[int]*Consumer // 使用 kafka paritionID 作为 key
+}
+
+func NewConsumers() *Consumers {
+	return &Consumers{
+		consumers: make(map[int]*Consumer),
+	}
+}
+
+func (s *Consumers) Get(partition int) (*Consumer, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ps, exists := s.consumers[partition]
+	if !exists {
+		return nil, fmt.Errorf("the consumer [%d] does not exists", partition)
+	}
+	return ps, nil
+}
+
+func (s *Consumers) Set(partition int, c *Consumer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.consumers[partition] = c
+}
+
+func (s *Consumers) Len() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.consumers)
+}
+
+func (s *Consumers) All() map[int]*Consumer {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.consumers
+}
+
+func (s *Consumers) Close(partition int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if c, exits := s.consumers[partition]; exits {
+		if err := c.consumer.Close(); err != nil {
+			return fmt.Errorf("the consumer [%d] closed failed: [%v]", partition, err)
+		}
+		delete(s.consumers, partition)
+	}
+	return nil
+}
+
+func (s *Consumers) Stop(partition int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	ps, exists := s.consumers[partition]
+	if !exists {
+		return fmt.Errorf("the consumer [%d] does not exists", partition)
+	}
+
+	// Send a stop signal
+	ps.cancelFn()
+
+	if err := ps.consumer.Close(); err != nil {
+		return fmt.Errorf("the consumer [%d] closed failed: [%v]", partition, err)
+	}
+	delete(s.consumers, partition)
+	return nil
+}
+
+func (s *Consumers) StopAll() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, ps := range s.consumers {
+		if err := ps.consumer.Close(); err != nil {
+			return fmt.Errorf("the consumer [%d] closed failed: %v", ps.partition, err)
+		}
+		delete(s.consumers, ps.partition)
+	}
+	return nil
+}
+
+// ConsumerGroup represents the consumer manager
 type ConsumerGroup struct {
 	task      *task.Task
 	cancelCtx context.Context
 	cancelFn  context.CancelFunc
-	mu        sync.Mutex
 
 	partitions []int
-
-	consumers map[int]*Consumer // 使用 kafka paritionID 作为 key
-
-	ddlCoordinator *DdlCoordinator
+	consumers  *Consumers
 
 	schemaRoute   *rule.SchemaRouteRule
 	tableRoute    []*rule.TableRouteRule
 	columnRoute   []*rule.ColumnRouteRule
 	consumeParam  *pb.CdcConsumeParam
-	consumeTables []string
 	databaseT     database.IDatabase
 	dbTypeT       string
+	consumeTables []string
+	metadatas     []*metadata
 }
 
+// Consumer represents a specific consumer
 type Consumer struct {
+	task        *task.Task
 	cancelCtx   context.Context
+	cancelFn    context.CancelFunc
 	serverAddrs []string
 	topic       string
 	partition   int
@@ -66,7 +156,6 @@ type Consumer struct {
 	kafkaOffset int64
 
 	consumer     *kafka.Reader
-	stopChan     chan struct{}
 	needContinue bool
 
 	// Messages are stored in groups according to database tables
@@ -74,12 +163,19 @@ type Consumer struct {
 	eventGroups map[string]*EventGroup
 	wg          *sync.WaitGroup
 
-	// Avoid frequent metadata refreshes due to no data before resolvedTs. Check whether there is data before <= resolvedTs.
-	// If there is data, set needFlush to refresh immediately. If there are X consecutive resolvedTs with no data, needFlush is set when X resolvedTs are reached.
-	// ResolvedTs according to a single partition ticdc interval Generates 1 resolvedTs approximately every 1 second, with a setting value of 60
-	resolvedTs []uint64
-
 	decoder RowEventDecoder
+
+	// Avoid frequent metadata refreshes due to no data before resolvedTs. Check whether there is data before <= resolvedTs.
+	lastCommitTime time.Time
+
+	schemaRoute   *rule.SchemaRouteRule
+	tableRoute    []*rule.TableRouteRule
+	columnRoute   []*rule.ColumnRouteRule
+	consumeParam  *pb.CdcConsumeParam
+	databaseT     database.IDatabase
+	dbTypeT       string
+	consumeTables []string
+	metadatas     []*metadata
 }
 
 func NewConsumerGroup(
@@ -92,34 +188,41 @@ func NewConsumerGroup(
 	param *pb.CdcConsumeParam,
 	partitions []int,
 	dbTypeT string,
-	database database.IDatabase) *ConsumerGroup {
+	database database.IDatabase,
+	metadatas []*metadata) *ConsumerGroup {
 	cancelCtx, cancelFn := context.WithCancel(ctx)
+
+	// init
+	ddlCoordinator = NewDdlCoordinator()
+	ddlCoordinator.SetCoords(len(partitions))
+
+	consumers = NewConsumers()
 	return &ConsumerGroup{
 		task:      task,
 		cancelCtx: cancelCtx,
 		cancelFn:  cancelFn,
 
-		partitions:     partitions,
-		ddlCoordinator: NewDdlCoordinator(len(partitions)),
-		dbTypeT:        dbTypeT,
-		databaseT:      database,
-		consumers:      make(map[int]*Consumer),
-		consumeParam:   param,
-		consumeTables:  consumeTables,
-		schemaRoute:    schemaRoute,
-		tableRoute:     tableRoute,
-		columnRoute:    columnRoute,
+		partitions:    partitions,
+		dbTypeT:       dbTypeT,
+		databaseT:     database,
+		consumeParam:  param,
+		consumeTables: consumeTables,
+		schemaRoute:   schemaRoute,
+		tableRoute:    tableRoute,
+		columnRoute:   columnRoute,
+		consumers:     consumers,
+		metadatas:     metadatas,
 	}
 }
 
 func (cg *ConsumerGroup) Run() error {
-	g, gCtx := errgroup.WithContext(cg.cancelCtx)
+	g := &errgroup.Group{}
 	g.SetLimit(len(cg.partitions))
 
-	for _, ps := range cg.partitions {
-		p := ps
+	for _, partition := range cg.partitions {
+		p := partition
 		g.Go(func() error {
-			if err := cg.Start(gCtx, p); err != nil {
+			if err := cg.Start(p); err != nil {
 				return err
 			}
 			return nil
@@ -138,18 +241,30 @@ func (cg *ConsumerGroup) Close() error {
 	return nil
 }
 
-func (cg *ConsumerGroup) Start(ctx context.Context, partition int) error {
-	cg.mu.Lock()
-	defer cg.mu.Unlock()
-
-	if _, exists := cg.consumers[partition]; exists {
+func (cg *ConsumerGroup) Start(partition int) error {
+	if _, err := cg.consumers.Get(partition); err == nil {
 		return fmt.Errorf("the consumer [%d] has already exists, please setting new partition", partition)
 	}
 
-	msg, err := model.GetIMsgTopicPartitionRW().GetMsgTopicPartition(ctx, &consume.MsgTopicPartition{
+	msg, err := model.GetIMsgTopicPartitionRW().GetMsgTopicPartition(cg.cancelCtx, &consume.MsgTopicPartition{
 		TaskName:   cg.task.TaskName,
 		Topic:      cg.consumeParam.SubscribeTopic,
 		Partitions: partition,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = model.GetITaskLogRW().CreateLog(cg.cancelCtx, &task.Log{
+		TaskName: cg.task.TaskName,
+		LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] cdc consumer topic [%s] partition [%d] started",
+			stringutil.CurrentTimeFormatString(),
+			stringutil.StringLower(constant.TaskModeCdcConsume),
+			cg.task.WorkerAddr,
+			cg.task.TaskName,
+			cg.consumeParam.SubscribeTopic,
+			partition,
+		),
 	})
 	if err != nil {
 		return err
@@ -163,20 +278,29 @@ func (cg *ConsumerGroup) Start(ctx context.Context, partition int) error {
 		zap.Int("partition", partition),
 		zap.Uint64("checkpoint", msg.Checkpoint))
 
+	cancelCtx, cancelFn := context.WithCancel(cg.cancelCtx)
 	c := &Consumer{
-		cancelCtx:    cg.cancelCtx,
-		serverAddrs:  cg.consumeParam.ServerAddress,
-		topic:        cg.consumeParam.SubscribeTopic,
-		partition:    partition,
-		stopChan:     make(chan struct{}),
-		needContinue: true,
-		decoder:      NewBatchDecoder(cg.consumeParam.MessageCompression),
-		checkpoint:   msg.Checkpoint,
-		wg:           &sync.WaitGroup{},
-		eventGroups:  make(map[string]*EventGroup),
-		resolvedTs:   make([]uint64, 0, cg.consumeParam.IdleResolvedThreshold),
+		task:           cg.task,
+		cancelCtx:      cancelCtx,
+		cancelFn:       cancelFn,
+		serverAddrs:    cg.consumeParam.ServerAddress,
+		topic:          cg.consumeParam.SubscribeTopic,
+		partition:      partition,
+		needContinue:   true,
+		decoder:        NewBatchDecoder(cg.consumeParam.MessageCompression),
+		checkpoint:     msg.Checkpoint,
+		wg:             &sync.WaitGroup{},
+		eventGroups:    make(map[string]*EventGroup),
+		lastCommitTime: time.Now(),
+		schemaRoute:    cg.schemaRoute,
+		tableRoute:     cg.tableRoute,
+		columnRoute:    cg.columnRoute,
+		dbTypeT:        cg.dbTypeT,
+		consumeTables:  cg.consumeTables,
+		databaseT:      cg.databaseT,
+		consumeParam:   cg.consumeParam,
+		metadatas:      cg.metadatas,
 	}
-	cg.consumers[partition] = c
 
 	c.consumer = kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     c.serverAddrs,
@@ -199,6 +323,8 @@ func (cg *ConsumerGroup) Start(ctx context.Context, partition int) error {
 		return err
 	}
 
+	cg.consumers.Set(partition, c)
+
 	logger.Info("start consumer coroutines",
 		zap.String("task_name", cg.task.TaskName),
 		zap.String("task_flow", cg.task.TaskFlow),
@@ -208,145 +334,134 @@ func (cg *ConsumerGroup) Start(ctx context.Context, partition int) error {
 		zap.Uint64("checkpoint", msg.Checkpoint))
 
 	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		cg.Coroutines(c)
+	}()
 
-	go cg.Consume(c)
+	go func() {
+		logger.Info("consumer serve for ready",
+			zap.String("task_name", cg.task.TaskName),
+			zap.String("task_flow", cg.task.TaskFlow),
+			zap.String("task_mode", cg.task.TaskMode),
+			zap.String("topic", c.topic),
+			zap.Int("partition", c.partition))
+		c.wg.Wait()
+	}()
 
-	return nil
+	select {
+	case <-cg.cancelCtx.Done():
+		logger.Error("consumer stopped by task stopped",
+			zap.String("task_name", cg.task.TaskName),
+			zap.String("task_flow", cg.task.TaskFlow),
+			zap.String("task_mode", cg.task.TaskMode),
+			zap.String("topic", c.topic),
+			zap.Int("partition", c.partition),
+			zap.Error(cg.cancelCtx.Err()))
+		cg.consumers.Close(partition)
+		return cg.cancelCtx.Err()
+	case <-c.cancelCtx.Done():
+		logger.Warn("consumer stopped by stop signal",
+			zap.String("task_name", cg.task.TaskName),
+			zap.String("task_flow", cg.task.TaskFlow),
+			zap.String("task_mode", cg.task.TaskMode),
+			zap.String("topic", c.topic),
+			zap.Int("partition", c.partition),
+			zap.Error(c.cancelCtx.Err()))
+		return nil
+	}
 }
 
 func (cg *ConsumerGroup) Stop(partition int) error {
-	cg.mu.Lock()
-	defer cg.mu.Unlock()
-
-	ps, exists := cg.consumers[partition]
-	if !exists {
-		return fmt.Errorf("the consumer [%d] does not exists", partition)
-	}
-
-	// Send a stop signal
-	close(ps.stopChan)
-	// Waiting for goroutine to complete
-	ps.wg.Wait()
-	// Remove the consumer from the consumerGroup
-	delete(cg.consumers, partition)
-
-	if err := ps.consumer.Close(); err != nil {
-		return fmt.Errorf("the consumer [%d] closed failed: %v", partition, err)
-	}
-	return nil
-}
-
-func (cg *ConsumerGroup) Pause(partition int) error {
-	cg.mu.Lock()
-	defer cg.mu.Unlock()
-
-	ps, exists := cg.consumers[partition]
-	if !exists {
-		return fmt.Errorf("the consumer [%d] does not exists", partition)
-	}
-
-	// Set to false to pause the job.
-	ps.needContinue = false
-	return nil
-}
-
-func (cg *ConsumerGroup) Resume(partition int) error {
-	cg.mu.Lock()
-	defer cg.mu.Unlock()
-
-	ps, exists := cg.consumers[partition]
-	if !exists {
-		return fmt.Errorf("the consumer [%d] does not exists", partition)
-	}
-	// Set to true to resume the job.
-	ps.needContinue = true
-	return nil
+	return cg.consumers.Stop(partition)
 }
 
 func (cg *ConsumerGroup) StopAll() error {
-	cg.mu.Lock()
-	defer cg.mu.Unlock()
-
 	cg.cancelFn()
+	return cg.consumers.StopAll()
+}
 
-	for _, ps := range cg.consumers {
-		if err := ps.consumer.Close(); err != nil {
-			return fmt.Errorf("the consumer [%d] closed failed: %v", ps.partition, err)
+func (cg *ConsumerGroup) Coroutines(c *Consumer) {
+	for {
+		if !c.needContinue {
+			continue
 		}
+		needCommit, err := c.Message()
+		if err != nil {
+			logger.Error("consume message failed",
+				zap.String("task_name", cg.task.TaskName),
+				zap.String("task_flow", cg.task.TaskFlow),
+				zap.String("task_mode", cg.task.TaskMode),
+				zap.String("topic", c.topic),
+				zap.Int("partition", c.partition),
+				zap.Error(err))
+			_, errC := model.GetITaskLogRW().CreateLog(c.cancelCtx, &task.Log{
+				TaskName: cg.task.TaskName,
+				LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] topic [%s] partition [%d] offset [%d] checkpoint [%d] cdc consume failed: [%v]",
+					stringutil.CurrentTimeFormatString(),
+					stringutil.StringLower(constant.TaskModeCdcConsume),
+					cg.task.WorkerAddr,
+					cg.task.TaskName,
+					c.topic,
+					c.partition,
+					c.kafkaOffset,
+					c.checkpoint,
+					err.Error(),
+				),
+			})
+			if errC != nil {
+				logger.Error("record message failed",
+					zap.String("task_name", cg.task.TaskName),
+					zap.String("task_flow", cg.task.TaskFlow),
+					zap.String("task_mode", cg.task.TaskMode),
+					zap.String("topic", c.topic),
+					zap.Int("partition", c.partition),
+					zap.Error(err))
+			}
+			// if any consumer fails to execute, the task process service will be stopped directly.
+			cg.cancelFn()
+			return
+		}
+		if !needCommit {
+			continue
+		}
+		c.lastCommitTime = time.Now()
 	}
+}
+
+func (c *Consumer) Pause() error {
+	// Set to false to pause the job.
+	c.needContinue = false
 	return nil
 }
 
-// Consume will read message from Kafka.
-func (cg *ConsumerGroup) Consume(c *Consumer) {
-	defer c.wg.Done()
+func (c *Consumer) Resume() error {
+	// Set to true to resume the job.
+	c.needContinue = true
+	return nil
+}
 
-	for {
-		select {
-		case <-c.cancelCtx.Done():
-			logger.Warn("consumer stopped by global context",
-				zap.String("task_name", cg.task.TaskName),
-				zap.String("task_flow", cg.task.TaskFlow),
-				zap.String("task_mode", cg.task.TaskMode),
-				zap.String("topic", c.topic),
-				zap.Int("partition", c.partition))
-			return
-		case <-c.stopChan:
-			logger.Warn("consumer stopped by stop signal",
-				zap.String("task_name", cg.task.TaskName),
-				zap.String("task_flow", cg.task.TaskFlow),
-				zap.String("task_mode", cg.task.TaskMode),
-				zap.String("topic", c.topic),
-				zap.Int("partition", c.partition))
-			return
-		default:
-			if c.needContinue {
-				msg, err := c.consumer.ReadMessage(c.cancelCtx)
-				if err != nil {
-					logger.Error("read message failed",
-						zap.String("task_name", cg.task.TaskName),
-						zap.String("task_flow", cg.task.TaskFlow),
-						zap.String("task_mode", cg.task.TaskMode),
-						zap.String("topic", c.topic),
-						zap.Int("partition", c.partition),
-						zap.Error(err))
-					panic(fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partition [%d] read message failed: [%v]",
-						cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, c.topic, c.partition, err))
-				}
-
-				needCommit, err := cg.WriteMessage(c, msg)
-				if err != nil {
-					logger.Error("write message failed",
-						zap.String("task_name", cg.task.TaskName),
-						zap.String("task_flow", cg.task.TaskFlow),
-						zap.String("task_mode", cg.task.TaskMode),
-						zap.String("topic", c.topic),
-						zap.Int("partition", c.partition),
-						zap.Error(err))
-					panic(fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partition [%d] write message failed: [%v]",
-						cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, c.topic, c.partition, err))
-				}
-				if !needCommit {
-					continue
-				}
-				if err := cg.CommitMessage(c.cancelCtx, msg); err != nil {
-					logger.Error("commit message failed",
-						zap.String("task_name", cg.task.TaskName),
-						zap.String("task_flow", cg.task.TaskFlow),
-						zap.String("task_mode", cg.task.TaskMode),
-						zap.String("topic", c.topic),
-						zap.Int("partition", c.partition),
-						zap.Error(err))
-					panic(fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partition [%d] commit message failed: [%v]",
-						cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, c.topic, c.partition, err))
-				}
-			}
-		}
+func (c *Consumer) Message() (bool, error) {
+	msg, err := c.consumer.ReadMessage(c.cancelCtx)
+	if err != nil {
+		return false, fmt.Errorf("read message failed: [%v]", err)
 	}
+
+	needCommit, err := c.WriteMessage(msg)
+	if err != nil {
+		return false, fmt.Errorf("write message failed: [%v]", err)
+	}
+	if needCommit {
+		if err := c.CommitMessage(msg); err != nil {
+			return false, fmt.Errorf("commit message failed: [%v]", err)
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 // WriteMessage is to decode kafka message to event.
-func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, error) {
+func (c *Consumer) WriteMessage(msg kafka.Message) (bool, error) {
 	var (
 		err      error
 		key      = msg.Key
@@ -356,9 +471,9 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 
 	if c.partition != partCode {
 		logger.Warn("message dispatched to wrong partition",
-			zap.String("task_name", cg.task.TaskName),
-			zap.String("task_flow", cg.task.TaskFlow),
-			zap.String("task_mode", cg.task.TaskMode),
+			zap.String("task_name", c.task.TaskName),
+			zap.String("task_flow", c.task.TaskFlow),
+			zap.String("task_mode", c.task.TaskMode),
 			zap.String("topic", c.topic),
 			zap.Int("partition", c.partition),
 			zap.Int("expected", c.partition),
@@ -387,7 +502,8 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 	for {
 		msgEventType, hasNext, err := c.decoder.HasNext()
 		if err != nil {
-			return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] message next failed: %v", cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
+			return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] message next failed: %v",
+				c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
 		}
 
 		if !hasNext {
@@ -398,14 +514,15 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 		case MsgEventTypeDDL:
 			ddl, err := c.decoder.NextDDLEvent()
 			if err != nil {
-				return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] decode ddl event message failed: %v", cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
+				return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] decode ddl event message failed: %v",
+					c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
 			}
 
-			if cg.CheckObsoleteMessages(ddl.CommitTs, c.checkpoint) {
+			if c.CheckObsoleteMessages(ddl.CommitTs, c.checkpoint) {
 				logger.Warn("ddl message received",
-					zap.String("task_name", cg.task.TaskName),
-					zap.String("task_flow", cg.task.TaskFlow),
-					zap.String("task_mode", cg.task.TaskMode),
+					zap.String("task_name", c.task.TaskName),
+					zap.String("task_flow", c.task.TaskFlow),
+					zap.String("task_mode", c.task.TaskMode),
 					zap.String("topic", c.topic),
 					zap.Int("partition", c.partition),
 					zap.Int64("offset", msg.Offset),
@@ -413,11 +530,29 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 					zap.String("ddl_type", ddl.DdlType.String()),
 					zap.String("ddl_query", ddl.DdlQuery),
 					zap.Uint64("checkpoint", c.checkpoint),
-					zap.String("message_action", "less than checkpoint, msg experied"))
+					zap.String("message_action", "less than or equal checkpoint, msg experied"))
 				continue
 			}
 
-			if ddl.SchemaName == cg.schemaRoute.SchemaNameS && stringutil.IsContainedString(cg.consumeTables, ddl.TableName) {
+			if ddl.SchemaName == c.schemaRoute.SchemaNameS && stringutil.IsContainedString(c.consumeTables, ddl.TableName) {
+				// DDL commitTs fallback, just crash it to indicate the bug.
+				if ddlCoordinator.DdlWithMaxCommitTs != nil && ddl.CommitTs < ddlCoordinator.DdlWithMaxCommitTs.CommitTs {
+					logger.Error("ddl event consume fallback",
+						zap.String("task_name", c.task.TaskName),
+						zap.String("task_flow", c.task.TaskFlow),
+						zap.String("task_mode", c.task.TaskMode),
+						zap.String("topic", c.topic),
+						zap.Int("partition", c.partition),
+						zap.Int64("offset", msg.Offset),
+						zap.Uint64("commitTs", ddl.CommitTs),
+						zap.String("ddl_type", ddl.DdlType.String()),
+						zap.String("ddl_query", ddl.DdlQuery),
+						zap.Uint64("checkpoint", c.checkpoint),
+						zap.Int("coordinator", ddlCoordinator.Len(ddl)),
+						zap.String("message_action", "panic"))
+					return false, fmt.Errorf("ddl event consume fallback, events [%v], indicate the bug, please contact author", ddl.String())
+				}
+
 				identified := QuoteSchemaTable(ddl.SchemaName, ddl.TableName)
 				appendEle := &RowChangedEvent{
 					SchemaName: ddl.SchemaName,
@@ -437,16 +572,14 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 					g.Append(appendEle)
 				}
 
-				cg.ddlCoordinator.Append(ddl, partCode)
+				ddlCoordinator.Append(ddl, partCode)
 
-				if err := cg.Pause(msg.Partition); err != nil {
-					return false, err
-				}
+				c.Pause()
 
 				logger.Info("ddl message received",
-					zap.String("task_name", cg.task.TaskName),
-					zap.String("task_flow", cg.task.TaskFlow),
-					zap.String("task_mode", cg.task.TaskMode),
+					zap.String("task_name", c.task.TaskName),
+					zap.String("task_flow", c.task.TaskFlow),
+					zap.String("task_mode", c.task.TaskMode),
 					zap.String("topic", c.topic),
 					zap.Int("partition", c.partition),
 					zap.Int64("offset", msg.Offset),
@@ -454,18 +587,18 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 					zap.String("ddl_type", ddl.DdlType.String()),
 					zap.String("ddl_query", ddl.DdlQuery),
 					zap.Uint64("checkpoint", c.checkpoint),
-					zap.Int("coordinator", cg.ddlCoordinator.Len(ddl)),
+					zap.Int("coordinator", ddlCoordinator.Len(ddl)),
 					zap.String("message_action", "paused"))
 
 				c.checkpoint = ddl.CommitTs
 				c.kafkaOffset = msg.Offset
 
 				// The partition that receives the DDL Event last is responsible for executing the DDL Event.
-				if cg.ddlCoordinator.IsDDLFlush(ddl) {
+				if ddlCoordinator.IsDDLFlush(ddl) {
 					logger.Info("ddl message received",
-						zap.String("task_name", cg.task.TaskName),
-						zap.String("task_flow", cg.task.TaskFlow),
-						zap.String("task_mode", cg.task.TaskMode),
+						zap.String("task_name", c.task.TaskName),
+						zap.String("task_flow", c.task.TaskFlow),
+						zap.String("task_mode", c.task.TaskMode),
 						zap.String("topic", c.topic),
 						zap.Int("partition", c.partition),
 						zap.Int64("offset", msg.Offset),
@@ -473,15 +606,29 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 						zap.String("ddl_type", ddl.DdlType.String()),
 						zap.String("ddl_query", ddl.DdlQuery),
 						zap.Uint64("checkpoint", c.checkpoint),
-						zap.Int("coordinator", cg.ddlCoordinator.Len(ddl)),
+						zap.Int("coordinator", ddlCoordinator.Len(ddl)),
 						zap.String("message_action", "flush"))
 					needFlush = true
+				} else {
+					logger.Info("ddl message received",
+						zap.String("task_name", c.task.TaskName),
+						zap.String("task_flow", c.task.TaskFlow),
+						zap.String("task_mode", c.task.TaskMode),
+						zap.String("topic", c.topic),
+						zap.Int("partition", c.partition),
+						zap.Int64("offset", msg.Offset),
+						zap.Uint64("commitTs", ddl.CommitTs),
+						zap.String("ddl_type", ddl.DdlType.String()),
+						zap.String("ddl_query", ddl.DdlQuery),
+						zap.Uint64("checkpoint", c.checkpoint),
+						zap.Int("coordinator", ddlCoordinator.Len(ddl)),
+						zap.String("message_action", "waiting flush"))
 				}
 			} else {
 				logger.Warn("ddl message received",
-					zap.String("task_name", cg.task.TaskName),
-					zap.String("task_flow", cg.task.TaskFlow),
-					zap.String("task_mode", cg.task.TaskMode),
+					zap.String("task_name", c.task.TaskName),
+					zap.String("task_flow", c.task.TaskFlow),
+					zap.String("task_mode", c.task.TaskMode),
 					zap.String("schema_name", ddl.SchemaName),
 					zap.String("table_name", ddl.TableName),
 					zap.String("topic", c.topic),
@@ -491,34 +638,37 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 					zap.String("ddl_type", ddl.DdlType.String()),
 					zap.String("ddl_query", ddl.DdlQuery),
 					zap.Uint64("checkpoint", c.checkpoint),
-					zap.Int("coordinator", cg.ddlCoordinator.Len(ddl)),
-					zap.String("message_action", "skip"))
+					zap.Int("coordinator", ddlCoordinator.Len(ddl)),
+					zap.String("message_action", "skipped"))
 			}
 		case MsgEventTypeRow:
 			dml, err := c.decoder.NextRowChangedEvent()
 			if err != nil {
-				return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] decode dml event message failed: %v", cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
+				return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] decode dml event message failed: %v",
+					c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
 			}
 
-			if cg.CheckObsoleteMessages(dml.CommitTs, c.checkpoint) {
+			if c.CheckObsoleteMessages(dml.CommitTs, c.checkpoint) {
 				logger.Warn("dml event received",
-					zap.String("task_name", cg.task.TaskName),
-					zap.String("task_flow", cg.task.TaskFlow),
-					zap.String("task_mode", cg.task.TaskMode),
+					zap.String("task_name", c.task.TaskName),
+					zap.String("task_flow", c.task.TaskFlow),
+					zap.String("task_mode", c.task.TaskMode),
 					zap.String("topic", c.topic),
 					zap.Int("partition", c.partition),
 					zap.Int64("offset", msg.Offset),
 					zap.String("dml_events", dml.String()),
 					zap.Uint64("checkpoint", c.checkpoint),
-					zap.String("message_action", "less than checkpoint, msg experied"))
+					zap.String("message_action", "less than or equal checkpoint, msg experied"))
 				continue
 			}
 
-			if dml.SchemaName == cg.schemaRoute.SchemaNameS && stringutil.IsContainedString(cg.consumeTables, dml.TableName) {
-				logger.Info("dml event received",
-					zap.String("task_name", cg.task.TaskName),
-					zap.String("task_flow", cg.task.TaskFlow),
-					zap.String("task_mode", cg.task.TaskMode),
+			if dml.SchemaName == c.schemaRoute.SchemaNameS && stringutil.IsContainedString(c.consumeTables, dml.TableName) {
+				logger.Debug("dml event received",
+					zap.String("task_name", c.task.TaskName),
+					zap.String("task_flow", c.task.TaskFlow),
+					zap.String("task_mode", c.task.TaskMode),
+					zap.String("schema_name", dml.SchemaName),
+					zap.String("table_name", dml.TableName),
 					zap.String("topic", c.topic),
 					zap.Int("partition", c.partition),
 					zap.Int64("offset", msg.Offset),
@@ -537,10 +687,10 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 					g.Append(dml)
 				}
 			} else {
-				logger.Warn("dml event received",
-					zap.String("task_name", cg.task.TaskName),
-					zap.String("task_flow", cg.task.TaskFlow),
-					zap.String("task_mode", cg.task.TaskMode),
+				logger.Debug("dml event received",
+					zap.String("task_name", c.task.TaskName),
+					zap.String("task_flow", c.task.TaskFlow),
+					zap.String("task_mode", c.task.TaskMode),
 					zap.String("schema_name", dml.SchemaName),
 					zap.String("table_name", dml.TableName),
 					zap.String("topic", c.topic),
@@ -548,31 +698,32 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 					zap.Int64("offset", msg.Offset),
 					zap.Uint64("checkpoint", c.checkpoint),
 					zap.String("dml_events", dml.String()),
-					zap.String("message_action", "consumering"))
+					zap.String("message_action", "skipped"))
 			}
 		case MsgEventTypeResolved:
 			resolvedTs, err := c.decoder.NextResolvedEvent()
 			if err != nil {
-				return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] decode resolved_ts event message failed: %v", cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
+				return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] decode resolved_ts event message failed: %v",
+					c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
 			}
 
-			if cg.CheckObsoleteMessages(resolvedTs, c.checkpoint) {
+			if c.CheckObsoleteMessages(resolvedTs, c.checkpoint) {
 				logger.Warn("resolved event received",
-					zap.String("task_name", cg.task.TaskName),
-					zap.String("task_flow", cg.task.TaskFlow),
-					zap.String("task_mode", cg.task.TaskMode),
+					zap.String("task_name", c.task.TaskName),
+					zap.String("task_flow", c.task.TaskFlow),
+					zap.String("task_mode", c.task.TaskMode),
 					zap.String("topic", c.topic),
 					zap.Int("partition", c.partition),
 					zap.Int64("offset", msg.Offset),
 					zap.Uint64("checkpoint", c.checkpoint),
-					zap.String("message_action", "less than checkpoint, msg experied"))
+					zap.String("message_action", "less than or equal checkpoint, msg experied"))
 				continue
 			}
 
 			logger.Debug("resolved event received",
-				zap.String("task_name", cg.task.TaskName),
-				zap.String("task_flow", cg.task.TaskFlow),
-				zap.String("task_mode", cg.task.TaskMode),
+				zap.String("task_name", c.task.TaskName),
+				zap.String("task_flow", c.task.TaskFlow),
+				zap.String("task_mode", c.task.TaskMode),
 				zap.String("topic", c.topic),
 				zap.Int("partition", c.partition),
 				zap.Int64("offset", msg.Offset),
@@ -594,58 +745,56 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 			c.checkpoint = resolvedTs
 			c.kafkaOffset = msg.Offset
 
-			if cg.ddlCoordinator.IsResolvedFlush(resolvedTs) || cg.ddlCoordinator.GetFrontDDL() == nil {
+			if ddlCoordinator.IsResolvedFlush(resolvedTs) || ddlCoordinator.GetFrontDDL() == nil {
 				rowChangedEventCounts := 0
-				for _, group := range c.eventGroups {
+				sortCommitEvs := make(map[string][]uint64)
+				for t, group := range c.eventGroups {
 					rows := len(group.events)
 					if rows == 0 {
 						continue
 					}
 					rowChangedEventCounts = rowChangedEventCounts + rows
+					sortCommitEvs[t] = group.ExtractSortCommitTs()
 				}
 
-				if rowChangedEventCounts == 0 {
-					c.resolvedTs = append(c.resolvedTs, resolvedTs)
-				}
-
-				if rowChangedEventCounts > 0 || len(c.resolvedTs) == int(cg.consumeParam.IdleResolvedThreshold) {
+				if (rowChangedEventCounts == 0 && time.Since(c.lastCommitTime) >= time.Duration(c.consumeParam.IdleResolvedThreshold)*time.Second) || (rowChangedEventCounts > 0) {
 					logger.Info("resolved event received",
-						zap.String("task_name", cg.task.TaskName),
-						zap.String("task_flow", cg.task.TaskFlow),
-						zap.String("task_mode", cg.task.TaskMode),
+						zap.String("task_name", c.task.TaskName),
+						zap.String("task_flow", c.task.TaskFlow),
+						zap.String("task_mode", c.task.TaskMode),
 						zap.String("topic", c.topic),
 						zap.Int("partition", c.partition),
 						zap.Int64("offset", msg.Offset),
 						zap.Uint64("checkpoint", c.checkpoint),
 						zap.Uint64("resolved_ts", resolvedTs),
-						zap.Int("dml_events", rowChangedEventCounts),
-						zap.Int("resolved_queues", len(c.resolvedTs)),
+						zap.Int("dml_event_counts", rowChangedEventCounts),
+						zap.Any("dml_event_ascs", sortCommitEvs),
+						zap.Duration("since_seconds", time.Since(c.lastCommitTime)),
 						zap.String("message_action", "flush"))
-					// reset
-					c.resolvedTs = c.resolvedTs[:0]
 					needFlush = true
 				}
 			} else {
 				switch {
-				case resolvedTs < cg.ddlCoordinator.GetFrontDDL().CommitTs:
+				case resolvedTs < ddlCoordinator.GetFrontDDL().CommitTs:
 					needFlush = false
 				default:
 					logger.Error("resolved event received",
-						zap.String("task_name", cg.task.TaskName),
-						zap.String("task_flow", cg.task.TaskFlow),
-						zap.String("task_mode", cg.task.TaskMode),
+						zap.String("task_name", c.task.TaskName),
+						zap.String("task_flow", c.task.TaskFlow),
+						zap.String("task_mode", c.task.TaskMode),
 						zap.String("topic", c.topic),
 						zap.Int("partition", c.partition),
 						zap.Int64("offset", msg.Offset),
 						zap.Uint64("checkpoint", c.checkpoint),
-						zap.String("min_ddl_commit_ts_event", cg.ddlCoordinator.GetFrontDDL().String()),
+						zap.String("min_ddl_commit_ts_event", ddlCoordinator.GetFrontDDL().String()),
 						zap.String("message_action", fmt.Sprintf("The corresponding partition [%v] should have consumed the DDL event and triggered the consumption suspension. The current situation where resolvedTs >= ddl taskqueue min commits should not appear", partCode)))
 
-					return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] corresponding partition [%v] should have consumed the ddl event and triggered the consumption suspension. the current situation where resolvedTs >= ddl taskqueue min commits should not appear", cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, msg.Topic, partCode)
+					return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] corresponding partition [%v] should have consumed the ddl event and triggered the consumption suspension. the current situation where resolvedTs >= ddl taskqueue min commits should not appear", c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, partCode)
 				}
 			}
 		default:
-			return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] unknown message type [%v]", cg.task.TaskName, cg.task.TaskFlow, cg.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, msgEventType)
+			return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] unknown message type [%v]",
+				c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, msgEventType)
 		}
 	}
 
@@ -655,103 +804,122 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 // CheckObsoleteMessages
 // 1. Initially start filtering and filtration of synchronously consumed events
 // 2. During the operation, the corresponding partition DDL/ResolvedTs Event is refreshed. The reason is that CDC guarantees that all events before the DDL/ResolvedTs Event have been sent, and there should be no more events smaller than the DDL/ResolvedTs Event Ts
-func (cg *ConsumerGroup) CheckObsoleteMessages(currentTs, nowTs uint64) bool {
-	return currentTs < nowTs
+func (c *Consumer) CheckObsoleteMessages(currentTs, nowTs uint64) bool {
+	return currentTs <= nowTs
 }
 
-func (cg *ConsumerGroup) CommitMessage(ctx context.Context, msg kafka.Message) error {
+func (c *Consumer) CommitMessage(msg kafka.Message) error {
 	// The ticdc open protocol sends ddl events to all MQ partitions and ensures that all DMLs events <= ddl event Ts have been sent.
 	// Any partition that receives a DDL event will suspend consumption.
 	// Therefore, it is normal that multiple different DDLEvents will not enter coordination at the same time. Encountering multiple different DDL Events entering coordination is an unexpected phenomenon.
-	if cg.ddlCoordinator.Ddls.Len() > 1 {
-		return fmt.Errorf(`the ticdc open protocol sends ddl events to all MQ partitions and ensures that all DMLs events <= ddl event Ts have been sent. any partition that receives a DDL event will suspend consumption. therefore, it is normal that multiple different DDLEvents will not enter coordination at the same time. encountering multiple different DDL Events entering coordination is an unexpected phenomenon`)
-	} else if cg.ddlCoordinator.Ddls.Len() == 1 {
-		var todoDDL *DDLChangedEvent
+	var todoDDL *DDLChangedEvent
 
+	if ddlCoordinator.Ddls.Len() > 1 {
+		return fmt.Errorf(`the ticdc open protocol sends ddl events to all MQ partitions and ensures that all DMLs events <= ddl event Ts have been sent. any partition that receives a DDL event will suspend consumption. therefore, it is normal that multiple different DDLEvents will not enter coordination at the same time. encountering multiple different DDL Events entering coordination is an unexpected phenomenon`)
+	} else if ddlCoordinator.Ddls.Len() == 1 {
 		for {
-			todoDDL = cg.ddlCoordinator.GetFrontDDL()
+			todoDDL = ddlCoordinator.GetFrontDDL()
 
 			if todoDDL == nil {
 				break
 			}
 
 			// flush less than DDL CommitTs's DMLs
-			if err := cg.flushCheckpointBeforeRowChangedEvents(ctx, true); err != nil {
+			if err := flushRowChangedEventsBeforeDdl(c.cancelCtx); err != nil {
 				return err
 			}
 
-			encrStr, err := stringutil.Encrypt(todoDDL.DdlQuery, []byte(constant.DefaultDataEncryptDecryptKey))
-			if err != nil {
-				return err
-			}
-			rewrite, err := model.GetIMsgDdlRewriteRW().GetMsgDdlRewrite(ctx, &consume.MsgDdlRewrite{
-				TaskName:  cg.task.TaskName,
-				Topic:     msg.Topic,
-				DdlDigest: encrStr,
+			hash := md5.Sum([]byte(todoDDL.DdlQuery))
+
+			md5String := hex.EncodeToString(hash[:])
+
+			var (
+				rewrite *consume.MsgDdlRewrite
+				err     error
+			)
+
+			rewrite, err = model.GetIMsgDdlRewriteRW().GetMsgDdlRewrite(c.cancelCtx, &consume.MsgDdlRewrite{
+				TaskName: c.task.TaskName,
+				Topic:    msg.Topic,
+				Digest:   md5String,
 			})
 			if err != nil {
 				return err
 			}
+
 			// execute DDL Event
 			if rewrite != nil {
-				if rewrite.DdlDigest != "" {
-					if _, err := cg.databaseT.ExecContext(ctx, rewrite.RewriteDdlText); err != nil {
-						return fmt.Errorf("the dowstream database rewrite sql [%v] digest [%s] commit_ts [%d] exec failed, please check whether the statement is rewritten correctly , error detail [%v]", todoDDL.DdlQuery, encrStr, todoDDL.CommitTs, err)
-					}
-				} else {
+				hs := md5.Sum([]byte(rewrite.RewriteDdlText))
+				switch {
+				case strings.EqualFold(rewrite.RewriteDdlText, ""):
 					logger.Warn("ddl event coordinator skip",
-						zap.String("task_name", cg.task.TaskName),
-						zap.String("task_flow", cg.task.TaskFlow),
-						zap.String("task_mode", cg.task.TaskMode),
+						zap.String("task_name", c.task.TaskName),
+						zap.String("task_flow", c.task.TaskFlow),
+						zap.String("task_mode", c.task.TaskMode),
 						zap.String("topic", msg.Topic),
-						zap.String("ddl_digest", encrStr),
+						zap.String("ddl_digest", md5String),
 						zap.String("ddl_events", todoDDL.String()),
 						zap.String("message_action", "skip"))
+				case rewrite.Digest == hex.EncodeToString(hs[:]):
+					return fmt.Errorf("the dowstream database origin sql [%v] digest [%s] commit_ts [%d] exec failed, please decide whether to rewrite based on the error message and downstream database type [%s]. If you need to rewrite, please use digest to rewrite, error detail [%v]", todoDDL.DdlQuery, md5String, todoDDL.CommitTs, c.dbTypeT, err)
+				default:
+					if _, err := c.databaseT.ExecContext(c.cancelCtx, rewrite.RewriteDdlText); err != nil {
+						return fmt.Errorf("the dowstream database rewrite sql [%v] digest [%s] commit_ts [%d] exec failed, please check whether the statement is rewritten correctly , error detail [%v]", todoDDL.DdlQuery, md5String, todoDDL.CommitTs, err)
+					}
 				}
 			} else {
-				if _, err := cg.databaseT.ExecContext(ctx, todoDDL.DdlQuery); err != nil {
-					return fmt.Errorf("the dowstream database origin sql [%v] digest [%s] commit_ts [%d] exec failed, please decide whether to rewrite based on the error message and downstream database type [%s]. If you need to rewrite, please use digest to rewrite, error detail [%v]", todoDDL.DdlQuery, encrStr, todoDDL.CommitTs, cg.dbTypeT, err)
+				if _, err := c.databaseT.ExecContext(c.cancelCtx, todoDDL.DdlQuery); err != nil {
+					// rewrite default record origin ddl
+					if _, err := model.GetIMsgDdlRewriteRW().CreateMsgDdlRewrite(c.cancelCtx, &consume.MsgDdlRewrite{
+						TaskName:       c.task.TaskName,
+						Topic:          c.topic,
+						Digest:         md5String,
+						OriginDdlText:  todoDDL.DdlQuery,
+						RewriteDdlText: todoDDL.DdlQuery,
+					}); err != nil {
+						return fmt.Errorf("the dowstream database task [%s] topic [%s] origin sql [%v] digest [%s] commit_ts [%d] record failed, please retry or manual write msg_ddl_rewrite metadata, error detail [%v]", c.task.TaskName, c.topic, todoDDL.DdlQuery, md5String, todoDDL.CommitTs, err)
+					}
+					return fmt.Errorf("the dowstream database origin sql [%v] digest [%s] commit_ts [%d] exec failed, please decide whether to rewrite based on the error message and downstream database type [%s]. If you need to rewrite, please use digest to rewrite, error detail [%v]", todoDDL.DdlQuery, md5String, todoDDL.CommitTs, c.dbTypeT, err)
 				}
 			}
-			if err := cg.flushCheckpoint(ctx); err != nil {
+			if err := flushDdlCheckpoint(c.cancelCtx); err != nil {
 				return err
 			}
 
-			cg.ddlCoordinator.PopDDL()
-			for _, p := range cg.ddlCoordinator.Get(todoDDL) {
+			ddlCoordinator.PopDDL()
+			for _, p := range ddlCoordinator.Get(todoDDL) {
 				logger.Warn("ddl event coordinator finished",
-					zap.String("task_name", cg.task.TaskName),
-					zap.String("task_flow", cg.task.TaskFlow),
-					zap.String("task_mode", cg.task.TaskMode),
+					zap.String("task_name", c.task.TaskName),
+					zap.String("task_flow", c.task.TaskFlow),
+					zap.String("task_mode", c.task.TaskMode),
 					zap.String("topic", msg.Topic),
 					zap.Int("partition", p),
-					zap.String("ddl_digest", encrStr),
+					zap.String("ddl_digest", md5String),
 					zap.String("ddl_events", todoDDL.String()),
 					zap.String("message_action", "resume"))
-				if err := cg.Resume(p); err != nil {
-					return err
-				}
+				c.Resume()
 			}
-			cg.ddlCoordinator.Remove(todoDDL)
+			ddlCoordinator.Remove(todoDDL)
 		}
 	}
 
 	// flush <= resolvedTs DMLs
-	if err := cg.flushCheckpointBeforeRowChangedEvents(ctx, false); err != nil {
+	var ddlCommitTs uint64
+	if todoDDL != nil {
+		ddlCommitTs = todoDDL.CommitTs
+	}
+	if err := c.flushRowChangedEventsBeforeResolvedTs(ddlCommitTs); err != nil {
 		return err
 	}
-	if err := cg.flushCheckpoint(ctx); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (cg *ConsumerGroup) flushCheckpointBeforeRowChangedEvents(ctx context.Context, isDDLCommit bool) error {
+// flushRowChangedEventsBeforeDdl flushes all row changed events before the DDL and and control it by the last receive ddl event consumer context
+func flushRowChangedEventsBeforeDdl(ctx context.Context) error {
 	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(len(cg.consumers))
+	g.SetLimit(consumers.Len())
 
-	for _, consumer := range cg.consumers {
+	for _, consumer := range consumers.All() {
 		c := consumer
 		g.Go(func() error {
 			// partition wait sink events
@@ -760,11 +928,7 @@ func (cg *ConsumerGroup) flushCheckpointBeforeRowChangedEvents(ctx context.Conte
 
 			for tableName, group := range c.eventGroups {
 				var events []*RowChangedEvent
-				if isDDLCommit {
-					events = group.DDLCommitTs(c.checkpoint)
-				} else {
-					events = group.ResolvedTs(c.checkpoint)
-				}
+				events = group.DDLCommitTs(c.checkpoint)
 				if len(events) == 0 {
 					continue
 				}
@@ -772,7 +936,7 @@ func (cg *ConsumerGroup) flushCheckpointBeforeRowChangedEvents(ctx context.Conte
 			}
 
 			if len(sinkEvents) > 0 {
-				if err := cg.flushRowChangedEvents(gCtx, sinkEvents); err != nil {
+				if err := flushRowChangedEvents(gCtx, c, sinkEvents); err != nil {
 					return err
 				}
 			}
@@ -787,9 +951,82 @@ func (cg *ConsumerGroup) flushCheckpointBeforeRowChangedEvents(ctx context.Conte
 	return nil
 }
 
-func (cg *ConsumerGroup) flushRowChangedEvents(ctx context.Context, sinkEvents map[string][]*RowChangedEvent) error {
+// flushDdlCheckpoint refresh ddl Checkpoint and control it by the last receive ddl event consumer context
+func flushDdlCheckpoint(ctx context.Context) error {
 	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(int(cg.consumeParam.TableThread))
+	g.SetLimit(consumers.Len())
+
+	for _, consumer := range consumers.All() {
+		c := consumer
+		g.Go(func() error {
+			if err := c.updateMetadataCheckpoint(gCtx); err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Consumer) flushRowChangedEventsBeforeResolvedTs(ddlCommitTs uint64) error {
+	// partition wait sink events
+	// store all the events that are less than or equal a certain ts in order according to the table latitude
+	sinkEvents := make(map[string][]*RowChangedEvent)
+
+	for tableName, group := range c.eventGroups {
+		var events []*RowChangedEvent
+		if ddlCommitTs != 0 {
+			group.RemoveDDLCommitTs(ddlCommitTs)
+		}
+		events = group.ResolvedTs(c.checkpoint)
+		if len(events) == 0 {
+			continue
+		}
+		sinkEvents[tableName] = events
+	}
+
+	counts := len(sinkEvents)
+	if counts > 0 {
+		if err := flushRowChangedEvents(c.cancelCtx, c, sinkEvents); err != nil {
+			return err
+		}
+	} else {
+		// solve the problem that data does not exist before resolvedTs and refresh checkpoints at intervals
+		if err := c.updateMetadataCheckpoint(c.cancelCtx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Consumer) updateMetadataCheckpoint(ctx context.Context) error {
+	if err := model.GetIMsgTopicPartitionRW().UpdateMsgTopicPartition(ctx, &consume.MsgTopicPartition{
+		TaskName:   c.task.TaskName,
+		Topic:      c.topic,
+		Partitions: c.partition,
+	}, map[string]interface{}{
+		"Checkpoint": c.checkpoint,
+		"Offset":     c.kafkaOffset,
+	}); err != nil {
+		return err
+	}
+	logger.Debug("commit message success",
+		zap.String("task_name", c.task.TaskName),
+		zap.String("task_flow", c.task.TaskFlow),
+		zap.String("task_mode", c.task.TaskMode),
+		zap.String("topic", c.topic),
+		zap.Int("partition", c.partition),
+		zap.Int64("offset", c.kafkaOffset),
+		zap.Uint64("checkpoint", c.checkpoint))
+	return nil
+}
+
+func flushRowChangedEvents(ctx context.Context, c *Consumer, sinkEvents map[string][]*RowChangedEvent) error {
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(c.consumeParam.TableThread))
 
 	for _, es := range sinkEvents {
 		events := es
@@ -798,11 +1035,13 @@ func (cg *ConsumerGroup) flushRowChangedEvents(ctx context.Context, sinkEvents m
 				if e.IsDDL {
 					return fmt.Errorf("the DDL events need to be executed separately. After the execution is completed, the message should not appear here. Please contact the author")
 				} else {
-					logger.Info("message event flush",
-						zap.String("task_name", cg.task.TaskName),
-						zap.String("task_flow", cg.task.TaskFlow),
-						zap.String("task_mode", cg.task.TaskMode),
-						zap.String("topic", cg.consumeParam.SubscribeTopic),
+					logger.Info("message event sink",
+						zap.String("task_name", c.task.TaskName),
+						zap.String("task_flow", c.task.TaskFlow),
+						zap.String("task_mode", c.task.TaskMode),
+						zap.String("topic", c.topic),
+						zap.Int("partition", c.partition),
+						zap.Int64("offset", c.kafkaOffset),
 						zap.String("schema_name", e.SchemaName),
 						zap.String("table_name", e.TableName),
 						zap.String("query_type", e.QueryType),
@@ -816,26 +1055,37 @@ func (cg *ConsumerGroup) flushRowChangedEvents(ctx context.Context, sinkEvents m
 							1，UK/PK UPDATE events will not have UPDATE logic, and have been split by TiCDC to send DELETE/INSERT events
 							2，NonUK/NonPK UPDATE events will display the UPDATE logic. TiCDC distributes the corresponding partitions according to PK/ UK NOT NULL
 						*/
-						if err := cg.databaseT.Transaction(gCtx, nil, []func(ctx context.Context, tx *sql.Tx) error{
+						if err := c.databaseT.Transaction(gCtx, nil, []func(ctx context.Context, tx *sql.Tx) error{
 							func(ctx context.Context, tx *sql.Tx) error {
-								sqlStr, sqlParas := e.Delete(
-									cg.dbTypeT,
-									cg.tableRoute,
-									cg.columnRoute,
-									cg.task.CaseFieldRuleT)
+								sqlStr, sqlParas, err := e.Delete(
+									c.dbTypeT,
+									c.tableRoute,
+									c.columnRoute,
+									c.task.CaseFieldRuleT,
+									c.metadatas)
+								if err != nil {
+									return err
+								}
 								if _, err := tx.ExecContext(ctx, sqlStr, sqlParas...); err != nil {
-									return fmt.Errorf("the dowstream database exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]", sqlStr, sqlParas, e.CommitTs, err)
+									return fmt.Errorf("the dowstream database topic [%s] partition [%d] offset [%d] exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]",
+										c.topic, c.partition, c.kafkaOffset, sqlStr, sqlParas, e.CommitTs, err)
 								}
 								return nil
 							},
 							func(ctx context.Context, tx *sql.Tx) error {
-								sqlStr, sqlParas := e.Replace(
-									cg.dbTypeT,
-									cg.tableRoute,
-									cg.columnRoute,
-									cg.task.CaseFieldRuleT)
+								sqlStr, sqlParas, err := e.Insert(
+									c.dbTypeT,
+									c.tableRoute,
+									c.columnRoute,
+									c.task.CaseFieldRuleT,
+									c.metadatas,
+									c.consumeParam.EnableVirtualColumn)
+								if err != nil {
+									return err
+								}
 								if _, err := tx.ExecContext(ctx, sqlStr, sqlParas...); err != nil {
-									return fmt.Errorf("the dowstream database exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]", sqlStr, sqlParas, e.CommitTs, err)
+									return fmt.Errorf("the dowstream database topic [%s] partition [%d] offset [%d] exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]",
+										c.topic, c.partition, c.kafkaOffset, sqlStr, sqlParas, e.CommitTs, err)
 								}
 								return nil
 							},
@@ -843,25 +1093,62 @@ func (cg *ConsumerGroup) flushRowChangedEvents(ctx context.Context, sinkEvents m
 							return err
 						}
 					case message.DMLInsertQueryType:
-						sqlStr, sqlParas := e.Replace(
-							cg.dbTypeT,
-							cg.tableRoute,
-							cg.columnRoute,
-							cg.task.CaseFieldRuleT)
-						if _, err := cg.databaseT.ExecContext(gCtx, sqlStr, sqlParas...); err != nil {
-							return fmt.Errorf("the dowstream database exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]", sqlStr, sqlParas, e.CommitTs, err)
+						if err := c.databaseT.Transaction(gCtx, nil, []func(ctx context.Context, tx *sql.Tx) error{
+							func(ctx context.Context, tx *sql.Tx) error {
+								sqlStr, sqlParas, err := e.Delete(
+									c.dbTypeT,
+									c.tableRoute,
+									c.columnRoute,
+									c.task.CaseFieldRuleT,
+									c.metadatas)
+								if err != nil {
+									return err
+								}
+								if _, err := tx.ExecContext(ctx, sqlStr, sqlParas...); err != nil {
+									return fmt.Errorf("the dowstream database topic [%s] partition [%d] offset [%d] exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]",
+										c.topic, c.partition, c.kafkaOffset, sqlStr, sqlParas, e.CommitTs, err)
+								}
+								return nil
+							},
+							func(ctx context.Context, tx *sql.Tx) error {
+								sqlStr, sqlParas, err := e.Insert(
+									c.dbTypeT,
+									c.tableRoute,
+									c.columnRoute,
+									c.task.CaseFieldRuleT,
+									c.metadatas,
+									c.consumeParam.EnableVirtualColumn)
+								if err != nil {
+									return err
+								}
+								if _, err := tx.ExecContext(ctx, sqlStr, sqlParas...); err != nil {
+									return fmt.Errorf("the dowstream database topic [%s] partition [%d] offset [%d] exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]",
+										c.topic, c.partition, c.kafkaOffset, sqlStr, sqlParas, e.CommitTs, err)
+								}
+								return nil
+							},
+						}); err != nil {
+							return err
 						}
 					case message.DMLDeleteQueryType:
-						sqlStr, sqlParas := e.Delete(
-							cg.dbTypeT,
-							cg.tableRoute,
-							cg.columnRoute,
-							cg.task.CaseFieldRuleT)
-						if _, err := cg.databaseT.ExecContext(gCtx, sqlStr, sqlParas...); err != nil {
-							return fmt.Errorf("the dowstream database exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]", sqlStr, sqlParas, e.CommitTs, err)
+						sqlStr, sqlParas, err := e.Delete(
+							c.dbTypeT,
+							c.tableRoute,
+							c.columnRoute,
+							c.task.CaseFieldRuleT,
+							c.metadatas)
+						if err != nil {
+							return err
+						}
+						if _, err := c.databaseT.ExecContext(gCtx, sqlStr, sqlParas...); err != nil {
+							return fmt.Errorf("the dowstream database topic [%s] partition [%d] offset [%d] exec sql [%v] parmas [%v] commit_ts [%d] failed: [%v]",
+								c.topic, c.partition, c.kafkaOffset, sqlStr, sqlParas, e.CommitTs, err)
 						}
 					default:
 						return fmt.Errorf("currently, the receive message event query type [%s] isnot support, the message event information [%v]", e.QueryType, e.String())
+					}
+					if err := c.updateMetadataCheckpoint(gCtx); err != nil {
+						return err
 					}
 				}
 			}
@@ -873,47 +1160,6 @@ func (cg *ConsumerGroup) flushRowChangedEvents(ctx context.Context, sinkEvents m
 		return err
 	}
 
-	return nil
-}
-
-func (cg *ConsumerGroup) flushCheckpoint(ctx context.Context) error {
-	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(len(cg.consumers))
-
-	for _, consumer := range cg.consumers {
-		c := consumer
-		g.Go(func() error {
-			if err := cg.updateMetadataCheckpoint(gCtx, c); err != nil {
-				return err
-			}
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (cg *ConsumerGroup) updateMetadataCheckpoint(ctx context.Context, c *Consumer) error {
-	if err := model.GetIMsgTopicPartitionRW().UpdateMsgTopicPartition(ctx, &consume.MsgTopicPartition{
-		TaskName:   c.topic,
-		Topic:      c.topic,
-		Partitions: c.partition,
-	}, map[string]interface{}{
-		"Checkpoint": c.checkpoint,
-		"Offset":     c.kafkaOffset,
-	}); err != nil {
-		return err
-	}
-	logger.Debug("commit message success",
-		zap.String("task_name", cg.task.TaskName),
-		zap.String("task_flow", cg.task.TaskFlow),
-		zap.String("task_mode", cg.task.TaskMode),
-		zap.String("topic", c.topic),
-		zap.Int("partition", c.partition),
-		zap.Int64("offset", c.kafkaOffset),
-		zap.Uint64("checkpoint", c.checkpoint))
 	return nil
 }
 

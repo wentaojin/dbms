@@ -73,7 +73,7 @@ func (cct *CdcConsumeTask) Start() error {
 		TaskName: cct.Task.TaskName,
 		LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] cdc consumer get route rules",
 			stringutil.CurrentTimeFormatString(),
-			stringutil.StringLower(constant.TaskModeStmtMigrate),
+			stringutil.StringLower(constant.TaskModeCdcConsume),
 			cct.Task.WorkerAddr,
 			cct.Task.TaskName,
 		),
@@ -142,7 +142,7 @@ func (cct *CdcConsumeTask) Start() error {
 		TaskName: cct.Task.TaskName,
 		LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] cdc consumer init connection",
 			stringutil.CurrentTimeFormatString(),
-			stringutil.StringLower(constant.TaskModeStmtMigrate),
+			stringutil.StringLower(constant.TaskModeCdcConsume),
 			cct.Task.WorkerAddr,
 			cct.Task.TaskName,
 		),
@@ -172,11 +172,72 @@ func (cct *CdcConsumeTask) Start() error {
 		}
 		defer databaseS.Close()
 
-		if err := tidb.InspectTiDBConsumeTask(cct.Task.TaskName, cct.Task.TaskFlow, cct.Task.TaskMode, databaseS); err != nil {
+		conTables, err := databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includes, excludes)
+		if err != nil {
 			return err
 		}
 
-		conTables, err := databaseS.FilterDatabaseTable(schemaRoute.SchemaNameS, includes, excludes)
+		switch cct.Task.TaskFlow {
+		case constant.TaskFlowTiDBToOracle:
+			databaseT, err = database.NewDatabase(cct.Ctx, cct.DatasourceT, schemaRoute.SchemaNameT, int64(cct.MigrateParams.CallTimeout))
+			if err != nil {
+				return err
+			}
+			defer databaseT.Close()
+
+		case constant.TaskFlowTiDBToTiDB, constant.TaskFlowTiDBToMYSQL, constant.TaskFlowTiDBToPostgres:
+			databaseT, err = database.NewDatabase(cct.Ctx, cct.DatasourceT, "", int64(cct.MigrateParams.CallTimeout))
+			if err != nil {
+				return err
+			}
+			defer databaseT.Close()
+		default:
+			return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", cct.Task.TaskName, cct.Task.TaskMode, cct.Task.TaskFlow, schemaRoute.SchemaNameS)
+		}
+
+		constraint := &tidb.Constraint{
+			Task:        cct.Task,
+			SchemaRoute: schemaRoute,
+			DatabaseS:   databaseS,
+			DatabaseT:   databaseT,
+			TaskTables:  conTables.TaskTables,
+			TableRoutes: tableRoutes,
+			TableThread: int(cct.MigrateParams.TableThread),
+		}
+		if err := constraint.Inspect(cct.Ctx); err != nil {
+			return err
+		}
+
+		d := &tidb.Downstream{
+			TaskName:       cct.Task.TaskName,
+			TaskFlow:       cct.Task.TaskFlow,
+			TaskMode:       cct.Task.TaskMode,
+			SchemaNameT:    schemaRoute.SchemaNameT,
+			TaskTables:     conTables.TaskTables,
+			TableThread:    int(cct.MigrateParams.TableThread),
+			DatabaseT:      databaseT,
+			TableRoutes:    tableRoutes,
+			CaseFieldRuleT: cct.Task.CaseFieldRuleT,
+		}
+		metadatas, err := d.Get(cct.Ctx)
+		if err != nil {
+			return err
+		}
+
+		logger.Info("get topic partitions",
+			zap.String("task_name", cct.Task.TaskName),
+			zap.String("task_flow", cct.Task.TaskFlow),
+			zap.String("task_mode", cct.Task.TaskMode),
+			zap.String("topic", cct.MigrateParams.SubscribeTopic))
+		_, err = model.GetITaskLogRW().CreateLog(cct.Ctx, &task.Log{
+			TaskName: cct.Task.TaskName,
+			LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] cdc consumer init topic partition",
+				stringutil.CurrentTimeFormatString(),
+				stringutil.StringLower(constant.TaskModeCdcConsume),
+				cct.Task.WorkerAddr,
+				cct.Task.TaskName,
+			),
+		})
 		if err != nil {
 			return err
 		}
@@ -223,23 +284,6 @@ func (cct *CdcConsumeTask) Start() error {
 			}
 			kafkaPartitions = append(kafkaPartitions, p.ID)
 		}
-		switch cct.Task.TaskFlow {
-		case constant.TaskFlowTiDBToOracle:
-			databaseT, err = database.NewDatabase(cct.Ctx, cct.DatasourceT, schemaRoute.SchemaNameT, int64(cct.MigrateParams.CallTimeout))
-			if err != nil {
-				return err
-			}
-			defer databaseT.Close()
-
-		case constant.TaskFlowTiDBToTiDB, constant.TaskFlowTiDBToMYSQL, constant.TaskFlowTiDBToPostgres:
-			databaseT, err = database.NewDatabase(cct.Ctx, cct.DatasourceT, "", int64(cct.MigrateParams.CallTimeout))
-			if err != nil {
-				return err
-			}
-			defer databaseT.Close()
-		default:
-			return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", cct.Task.TaskName, cct.Task.TaskMode, cct.Task.TaskFlow, schemaRoute.SchemaNameS)
-		}
 
 		logger.Info("start consumer group",
 			zap.String("task_name", cct.Task.TaskName),
@@ -252,7 +296,7 @@ func (cct *CdcConsumeTask) Start() error {
 			TaskName: cct.Task.TaskName,
 			LogDetail: fmt.Sprintf("%v [%v] the worker [%v] task [%v] cdc consumer group start",
 				stringutil.CurrentTimeFormatString(),
-				stringutil.StringLower(constant.TaskModeStmtMigrate),
+				stringutil.StringLower(constant.TaskModeCdcConsume),
 				cct.Task.WorkerAddr,
 				cct.Task.TaskName,
 			),
@@ -260,6 +304,7 @@ func (cct *CdcConsumeTask) Start() error {
 		if err != nil {
 			return err
 		}
+
 		if err := tidb.NewConsumerGroup(
 			cct.Ctx,
 			cct.Task,
@@ -271,6 +316,7 @@ func (cct *CdcConsumeTask) Start() error {
 			kafkaPartitions,
 			dbTypeT,
 			databaseT,
+			metadatas,
 		).Run(); err != nil {
 			return err
 		}

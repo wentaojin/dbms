@@ -17,11 +17,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/wentaojin/dbms/database/oracle"
 	"github.com/wentaojin/dbms/model/datasource"
-	"github.com/wentaojin/dbms/utils/constant"
 )
 
 func main() {
@@ -39,16 +37,30 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	dataC := make(chan []interface{})
+	// var s []interface{}
+	// s = append(s, -95400)
+	// s = append(s, "2020-02-20 02:20:20")
+	// s = append(s, 2020)
+	// s = append(s, 2)
+	// s = append(s, "2020-02-20")
+	// s = append(s, "2020-02-20 02:20:20")
 
-	go func() {
-		if err := d.GetDatabaseTableNonStmtData("ORACLE@TIDB", `select * from marvin01`, nil, 10, 30, constant.CharsetGBK, constant.CharsetUTF8MB4, "id,v00,v01", dataC); err != nil {
-			panic(err)
-		}
-		close(dataC)
-	}()
+	// stmt, err := d.PrepareContext(ctx, `INSERT INTO "MARVIN"."C_TIME" ("C_TIME","C_TIMESTAMP","C_YEAR","ID","C_DATE","C_DATETIME") VALUES (NUMTODSINTERVAL(:C_TIME, 'SECOND'),
+	// TO_TIMESTAMP(:C_TIMESTAMP,'YYYY-MM-DD HH24:MI:SS.FF6'),:C_YEAR,:ID,TO_DATE(:C_DATE,'YYYY-MM-DD HH24:MI:SS'),TO_TIMESTAMP(:C_DATETIME,'YYYY-MM-DD HH24:MI:SS.FF6'))`)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer stmt.Close()
+	// _, err = stmt.ExecContext(ctx, s...)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	for c := range dataC {
-		fmt.Println(c)
+	var sx []interface{}
+	sx = append(sx, "test-2    ")
+
+	_, err = d.ExecContext(ctx, `DELETE FROM "MARVIN"."C_CLUSTERED_T2" WHERE A = :1`, sx...)
+	if err != nil {
+		panic(err)
 	}
 }

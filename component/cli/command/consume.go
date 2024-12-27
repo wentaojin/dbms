@@ -189,10 +189,11 @@ func (a *AppConsumeRewrite) Cmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 	}
-	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "configure cdc consume task name")
-	cmd.Flags().StringVar(&a.task, "topic", "topic", "configure cdc consume task topic name")
-	cmd.Flags().StringVarP(&a.ddlDigest, "ddl-digest", "g", "", "configure cdc consume task ddl digest")
+	cmd.Flags().StringVarP(&a.task, "task", "t", "xxx", "configure cdc consume task name (required)")
+	cmd.Flags().StringVar(&a.topic, "topic", "topic", "configure cdc consume task topic name (required)")
+	cmd.Flags().StringVarP(&a.ddlDigest, "digest", "g", "", "configure cdc consume task origin ddl text digest (required)")
 	cmd.Flags().StringVarP(&a.rewriteText, "rewrite-text", "r", "", "configure cdc consume task ddl digest rewrite text")
+
 	return cmd
 }
 
@@ -202,9 +203,22 @@ func (a *AppConsumeRewrite) RunE(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	if !requireAllFlags(a.Server, a.task, a.topic, a.ddlDigest) {
+		return fmt.Errorf("the flags reqiure [server、task、topic、ddl-digest] can not be null, please configure")
+	}
+
 	err := migrate.RewriteCdcConsume(a.Server, a.task, a.topic, a.ddlDigest, a.rewriteText)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func requireAllFlags(flags ...string) bool {
+	for _, f := range flags {
+		if strings.EqualFold(f, "") {
+			return false
+		}
+	}
+	return true
 }
