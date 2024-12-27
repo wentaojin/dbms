@@ -1,10 +1,9 @@
 <div align="center">
-  <img src="./image/logo_1735310529337.png" height = "60"/>
+  <img src="./image/logo_1735310529337.png" height = "65"/>
+  <p>
+  数据库迁移服务
+  </p>
 </div>
-
-<p align="center">
-数据库分布式迁移服务
-</p>
 
 <div align="center">
 
