@@ -1,6 +1,4 @@
-<h1 align="center">
-  DBMS
-</h1>
+![DBMS LOGO](./image/logo_1735310529337.png)
 
 <p align="center">
 数据库分布式迁移服务平台
