@@ -188,8 +188,8 @@ const (
 var BuildInOracleO2MDatatypeNameMap = map[string]string{
 	BuildInOracleDatatypeNumber:                      "TINYINT/SMALLINT/INT/BIGINT/DECIMAL",
 	BuildInOracleDatatypeBfile:                       "VARCHAR",
-	BuildInOracleDatatypeChar:                        "VARCHAR",
-	BuildInOracleDatatypeCharacter:                   "VARCHAR",
+	BuildInOracleDatatypeChar:                        "CHAR",
+	BuildInOracleDatatypeCharacter:                   "CHAR",
 	BuildInOracleDatatypeClob:                        "LONGTEXT",
 	BuildInOracleDatatypeBlob:                        "BLOB",
 	BuildInOracleDatatypeDate:                        "DATETIME",

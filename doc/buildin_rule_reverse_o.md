@@ -4,8 +4,8 @@ ORACLE COMPATIBLE DATABASE DATA TYPE MAPPING MYSQL COMPATIBLE DATABASE Rule
 | ORACLE                            | MYSQL/TiDB            | COMMENT        |
 |-----------------------------------|-----------------------|----------------|
 | bfile                             | varchar(255)          |                |
-| char(length)                      | varchar(length)       |                |
-| character(length)                 | varchar(length)       |                |
+| char(length)                      | char(length)          |                |
+| character(length)                 | char(length)          |                |
 | clob                              | longtext              |                |
 | blob                              | blob                  |                |
 | date                              | datetime              |                |
