@@ -1,7 +1,9 @@
-![DBMS LOGO](./image/logo_1735310529337.png)
+<div align="center">
+  <img src="./image/logo_1735310529337.png" height = "60"/>
+</div>
 
 <p align="center">
-数据库分布式迁移服务平台
+数据库分布式迁移服务
 </p>
 
 <div align="center">
