@@ -614,6 +614,14 @@ func (st *StructMigrateTask) processStructMigrate() error {
 }
 
 func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) error {
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.Uint64("struct_migrate_id", smt.ID))
+
 	// if the schema table success, skip
 	if strings.EqualFold(smt.TaskStatus, constant.TaskDatabaseStatusSuccess) {
 		logger.Warn("struct migrate task processor",
@@ -686,6 +694,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 	if err != nil {
 		return err
 	}
+
 	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
@@ -693,7 +702,18 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("datasource", datasourceS.String()),
-		zap.String("task_stage", "struct attributes gen"),
+		zap.String("task_stage", "struct attribute gen"),
+		zap.String("cost", time.Now().Sub(sourceTime).String()))
+
+	logger.Debug("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("datasource", datasourceS.String()),
+		zap.String("arrtibutes", attrs.String()),
+		zap.String("task_stage", "struct attribute gen"),
 		zap.String("cost", time.Now().Sub(sourceTime).String()))
 
 	ruleTime := time.Now()
@@ -717,6 +737,25 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		BuildinDefaultValueRules: st.BuildInDefaultValueRules,
 	}
 
+	logger.Info("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("task_stage", "struct rule prepare"),
+		zap.String("cost", time.Now().Sub(ruleTime).String()))
+
+	logger.Debug("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("migrate_rules", dataRule.String()),
+		zap.String("task_stage", "struct rule prepare"),
+		zap.String("cost", time.Now().Sub(ruleTime).String()))
+
 	rules, err := database.IStructMigrateAttributesRule(dataRule)
 	if err != nil {
 		return err
@@ -727,7 +766,16 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("datasource", datasourceS.String()),
+		zap.String("task_stage", "struct rule gen"),
+		zap.String("cost", time.Now().Sub(ruleTime).String()))
+
+	logger.Debug("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("struct_rules", rules.String()),
 		zap.String("task_stage", "struct rule gen"),
 		zap.String("cost", time.Now().Sub(ruleTime).String()))
 
@@ -745,14 +793,22 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 	if err != nil {
 		return err
 	}
-
 	logger.Info("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("datasource", datasourceS.String()),
+		zap.String("task_stage", "struct table gen"),
+		zap.String("cost", time.Now().Sub(tableTime).String()))
+
+	logger.Debug("struct migrate task processor",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT),
+		zap.String("struct_table", tableStruct.String()),
 		zap.String("task_stage", "struct table gen"),
 		zap.String("cost", time.Now().Sub(tableTime).String()))
 

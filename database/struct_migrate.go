@@ -15,6 +15,8 @@ limitations under the License.
 */
 package database
 
+import "github.com/wentaojin/dbms/utils/stringutil"
+
 // IDatabaseStructMigrate used for database table struct migrate
 type IDatabaseStructMigrate interface {
 	GetDatabaseSchema() ([]string, error)
@@ -78,6 +80,11 @@ type StructMigrateAttributes struct {
 	TableColumns   []map[string]string `json:"tableColumns"`
 	ColumnComment  []map[string]string `json:"columnComment"`
 	OriginStruct   string              `json:"originStruct"`
+}
+
+func (s *StructMigrateAttributes) String() string {
+	js, _ := stringutil.MarshalIndentJSON(s)
+	return js
 }
 
 func IStructMigrateAttributes(t IStructMigrateAttributesReader) (*StructMigrateAttributes, error) {
@@ -172,6 +179,11 @@ type StructMigrateAttributesRule struct {
 	TableCollationRule     string            `json:"tableCollationRule"`
 	TableAttrRule          string            `json:"tableAttrRule"`
 	TableCommentRule       string            `json:"tableCommentRule"`
+}
+
+func (s *StructMigrateAttributesRule) String() string {
+	js, _ := stringutil.MarshalIndentJSON(s)
+	return js
 }
 
 func IStructMigrateAttributesRule(t IStructMigrateAttributesRuleReader) (*StructMigrateAttributesRule, error) {
@@ -273,6 +285,11 @@ type TableStruct struct {
 	TableCheckKeys       []string `json:"tableCheckKeys"`
 	TableForeignKeys     []string `json:"tableForeignKeys"`
 	TableIncompatibleDDL []string `json:"tableIncompatibleDDL"`
+}
+
+func (s *TableStruct) String() string {
+	js, _ := stringutil.MarshalIndentJSON(s)
+	return js
 }
 
 func IStructMigrateTableStructure(p IStructMigrateAttributesProcessor) (*TableStruct, error) {

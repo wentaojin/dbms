@@ -1057,14 +1057,14 @@ func (t *StructMigrateTable) GenTableNormalIndex() ([]string, []string, error) {
 				brackets := stringutil.StringExtractorWithinBrackets(col)
 				if len(brackets) == 0 {
 					// NAME9 PART
-					if val, ok := t.TableAttributesRule.ColumnNameRule[col]; ok {
+					if val, ok := t.TableAttributesRule.ColumnNameRule[stringutil.StringReplacer(col, "\"", "")]; ok {
 						convertTargetRaw, err = stringutil.CharsetConvert([]byte(val), constant.CharsetUTF8MB4, constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(t.DBCharsetT)])
 						if err != nil {
 							return nil, nil, fmt.Errorf("[GenTableNormalIndex] the upstream database schema [%s] table [%s] column [%s] normal_index charset convert [%s] failed, error: %v", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, idxMeta["COLUMN_LIST"], t.DBCharsetT, err)
 						}
 						normalIndex[i] = fmt.Sprintf("`%s`", stringutil.BytesToString(convertTargetRaw))
 					} else {
-						return nil, nil, fmt.Errorf("[GenTableNormalIndex] the upstream database schema [%v] table [%v] column [%v] isn't exist, please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, col)
+						return nil, nil, fmt.Errorf("[GenTableNormalIndex] the upstream database schema [%v] table [%v] column [%v] isn't existed in [%v], origin column list [%s], please contact author or recheck", t.DatasourceS.SchemaNameS, t.DatasourceS.TableNameS, col, t.TableAttributesRule.ColumnNameRule, columnList)
 					}
 				} else {
 					for k, v := range t.TableAttributesRule.ColumnNameRule {
