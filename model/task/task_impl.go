@@ -19,9 +19,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"golang.org/x/sync/errgroup"
-	"reflect"
 
 	"gorm.io/gorm/clause"
 
@@ -1036,17 +1037,17 @@ func (rw *RWDataMigrateTask) CreateDataMigrateTask(ctx context.Context, task *Da
 
 func (rw *RWDataMigrateTask) CreateInBatchDataMigrateTask(ctx context.Context, task []*DataMigrateTask, thread, batchSize int) error {
 	values := stringutil.AnySliceSplit(task, batchSize)
-	g := &errgroup.Group{}
+	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(thread)
 	for _, v := range values {
 		val := v
 		g.Go(func() error {
-			err := rw.DB(ctx).Clauses(clause.OnConflict{
+			err := rw.DB(gCtx).Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "task_name"}, {Name: "schema_name_s"}, {Name: "table_name_s"}, {Name: "chunk_id"}},
 				UpdateAll: true,
 			}).Create(val).Error
 			if err != nil {
-				return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(ctx), err)
+				return fmt.Errorf("create table [%s] batch record failed: %v", rw.TableName(gCtx), err)
 			}
 			return nil
 		})
