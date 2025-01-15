@@ -30,6 +30,8 @@ const (
 )
 
 // https://www.oceanbase.com/docs/enterprise-oms-doc-cn-1000000001781775
+// DefaultExtendColumnType JSON Message
+// The DefaultExtendColumnType JSON message format adds a field __light_type to the postStruct image based on DEFAULT to indicate the data type of the field.
 type Message struct {
 	/*
 		DELETE only has prevStruct, INSERT and DDL only have postStruct, UPDATE has both prevStruct and postStruct, HEARTBEAT (regular heartbeat message) does not have postStruct and postStruct.
@@ -84,6 +86,19 @@ func (m *Message) DecodeRowChangedEvent() *RowChangedEvent {
 	for i, n := range pkNames {
 		validUniqs[n] = pkValues[i]
 	}
+	// extract column type (__light_type)
+	columnType := make(map[string]string)
+	if m.PostStruct != nil {
+		for c, v := range m.PostStruct {
+			if c == "__light_type" {
+				for k, t := range v.(map[string]struct {
+					SchemaType string `json:"schemaType"`
+				}) {
+					columnType[k] = t.SchemaType
+				}
+			}
+		}
+	}
 
 	return &RowChangedEvent{
 		SchemaName: m.Metadata.DbName,
@@ -92,8 +107,8 @@ func (m *Message) DecodeRowChangedEvent() *RowChangedEvent {
 		CommitTs:   m.Metadata.StoreDataSequence,
 
 		ValidUniqColumns: validUniqs,
-
-		NewColumnData: m.PostStruct,
-		OldColumnData: m.PrevStruct,
+		ColumnType:       columnType,
+		NewColumnData:    m.PostStruct,
+		OldColumnData:    m.PrevStruct,
 	}
 }

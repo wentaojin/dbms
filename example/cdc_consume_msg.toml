@@ -45,8 +45,3 @@ idle-resolved-threshold = 60
 # calltimeout，单位：秒
 call-timeout = 36000
 enable-checkpoint = true
-# ticdc 不支持虚拟生成列的数据表同步，可能会引入上下游数据一致性问题，但支持存储 store 生成列的数据表同步
-# 对于 store 生成列同步，根据参数 enable-virtual-column 配置是否进行数据同步
-# 当下游表同样存在 virtual column，建议设置 false 即下游自动根据表达式自动计算生成，默认值 false
-# 当下游表不存在 virtual column，而使用普通数据类型代替，则建议设置 true，自适应下游数据类型调整同步消费
-enable-virtual-column = false

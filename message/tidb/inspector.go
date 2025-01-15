@@ -295,6 +295,7 @@ type Metadata struct {
 	TableThread    int
 	DatabaseT      database.IDatabase
 	TableRoutes    []*rule.TableRouteRule
+	CaseFieldRuleS string
 	CaseFieldRuleT string
 }
 
@@ -319,21 +320,31 @@ func (m *Metadata) GenDownstream(ctx context.Context) error {
 				tableColumns: make(map[string]*column),
 			}
 
-			var tableName string
+			var tableNameS string
+			switch m.CaseFieldRuleS {
+			case constant.ParamValueRuleCaseFieldNameUpper:
+				tableNameS = strings.ToUpper(t)
+			case constant.ParamValueRuleCaseFieldNameLower:
+				tableNameS = strings.ToLower(t)
+			default:
+				tableNameS = t
+			}
+
+			var tableNameT string
 			for _, r := range m.TableRoutes {
-				if m.SchemaNameS == r.SchemaNameS && t == r.TableNameS && m.SchemaNameT == r.SchemaNameT && !strings.EqualFold(r.TableNameT, "") {
-					tableName = r.TableNameT
+				if m.SchemaNameS == r.SchemaNameS && tableNameS == r.TableNameS && m.SchemaNameT == r.SchemaNameT && !strings.EqualFold(r.TableNameT, "") {
+					tableNameT = r.TableNameT
 					break
 				}
 			}
-			if strings.EqualFold(tableName, "") {
+			if strings.EqualFold(tableNameT, "") {
 				switch m.CaseFieldRuleT {
 				case constant.ParamValueRuleCaseFieldNameUpper:
-					tableName = strings.ToUpper(t)
+					tableNameT = strings.ToUpper(tableNameS)
 				case constant.ParamValueRuleCaseFieldNameLower:
-					tableName = strings.ToLower(t)
+					tableNameT = strings.ToLower(tableNameS)
 				default:
-					tableName = t
+					tableNameT = tableNameS
 				}
 			}
 
@@ -342,47 +353,52 @@ func (m *Metadata) GenDownstream(ctx context.Context) error {
 				zap.String("task_mode", m.TaskMode),
 				zap.String("task_flow", m.TaskFlow),
 				zap.String("schema_name_t", m.SchemaNameT),
-				zap.String("table_name_t", tableName))
+				zap.String("table_name_t", tableNameT))
 
-			res, err := m.DatabaseT.GetDatabaseTableColumnMetadata(m.SchemaNameT, tableName)
+			res, err := m.DatabaseT.GetDatabaseTableColumnMetadata(m.SchemaNameT, tableNameT)
 			if err != nil {
 				return err
 			}
 
 			for _, r := range res {
 				var (
-					columnName string
+					columnNameT string
+					isGenerated bool
 				)
 				switch m.CaseFieldRuleT {
 				case constant.ParamValueRuleCaseFieldNameUpper:
-					columnName = strings.ToUpper(r["COLUMN_NAME"])
+					columnNameT = strings.ToUpper(r["COLUMN_NAME"])
 				case constant.ParamValueRuleCaseFieldNameLower:
-					columnName = strings.ToLower(r["COLUMN_NAME"])
+					columnNameT = strings.ToLower(r["COLUMN_NAME"])
 				default:
-					columnName = r["COLUMN_NAME"]
+					columnNameT = r["COLUMN_NAME"]
 				}
 				dataL, err := stringutil.StrconvIntBitSize(r["DATA_LENGTH"], 64)
 				if err != nil {
 					return fmt.Errorf("strconv data_length [%s] failed: [%v]", r["DATA_LENGTH"], err)
 				}
+				if strings.EqualFold(r["IS_GENERATED"], "YES") {
+					isGenerated = true
+				}
 
-				md.setColumn(columnName, &column{
-					columnName: columnName,
+				md.setColumn(columnNameT, &column{
+					columnName: columnNameT,
 					columnType: r["DATA_TYPE"],
 					dataLength: int(dataL),
+					isGeneraed: isGenerated,
 				})
 			}
 
-			md.setTable(m.SchemaNameT, tableName)
+			md.setTable(m.SchemaNameT, tableNameT)
 
-			metaCache.Set(m.SchemaNameT, tableName, md)
+			metaCache.Set(m.SchemaNameT, tableNameT, md)
 
 			logger.Info("get downstream metadata",
 				zap.String("task_name", m.TaskName),
 				zap.String("task_mode", m.TaskMode),
 				zap.String("task_flow", m.TaskFlow),
 				zap.String("schema_name_t", m.SchemaNameT),
-				zap.String("table_name_t", tableName),
+				zap.String("table_name_t", tableNameT),
 				zap.Duration("cost", time.Now().Sub(timeS)))
 			return nil
 		})

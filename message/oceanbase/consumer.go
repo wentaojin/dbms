@@ -614,7 +614,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT,
-									c.consumeParam.EnableVirtualColumn)
+								)
 								if err != nil {
 									return err
 								}
@@ -652,7 +652,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT,
-									c.consumeParam.EnableVirtualColumn)
+								)
 								if err != nil {
 									return err
 								}
@@ -704,7 +704,7 @@ func (c *Consumer) updateUpstreamTableColumnMetadataCache(tableName string, ddlT
 		tableColumns: make(map[string]*column),
 	}
 
-	var tableNameS string
+	var tableNameS, tableNameT string
 	switch c.task.CaseFieldRuleS {
 	case constant.ParamValueRuleCaseFieldNameUpper:
 		tableNameS = strings.ToUpper(tableName)
@@ -712,6 +712,29 @@ func (c *Consumer) updateUpstreamTableColumnMetadataCache(tableName string, ddlT
 		tableNameS = strings.ToLower(tableName)
 	default:
 		tableNameS = tableName
+	}
+	for _, r := range c.tableRoute {
+		if c.schemaRoute.SchemaNameS == r.SchemaNameS && tableNameS == r.TableNameS && c.schemaRoute.SchemaNameT == r.SchemaNameT && !strings.EqualFold(r.TableNameT, "") {
+			tableNameT = r.TableNameT
+			break
+		}
+	}
+	if strings.EqualFold(tableNameT, "") {
+		switch c.task.CaseFieldRuleT {
+		case constant.ParamValueRuleCaseFieldNameUpper:
+			tableNameT = strings.ToUpper(tableNameS)
+		case constant.ParamValueRuleCaseFieldNameLower:
+			tableNameT = strings.ToLower(tableNameS)
+		default:
+			tableNameT = tableNameS
+		}
+	}
+
+	columnRouteM := make(map[string]string)
+	for _, r := range c.columnRoute {
+		if c.schemaRoute.SchemaNameS == r.SchemaNameS && tableNameS == r.TableNameS && c.schemaRoute.SchemaNameT == r.SchemaNameT && tableNameT == r.TableNameT {
+			columnRouteM[r.ColumnNameS] = r.ColumnNameT
+		}
 	}
 
 	logger.Info("update upstream metadata",
@@ -727,42 +750,63 @@ func (c *Consumer) updateUpstreamTableColumnMetadataCache(tableName string, ddlT
 
 	switch ddlType {
 	case DDLDropTable:
-		upMetaCache.Delete(c.schemaRoute.SchemaNameS, tableNameS)
+		upMetaCache.Delete(c.schemaRoute.SchemaNameT, tableNameT)
 	case DDLRenameTable:
 		// todo: not support
 		return fmt.Errorf("the ddl type [%s] update metadata not support, please contact author or ensume the rename table can sync and restart the task", ddlType)
 	case DDLCreateTable, DDLAlterTable:
-		res, err := c.databaseS.GetDatabaseTableColumnInfo(c.schemaRoute.SchemaNameS, tableNameS)
+		res, err := c.databaseS.GetDatabaseTableColumnMetadata(c.schemaRoute.SchemaNameS, tableNameS)
 		if err != nil {
 			return err
 		}
 
 		for _, r := range res {
 			var (
-				columnName string
+				columnNameS string
+				columnNameT string
 			)
+
 			switch c.task.CaseFieldRuleS {
 			case constant.ParamValueRuleCaseFieldNameUpper:
-				columnName = strings.ToUpper(r["COLUMN_NAME"])
+				columnNameS = strings.ToUpper(r["COLUMN_NAME"])
 			case constant.ParamValueRuleCaseFieldNameLower:
-				columnName = strings.ToLower(r["COLUMN_NAME"])
+				columnNameS = strings.ToLower(r["COLUMN_NAME"])
 			default:
-				columnName = r["COLUMN_NAME"]
+				columnNameS = r["COLUMN_NAME"]
 			}
+			if val, ok := columnRouteM[columnNameS]; ok {
+				columnNameT = val
+			} else {
+				switch c.task.CaseFieldRuleT {
+				case constant.ParamValueRuleCaseFieldNameUpper:
+					columnNameT = strings.ToUpper(columnNameS)
+				case constant.ParamValueRuleCaseFieldNameLower:
+					columnNameT = strings.ToLower(columnNameS)
+				default:
+					columnNameT = columnNameS
+				}
+			}
+
 			dataL, err := stringutil.StrconvIntBitSize(r["DATA_LENGTH"], 64)
 			if err != nil {
 				return fmt.Errorf("strconv data_length [%s] failed: [%v]", r["DATA_LENGTH"], err)
 			}
 
-			md.setColumn(columnName, &column{
-				columnName: columnName,
-				columnType: r["DATA_TYPE"],
-				dataLength: int(dataL),
-			})
+			if strings.EqualFold(r["IS_GENERATED"], "YES") {
+				md.setColumn(columnNameT, &column{
+					columnName: columnNameT,
+					columnType: r["DATA_TYPE"],
+					dataLength: int(dataL),
+					isGeneraed: true,
+				})
+			}
 		}
 
-		md.setTable(c.schemaRoute.SchemaNameS, tableNameS)
-		downMetaCache.Set(c.schemaRoute.SchemaNameS, tableNameS, md)
+		// Only record table fields that have generated columns upstream
+		if md.getColumn() != nil {
+			md.setTable(c.schemaRoute.SchemaNameT, tableNameT)
+			upMetaCache.Set(c.schemaRoute.SchemaNameT, tableNameT, md)
+		}
 	}
 
 	logger.Info("update upstream metadata completed",
@@ -836,23 +880,23 @@ func (c *Consumer) updateDowstreamTableColumnMetadataCache(tableName string, ddl
 
 		for _, r := range res {
 			var (
-				columnName string
+				columnNameT string
 			)
 			switch c.task.CaseFieldRuleT {
 			case constant.ParamValueRuleCaseFieldNameUpper:
-				columnName = strings.ToUpper(r["COLUMN_NAME"])
+				columnNameT = strings.ToUpper(r["COLUMN_NAME"])
 			case constant.ParamValueRuleCaseFieldNameLower:
-				columnName = strings.ToLower(r["COLUMN_NAME"])
+				columnNameT = strings.ToLower(r["COLUMN_NAME"])
 			default:
-				columnName = r["COLUMN_NAME"]
+				columnNameT = r["COLUMN_NAME"]
 			}
 			dataL, err := stringutil.StrconvIntBitSize(r["DATA_LENGTH"], 64)
 			if err != nil {
 				return fmt.Errorf("strconv data_length [%s] failed: [%v]", r["DATA_LENGTH"], err)
 			}
 
-			md.setColumn(columnName, &column{
-				columnName: columnName,
+			md.setColumn(columnNameT, &column{
+				columnName: columnNameT,
 				columnType: r["DATA_TYPE"],
 				dataLength: int(dataL),
 			})

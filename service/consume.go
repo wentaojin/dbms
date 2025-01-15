@@ -230,10 +230,6 @@ func ShowCdcConsumeTask(ctx context.Context, req *pb.ShowCdcConsumeTaskRequest) 
 		if err != nil {
 			return fmt.Errorf("parse enable_checkpoint err: %v", err)
 		}
-		enableVirtualColumn, err := strconv.ParseBool(paramMap[constant.ParamNameCdcConsumeEnableVirtualColumn])
-		if err != nil {
-			return fmt.Errorf("parse enable_virtual_column err: %v", err)
-		}
 
 		param = &pb.CdcConsumeParam{
 			TableThread:           tableThread,
@@ -243,7 +239,6 @@ func ShowCdcConsumeTask(ctx context.Context, req *pb.ShowCdcConsumeTaskRequest) 
 			SubscribeTopic:        paramMap[constant.ParamNameCdcConsumeSubscribeTopic],
 			ServerAddress:         stringutil.StringSplit(paramMap[constant.ParamNameCdcConsumeServerAddress], constant.StringSeparatorComma),
 			EnableCheckpoint:      enableCheckpoint,
-			EnableVirtualColumn:   enableVirtualColumn,
 		}
 
 		schemaRouteRule, _, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -479,13 +474,6 @@ func getCdcConsumeTasKParams(ctx context.Context, taskName string) (*pb.CdcConsu
 				return taskParam, err
 			}
 			taskParam.EnableCheckpoint = enableCheckpoint
-		}
-		if strings.EqualFold(p.ParamName, constant.ParamNameCdcConsumeEnableVirtualColumn) {
-			enableVirtualColumn, err := strconv.ParseBool(p.ParamValue)
-			if err != nil {
-				return taskParam, err
-			}
-			taskParam.EnableVirtualColumn = enableVirtualColumn
 		}
 	}
 	return taskParam, nil

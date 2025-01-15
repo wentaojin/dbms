@@ -20,9 +20,9 @@ schema-name-s = "MARVIN"
 schema-name-t = "pingcap"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["T10"]
+include-table-s = []
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
-exclude-table-s = []
+exclude-table-s = ["C_COMPRESSION_T","C_RANDOM","C_STORE_GEN_COL","C_GEN_STORE_T","C_UNSIGNED_INT","T1","C_PARTITION_RANGE","C_CLUSTERED_T0","C_CLUSTERED_T1","C_CLUSTERED_T2","C_CLUSTERED_T3","C_NONCLUSTERED_T0","C_NONCLUSTERED_T1","C_NONCLUSTERED_T2","C_NONCLUSTERED_T3","C_VITUAL_GEN_COL","C_GEN_VIRTUAL_T","C_INT","C_TEXT","C_CHAR_BINARY","C_BLOB","C_TIME","C_REAL","C_UNSIGNED_REAL","C_OTHER_DATATYPE","C_UPDATE00","C_UPDATE01","C_UPDATE02","C_PARTITION_HASH","T2","T3","C_SAVEPOINT_T","C_MULTI_DATA_TYPE","T5"]
 
 [[schema-route-rule.table-route-rules]]
 table-name-s = ""

@@ -56,6 +56,10 @@ func (d *metadata) setColumn(k string, v *column) {
 	d.tableColumns[k] = v
 }
 
+func (d *metadata) getColumn() map[string]*column {
+	return d.tableColumns
+}
+
 func NewMetadataCache() *MetadataCache {
 	return &MetadataCache{
 		metadata: make(map[string]*metadata),

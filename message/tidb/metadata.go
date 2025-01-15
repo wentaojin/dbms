@@ -42,6 +42,7 @@ type column struct {
 	columnName string
 	columnType string
 	dataLength int
+	isGeneraed bool
 }
 
 func (d *metadata) setTable(schemaName, tableName string) {

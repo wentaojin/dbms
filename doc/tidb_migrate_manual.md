@@ -70,9 +70,7 @@ TiDB MIGRATE ORACLE、POSTGRES、MYSQL、TIDB 兼容性数据库，基于 TiCDC 
 - tidb 支持同步 DDL、DML Event，但不支持非表级别的同步，比如：CREATE DATABASE、DROP DATABASE、ALTER DATABASE、CREATE USER 等数据实时同步
 - ticdc changefeed large-message-handle-option claim-check 以及 handle-key-only 不支持配置，但支持 compression 压缩参数
 - ticdc changefeed topic partition-num 参数值要求跟 kafka 集群对应 topic 分区数相同，数据消费依赖 partition-num 自动协调多分区 DDL 同步，DDL 语句同步可能存在因语法不支持同步报错，可根据具体 DDL rewrite 重写继续同步，保留 rewrite 记录可重复多次生效
-- ticdc 不支持虚拟生成列的数据表同步，可能会引入上下游数据一致性问题，但支持存储 store 生成列的数据表同步，对于 store 生成列同步，根据参数 enable-virtual-column 配置是否进行数据同步
-  - 当下游表同样存在 virtual column，建议设置 false 即下游自动根据表达式自动计算生成，默认值 false
-  - 当下游表不存在 virtual column，而使用普通数据类型代替，则建议设置 true，自适应下游数据类型调整同步消费
+- ticdc 不支持虚拟生成列的数据表同步，可能会引入上下游数据一致性问题，但支持存储 store 生成列的数据表同步，对于 store 生成列同步，当上下游表对应字段都存在 virtual column，自动忽略写入下游自动根据表达式自动计算生成值，否则按消息原值同步消费
 - 禁止 DDL 协调期间，进行 ticdc changefeed topic 扩容 partition 操作，否则容易产生某个分区因无法接受到 DDL 消息而假死 Hang 暂停消费的状态，数据无法同步
 - 非 DDL 协调期间，进行 ticdc changefeed topic 扩容 partition 操作，需要重启实时同步任务以便可自动识别新增分区，否则可能遗漏新扩容分区数据同步
 - kafka 建议以集群模式且 partition 多副本形式运行， 以便 Kafka 节点实现高可用容灾

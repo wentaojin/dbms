@@ -111,18 +111,18 @@ func (e *RowChangedEvent) Delete(
 		}
 	}
 
-	oldColumnTypeT := make(map[string]string)
+	upstreamColumnType := make(map[string]string)
 	for k, v := range e.ColumnType {
 		if val, ok := columnRouteR[k]; ok {
-			oldColumnTypeT[val] = v
+			upstreamColumnType[val] = v
 		} else {
 			switch caseFieldRuleT {
 			case constant.ParamValueRuleCaseFieldNameUpper:
-				oldColumnTypeT[strings.ToUpper(k)] = v
+				upstreamColumnType[strings.ToUpper(k)] = v
 			case constant.ParamValueRuleCaseFieldNameLower:
-				oldColumnTypeT[strings.ToLower(k)] = v
+				upstreamColumnType[strings.ToLower(k)] = v
 			default:
-				oldColumnTypeT[k] = v
+				upstreamColumnType[k] = v
 			}
 		}
 	}
@@ -137,7 +137,7 @@ func (e *RowChangedEvent) Delete(
 		)
 		for c, p := range uniqColumnData {
 			if ds, ok := ms.tableColumns[c]; ok {
-				if tys, ok := oldColumnTypeT[c]; ok {
+				if tys, ok := upstreamColumnType[c]; ok {
 					if p != nil {
 						switch {
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnStringCharacterDatatype, tys) &&
@@ -225,7 +225,7 @@ func (e *RowChangedEvent) Delete(
 		placeholder := 1
 		for c, p := range uniqColumnData {
 			if ds, ok := ms.tableColumns[c]; ok {
-				if tys, ok := oldColumnTypeT[c]; ok {
+				if tys, ok := upstreamColumnType[c]; ok {
 					if p != nil {
 						switch {
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnStringCharacterDatatype, tys) && stringutil.IsContainedStringIgnoreCase(
@@ -303,8 +303,7 @@ func (e *RowChangedEvent) Delete(
 func (e *RowChangedEvent) Insert(dbTypeT string,
 	tableRoute []*rule.TableRouteRule,
 	columnRoute []*rule.ColumnRouteRule,
-	caseFieldRuleT string,
-	enableVirCol bool) (string, []interface{}, error) {
+	caseFieldRuleT string) (string, []interface{}, error) {
 	var (
 		schemaName, tableName string
 		// validUniqColumns      []string
@@ -327,39 +326,53 @@ func (e *RowChangedEvent) Insert(dbTypeT string,
 
 	newColumnData := make(map[string]interface{})
 	for c, p := range e.NewColumnData {
-		if e.isGeneratedColumn(c) && !enableVirCol {
-			continue
-		}
+		var colName string
 		if val, ok := columnRouteR[c]; ok {
-			newColumnData[val] = p
+			colName = val
 		} else {
 			switch caseFieldRuleT {
 			case constant.ParamValueRuleCaseFieldNameUpper:
-				newColumnData[strings.ToUpper(c)] = p
+				colName = strings.ToUpper(c)
 			case constant.ParamValueRuleCaseFieldNameLower:
-				newColumnData[strings.ToLower(c)] = p
+				colName = strings.ToLower(c)
 			default:
-				newColumnData[c] = p
+				colName = c
 			}
+		}
+		if meta, existd := ms.tableColumns[colName]; existd {
+			if e.isGeneratedColumn(c) && meta.isGeneraed {
+				continue
+			} else {
+				newColumnData[colName] = p
+			}
+		} else {
+			return "", nil, fmt.Errorf("the schema_name_t [%s] table_name_t [%s] column_name_t [%s] metadata not existed, normally should be existed, please contact author or retry", schemaName, tableName, colName)
 		}
 	}
 
-	oldColumnTypeT := make(map[string]string)
-	for k, v := range e.ColumnType {
-		if e.isGeneratedColumn(k) && !enableVirCol {
-			continue
-		}
-		if val, ok := columnRouteR[k]; ok {
-			oldColumnTypeT[val] = v
+	upstreamColumnType := make(map[string]string)
+	for c, v := range e.ColumnType {
+		var colName string
+		if val, ok := columnRouteR[c]; ok {
+			colName = val
 		} else {
 			switch caseFieldRuleT {
 			case constant.ParamValueRuleCaseFieldNameUpper:
-				oldColumnTypeT[strings.ToUpper(k)] = v
+				colName = strings.ToUpper(c)
 			case constant.ParamValueRuleCaseFieldNameLower:
-				oldColumnTypeT[strings.ToLower(k)] = v
+				colName = strings.ToLower(c)
 			default:
-				oldColumnTypeT[k] = v
+				colName = c
 			}
+		}
+		if meta, existd := ms.tableColumns[colName]; existd {
+			if e.isGeneratedColumn(c) && meta.isGeneraed {
+				continue
+			} else {
+				upstreamColumnType[colName] = v
+			}
+		} else {
+			return "", nil, fmt.Errorf("the schema_name_t [%s] table_name_t [%s] column_name_t [%s] metadata not existed, normally should be existed, please contact author or retry", schemaName, tableName, colName)
 		}
 	}
 
@@ -385,7 +398,7 @@ func (e *RowChangedEvent) Insert(dbTypeT string,
 		for c, p := range newColumnData {
 			cols = append(cols, fmt.Sprintf(`"%s"`, c))
 			if ds, ok := ms.tableColumns[c]; ok {
-				if tys, ok := oldColumnTypeT[c]; ok {
+				if tys, ok := upstreamColumnType[c]; ok {
 					if p != nil {
 						switch {
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnStringCharacterDatatype, tys) &&
@@ -468,7 +481,7 @@ func (e *RowChangedEvent) Insert(dbTypeT string,
 		// 	valS = append(valS, fmt.Sprintf(`s."%s"`, c))
 
 		// 	if ds.columnType, ok := ms.tableColumnsT[c]; ok {
-		// 		if tys, ok := oldColumnTypeT[c]; ok {
+		// 		if tys, ok := upstreamColumnType[c]; ok {
 		// 			if stringutil.IsContainedStringIgnoreCase(MessageEventColumnStringCharacterDatatype, tys) &&
 		// 				stringutil.IsContainedStringIgnoreCase(constant.OracleCompatibleDatabaseTableColumnBinaryDatatype, ds) {
 		// 				// nil == NULL values
@@ -518,7 +531,7 @@ func (e *RowChangedEvent) Insert(dbTypeT string,
 			placeholder++
 
 			if ds, ok := ms.tableColumns[c]; ok {
-				if tys, ok := oldColumnTypeT[c]; ok {
+				if tys, ok := upstreamColumnType[c]; ok {
 					if p != nil {
 						switch {
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnStringCharacterDatatype, tys) && stringutil.IsContainedStringIgnoreCase(
@@ -568,7 +581,7 @@ func (e *RowChangedEvent) Insert(dbTypeT string,
 		// 	pals = append(pals, fmt.Sprintf("$%d", placeholder))
 
 		// 	if ds.columnType, ok := ms.tableColumnsT[c]; ok {
-		// 		if tys, ok := oldColumnTypeT[c]; ok {
+		// 		if tys, ok := upstreamColumnType[c]; ok {
 		// 			if stringutil.IsContainedStringIgnoreCase(MessageEventColumnStringCharacterDatatype, tys) &&
 		// 				stringutil.IsContainedStringIgnoreCase(constant.PostgresDatabaseTableColumnBinaryDatatype, ds) {
 		// 				// nil == NULL values

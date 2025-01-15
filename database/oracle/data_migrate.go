@@ -374,11 +374,11 @@ END;`, taskName)
 
 	_, err = d.ExecContext(ctx, sqlStr01)
 	if err != nil {
-		_, err = d.ExecContext(d.Ctx, sqlStr02)
-		if err != nil {
-			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid drop task failed: %v, sql: %v", err, sqlStr02)
+		_, errMsg := d.ExecContext(d.Ctx, sqlStr02)
+		if errMsg != nil {
+			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid drop task failed, sql: [%v], exec error: [%v], drop error: [%v]", sqlStr02, err, errMsg)
 		}
-		return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid task failed: %v, sql: %v", err, sqlStr01)
+		return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE create_chunks_by_rowid task failed, sql: [%v], error: [%v]", sqlStr01, err)
 	}
 
 	sqlStr03 := fmt.Sprintf(`SELECT 'ROWID BETWEEN ''' || START_ROWID || ''' AND ''' || END_ROWID || '''' CMD FROM DBA_PARALLEL_EXECUTE_CHUNKS WHERE  TASK_NAME = '%s' ORDER BY CHUNK_ID`, taskName)
@@ -392,9 +392,9 @@ END;`, taskName)
 
 	rows, err := d.QueryContext(qctx, sqlStr03)
 	if err != nil {
-		_, err = d.ExecContext(d.Ctx, sqlStr02)
-		if err != nil {
-			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed: %v, sql: %v", err, sqlStr03)
+		_, errMsg := d.ExecContext(d.Ctx, sqlStr02)
+		if errMsg != nil {
+			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed, sql: [%v], exec error: [%v], drop error: [%v]", sqlStr02, err, errMsg)
 		}
 		return err
 	}
@@ -403,9 +403,9 @@ END;`, taskName)
 	// general query, automatic get column name
 	columns, err := rows.Columns()
 	if err != nil {
-		_, err = d.ExecContext(d.Ctx, sqlStr02)
-		if err != nil {
-			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed: %v, sql: %v", err, sqlStr03)
+		_, errMsg := d.ExecContext(d.Ctx, sqlStr02)
+		if errMsg != nil {
+			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed, sql: [%v], exec error: [%v], drop error: [%v]", sqlStr02, err, errMsg)
 		}
 		return fmt.Errorf("query rows.Columns failed, sql: [%v], error: [%v]", sqlStr03, err)
 	}
@@ -449,9 +449,9 @@ END;`, taskName)
 	}
 
 	if err = rows.Err(); err != nil {
-		_, err = d.ExecContext(d.Ctx, sqlStr02)
-		if err != nil {
-			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid drop task failed: %v, sql: %v", err, sqlStr03)
+		_, errMsg := d.ExecContext(d.Ctx, sqlStr02)
+		if errMsg != nil {
+			return fmt.Errorf("oracle DBMS_PARALLEL_EXECUTE query_chunks_rowid exec failed [%v] drop task failed: %v, sql: %v", err, errMsg, sqlStr03)
 		}
 		return fmt.Errorf("query rows.Next failed, sql: [%v], error: [%v]", sqlStr03, err)
 	}

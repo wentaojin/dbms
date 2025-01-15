@@ -222,6 +222,7 @@ func (cct *CdcConsumeTask) Start() error {
 				TableThread:    int(cct.MigrateParams.TableThread),
 				DatabaseT:      databaseT,
 				TableRoutes:    tableRoutes,
+				CaseFieldRuleS: cct.Task.CaseFieldRuleS,
 				CaseFieldRuleT: cct.Task.CaseFieldRuleT,
 			}
 			err = d.GenDownstream(cct.Ctx)
@@ -252,6 +253,7 @@ func (cct *CdcConsumeTask) Start() error {
 				TaskTables:     conTables.TaskTables,
 				TableThread:    int(cct.MigrateParams.TableThread),
 				TableRoutes:    tableRoutes,
+				ColumnRoutes:   columnRoute,
 				CaseFieldRuleS: cct.Task.CaseFieldRuleS,
 				CaseFieldRuleT: cct.Task.CaseFieldRuleT,
 				DatabaseS:      databaseS,

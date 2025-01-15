@@ -714,7 +714,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT,
-									c.consumeParam.EnableVirtualColumn)
+								)
 								if err != nil {
 									return err
 								}
@@ -750,7 +750,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT,
-									c.consumeParam.EnableVirtualColumn)
+								)
 								if err != nil {
 									return err
 								}

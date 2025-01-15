@@ -1712,8 +1712,6 @@ components:
           format: string
         enableCheckpoint:
           type: boolean
-        enableVirtualColumn:
-          type: boolean
     Task:
       type: object
       properties:

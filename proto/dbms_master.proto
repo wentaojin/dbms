@@ -796,5 +796,4 @@ message CdcConsumeParam {
   repeated string serverAddress = 5;
   string subscribeTopic = 6;
   bool enableCheckpoint = 7;
-  bool enableVirtualColumn = 8;
 }

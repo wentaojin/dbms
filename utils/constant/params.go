@@ -202,5 +202,4 @@ const (
 	ParamNameCdcConsumeServerAddress         = "serverAddress"
 	ParamNameCdcConsumeSubscribeTopic        = "subscribeTopic"
 	ParamNameCdcConsumeEnableCheckpoint      = "enableCheckpoint"
-	ParamNameCdcConsumeEnableVirtualColumn   = "enableVirtualColumn"
 )

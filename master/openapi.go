@@ -899,7 +899,6 @@ func (s *Server) upsertCdcConsumeTask(ctx context.Context, req openapi.APIPutCdc
 			IdleResolvedThreshold: *req.CdcConsumeParam.IdleResolvedThreshold,
 			CallTimeout:           *req.CdcConsumeParam.CallTimeout,
 			EnableCheckpoint:      *req.CdcConsumeParam.EnableCheckpoint,
-			EnableVirtualColumn:   *req.CdcConsumeParam.EnableVirtualColumn,
 		},
 	})
 	if err != nil {
