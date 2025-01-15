@@ -22,7 +22,8 @@ const (
 	// PostgresqlDatabaseSnapshotReadSupportVersion = "9.3"
 	PostgresqlDatabaseSupportVersionRequire = "9.5"
 
-	PostgresqlDatabasePartitionTableSupportVersionRequire = "10.0"
+	PostgresqlDatabasePartitionTableSupportVersionRequire         = "10.0"
+	PostgresqlDatabaseVirtualGeneratedColumnSupportVersionRequire = "12"
 
 	PostgresDatabaseTableColumnDefaultValueWithEmptyString = ""
 	PostgresDatabaseTableColumnDefaultValueWithNULLSTRING  = "NULLSTRING"

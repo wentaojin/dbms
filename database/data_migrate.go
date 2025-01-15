@@ -50,6 +50,12 @@ type IDataMigrateRuleInitializer interface {
 	IDatabaseSchemaTableRule
 }
 
+type IDatabaseDataConsume interface {
+	GetDatabaseSchemaPrimaryTables(schemaName string) ([]string, error)
+	GetDatabaseSchemaTableValidIndex(schemaName string, tableName string) (bool, error)
+	GetDatabaseTableColumnMetadata(schemaName string, tableName string) ([]map[string]string, error)
+}
+
 type DataMigrateAttributesRule struct {
 	SchemaNameS         string `json:"schemaNameS"`
 	SchemaNameT         string `json:"schemaNameT"`

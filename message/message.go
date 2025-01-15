@@ -20,3 +20,30 @@ const (
 	DMLInsertQueryType = "INSERT"
 	DMLUpdateQueryType = "UPDATE"
 )
+
+var (
+	MYSQLCompatibleMsgColumnStringCharacterDatatype = []string{
+		"TINYTEXT",
+		"MEDIUMTEXT",
+		"TEXT",
+		"LONGTEXT",
+		"VARCHAR",
+		"JSON",
+		"CHAR",
+	}
+	MYSQLCompatibleMsgColumnDatetimeCharacterDatatype = []string{
+		"DATE",
+		"DATETIME",
+		"TIMESTAMP",
+	}
+	MYSQLCompatibleMsgColumnYearCharacterDatatype = []string{
+		"YEAR",
+	}
+	MYSQLCompatibleMsgColumnTimeCharacterDatatype = []string{
+		"TIME",
+	}
+	// all downstream databases except MySQL and TiDB use the unified adaptive field length to automatically fill spaces in DELETE statements of char type to avoid data processing errors due to missing spaces (for example, Oracle database queries or DML operations do not automatically fill spaces), while INSERT statements use the original value of the upstream TiDB char data type to consume synchronously.
+	MYSQLCompatibleMsgColumnCharCharacterDatatype = []string{
+		"CHAR",
+	}
+)

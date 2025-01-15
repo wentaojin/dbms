@@ -41,6 +41,194 @@ func (d *Database) GetDatabaseRole() (string, error) {
 	return res[0]["DATABASE_ROLE"], nil
 }
 
+func (d *Database) GetDatabaseSchemaPrimaryTables(schemaName string) ([]string, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`SELECT
+	TABLE_NAME,
+	CONSTRAINT_NAME,
+	LTRIM(MAX(SYS_CONNECT_BY_PATH(COLUMN_NAME, '|+|'))
+    KEEP (DENSE_RANK LAST ORDER BY POSITION), '|+|') AS COLUMN_LIST
+FROM
+	(
+	SELECT
+	CU.TABLE_NAME,
+	CU.CONSTRAINT_NAME,
+	CU.COLUMN_NAME,
+	CU.POSITION,
+	ROW_NUMBER() OVER (PARTITION BY CU.CONSTRAINT_NAME ORDER BY CU.POSITION)-1 RN_LAG
+FROM
+	DBA_CONS_COLUMNS CU,
+	DBA_CONSTRAINTS AU
+WHERE
+	CU.CONSTRAINT_NAME = AU.CONSTRAINT_NAME
+	AND AU.CONSTRAINT_TYPE = 'P'
+	AND AU.STATUS = 'ENABLED'
+	AND CU.OWNER = AU.OWNER
+	AND CU.TABLE_NAME = AU.TABLE_NAME
+	AND CU.OWNER = '%s'
+	AND NOT EXISTS (
+		SELECT 1 FROM
+			DBA_RECYCLEBIN RC WHERE CU.OWNER=RC.OWNER AND CU.TABLE_NAME = RC.OBJECT_NAME
+		)
+    )
+GROUP BY
+	TABLE_NAME,CONSTRAINT_NAME
+CONNECT BY
+	RN_LAG = PRIOR POSITION
+	AND CONSTRAINT_NAME = PRIOR CONSTRAINT_NAME
+START WITH
+	POSITION = 1
+ORDER BY TABLE_NAME,CONSTRAINT_NAME`, schemaName))
+	if err != nil {
+		return nil, err
+	}
+	var tables []string
+	for _, r := range res {
+		tables = append(tables, r["TABLE_NAME"])
+	}
+	return tables, nil
+}
+
+func (d *Database) GetDatabaseSchemaTableValidIndex(schemaName string, tableName string) (bool, error) {
+	_, res, err := d.GeneralQuery(fmt.Sprintf(`WITH unique_constraints AS (
+		SELECT 
+			cons.CONSTRAINT_NAME,
+			cons.CONSTRAINT_TYPE,
+			cols.COLUMN_NAME
+		FROM 
+			DBA_CONSTRAINTS cons
+		JOIN 
+			DBA_CONS_COLUMNS cols ON cons.CONSTRAINT_NAME = cols.CONSTRAINT_NAME
+		WHERE 
+			cons.OWNER = '%s' AND
+			cons.TABLE_NAME = '%s' AND
+			cons.CONSTRAINT_TYPE IN ('U')
+	),
+	unique_indexes AS (
+		SELECT 
+			ind.INDEX_NAME,
+			cols.COLUMN_NAME
+		FROM 
+			DBA_INDEXES ind
+		JOIN 
+			DBA_IND_COLUMNS cols ON ind.INDEX_NAME = cols.INDEX_NAME
+		WHERE 
+			ind.OWNER = '%s' AND
+			ind.TABLE_NAME = '%s' AND
+			ind.UNIQUENESS = 'UNIQUE' AND
+			ind.INDEX_TYPE = 'NORMAL' -- 排除其他类型的索引，如位图索引等
+	)
+	SELECT 
+		uc.CONSTRAINT_NAME AS CONSTRAINT_OR_INDEX_NAME,
+		uc.CONSTRAINT_TYPE,
+		uc.COLUMN_NAME,
+		CASE 
+			WHEN tabc.NULLABLE = 'N' THEN 'NOT NULL'
+			ELSE 'NULLABLE'
+		END AS IS_NULLABLE
+	FROM 
+		unique_constraints uc
+	JOIN 
+		DBA_TAB_COLUMNS tabc ON uc.COLUMN_NAME = tabc.COLUMN_NAME
+	WHERE 
+		tabc.OWNER = '%s' AND
+		tabc.TABLE_NAME = '%s'
+	UNION ALL
+	SELECT 
+		ui.INDEX_NAME AS CONSTRAINT_OR_INDEX_NAME,
+		'INDEX' AS CONSTRAINT_TYPE,
+		ui.COLUMN_NAME,
+		CASE 
+			WHEN tabc.NULLABLE = 'N' THEN 'NOT NULL'
+			ELSE 'NULLABLE'
+		END AS IS_NULLABLE
+	FROM 
+		unique_indexes ui
+	JOIN 
+		DBA_TAB_COLUMNS tabc ON ui.COLUMN_NAME = tabc.COLUMN_NAME
+	WHERE 
+		tabc.OWNER = '%s' AND
+		tabc.TABLE_NAME = '%s'`, schemaName, tableName, schemaName, tableName,
+		schemaName, tableName, schemaName, tableName))
+	if err != nil {
+		return false, err
+	}
+
+	indexNameColumns := make(map[string][]string)
+	indexNameNulls := make(map[string]int)
+
+	for _, r := range res {
+		if vals, ok := indexNameColumns[r["CONSTRAINT_OR_INDEX_NAME"]]; ok {
+			indexNameColumns[r["CONSTRAINT_OR_INDEX_NAME"]] = append(vals, r["COLUMN_NAME"])
+		} else {
+			indexNameColumns[r["CONSTRAINT_OR_INDEX_NAME"]] = append(indexNameColumns[r["CONSTRAINT_OR_INDEX_NAME"]], r["COLUMN_NAME"])
+		}
+
+		if r["IS_NULLABLE"] == "NOT NULL" {
+			if vals, ok := indexNameNulls[r["CONSTRAINT_OR_INDEX_NAME"]]; ok {
+				indexNameNulls[r["CONSTRAINT_OR_INDEX_NAME"]] = vals + 1
+			} else {
+				indexNameNulls[r["CONSTRAINT_OR_INDEX_NAME"]] = 1
+			}
+		}
+	}
+
+	for k, v := range indexNameColumns {
+		if val, ok := indexNameNulls[k]; ok && val == len(v) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (d *Database) GetDatabaseTableColumnMetadata(schemaName string, tableName string) ([]map[string]string, error) {
+	version, err := d.GetDatabaseVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	virtualC := false
+	if stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal(constant.OracleDatabaseTableAndColumnVirtualSupportVersion) {
+		virtualC = true
+	}
+
+	var sqlStr string
+	if virtualC {
+		sqlStr = fmt.Sprintf(`
+		SELECT 
+			T.COLUMN_NAME,
+			T.DATA_TYPE,		
+			NVL(T.DATA_LENGTH, 0) AS DATA_LENGTH,
+			T.VIRTUAL_COLUMN AS IS_GENERATED
+		FROM
+			DBA_TAB_COLS T,
+		WHERE
+			T.OWNER = '%s'
+			AND T.TABLE_NAME = '%s'
+		ORDER BY
+			T.COLUMN_ID`, schemaName, tableName)
+	} else {
+		sqlStr = fmt.Sprintf(`
+		SELECT 
+			T.COLUMN_NAME,
+			T.DATA_TYPE,		
+			NVL(T.DATA_LENGTH, 0) AS DATA_LENGTH
+			'NO' AS IS_GENERATED
+		FROM
+			DBA_TAB_COLUMNS T,
+		WHERE
+			T.OWNER = '%s'
+			AND T.TABLE_NAME = '%s'
+		ORDER BY
+			T.COLUMN_ID`, schemaName, tableName)
+	}
+
+	_, res, err := d.GeneralQuery(sqlStr)
+	if err != nil {
+		return res, err
+	}
+	return res, nil
+}
+
 func (d *Database) GetDatabaseConsistentPos(ctx context.Context, tx *sql.Tx) (string, error) {
 	var globalSCN string
 	err := tx.QueryRowContext(ctx, "SELECT TO_CHAR(MIN(CURRENT_SCN)) CURRENT_SCN FROM GV$DATABASE").Scan(&globalSCN)

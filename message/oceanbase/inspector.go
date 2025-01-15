@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package tidb
+package oceanbase
 
 import (
 	"context"
@@ -35,6 +35,7 @@ import (
 type Constraint struct {
 	Task                 *task.Task
 	SchemaRoute          *rule.SchemaRouteRule
+	DbTypeT              string
 	DatabaseS, DatabaseT database.IDatabase
 	TaskTables           []string
 	TableThread          int
@@ -65,10 +66,10 @@ type validDownstream struct {
 	validTables []string
 }
 
-func (v *validDownstream) append(t string) {
+func (v *validDownstream) append(t ...string) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	v.validTables = append(v.validTables, t)
+	v.validTables = append(v.validTables, t...)
 }
 
 func (v *validDownstream) get() []string {
@@ -130,52 +131,47 @@ func (c *Constraint) InspectUpstream(ctx context.Context) error {
 		zap.String("version", version),
 		zap.String("inspect", "with valid index column"))
 
-	if stringutil.VersionOrdinal(version) < stringutil.VersionOrdinal("6.5.5") {
-		return fmt.Errorf("the current database version [%s] does not support real-time synchronization based on the message queue + index-value distribution mode. There may be update events that cause data correctness issues. please choose other methods for data synchronization, details: https://docs.pingcap.com/zh/tidb/dev/ticdc-split-update-behavior", version)
+	if stringutil.VersionOrdinal(version) < stringutil.VersionOrdinal("2.2.73.0") {
+		return fmt.Errorf("the current database version [%s] does not support real-time synchronization based on the message queue + hash distribution mode. The order of DML row changes within a transaction is not guaranteed. There may be cause data correctness issues. please choose other methods for data synchronization, details: https://www.oceanbase.com/docs/enterprise-oms-doc-cn-1000000001781598", version)
 	}
 
-	if (stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal("6.5.5") && stringutil.VersionOrdinal(version) < stringutil.VersionOrdinal("7.0.0")) ||
-		(stringutil.VersionOrdinal(version) >= stringutil.VersionOrdinal("7.1.2")) {
-		pkTables, err := c.DatabaseS.GetDatabaseSchemaPrimaryTables(c.SchemaRoute.SchemaNameS)
-		if err != nil {
-			return err
-		}
+	pkTables, err := c.DatabaseS.GetDatabaseSchemaPrimaryTables(c.SchemaRoute.SchemaNameS)
+	if err != nil {
+		return err
+	}
 
-		c.validUpstream.append(pkTables...)
+	c.validUpstream.append(pkTables...)
 
-		noValidTables := stringutil.StringItemsFilterDifference(c.TaskTables, c.validUpstream.get())
+	noValidTables := stringutil.StringItemsFilterDifference(c.TaskTables, c.validUpstream.get())
 
-		if len(noValidTables) == 0 {
-			return nil
-		}
-
-		g, _ := errgroup.WithContext(ctx)
-		g.SetLimit(c.TableThread)
-		for _, tab := range noValidTables {
-			t := tab
-			g.Go(func() error {
-				isvalid, err := c.DatabaseS.GetDatabaseSchemaTableValidIndex(c.SchemaRoute.SchemaNameS, t)
-				if err != nil {
-					return err
-				}
-				if isvalid {
-					c.validUpstream.append(t)
-				}
-				return nil
-			})
-		}
-		if err := g.Wait(); err != nil {
-			return err
-		}
-
-		doubleCValidTables := stringutil.StringItemsFilterDifference(c.TaskTables, c.validUpstream.get())
-		if len(doubleCValidTables) > 0 {
-			return fmt.Errorf("the upstream database tables [%v] does not meet the data synchronization requirements. Data synchronization requirements must have a primary key or a non-null unique key", stringutil.StringJoin(doubleCValidTables, constant.StringSeparatorComma))
-		}
-
+	if len(noValidTables) == 0 {
 		return nil
 	}
-	return fmt.Errorf("the upstream database version [%s] does not support real-time synchronization based on the message queue + index-value distribution mode. There may be update events that cause data correctness issues. please choose other methods for data synchronization, details: https://docs.pingcap.com/zh/tidb/dev/ticdc-split-update-behavior", version)
+
+	g, _ := errgroup.WithContext(ctx)
+	g.SetLimit(c.TableThread)
+	for _, tab := range noValidTables {
+		t := tab
+		g.Go(func() error {
+			isValid, err := c.DatabaseS.GetDatabaseSchemaTableValidIndex(c.SchemaRoute.SchemaNameS, t)
+			if err != nil {
+				return err
+			}
+			if isValid {
+				c.validUpstream.append(t)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	doubleCValidTables := stringutil.StringItemsFilterDifference(c.TaskTables, c.validUpstream.get())
+	if len(doubleCValidTables) > 0 {
+		return fmt.Errorf("the upstream database tables [%v] does not meet the data synchronization requirements. Data synchronization requirements must have a primary key or a non-null unique key", stringutil.StringJoin(doubleCValidTables, constant.StringSeparatorComma))
+	}
+	return nil
 }
 
 func (c *Constraint) InspectDownstream(ctx context.Context) error {
@@ -251,7 +247,6 @@ func (c *Constraint) InspectDownstream(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-
 			if isValid {
 				c.validDownstream.append(t)
 			}
@@ -278,12 +273,7 @@ func (c *Constraint) InspectDownstream(ctx context.Context) error {
 }
 
 /*
-TypeTinyBlob   ColumnType = 249 // TINYTEXT/TINYBLOB -> 249
-TypeMediumBlob ColumnType = 250 // MEDIUMTEXT/MEDIUMBLOB -> 250
-TypeLongBlob   ColumnType = 251 // LONGTEXT/LONGBLOB -> 251
-TypeBlob       ColumnType = 252 // TEXT/BLOB -> 252
-
-The same field type id of the message event generated by tidb ticdc may represent different data types, and different data types correspond to different downstream database data types, such as text -> clob, blob -> blob. The consumption process cannot identify the specific downstream data type and needs to identify it based on downstream metadata to determine whether it is passed in string or []byte format.
+the database table metadata
 */
 type Metadata struct {
 	TaskName       string
@@ -293,9 +283,111 @@ type Metadata struct {
 	SchemaNameT    string
 	TaskTables     []string
 	TableThread    int
-	DatabaseT      database.IDatabase
 	TableRoutes    []*rule.TableRouteRule
+	CaseFieldRuleS string
 	CaseFieldRuleT string
+	DatabaseS      database.IDatabase
+	DatabaseT      database.IDatabase
+}
+
+func (m *Metadata) GenUpstream(ctx context.Context) error {
+	logger.Info("get upstream metadata",
+		zap.String("task_name", m.TaskName),
+		zap.String("task_mode", m.TaskMode),
+		zap.String("task_flow", m.TaskFlow),
+		zap.String("schema_name_s", m.SchemaNameS))
+
+	startTime := time.Now()
+
+	g, _ := errgroup.WithContext(ctx)
+	g.SetLimit(m.TableThread)
+
+	for _, tab := range m.TaskTables {
+		t := tab
+		g.Go(func() error {
+			timeS := time.Now()
+
+			md := &metadata{
+				tableColumns: make(map[string]*column),
+			}
+
+			var tableName string
+			switch m.CaseFieldRuleS {
+			case constant.ParamValueRuleCaseFieldNameUpper:
+				tableName = strings.ToUpper(t)
+			case constant.ParamValueRuleCaseFieldNameLower:
+				tableName = strings.ToLower(t)
+			default:
+				tableName = t
+			}
+
+			logger.Info("get upstream metadata",
+				zap.String("task_name", m.TaskName),
+				zap.String("task_mode", m.TaskMode),
+				zap.String("task_flow", m.TaskFlow),
+				zap.String("schema_name_s", m.SchemaNameS),
+				zap.String("table_name_s", tableName))
+
+			res, err := m.DatabaseS.GetDatabaseTableColumnMetadata(m.SchemaNameS, tableName)
+			if err != nil {
+				return err
+			}
+
+			for _, r := range res {
+				var (
+					columnName  string
+					isGenerated bool
+				)
+				switch m.CaseFieldRuleT {
+				case constant.ParamValueRuleCaseFieldNameUpper:
+					columnName = strings.ToUpper(r["COLUMN_NAME"])
+				case constant.ParamValueRuleCaseFieldNameLower:
+					columnName = strings.ToLower(r["COLUMN_NAME"])
+				default:
+					columnName = r["COLUMN_NAME"]
+				}
+				dataL, err := stringutil.StrconvIntBitSize(r["DATA_LENGTH"], 64)
+				if err != nil {
+					return fmt.Errorf("strconv data_length [%s] failed: [%v]", r["DATA_LENGTH"], err)
+				}
+
+				if strings.EqualFold(r["IS_GENERATED"], "YES") {
+					isGenerated = true
+				}
+
+				md.setColumn(columnName, &column{
+					columnName: columnName,
+					columnType: r["DATA_TYPE"],
+					dataLength: int(dataL),
+					isGeneraed: isGenerated,
+				})
+			}
+
+			md.setTable(m.SchemaNameS, tableName)
+
+			upMetaCache.Set(m.SchemaNameS, tableName, md)
+
+			logger.Info("get upstream metadata",
+				zap.String("task_name", m.TaskName),
+				zap.String("task_mode", m.TaskMode),
+				zap.String("task_flow", m.TaskFlow),
+				zap.String("schema_name_s", m.SchemaNameS),
+				zap.String("table_name_s", tableName),
+				zap.Duration("cost", time.Now().Sub(timeS)))
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	logger.Info("get upstream metadata completed",
+		zap.String("task_name", m.TaskName),
+		zap.String("task_mode", m.TaskMode),
+		zap.String("task_flow", m.TaskFlow),
+		zap.String("schema_name_s", m.SchemaNameS),
+		zap.Duration("cost", time.Now().Sub(startTime)))
+	return nil
 }
 
 func (m *Metadata) GenDownstream(ctx context.Context) error {
@@ -344,14 +436,15 @@ func (m *Metadata) GenDownstream(ctx context.Context) error {
 				zap.String("schema_name_t", m.SchemaNameT),
 				zap.String("table_name_t", tableName))
 
-			res, err := m.DatabaseT.GetDatabaseTableColumnMetadata(m.SchemaNameT, tableName)
+			res, err := m.DatabaseT.GetDatabaseTableColumnInfo(m.SchemaNameT, tableName)
 			if err != nil {
 				return err
 			}
 
 			for _, r := range res {
 				var (
-					columnName string
+					columnName  string
+					isGenerated bool
 				)
 				switch m.CaseFieldRuleT {
 				case constant.ParamValueRuleCaseFieldNameUpper:
@@ -366,16 +459,21 @@ func (m *Metadata) GenDownstream(ctx context.Context) error {
 					return fmt.Errorf("strconv data_length [%s] failed: [%v]", r["DATA_LENGTH"], err)
 				}
 
+				if strings.EqualFold(r["IS_GENERATED"], "YES") {
+					isGenerated = true
+				}
+
 				md.setColumn(columnName, &column{
 					columnName: columnName,
 					columnType: r["DATA_TYPE"],
 					dataLength: int(dataL),
+					isGeneraed: isGenerated,
 				})
 			}
 
 			md.setTable(m.SchemaNameT, tableName)
 
-			metaCache.Set(m.SchemaNameT, tableName, md)
+			downMetaCache.Set(m.SchemaNameT, tableName, md)
 
 			logger.Info("get downstream metadata",
 				zap.String("task_name", m.TaskName),

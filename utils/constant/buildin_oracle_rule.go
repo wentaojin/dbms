@@ -45,6 +45,9 @@ const (
 	// Allow Oracle table, field Collation, requires oracle 12.2g and above
 	OracleDatabaseTableAndColumnSupportVersion = "12.2"
 
+	// virtual column
+	OracleDatabaseTableAndColumnVirtualSupportVersion = "11"
+
 	// Oracle database table type
 	OracleDatabaseTableTypeHeapTable                 = "HEAP"
 	OracleDatabaseTableTypePartitionTable            = "PARTITIONED"

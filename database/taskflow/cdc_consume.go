@@ -25,6 +25,7 @@ import (
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/database/msgsrv"
 	"github.com/wentaojin/dbms/logger"
+	"github.com/wentaojin/dbms/message/oceanbase"
 	"github.com/wentaojin/dbms/message/tidb"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/consume"
@@ -165,7 +166,8 @@ func (cct *CdcConsumeTask) Start() error {
 	dbTypeS := dbType[0]
 	dbTypeT := dbType[1]
 
-	if strings.EqualFold(dbTypeS, constant.DatabaseTypeTiDB) {
+	switch dbTypeS {
+	case constant.DatabaseTypeTiDB, constant.DatabaseTypeOceanbaseMYSQL:
 		databaseS, err = database.NewDatabase(cct.Ctx, cct.DatasourceS, "", int64(cct.MigrateParams.CallTimeout))
 		if err != nil {
 			return err
@@ -178,14 +180,16 @@ func (cct *CdcConsumeTask) Start() error {
 		}
 
 		switch cct.Task.TaskFlow {
-		case constant.TaskFlowTiDBToOracle:
+		case constant.TaskFlowTiDBToOracle, constant.TaskFlowOBMySQLToOracle:
 			databaseT, err = database.NewDatabase(cct.Ctx, cct.DatasourceT, schemaRoute.SchemaNameT, int64(cct.MigrateParams.CallTimeout))
 			if err != nil {
 				return err
 			}
 			defer databaseT.Close()
 
-		case constant.TaskFlowTiDBToTiDB, constant.TaskFlowTiDBToMYSQL, constant.TaskFlowTiDBToPostgres:
+		case constant.TaskFlowTiDBToTiDB, constant.TaskFlowTiDBToMYSQL, constant.TaskFlowTiDBToPostgres,
+			constant.TaskFlowOBMySQLToTiDB, constant.TaskFlowOBMySQLToMySQL, constant.TaskFlowOBMySQLToOBMySQL,
+			constant.TaskFlowOBMySQLToPostgres:
 			databaseT, err = database.NewDatabase(cct.Ctx, cct.DatasourceT, "", int64(cct.MigrateParams.CallTimeout))
 			if err != nil {
 				return err
@@ -194,34 +198,74 @@ func (cct *CdcConsumeTask) Start() error {
 		default:
 			return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", cct.Task.TaskName, cct.Task.TaskMode, cct.Task.TaskFlow, schemaRoute.SchemaNameS)
 		}
+		if strings.EqualFold(dbTypeS, constant.DatabaseTypeTiDB) {
+			constraint := &tidb.Constraint{
+				Task:        cct.Task,
+				SchemaRoute: schemaRoute,
+				DatabaseS:   databaseS,
+				DatabaseT:   databaseT,
+				TaskTables:  conTables.TaskTables,
+				TableRoutes: tableRoutes,
+				TableThread: int(cct.MigrateParams.TableThread),
+			}
+			if err := constraint.Inspect(cct.Ctx); err != nil {
+				return err
+			}
 
-		constraint := &tidb.Constraint{
-			Task:        cct.Task,
-			SchemaRoute: schemaRoute,
-			DatabaseS:   databaseS,
-			DatabaseT:   databaseT,
-			TaskTables:  conTables.TaskTables,
-			TableRoutes: tableRoutes,
-			TableThread: int(cct.MigrateParams.TableThread),
-		}
-		if err := constraint.Inspect(cct.Ctx); err != nil {
-			return err
+			d := &tidb.Metadata{
+				TaskName:       cct.Task.TaskName,
+				TaskFlow:       cct.Task.TaskFlow,
+				TaskMode:       cct.Task.TaskMode,
+				SchemaNameS:    schemaRoute.SchemaNameS,
+				SchemaNameT:    schemaRoute.SchemaNameT,
+				TaskTables:     conTables.TaskTables,
+				TableThread:    int(cct.MigrateParams.TableThread),
+				DatabaseT:      databaseT,
+				TableRoutes:    tableRoutes,
+				CaseFieldRuleT: cct.Task.CaseFieldRuleT,
+			}
+			err = d.GenDownstream(cct.Ctx)
+			if err != nil {
+				return err
+			}
 		}
 
-		d := &tidb.Downstream{
-			TaskName:       cct.Task.TaskName,
-			TaskFlow:       cct.Task.TaskFlow,
-			TaskMode:       cct.Task.TaskMode,
-			SchemaNameT:    schemaRoute.SchemaNameT,
-			TaskTables:     conTables.TaskTables,
-			TableThread:    int(cct.MigrateParams.TableThread),
-			DatabaseT:      databaseT,
-			TableRoutes:    tableRoutes,
-			CaseFieldRuleT: cct.Task.CaseFieldRuleT,
-		}
-		metadatas, err := d.Get(cct.Ctx)
-		if err != nil {
-			return err
+		if strings.EqualFold(dbTypeS, constant.DatabaseTypeOceanbaseMYSQL) {
+			constraint := &oceanbase.Constraint{
+				Task:        cct.Task,
+				SchemaRoute: schemaRoute,
+				DbTypeT:     dbTypeT,
+				DatabaseS:   databaseS,
+				DatabaseT:   databaseT,
+				TaskTables:  conTables.TaskTables,
+				TableRoutes: tableRoutes,
+			}
+			if err := constraint.Inspect(cct.Ctx); err != nil {
+				return err
+			}
+			d := &oceanbase.Metadata{
+				TaskName:       cct.Task.TaskName,
+				TaskFlow:       cct.Task.TaskFlow,
+				TaskMode:       cct.Task.TaskMode,
+				SchemaNameS:    schemaRoute.SchemaNameS,
+				SchemaNameT:    schemaRoute.SchemaNameT,
+				TaskTables:     conTables.TaskTables,
+				TableThread:    int(cct.MigrateParams.TableThread),
+				TableRoutes:    tableRoutes,
+				CaseFieldRuleS: cct.Task.CaseFieldRuleS,
+				CaseFieldRuleT: cct.Task.CaseFieldRuleT,
+				DatabaseS:      databaseS,
+				DatabaseT:      databaseT,
+			}
+
+			err = d.GenUpstream(cct.Ctx)
+			if err != nil {
+				return err
+			}
+			err = d.GenDownstream(cct.Ctx)
+			if err != nil {
+				return err
+			}
 		}
 
 		logger.Info("get topic partitions",
@@ -305,22 +349,42 @@ func (cct *CdcConsumeTask) Start() error {
 			return err
 		}
 
-		if err := tidb.NewConsumerGroup(
-			cct.Ctx,
-			cct.Task,
-			schemaRoute,
-			tableRoutes,
-			columnRoute,
-			conTables.TaskTables,
-			cct.MigrateParams,
-			kafkaPartitions,
-			dbTypeT,
-			databaseT,
-			metadatas,
-		).Run(); err != nil {
-			return err
+		if strings.EqualFold(dbTypeS, constant.DatabaseTypeTiDB) {
+			if err := tidb.NewConsumerGroup(
+				cct.Ctx,
+				cct.Task,
+				schemaRoute,
+				tableRoutes,
+				columnRoute,
+				conTables.TaskTables,
+				cct.MigrateParams,
+				kafkaPartitions,
+				dbTypeT,
+				databaseS,
+				databaseT,
+			).Run(); err != nil {
+				return err
+			}
 		}
-	} else {
+		if strings.EqualFold(dbTypeS, constant.DatabaseTypeOceanbaseMYSQL) {
+			if err := oceanbase.NewConsumerGroup(
+				cct.Ctx,
+				cct.Task,
+				schemaRoute,
+				tableRoutes,
+				columnRoute,
+				conTables.TaskTables,
+				cct.MigrateParams,
+				kafkaPartitions,
+				dbTypeS,
+				dbTypeT,
+				databaseS,
+				databaseT,
+			).Run(); err != nil {
+				return err
+			}
+		}
+	default:
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] database type [%s] isn't support, please contact author or reselect", cct.Task.TaskName, cct.Task.TaskMode, cct.Task.TaskFlow, dbTypeS)
 	}
 

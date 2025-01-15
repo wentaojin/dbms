@@ -29,9 +29,10 @@ const (
 	// MYSQL database expression index support version > 8.0.0
 	MYSQLDatabaseExpressionIndexSupportVersion = "8.0.0"
 
-	MYSQLDatabaseSequenceSupportVersion  = "8.0"
-	TIDBDatabaseSequenceSupportVersion   = "4.0"
-	TIDBDatabaseImportIntoSupportVersion = "7.5"
+	MYSQLDatabaseVirtualColumnSupportVersion = "5.7"
+	MYSQLDatabaseSequenceSupportVersion      = "8.0"
+	TIDBDatabaseSequenceSupportVersion       = "4.0"
+	TIDBDatabaseImportIntoSupportVersion     = "7.5"
 )
 
 // TiDB database integer primary key menu

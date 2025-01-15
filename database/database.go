@@ -49,6 +49,7 @@ type IDatabase interface {
 	IDatabaseDataMigrate
 	IDatabaseDataCompare
 	IDatabaseStructCompare
+	IDatabaseDataConsume
 }
 
 type IDatabaseTableFilter interface {
@@ -120,7 +121,9 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, migrate
 		if err != nil {
 			return database, err
 		}
-	case strings.EqualFold(datasource.DbType, constant.DatabaseTypeTiDB) || strings.EqualFold(datasource.DbType, constant.DatabaseTypeMySQL):
+	case strings.EqualFold(datasource.DbType, constant.DatabaseTypeTiDB) ||
+		strings.EqualFold(datasource.DbType, constant.DatabaseTypeMySQL) ||
+		strings.EqualFold(datasource.DbType, constant.DatabaseTypeOceanbaseMYSQL):
 		database, err = mysql.NewDatabase(ctx, datasource, callTimeout)
 		if err != nil {
 			return database, err
