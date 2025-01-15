@@ -725,7 +725,7 @@ func (s *Server) OperateDelete(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
-func (s *Server) handleOperateError(ctx context.Context, t *task.Task, err error) error {
+func (s *Server) handleOperateError(ctx context.Context, t *task.Task, errMsg error) error {
 	if s.cancelFunc != nil {
 		s.cancelFunc()
 		s.cancelFunc = nil
@@ -733,7 +733,7 @@ func (s *Server) handleOperateError(ctx context.Context, t *task.Task, err error
 
 	// stop command send context.Canceled, task status should be constant.TaskDatabaseStatusStopped
 	var taskStatus string
-	if errors.Is(err, context.Canceled) {
+	if errors.Is(errMsg, context.Canceled) {
 		taskStatus = constant.TaskDatabaseStatusStopped
 	} else {
 		taskStatus = constant.TaskDatabaseStatusFailed
@@ -756,7 +756,7 @@ func (s *Server) handleOperateError(ctx context.Context, t *task.Task, err error
 				stringutil.StringLower(t.TaskMode),
 				stringutil.StringLower(taskStatus),
 				t.TaskName,
-				err,
+				errMsg.Error(),
 				stringutil.BytesToString(debug.Stack())),
 		})
 		if err != nil {

@@ -1,6 +1,6 @@
 task-name = "dmt_33to45"
 datasource-name-s = "ora151"
-datasource-name-t = "tidb186"
+datasource-name-t = "tidb85"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -16,11 +16,11 @@ case-field-rule-s = "0"
 case-field-rule-t = "0"
 
 [schema-route-rule]
-schema-name-s = "SCOTT"
-schema-name-t = "simple"
+schema-name-s = "MARVIN"
+schema-name-t = "pingcap"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["MARVIN01"]
+include-table-s = ["T10"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
 
