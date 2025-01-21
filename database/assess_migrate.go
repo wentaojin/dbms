@@ -21,7 +21,7 @@ type IDatabaseAssessMigrate interface {
 	GetDatabasePlatformName() (string, string, string, error)
 	GetDatabaseGlobalName() (string, error)
 	GetDatabaseParameters() (string, string, string, string, error)
-	GeDatabaseInstance() ([]map[string]string, error)
+	GetDatabaseInstance() ([]map[string]string, error)
 	GetDatabaseSize() (string, error)
 	GetDatabaseSchemaNameALL() ([]string, error)
 	GetDatabaseSchemaNameSingle(schemaNameS string) (string, error)

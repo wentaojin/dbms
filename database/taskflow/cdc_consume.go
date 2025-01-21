@@ -225,7 +225,7 @@ func (cct *CdcConsumeTask) Start() error {
 				CaseFieldRuleS: cct.Task.CaseFieldRuleS,
 				CaseFieldRuleT: cct.Task.CaseFieldRuleT,
 			}
-			err = d.GenDownstream(cct.Ctx)
+			err = d.GenMetadata(cct.Ctx)
 			if err != nil {
 				return err
 			}
@@ -239,6 +239,7 @@ func (cct *CdcConsumeTask) Start() error {
 				DatabaseS:   databaseS,
 				DatabaseT:   databaseT,
 				TaskTables:  conTables.TaskTables,
+				TableThread: int(cct.MigrateParams.TableThread),
 				TableRoutes: tableRoutes,
 			}
 			if err := constraint.Inspect(cct.Ctx); err != nil {
@@ -260,11 +261,7 @@ func (cct *CdcConsumeTask) Start() error {
 				DatabaseT:      databaseT,
 			}
 
-			err = d.GenUpstream(cct.Ctx)
-			if err != nil {
-				return err
-			}
-			err = d.GenDownstream(cct.Ctx)
+			err = d.GenMetadata(cct.Ctx)
 			if err != nil {
 				return err
 			}

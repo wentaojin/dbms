@@ -696,6 +696,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 							func(ctx context.Context, tx *sql.Tx) error {
 								sqlStr, sqlParas, err := e.Delete(
 									c.dbTypeT,
+									c.schemaRoute.SchemaNameT,
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT)
@@ -711,6 +712,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 							func(ctx context.Context, tx *sql.Tx) error {
 								sqlStr, sqlParas, err := e.Insert(
 									c.dbTypeT,
+									c.schemaRoute.SchemaNameT,
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT,
@@ -732,6 +734,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 							func(ctx context.Context, tx *sql.Tx) error {
 								sqlStr, sqlParas, err := e.Delete(
 									c.dbTypeT,
+									c.schemaRoute.SchemaNameT,
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT)
@@ -747,6 +750,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 							func(ctx context.Context, tx *sql.Tx) error {
 								sqlStr, sqlParas, err := e.Insert(
 									c.dbTypeT,
+									c.schemaRoute.SchemaNameT,
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT,
@@ -766,6 +770,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 					case message.DMLDeleteQueryType:
 						sqlStr, sqlParas, err := e.Delete(
 							c.dbTypeT,
+							c.schemaRoute.SchemaNameT,
 							c.tableRoute,
 							c.columnRoute,
 							c.task.CaseFieldRuleT)

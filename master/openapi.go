@@ -486,6 +486,7 @@ func (s *Server) upsertStmtMigrateTask(ctx context.Context, req openapi.APIPutSt
 			EnableConsistentRead: *req.StatementMigrateParam.EnableConsistentRead,
 			EnableSafeMode:       *req.StatementMigrateParam.EnableSafeMode,
 			EnablePrepareStmt:    *req.StatementMigrateParam.EnablePrepareStmt,
+			GarbledCharReplace:   *req.StatementMigrateParam.GarbledCharReplace,
 		},
 	})
 	if err != nil {
@@ -687,6 +688,7 @@ func (s *Server) upsertCsvMigrateTask(ctx context.Context, req openapi.APIPutCsv
 			EnableConsistentRead: *req.CsvMigrateParam.EnableConsistentRead,
 			EnableImportFeature:  *req.CsvMigrateParam.EnableImportFeature,
 			CsvImportParams:      *req.CsvMigrateParam.CsvImportParams,
+			GarbledCharReplace:   *req.CsvMigrateParam.GarbledCharReplace,
 		},
 	})
 	if err != nil {
@@ -760,6 +762,7 @@ func (s *Server) upsertSqlMigrateTask(ctx context.Context, req openapi.APIPutSql
 			EnableSafeMode:       *req.SqlMigrateParam.EnableSafeMode,
 			EnableCheckpoint:     *req.SqlMigrateParam.EnableCheckpoint,
 			EnablePrepareStmt:    *req.SqlMigrateParam.EnablePrepareStmt,
+			GarbledCharReplace:   *req.SqlMigrateParam.GarbledCharReplace,
 		},
 	})
 	if err != nil {

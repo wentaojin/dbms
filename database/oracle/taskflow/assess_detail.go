@@ -42,7 +42,7 @@ func AssessDatabaseOverview(databaseS database.IDatabase, objAssessCompsMap map[
 		return nil, ReportSummary{}, err
 	}
 
-	instanceRes, err := databaseS.GeDatabaseInstance()
+	instanceRes, err := databaseS.GetDatabaseInstance()
 	if err != nil {
 		return nil, ReportSummary{}, err
 	}

@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 	"unsafe"
 
 	"github.com/wentaojin/dbms/utils/constant"
@@ -767,6 +768,59 @@ func CharsetConvert(data []byte, fromCharset, toCharset string) ([]byte, error) 
 
 		return utf8Data, nil
 
+	default:
+		return nil, fmt.Errorf("string data current from charset [%v] to charset [%v] convert isn't support", fromCharset, toCharset)
+	}
+}
+
+// CharsetCoCharsetConvertReplacenvert used for string data charset convert
+func CharsetConvertReplace(data []byte, fromCharset, toCharset, garbledReplaceChar string) ([]byte, error) {
+	switch {
+	case strings.EqualFold(fromCharset, constant.CharsetUTF8MB4) && strings.EqualFold(toCharset, constant.CharsetGBK):
+		reader := transform.NewReader(bytes.NewReader(data), encoding.ReplaceUnsupported(simplifiedchinese.GBK.NewEncoder()))
+		gbkBytes, err := io.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(strings.ReplaceAll(string(gbkBytes), string(utf8.RuneError), garbledReplaceChar)), nil
+	case strings.EqualFold(fromCharset, constant.CharsetUTF8MB4) && strings.EqualFold(toCharset, constant.CharsetGB18030):
+		reader := transform.NewReader(bytes.NewReader(data), encoding.ReplaceUnsupported(simplifiedchinese.GB18030.NewEncoder()))
+		gbk18030Bytes, err := io.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(strings.ReplaceAll(string(gbk18030Bytes), string(utf8.RuneError), garbledReplaceChar)), nil
+	case strings.EqualFold(fromCharset, constant.CharsetUTF8MB4) && strings.EqualFold(toCharset, constant.CharsetBIG5):
+		reader := transform.NewReader(bytes.NewReader(data), encoding.ReplaceUnsupported(traditionalchinese.Big5.NewEncoder()))
+		bigBytes, err := io.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(strings.ReplaceAll(string(bigBytes), string(utf8.RuneError), garbledReplaceChar)), nil
+	case strings.EqualFold(fromCharset, constant.CharsetUTF8MB4) && strings.EqualFold(toCharset, constant.CharsetUTF8MB4):
+		return []byte(strings.ReplaceAll(string(data), string(utf8.RuneError), garbledReplaceChar)), nil
+
+	case strings.EqualFold(fromCharset, constant.CharsetGBK) && strings.EqualFold(toCharset, constant.CharsetUTF8MB4):
+		decoder := simplifiedchinese.GBK.NewDecoder()
+		utf8Data, err := decoder.Bytes(data)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(strings.ReplaceAll(string(utf8Data), string(utf8.RuneError), garbledReplaceChar)), nil
+	case strings.EqualFold(fromCharset, constant.CharsetGB18030) && strings.EqualFold(toCharset, constant.CharsetUTF8MB4):
+		decoder := simplifiedchinese.GB18030.NewDecoder()
+		utf8Data, err := decoder.Bytes(data)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(strings.ReplaceAll(string(utf8Data), string(utf8.RuneError), garbledReplaceChar)), nil
+	case strings.EqualFold(fromCharset, constant.CharsetBIG5) && strings.EqualFold(toCharset, constant.CharsetUTF8MB4):
+		decoder := traditionalchinese.Big5.NewDecoder()
+		utf8Data, err := decoder.Bytes(data)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(strings.ReplaceAll(string(utf8Data), string(utf8.RuneError), garbledReplaceChar)), nil
 	default:
 		return nil, fmt.Errorf("string data current from charset [%v] to charset [%v] convert isn't support", fromCharset, toCharset)
 	}

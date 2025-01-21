@@ -93,3 +93,8 @@ repair-stmt-flow = "upstream"
 # CREATE INDEX idx_t99_nlstest ON t99(CONVERT(c1, USING 'UTF8MB4'));
 enable-collation-setting = false
 disable-md5-checksum = false
+# 指定在源数据文件的字符集转换过程中，出现不兼容字符时的替换字符。
+# 此项不可与字段分隔符、引用界定符和换行符号重复。
+# 默认值为 "\uFFFD"，即 UTF-8 编码中的 "error" Rune 或 Unicode replacement character。
+# 改变默认值可能会导致潜在的源数据文件解析性能下降
+garbled-char-replace = "\uFFFD"

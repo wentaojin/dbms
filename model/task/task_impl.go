@@ -1546,6 +1546,15 @@ func (rw *RWDataCompareTask) QueryDataCompareTaskByTaskStatus(ctx context.Contex
 	return dataS, nil
 }
 
+func (rw *RWDataCompareTask) DistinctDataCompareTaskChunkByTaskStatus(ctx context.Context, task *DataCompareTask) ([]string, error) {
+	var dataS []string
+	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Distinct().Pluck("ChunkID", &dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 func (rw *RWDataCompareTask) DeleteDataCompareTask(ctx context.Context, task *DataCompareTask) error {
 	err := rw.DB(ctx).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Delete(&DataCompareTask{}).Error
 	if err != nil {
@@ -1565,6 +1574,15 @@ func (rw *RWDataCompareTask) DeleteDataCompareTaskName(ctx context.Context, task
 func (rw *RWDataCompareTask) QueryDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error) {
 	var dataS []*DataCompareTask
 	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataCompareTask) QueryDataCompareTaskChunk(ctx context.Context, task *DataCompareTask, chunkIds []string) ([]*DataCompareTask, error) {
+	var dataS []*DataCompareTask
+	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_id in (?)", task.TaskName, task.SchemaNameS, task.TableNameS, chunkIds).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -1603,11 +1621,29 @@ func (rw *RWDataCompareResult) FindDataCompareResultByTask(ctx context.Context, 
 	return dataS, nil
 }
 
+func (rw *RWDataCompareResult) QueryDataCompareResultChunk(ctx context.Context, task *DataCompareResult, chunkIds []string) ([]*DataCompareResult, error) {
+	var dataS []*DataCompareResult
+	err := rw.DB(ctx).Model(&DataCompareResult{}).Where("task_name = ? AND chunk_id in (?)", task.TaskName, chunkIds).Find(&dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] chunk_id record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
 func (rw *RWDataCompareResult) FindDataCompareResultBySchemaTable(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error) {
 	var dataS []*DataCompareResult
 	err := rw.DB(ctx).Model(&DataCompareResult{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
+	}
+	return dataS, nil
+}
+
+func (rw *RWDataCompareResult) DistinctDataCompareResultChunkByTaskStatus(ctx context.Context, task *DataCompareResult) ([]string, error) {
+	var dataS []string
+	err := rw.DB(ctx).Model(&DataCompareResult{}).Where("task_name = ?", task.TaskName).Distinct().Pluck("ChunkID", &dataS).Error
+	if err != nil {
+		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }

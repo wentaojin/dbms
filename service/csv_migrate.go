@@ -297,6 +297,7 @@ func ShowCsvMigrateTask(ctx context.Context, req *pb.ShowCsvMigrateTaskRequest) 
 			EnableConsistentRead: enableConsistentRead,
 			EnableImportFeature:  enableImportFeature,
 			CsvImportParams:      importPars,
+			GarbledCharReplace:   paramMap[constant.ParamNameCsvMigrateGarbledCharReplace],
 		}
 
 		schemaRouteRule, dataMigrateRules, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -397,7 +398,7 @@ func StartCsvMigrateTask(ctx context.Context, taskName, workerAddr string) error
 			return err
 		}
 	default:
-		return fmt.Errorf("the csv migrate task [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, sourceDatasource.DatasourceName, sourceDatasource.DbType)
+		return fmt.Errorf("the csv migrate task [%s] task_flow [%s] datasource [%s] source [%s] isn't support, please contact auhtor or reselect", taskName, taskInfo.TaskFlow, sourceDatasource.DatasourceName, sourceDatasource.DbType)
 	}
 
 	// status
@@ -670,6 +671,9 @@ func getCsvMigrateTasKParams(ctx context.Context, taskName string) (*pb.CsvMigra
 				}
 			}
 			taskParam.CsvImportParams = importPars
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameCsvMigrateGarbledCharReplace) {
+			taskParam.GarbledCharReplace = p.ParamValue
 		}
 	}
 	return taskParam, nil

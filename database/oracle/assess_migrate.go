@@ -170,7 +170,7 @@ func (d *Database) GetDatabaseParameters() (string, string, string, string, erro
 	return dbBlockSize, clusterDatabase, CLusterDatabaseInstance, characterSet, nil
 }
 
-func (d *Database) GeDatabaseInstance() ([]map[string]string, error) {
+func (d *Database) GetDatabaseInstance() ([]map[string]string, error) {
 	_, res, err := d.GeneralQuery(`SELECT
 	HOST_NAME,
 	INSTANCE_NAME,

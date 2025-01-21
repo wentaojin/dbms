@@ -1191,7 +1191,10 @@ components:
         enableSafeMode:
           type: boolean
         enablePrepareStmt:
-           type: boolean       
+          type: boolean      
+        garbledCharReplace:
+          type: string
+          format: string 
     DataCompareRule:
       type: object
       properties:
@@ -1329,6 +1332,9 @@ components:
           additionalProperties:
             type: string
             format: string
+        garbledCharReplace:
+          type: string
+          format: string
     SchemaRouteRule:
       type: object
       properties:
@@ -1448,7 +1454,10 @@ components:
         enableCheckpoint:
           type: boolean
         enablePrepareStmt:
-          type: boolean         
+          type: boolean     
+        garbledCharReplace:
+          type: string
+          format: string     
     StructMigrateParam:
       type: object
       properties:

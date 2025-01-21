@@ -1,6 +1,6 @@
 task-name = "csv-task00"
 datasource-name-s = "ora151"
-datasource-name-t = "tidb186"
+datasource-name-t = "tidb161"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -16,11 +16,11 @@ case-field-rule-s = "0"
 case-field-rule-t = "2"
 
 [schema-route-rule]
-schema-name-s = "SCOTT"
+schema-name-s = "MARVIN"
 schema-name-t = "simple"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = ["MARVIN01"]
+include-table-s = ["S_250121"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []

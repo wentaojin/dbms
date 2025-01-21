@@ -276,6 +276,7 @@ func ShowStmtMigrateTask(ctx context.Context, req *pb.ShowStmtMigrateTaskRequest
 			EnableConsistentRead: enableConsistentRead,
 			EnableSafeMode:       enableSafeMode,
 			EnablePrepareStmt:    enablePrepareStmt,
+			GarbledCharReplace:   paramMap[constant.ParamNameStmtMigrateGarbledCharReplace],
 		}
 
 		schemaRouteRule, dataMigrateRules, _, err := ShowSchemaRouteRule(txnCtx, taskInfo.TaskName)
@@ -674,6 +675,9 @@ func getStmtMigrateTasKParams(ctx context.Context, taskName string) (*pb.Stateme
 				return taskParam, err
 			}
 			taskParam.EnablePrepareStmt = enablePrepareStmt
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameStmtMigrateGarbledCharReplace) {
+			taskParam.GarbledCharReplace = p.ParamValue
 		}
 	}
 	return taskParam, nil

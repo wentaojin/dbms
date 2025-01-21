@@ -16,8 +16,15 @@ limitations under the License.
 package postgresql
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
 
+	"github.com/greatcloak/decimal"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 )
@@ -167,4 +174,543 @@ func (d *Database) GetDatabaseTableColumnMetadata(schemaName string, tableName s
 		return res, err
 	}
 	return res, nil
+}
+
+func (d *Database) GetDatabaseTableChunkTask(taskName, schemaName, tableName string, chunkSize uint64, callTimeout uint64, batchSize int, dataChan chan []map[string]string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO, garbledReplace string, dataChan chan []interface{}) error {
+	var (
+		databaseTypes []string
+		err           error
+	)
+	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
+	columnNameOrdersCounts := len(columnNameOrders)
+	rowData := make([]interface{}, columnNameOrdersCounts)
+
+	argsNums := batchSize * columnNameOrdersCounts
+
+	batchRowsData := make([]interface{}, 0, argsNums)
+
+	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
+
+	for i, c := range columnNameOrders {
+		columnNameOrderIndexMap[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	sqlSlis := stringutil.StringSplit(querySQL, constant.StringSeparatorSemicolon)
+	sliLen := len(sqlSlis)
+
+	var (
+		txn  *sql.Tx
+		rows *sql.Rows
+	)
+
+	if sliLen == 1 {
+		rows, err = d.QueryContext(ctx, sqlSlis[0], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else if sliLen == 2 {
+		txn, err = d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+		if err != nil {
+			return err
+		}
+		// SET TRANSACTION SNAPSHOT '000003A1-1';
+		_, err = txn.ExecContext(ctx, sqlSlis[0])
+		if err != nil {
+			return err
+		}
+		rows, err = txn.QueryContext(ctx, sqlSlis[1], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else {
+		return fmt.Errorf("the query sql [%v] cannot be over two values, please contact author or reselect", querySQL)
+	}
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return err
+	}
+
+	for _, ct := range colTypes {
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
+	}
+
+	// data scan
+	values := make([]interface{}, columnNameOrdersCounts)
+	valuePtrs := make([]interface{}, columnNameOrdersCounts)
+	for i, _ := range columnNameOrders {
+		valuePtrs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return err
+		}
+
+		for i, colName := range columnNameOrders {
+			valRes := values[i]
+			if stringutil.IsValueNil(valRes) {
+				//rowsMap[cols[i]] = `NULL` -> sql
+				rowData[columnNameOrderIndexMap[colName]] = nil
+			} else {
+				value := reflect.ValueOf(valRes).Interface()
+				switch val := value.(type) {
+				case int16, int32, int64:
+					rowData[columnNameOrderIndexMap[colName]] = val
+				case string:
+					convertUtf8Raw, err := stringutil.CharsetConvertReplace([]byte(val), dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+					}
+					convertTargetRaw, err := stringutil.CharsetConvertReplace(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+					}
+					rowData[columnNameOrderIndexMap[colName]] = stringutil.BytesToString(convertTargetRaw)
+				default:
+					rowData[columnNameOrderIndexMap[colName]] = val
+				}
+			}
+		}
+
+		// temporary array
+		batchRowsData = append(batchRowsData, rowData...)
+
+		// clear
+		rowData = make([]interface{}, columnNameOrdersCounts)
+
+		// batch
+		if len(batchRowsData) == argsNums {
+			dataChan <- batchRowsData
+			// clear
+			batchRowsData = make([]interface{}, 0, argsNums)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	// non-batch batch
+	if len(batchRowsData) > 0 {
+		dataChan <- batchRowsData
+	}
+
+	// transaction commit
+	if sliLen == 2 {
+		if err = d.CommitTxn(txn); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO, garbledReplace string, dataChan chan []interface{}) error {
+	var (
+		databaseTypes []string
+		err           error
+	)
+	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
+	columnNameOrdersCounts := len(columnNameOrders)
+	rowData := make([]string, columnNameOrdersCounts)
+
+	batchRowsDataChanTemp := make([]interface{}, 0, 1)
+
+	batchRowsData := make([]string, 0, batchSize)
+
+	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
+
+	for i, c := range columnNameOrders {
+		columnNameOrderIndexMap[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	sqlSlis := stringutil.StringSplit(querySQL, constant.StringSeparatorSemicolon)
+	sliLen := len(sqlSlis)
+
+	var (
+		txn  *sql.Tx
+		rows *sql.Rows
+	)
+
+	if sliLen == 1 {
+		rows, err = d.QueryContext(ctx, sqlSlis[0], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else if sliLen == 2 {
+		txn, err = d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+		if err != nil {
+			return err
+		}
+		// SET TRANSACTION SNAPSHOT '000003A1-1';
+		_, err = txn.ExecContext(ctx, sqlSlis[0])
+		if err != nil {
+			return err
+		}
+		rows, err = txn.QueryContext(ctx, sqlSlis[1], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else {
+		return fmt.Errorf("the query sql [%v] cannot be over two values, please contact author or reselect", querySQL)
+	}
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return err
+	}
+
+	for _, ct := range colTypes {
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
+	}
+
+	// data scan
+	values := make([]interface{}, columnNameOrdersCounts)
+	valuePtrs := make([]interface{}, columnNameOrdersCounts)
+	for i, _ := range columnNameOrders {
+		valuePtrs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return err
+		}
+
+		for i, colName := range columnNameOrders {
+			valRes := values[i]
+			if stringutil.IsValueNil(valRes) {
+				rowData[columnNameOrderIndexMap[colName]] = `NULL`
+			} else {
+				value := reflect.ValueOf(valRes).Interface()
+				switch val := value.(type) {
+				case int16, int32, int64:
+					rowData[columnNameOrderIndexMap[colName]] = fmt.Sprintf("%v", val)
+				case string:
+					convertUtf8Raw, err := stringutil.CharsetConvertReplace([]byte(val), dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
+					if err != nil {
+						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+					}
+					switch {
+					case strings.EqualFold(taskFlow, constant.TaskFlowPostgresToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowPostgresToMySQL):
+						convertTargetRaw, err := stringutil.CharsetConvertReplace([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
+						if err != nil {
+							return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						}
+						rowData[columnNameOrderIndexMap[colName]] = fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw))
+					default:
+						return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+					}
+				default:
+					str, err := d.RecursiveNonStmt(taskFlow, colName, dbCharsetS, dbCharsetT, garbledReplace, valRes)
+					if err != nil {
+						return err
+					}
+					rowData[columnNameOrderIndexMap[colName]] = str
+				}
+			}
+		}
+
+		// temporary array
+		batchRowsData = append(batchRowsData, stringutil.StringJoin(rowData, constant.StringSeparatorComma))
+
+		// clear
+		rowData = make([]string, columnNameOrdersCounts)
+
+		// batch
+		if len(batchRowsData) == batchSize {
+			batchRowsDataChanTemp = append(batchRowsDataChanTemp, batchRowsData)
+
+			dataChan <- batchRowsDataChanTemp
+
+			// clear
+			batchRowsDataChanTemp = make([]interface{}, 0, 1)
+			batchRowsData = make([]string, 0, batchSize)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	// non-batch batch
+	if len(batchRowsData) > 0 {
+		batchRowsDataChanTemp = append(batchRowsDataChanTemp, batchRowsData)
+		dataChan <- batchRowsDataChanTemp
+	}
+
+	// transaction commit
+	if sliLen == 2 {
+		if err = d.CommitTxn(txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *Database) RecursiveNonStmt(taskFlow, columnName, dbCharsetS, dbCharsetT, garbledReplace string, valRes interface{}) (string, error) {
+	v := reflect.ValueOf(valRes)
+	switch v.Kind() {
+	case reflect.Int16, reflect.Int32, reflect.Int64:
+		return decimal.NewFromInt(v.Int()).String(), nil
+	case reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return strconv.FormatUint(v.Uint(), 10), nil
+	case reflect.Float32, reflect.Float64:
+		return decimal.NewFromFloat(v.Float()).String(), nil
+	case reflect.Bool:
+		return strconv.FormatBool(v.Bool()), nil
+	case reflect.String:
+		convertUtf8Raw, err := stringutil.CharsetConvertReplace([]byte(v.String()), dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
+		if err != nil {
+			return "", fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+		}
+		switch {
+		case strings.EqualFold(taskFlow, constant.TaskFlowPostgresToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowPostgresToMySQL):
+			convertTargetRaw, err := stringutil.CharsetConvertReplace([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
+			if err != nil {
+				return "", fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+			}
+			return fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)), nil
+		default:
+			return "", fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+		}
+	case reflect.Array, reflect.Slice:
+		return fmt.Sprintf("'%v'", stringutil.BytesToString(v.Bytes())), nil
+	case reflect.Interface:
+		str, err := d.RecursiveCRC(columnName, dbCharsetS, dbCharsetT, v.Elem().Interface())
+		if err != nil {
+			return str, err
+		}
+		return str, nil
+	default:
+		return "", fmt.Errorf("column [%v] column_value [%v] column_kind [%v] not support, please contact author or exclude", columnName, v.String(), v.Kind())
+	}
+}
+
+func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interface{}, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter, garbledReplace string, dataChan chan []string) error {
+	var (
+		databaseTypes []string
+		err           error
+	)
+	columnNameOrders := stringutil.StringSplit(columnDetailO, constant.StringSeparatorComma)
+	columnNameOrdersCounts := len(columnNameOrders)
+	rowData := make([]string, columnNameOrdersCounts)
+
+	columnNameOrderIndexMap := make(map[string]int, columnNameOrdersCounts)
+
+	for i, c := range columnNameOrders {
+		columnNameOrderIndexMap[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	sqlSlis := stringutil.StringSplit(querySQL, constant.StringSeparatorSemicolon)
+	sliLen := len(sqlSlis)
+
+	var (
+		txn  *sql.Tx
+		rows *sql.Rows
+	)
+
+	if sliLen == 1 {
+		rows, err = d.QueryContext(ctx, sqlSlis[0], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else if sliLen == 2 {
+		txn, err = d.BeginTxn(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+		if err != nil {
+			return err
+		}
+		// SET TRANSACTION SNAPSHOT '000003A1-1';
+		_, err = txn.ExecContext(ctx, sqlSlis[0])
+		if err != nil {
+			return err
+		}
+		rows, err = txn.QueryContext(ctx, sqlSlis[1], queryArgs...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+	} else {
+		return fmt.Errorf("the query sql [%v] cannot be over two values, please contact author or reselect", querySQL)
+	}
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return err
+	}
+
+	for _, ct := range colTypes {
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
+	}
+
+	// data scan
+	values := make([]interface{}, columnNameOrdersCounts)
+	valuePtrs := make([]interface{}, columnNameOrdersCounts)
+	for i, _ := range columnNameOrders {
+		valuePtrs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return err
+		}
+		for i, colName := range columnNameOrders {
+			valRes := values[i]
+			// postgres database NULL and "" are differently
+			if stringutil.IsValueNil(valRes) {
+				if !strings.EqualFold(nullValue, "") {
+					rowData[columnNameOrderIndexMap[colName]] = nullValue
+				} else {
+					rowData[columnNameOrderIndexMap[colName]] = `NULL`
+				}
+			} else {
+				if err = d.RecursiveCSV(
+					columnNameOrderIndexMap[colName],
+					taskFlow,
+					colName,
+					dbCharsetS,
+					dbCharsetT,
+					databaseTypes[i],
+					valRes,
+					rowData,
+					separator,
+					delimiter,
+					garbledReplace,
+					escapeBackslash); err != nil {
+					return err
+				}
+			}
+		}
+
+		// temporary array
+		dataChan <- rowData
+		// clear
+		rowData = make([]string, columnNameOrdersCounts)
+	}
+
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	// transaction commit
+	if sliLen == 2 {
+		if err = d.CommitTxn(txn); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (d *Database) RecursiveCSV(columnOrder int, taskFlow, columnName, dbCharsetS, dbCharsetT, dbTypes string, valRes interface{}, rowData []string, separator, delimiter, garbledReplace string, escapeBackslash bool) error {
+	v := reflect.ValueOf(valRes)
+	switch v.Kind() {
+	case reflect.Int16, reflect.Int32, reflect.Int64:
+		rowData[columnOrder] = decimal.NewFromInt(v.Int()).String()
+	case reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		rowData[columnOrder] = strconv.FormatUint(v.Uint(), 10)
+	case reflect.Float32, reflect.Float64:
+		rowData[columnOrder] = decimal.NewFromFloat(v.Float()).String()
+	case reflect.Bool:
+		rowData[columnOrder] = strconv.FormatBool(v.Bool())
+	case reflect.String:
+		// postgres database NULL and "" are differently, so "" no special attention is required
+		var convertTargetRaw []byte
+		convertUtf8Raw, err := stringutil.CharsetConvertReplace([]byte(v.String()), dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
+		if err != nil {
+			return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+		}
+		// Handling character sets, special character escapes, string reference delimiters
+		if escapeBackslash {
+			switch taskFlow {
+			case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+				convertTargetRaw, err = stringutil.CharsetConvertReplace([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
+				if err != nil {
+					return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+				}
+			default:
+				return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+			}
+		} else {
+			convertTargetRaw, err = stringutil.CharsetConvertReplace(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
+			if err != nil {
+				return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+			}
+		}
+		if delimiter == "" {
+			rowData[columnOrder] = stringutil.BytesToString(convertTargetRaw)
+		} else {
+			rowData[columnOrder] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
+		}
+	case reflect.Array, reflect.Slice:
+		if strings.EqualFold(dbTypes, constant.BuildInPostgresDatatypeBytea) {
+			// bytea -> []uint8
+			// binary
+			rowData[columnOrder] = stringutil.EscapeBinaryCSV(v.Bytes(), escapeBackslash, delimiter, separator)
+		} else {
+			// postgres database NULL and "" are differently, so "" no special attention is required
+			var convertTargetRaw []byte
+			convertUtf8Raw, err := stringutil.CharsetConvertReplace(v.Bytes(), dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
+			if err != nil {
+				return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+			}
+			// Handling character sets, special character escapes, string reference delimiters
+			if escapeBackslash {
+				switch taskFlow {
+				case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+					convertTargetRaw, err = stringutil.CharsetConvertReplace([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
+					if err != nil {
+						return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+					}
+				default:
+					return fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+				}
+			} else {
+				convertTargetRaw, err = stringutil.CharsetConvertReplace(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
+				if err != nil {
+					return fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+				}
+			}
+			if delimiter == "" {
+				rowData[columnOrder] = stringutil.BytesToString(convertTargetRaw)
+			} else {
+				rowData[columnOrder] = stringutil.StringBuilder(delimiter, stringutil.BytesToString(convertTargetRaw), delimiter)
+			}
+		}
+	case reflect.Interface:
+		if err := d.RecursiveCSV(columnOrder, taskFlow, columnName, dbCharsetS, dbCharsetT, dbTypes, v.Elem().Interface(), rowData, separator, delimiter, garbledReplace, escapeBackslash); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("column [%v] column_value [%v] column_kind [%v] not support, please contact author or exclude", columnName, v.String(), v.Kind())
+	}
+	return nil
 }

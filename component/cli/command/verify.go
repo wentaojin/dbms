@@ -19,11 +19,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
-	"path/filepath"
-	"strings"
 
 	"github.com/wentaojin/dbms/component"
 	"github.com/wentaojin/dbms/component/cli/migrate"
@@ -219,6 +220,88 @@ func (a *AppVerifyGen) RunE(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Command:      %s\n", cyan.Sprint("verify"))
 	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
 	fmt.Printf("Action:       %s\n", cyan.Sprint("gen"))
+	if strings.EqualFold(a.task, "") || strings.EqualFold(a.outputDir, "") {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("flag parameter [task] and [outputDir] are requirement, can not null"))
+		return nil
+	}
+
+	if filepath.IsAbs(a.outputDir) {
+		abs, err := filepath.Abs(a.outputDir)
+		if err != nil {
+			return err
+		}
+		err = stringutil.PathNotExistOrCreate(abs)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := stringutil.PathNotExistOrCreate(a.outputDir)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := service.GenDataCompareTask(context.Background(), a.Server, a.task, a.schemaName, a.tableName, a.outputDir, a.force)
+	if err != nil {
+		if errors.Is(err, errors.New(constant.TaskDatabaseStatusEqual)) {
+			fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+			fmt.Printf("Response:     %s\n", color.GreenString("the data compare task all of the table records are equal, current not exist not equal table records."))
+			return nil
+		}
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		return nil
+	}
+	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
+	fmt.Printf("Response:     %s\n", color.GreenString("the data compare task fixed sql file had be output to [%v], please forward to view\n", a.outputDir))
+	return nil
+}
+
+type AppVerifyCount struct {
+	*AppVerify
+	task       string
+	schemaName string
+	tableName  string
+	chunkIDs   []string
+	outputDir  string
+	force      bool
+}
+
+func (a *AppVerify) AppVerifyCount() component.Cmder {
+	return &AppVerifyGen{AppVerify: a}
+}
+
+func (a *AppVerifyCount) Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:              "count",
+		Short:            "count cluster data compare task chunk",
+		Long:             `count cluster data compare task detail`,
+		RunE:             a.RunE,
+		TraverseChildren: true,
+		SilenceUsage:     true,
+	}
+	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the data compare task")
+	cmd.Flags().StringVarP(&a.schemaName, "schema", "S", "", "the data compare task schema_name_s")
+	cmd.Flags().StringVarP(&a.tableName, "table", "T", "", "the data compare task schema table_name_s")
+	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the data compare task output file dir")
+	cmd.Flags().StringArrayVarP(&a.chunkIDs, "chunkIds", "c", nil, "the data compare task table chunk ids")
+	cmd.Flags().BoolVarP(&a.force, "force", "f", false, "the data compare task force ignore the task status success check, output file")
+	return cmd
+}
+
+func (a *AppVerifyCount) RunE(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		if err := cmd.Help(); err != nil {
+			return err
+		}
+	}
+
+	cyan := color.New(color.FgCyan, color.Bold)
+	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
+	fmt.Printf("Command:      %s\n", cyan.Sprint("verify"))
+	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("count"))
 	if strings.EqualFold(a.task, "") || strings.EqualFold(a.outputDir, "") {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("flag parameter [task] and [outputDir] are requirement, can not null"))

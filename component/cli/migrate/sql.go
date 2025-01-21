@@ -50,6 +50,7 @@ type SqlMigrateParam struct {
 	EnableConsistentRead bool   `toml:"enable-consistent-read" json:"enableConsistentRead"`
 	EnableSafeMode       bool   `toml:"enable-safe-mode" json:"enableSafeMode"`
 	EnablePrepareStmt    bool   `toml:"enable-prepare-stmt" json:"enablePrepareStmt"`
+	GarbledCharReplace   string `toml:"garbled-char-replace" json:"garbledCharReplace"`
 }
 
 func (s *SqlConfig) String() string {

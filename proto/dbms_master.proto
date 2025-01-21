@@ -690,6 +690,7 @@ message StatementMigrateParam {
   bool enableSafeMode = 11;
   uint64 writeThread = 12;
   bool enablePrepareStmt = 13;
+  string garbledCharReplace = 14;
 }
 
 message CsvMigrateParam{
@@ -713,6 +714,7 @@ message CsvMigrateParam{
   uint64 writeThread = 18;
   bool enableImportFeature = 19;
   map<string,string> csvImportParams = 20;
+  string garbledCharReplace = 21;
 }
 
 
@@ -767,6 +769,7 @@ message SqlMigrateParam {
   uint64 writeThread = 8;
   bool enableCheckpoint = 9;
   bool enablePrepareStmt = 10;
+  string garbledCharReplace = 11;
 }
 
 message DataScanRule {

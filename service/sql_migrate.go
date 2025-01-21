@@ -255,6 +255,7 @@ func ShowSqlMigrateTask(ctx context.Context, req *pb.ShowSqlMigrateTaskRequest) 
 			EnableSafeMode:       enableSafeMode,
 			EnableCheckpoint:     enableCheckpoint,
 			EnablePrepareStmt:    enablePrepareStmt,
+			GarbledCharReplace:   paramMap[constant.ParamNameSqlMigrateGarbledCharReplace],
 		}
 
 		sqlRouteRules, err := ShowSqlMigrateRule(txnCtx, taskInfo.TaskName)
@@ -630,6 +631,9 @@ func getSqlMigrateTasKParams(ctx context.Context, taskName string) (*pb.SqlMigra
 				return taskParam, err
 			}
 			taskParam.EnablePrepareStmt = enablePrepareStmt
+		}
+		if strings.EqualFold(p.ParamName, constant.ParamNameSqlMigrateGarbledCharReplace) {
+			taskParam.GarbledCharReplace = p.ParamValue
 		}
 	}
 	return taskParam, nil

@@ -204,7 +204,7 @@ func (cg *ConsumerGroup) Start(partition int) error {
 		topic:          cg.consumeParam.SubscribeTopic,
 		partition:      partition,
 		needContinue:   true,
-		decoder:        NewBatchDecoder(cg.consumeParam.MessageCompression),
+		decoder:        NewBatchDecoder(cg.task.CaseFieldRuleS, cg.consumeParam.MessageCompression),
 		checkpoint:     msg.Checkpoint,
 		wg:             &sync.WaitGroup{},
 		eventGroups:    make(map[string]*EventGroup),

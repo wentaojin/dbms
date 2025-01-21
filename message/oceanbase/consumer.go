@@ -141,7 +141,8 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 				return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] decode ddl event message failed: %v", c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
 			}
 
-			if cg.ObsoleteMessages(ddl.CommitTs, c.checkpoint) {
+			// base the kafka offset
+			if cg.ObsoleteMessages(msg.Offset, c.kafkaOffset) {
 				logger.Warn("ddl message received",
 					zap.String("task_name", c.task.TaskName),
 					zap.String("task_flow", c.task.TaskFlow),
@@ -270,18 +271,49 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 				return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] offset [%d] decode dml event message failed: %v", c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msg.Offset, err)
 			}
 
-			if cg.ObsoleteMessages(dml.CommitTs, c.checkpoint) {
-				logger.Warn("dml event received",
-					zap.String("task_name", c.task.TaskName),
-					zap.String("task_flow", c.task.TaskFlow),
-					zap.String("task_mode", c.task.TaskMode),
-					zap.String("topic", c.topic),
-					zap.Int("partition", c.partition),
-					zap.Int64("offset", msg.Offset),
-					zap.String("dml_events", dml.String()),
-					zap.Uint64("checkpoint", c.checkpoint),
-					zap.String("message_action", "less than or equal checkpoint, msg experied"))
-				continue
+			// MsgRecordTypeROW full data migration
+			// during the full data migration phase, dml commitTS is always 0
+			if !strings.EqualFold(msgEventType, MsgRecordTypeROW) {
+				// dml.CommitTs > 0 && c.checkpoint == 0
+				// This indicates that the full data has been completed and the incremental data synchronization has begun.
+				switch {
+				case dml.CommitTs > 0 && c.checkpoint > 0:
+					if cg.ObsoleteMessages(msg.Offset, c.kafkaOffset) {
+						logger.Warn("dml event received",
+							zap.String("task_name", c.task.TaskName),
+							zap.String("task_flow", c.task.TaskFlow),
+							zap.String("task_mode", c.task.TaskMode),
+							zap.String("topic", c.topic),
+							zap.Int("partition", c.partition),
+							zap.Int64("offset", msg.Offset),
+							zap.String("dml_events", dml.String()),
+							zap.Uint64("checkpoint", c.checkpoint),
+							zap.String("message_action", "less than or equal checkpoint, msg experied"))
+						continue
+					}
+				case dml.CommitTs > 0 && c.checkpoint == 0:
+					logger.Warn("dml event received",
+						zap.String("task_name", c.task.TaskName),
+						zap.String("task_flow", c.task.TaskFlow),
+						zap.String("task_mode", c.task.TaskMode),
+						zap.String("topic", c.topic),
+						zap.Int("partition", c.partition),
+						zap.Int64("offset", msg.Offset),
+						zap.String("dml_events", dml.String()),
+						zap.Uint64("checkpoint", c.checkpoint),
+						zap.String("message_action", "full synchronization completed, incremental synchronization started"))
+				default:
+					return false, fmt.Errorf("the task_name [%s] task_flow [%s] task_mode [%s] topic [%s] partiton [%d] key [%s] value [%s] message type [%v] offset [%d] commit_ts [%v] checkpoint [%v] not meeting expectations, please contact author or retrying",
+						c.task.TaskName, c.task.TaskFlow, c.task.TaskMode, msg.Topic, msg.Partition, string(msg.Key), string(msg.Value), msgEventType, msg.Offset, dml.CommitTs, c.checkpoint)
+				}
+			}
+
+			c.checkpoint = dml.CommitTs
+			c.kafkaOffset = msg.Offset
+
+			if strings.EqualFold(msgEventType, MsgRecordTypeROW) {
+				// ROW represents the full data stage, and data is written using INSERT
+				dml.QueryType = MsgRecordTypeInsert
 			}
 
 			if dml.SchemaName == c.schemaRoute.SchemaNameS && stringutil.IsContainedString(c.consumeTables, dml.TableName) {
@@ -332,7 +364,7 @@ func (cg *ConsumerGroup) WriteMessage(c *Consumer, msg kafka.Message) (bool, err
 	return needFlush, nil
 }
 
-func (cg *ConsumerGroup) ObsoleteMessages(currentTs, nowTs uint64) bool {
+func (cg *ConsumerGroup) ObsoleteMessages(currentTs, nowTs int64) bool {
 	return currentTs <= nowTs
 }
 
@@ -543,7 +575,7 @@ func (c *Consumer) updateMetadataCheckpoint(ctx context.Context) error {
 		Topic:      c.topic,
 		Partitions: c.partition,
 	}, map[string]interface{}{
-		"Checkpoint": c.checkpoint,
+		"Checkpoint": 0, // The checkpoint is always set to 0, and the Ocenbase database ensures that the consumption row level is ordered
 		"Offset":     c.kafkaOffset,
 	}); err != nil {
 		return err
@@ -595,6 +627,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 								sqlStr, sqlParas, err := e.Delete(
 									c.dbTypeS,
 									c.dbTypeT,
+									c.schemaRoute.SchemaNameT,
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT)
@@ -611,6 +644,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 								sqlStr, sqlParas, err := e.Insert(
 									c.dbTypeS,
 									c.dbTypeT,
+									c.schemaRoute.SchemaNameT,
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT,
@@ -633,6 +667,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 								sqlStr, sqlParas, err := e.Delete(
 									c.dbTypeS,
 									c.dbTypeT,
+									c.schemaRoute.SchemaNameT,
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT)
@@ -649,6 +684,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 								sqlStr, sqlParas, err := e.Insert(
 									c.dbTypeS,
 									c.dbTypeT,
+									c.schemaRoute.SchemaNameT,
 									c.tableRoute,
 									c.columnRoute,
 									c.task.CaseFieldRuleT,
@@ -669,6 +705,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 						sqlStr, sqlParas, err := e.Delete(
 							c.dbTypeS,
 							c.dbTypeT,
+							c.schemaRoute.SchemaNameT,
 							c.tableRoute,
 							c.columnRoute,
 							c.task.CaseFieldRuleT)
@@ -701,7 +738,7 @@ func (c *Consumer) flushRowChangedEvents(ctx context.Context, sinkEvents map[str
 func (c *Consumer) updateUpstreamTableColumnMetadataCache(tableName string, ddlType string) error {
 	timeS := time.Now()
 	md := &metadata{
-		tableColumns: make(map[string]*column),
+		TableColumns: make(map[string]*column),
 	}
 
 	var tableNameS, tableNameT string
@@ -794,10 +831,10 @@ func (c *Consumer) updateUpstreamTableColumnMetadataCache(tableName string, ddlT
 
 			if strings.EqualFold(r["IS_GENERATED"], "YES") {
 				md.setColumn(columnNameT, &column{
-					columnName: columnNameT,
-					columnType: r["DATA_TYPE"],
-					dataLength: int(dataL),
-					isGeneraed: true,
+					ColumnName: columnNameT,
+					ColumnType: r["DATA_TYPE"],
+					DataLength: int(dataL),
+					IsGeneraed: true,
 				})
 			}
 		}
@@ -826,7 +863,7 @@ func (c *Consumer) updateUpstreamTableColumnMetadataCache(tableName string, ddlT
 func (c *Consumer) updateDowstreamTableColumnMetadataCache(tableName string, ddlType string) error {
 	timeS := time.Now()
 	md := &metadata{
-		tableColumns: make(map[string]*column),
+		TableColumns: make(map[string]*column),
 	}
 
 	var tableNameS, tableNameT string
@@ -896,9 +933,9 @@ func (c *Consumer) updateDowstreamTableColumnMetadataCache(tableName string, ddl
 			}
 
 			md.setColumn(columnNameT, &column{
-				columnName: columnNameT,
-				columnType: r["DATA_TYPE"],
-				dataLength: int(dataL),
+				ColumnName: columnNameT,
+				ColumnType: r["DATA_TYPE"],
+				DataLength: int(dataL),
 			})
 		}
 

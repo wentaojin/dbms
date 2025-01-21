@@ -1,6 +1,6 @@
 task-name = "cdc-task00"
-datasource-name-s = "tidb85"
-datasource-name-t = "ora151"
+datasource-name-s = "ob93"
+datasource-name-t = "tidb161"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -13,11 +13,11 @@ case-field-rule-s = "0"
 # 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准
 # 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写
 # 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写
-case-field-rule-t = "2"
+case-field-rule-t = "0"
 
 [schema-route-rule]
 schema-name-s = "marvin"
-schema-name-t = "MARVIN"
+schema-name-t = "oms"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
 include-table-s = ["*"]
@@ -31,13 +31,14 @@ table-name-t = ""
 column-route-rules = {}
 
 [cdc-consume-param]
-server-address = ["120.92.108.85:54323","120.92.108.85:54323","120.92.108.85:54323"]
-subscribe-topic = "cdc_marvin_topic"
+server-address = ["120.92.108.85:54330","120.92.108.85:54328","120.92.108.85:54326"]
+subscribe-topic = "ob_marvin_topic"
 table-thread = 10
+# only tidb 数据库有效
 # 参考上游数据是否开启压缩，设置对应压缩算法
 # 可选值有 "none"、"lz4"、"snappy"，默认为 "none"
 message-compression = "none"
-# ticdc 数据同步
+# only tidb 数据库有效
 # 避免由于 resolvedTs 前无数据而导致频繁刷新元数据，检查 <=resolvedTs 前是否有数据
 # 如果有数据，则立即刷新，如果连续 X seconds resolvedT 没有数据，则达到 X seconds resolvedT 时再刷新
 # 单位：seconds

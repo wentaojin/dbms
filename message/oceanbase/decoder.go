@@ -16,6 +16,7 @@ limitations under the License.
 package oceanbase
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -41,15 +42,19 @@ type RowEventDecoder interface {
 
 // Decoder decodes the byte of a batch into the original messages.
 type Decoder struct {
-	keyBytes   []byte
-	valueBytes []byte
-
-	message *Message
+	keyBytes       []byte
+	valueBytes     []byte
+	message        *Message
+	dbTypeS        string
+	caseFieldRuleS string
 }
 
 // NewDecoder creates a new Decoder.
-func NewDecoder() RowEventDecoder {
-	return &Decoder{}
+func NewDecoder(dbTypeS, caseFieldRuleS string) RowEventDecoder {
+	return &Decoder{
+		dbTypeS:        dbTypeS,
+		caseFieldRuleS: caseFieldRuleS,
+	}
 }
 
 // AddKeyValue implements the RowEventDecoder interface
@@ -70,9 +75,15 @@ func (b *Decoder) HasNext() (string, bool, error) {
 		return "", isNext, err
 	}
 
-	if err := json.Unmarshal(b.valueBytes, b.message); err != nil {
+	var msg *Message = new(Message)
+
+	d := json.NewDecoder(bytes.NewReader(b.valueBytes))
+	d.UseNumber()
+	err = d.Decode(msg)
+	if err != nil {
 		return "", isNext, err
 	}
+	b.message = msg
 	return b.message.RecordType, true, nil
 }
 
@@ -94,15 +105,18 @@ func (b *Decoder) NextDDLEvent() (*DDLChangedEvent, error) {
 		return nil, fmt.Errorf("codec invalid data, not found ddl event message")
 	}
 
+	b.keyBytes = nil
 	b.valueBytes = nil
-	return b.message.DecodeDDLChangedEvent(), nil
+	return b.message.DecodeDDLChangedEvent(b.caseFieldRuleS), nil
 }
 
 // NextRowChangedEvent implements the RowEventDecoder interface
 func (b *Decoder) NextRowChangedEvent() (*RowChangedEvent, error) {
 	switch b.message.RecordType {
 	case MsgRecordTypeDelete, MsgRecordTypeInsert, MsgRecordTypeUpdate, MsgRecordTypeROW:
-		return b.message.DecodeRowChangedEvent(), nil
+		b.keyBytes = nil
+		b.valueBytes = nil
+		return b.message.DecodeRowChangedEvent(b.dbTypeS, b.caseFieldRuleS)
 	case MsgRecordTypeHeartbeat:
 		return nil, fmt.Errorf("codec invalid data, should not be recevie heartbeat message")
 	default:

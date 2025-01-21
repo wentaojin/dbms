@@ -16,6 +16,7 @@ limitations under the License.
 package oceanbase
 
 import (
+	"encoding/json"
 	"sync"
 )
 
@@ -32,32 +33,33 @@ func init() {
 type MetadataCache struct {
 	rwMutex  sync.RWMutex
 	metadata map[string]*metadata
+	timeZone string
 }
 
 type metadata struct {
-	schemaName   string
-	tableName    string
-	tableColumns map[string]*column
+	SchemaName   string
+	TableName    string
+	TableColumns map[string]*column
 }
 
 type column struct {
-	columnName string
-	columnType string
-	dataLength int
-	isGeneraed bool
+	ColumnName string
+	ColumnType string
+	DataLength int
+	IsGeneraed bool
 }
 
 func (d *metadata) setTable(schemaName, tableName string) {
-	d.schemaName = schemaName
-	d.tableName = tableName
+	d.SchemaName = schemaName
+	d.TableName = tableName
 }
 
 func (d *metadata) setColumn(k string, v *column) {
-	d.tableColumns[k] = v
+	d.TableColumns[k] = v
 }
 
 func (d *metadata) getColumn() map[string]*column {
-	return d.tableColumns
+	return d.TableColumns
 }
 
 func NewMetadataCache() *MetadataCache {
@@ -81,8 +83,8 @@ func (m *MetadataCache) Get(schemaName, tableName string) (*metadata, bool) {
 
 // Set sets or updates the metadata for a given schema and table name.
 func (m *MetadataCache) Set(schemaName, tableName string, metadata *metadata) {
-	m.rwMutex.RLock()
-	defer m.rwMutex.RUnlock()
+	m.rwMutex.Lock()
+	defer m.rwMutex.Unlock()
 
 	m.metadata[m.Build(schemaName, tableName)] = metadata
 }
@@ -95,10 +97,33 @@ func (m *MetadataCache) Delete(schemaName, tableName string) {
 	delete(m.metadata, m.Build(schemaName, tableName))
 }
 
-// Size returns the number of entries in the cache.
-func (m *MetadataCache) Size() int {
+// Timezone returns the timezone of entries in the cache.
+func (m *MetadataCache) SetTimezone(timeZone string) {
 	m.rwMutex.Lock()
 	defer m.rwMutex.Unlock()
 
+	m.timeZone = timeZone
+}
+
+func (m *MetadataCache) GetTimezone() string {
+	m.rwMutex.RLock()
+	defer m.rwMutex.RUnlock()
+	return m.timeZone
+}
+
+// Size returns the number of entries in the cache.
+func (m *MetadataCache) Size() int {
+	m.rwMutex.RLock()
+	defer m.rwMutex.RUnlock()
+
 	return len(m.metadata)
+}
+
+// All returns the all of entries in the cache.
+func (m *MetadataCache) All() string {
+	m.rwMutex.RLock()
+	defer m.rwMutex.RUnlock()
+
+	jsBs, _ := json.Marshal(m.metadata)
+	return string(jsBs)
 }

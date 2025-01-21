@@ -35,7 +35,7 @@ func (d *Database) GetDatabaseParameters() (string, string, string, string, erro
 	panic("implement me")
 }
 
-func (d *Database) GeDatabaseInstance() ([]map[string]string, error) {
+func (d *Database) GetDatabaseInstance() ([]map[string]string, error) {
 	//TODO implement me
 	panic("implement me")
 }

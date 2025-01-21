@@ -83,7 +83,7 @@ func UpsertSchemaRouteRule(ctx context.Context, taskName, datasourceNameS string
 		if err != nil {
 			return err
 		}
-	case strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeTiDB) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeMySQL) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypePostgresql):
+	case strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeTiDB) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeMySQL) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypePostgresql) || strings.EqualFold(datasourceS.DbType, constant.DatabaseTypeOceanbaseMYSQL):
 		databaseS, err = database.NewDatabase(ctx, datasourceS, "", constant.ServiceDatabaseSqlQueryCallTimeout)
 		if err != nil {
 			return err

@@ -173,6 +173,8 @@ type IDataCompareTask interface {
 	BatchUpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
 	FindDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
 	QueryDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
+	QueryDataCompareTaskChunk(ctx context.Context, task *DataCompareTask, chunkIds []string) ([]*DataCompareTask, error)
+	DistinctDataCompareTaskChunkByTaskStatus(ctx context.Context, task *DataCompareTask) ([]string, error)
 	FindDataCompareTaskBySchemaTableChunkStatus(ctx context.Context, task *DataCompareTask) ([]*DataGroupTaskStatusResult, error)
 	FindDataCompareTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error)
 	FindDataCompareTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataGroupTaskStatusResult, error)
@@ -186,6 +188,8 @@ type IDataCompareTask interface {
 type IDataCompareResult interface {
 	CreateDataCompareResult(ctx context.Context, task *DataCompareResult) (*DataCompareResult, error)
 	FindDataCompareResultByTask(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error)
+	QueryDataCompareResultChunk(ctx context.Context, task *DataCompareResult, chunkIds []string) ([]*DataCompareResult, error)
+	DistinctDataCompareResultChunkByTaskStatus(ctx context.Context, task *DataCompareResult) ([]string, error)
 	FindDataCompareResultBySchemaTable(ctx context.Context, task *DataCompareResult) ([]*DataCompareResult, error)
 	DeleteDataCompareResult(ctx context.Context, task *DataCompareResult) error
 	DeleteDataCompareResultTable(ctx context.Context, task *DataCompareResult) error

@@ -70,6 +70,7 @@ const (
 	ParamNameStmtMigrateEnableConsistentRead = "enableConsistentRead"
 	ParamNameStmtMigrateEnableSafeMode       = "enableSafeMode"
 	ParamNameStmtMigrateEnablePrepareStmt    = "enablePrepareStmt"
+	ParamNameStmtMigrateGarbledCharReplace   = "garbledCharReplace"
 
 	// ParamValueDataMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin
@@ -102,6 +103,7 @@ const (
 	ParamNameCsvMigrateEnableConsistentRead = "enableConsistentRead"
 	ParamNameCsvMigrateEnableImportFeature  = "enableImportFeature"
 	ParamNameCsvMigrateImportParams         = "csvImportParams"
+	ParamNameCsvMigrateGarbledCharReplace   = "garbledCharReplace"
 )
 
 // sql migrate parameters
@@ -116,7 +118,7 @@ const (
 	ParamNameSqlMigrateEnableSafeMode       = "enableSafeMode"
 	ParamNameSqlMigrateEnableCheckpoint     = "enableCheckpoint"
 	ParamNameSqlMigrateEnablePrepareStmt    = "enablePrepareStmt"
-
+	ParamNameSqlMigrateGarbledCharReplace   = "garbledCharReplace"
 	// ParamValueSqlMigrateCaseFieldRuleOrigin case-field-name params value
 	// - 0 represent keeping origin
 	// - 1 represent keeping lower

@@ -20,11 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
@@ -111,6 +112,24 @@ func (s *DataCompareFile) SyncFile() error {
 	if len(migrateTasks) == 0 && len(migrateTaskResults) == 0 {
 		// fmt.Printf("the data compare task all of the table records are equal, current not exist not equal table records.\n")
 		return errors.New(constant.TaskDatabaseStatusEqual)
+	}
+
+	taskChunkIds, err := model.GetIDataCompareTaskRW().DistinctDataCompareTaskChunkByTaskStatus(s.Ctx, &task.DataCompareTask{
+		TaskName:   s.TaskName,
+		TaskStatus: constant.TaskDatabaseStatusNotEqual,
+	})
+	if err != nil {
+		return err
+	}
+	resultChunkIds, err := model.GetIDataCompareResultRW().DistinctDataCompareResultChunkByTaskStatus(s.Ctx, &task.DataCompareResult{
+		TaskName: s.TaskName,
+	})
+	if err != nil {
+		return err
+	}
+	diffChunkIds := stringutil.StringItemsFilterDifference(taskChunkIds, resultChunkIds)
+	if len(diffChunkIds) > 0 {
+		return fmt.Errorf("The chunk_id of the not_queal record of the data verification task does not appear in the data verification result table. This indicates that there may be garbled characters in the upstream and downstream data, which makes it impossible to identify and locate the data repair problem. Please set garbled-char-replace to re-migrate or use the verify garbled command to replace the garbled data, and then re-verify the data. The abnormal chunk_id list：[%v]", stringutil.StringJoin(diffChunkIds, ","))
 	}
 
 	schemaTableTaskM := make(map[string]string)

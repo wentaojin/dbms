@@ -53,14 +53,18 @@ type BatchDecoder struct {
 	keyBytes   []byte
 	valueBytes []byte
 
-	nextKey       *MessageEventKey
-	nextEvent     *RowChangedEvent
-	msgCompresion string
+	nextKey        *MessageEventKey
+	nextEvent      *RowChangedEvent
+	msgCompresion  string
+	caseFieldRuleS string
 }
 
 // NewBatchDecoder creates a new BatchDecoder.
-func NewBatchDecoder(msgCompresion string) RowEventDecoder {
-	return &BatchDecoder{msgCompresion: msgCompresion}
+func NewBatchDecoder(caseFieldRuleS, msgCompresion string) RowEventDecoder {
+	return &BatchDecoder{
+		caseFieldRuleS: caseFieldRuleS,
+		msgCompresion:  msgCompresion,
+	}
 }
 
 // AddKeyValue implements the RowEventDecoder interface
@@ -103,7 +107,7 @@ func (b *BatchDecoder) HasNext() (MsgEventType, bool, error) {
 			return MsgEventTypeUnknown, false, fmt.Errorf("open-protocol codec invalid data, decompress data failed: %v", err)
 		}
 
-		if err := rowMsg.Decode(value); err != nil {
+		if err := rowMsg.Decode(b.caseFieldRuleS, value); err != nil {
 			return b.nextKey.MsgEventType, false, err
 		}
 		event, err := MsgConvRowChangedEvent(b.nextKey, rowMsg)
@@ -172,7 +176,7 @@ func (b *BatchDecoder) NextDDLEvent() (*DDLChangedEvent, error) {
 	if err := ddlMsg.Decode(value); err != nil {
 		return nil, err
 	}
-	ddlEvent := MsgConvDDLEvent(b.nextKey, ddlMsg)
+	ddlEvent := MsgConvDDLEvent(b.caseFieldRuleS, b.nextKey, ddlMsg)
 
 	b.nextKey = nil
 	b.valueBytes = nil

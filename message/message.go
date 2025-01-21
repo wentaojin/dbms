@@ -46,4 +46,16 @@ var (
 	MYSQLCompatibleMsgColumnCharCharacterDatatype = []string{
 		"CHAR",
 	}
+
+	// Byte array, displayed in BASE64 encoding by default.
+	// Note: For BIT fixed-length types, the high-order 0s will be removed after the byte array is received incrementally, but not for the full amount, so the BASE64 encoding you see may be inconsistent. However, the actual results are consistent, and the results after decoding are consistent.
+	OceanbaseMsgColumnBytesDatatype = []string{
+		"TINYBLOB",
+		"BLOB",
+		"MEDIUMBLOB",
+		"LONGBLOB",
+		"BINARY",
+		"VARBINARY",
+		"BIT",
+	}
 )

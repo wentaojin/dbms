@@ -342,7 +342,8 @@ func StartCdcConsumeTask(ctx context.Context, taskName, workerAddr string) error
 	}
 
 	switch taskInfo.TaskFlow {
-	case constant.TaskFlowTiDBToOracle, constant.TaskFlowTiDBToPostgres, constant.TaskFlowTiDBToMYSQL, constant.TaskFlowTiDBToTiDB:
+	case constant.TaskFlowTiDBToOracle, constant.TaskFlowTiDBToPostgres, constant.TaskFlowTiDBToMYSQL, constant.TaskFlowTiDBToTiDB,
+		constant.TaskFlowOBMySQLToMySQL, constant.TaskFlowOBMySQLToOracle, constant.TaskFlowOBMySQLToPostgres, constant.TaskFlowOBMySQLToTiDB, constant.TaskFlowOBMySQLToOBMySQL:
 		dm := &taskflow.CdcConsumeTask{
 			Ctx:           ctx,
 			Task:          taskInfo,

@@ -19,9 +19,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/service"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/wentaojin/dbms/openapi"

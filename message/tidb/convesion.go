@@ -20,13 +20,26 @@ import (
 	"strings"
 
 	"github.com/wentaojin/dbms/message"
+	"github.com/wentaojin/dbms/utils/constant"
 )
 
-func MsgConvDDLEvent(key *MessageEventKey, value *MessageDDLEventValue) *DDLChangedEvent {
+func MsgConvDDLEvent(caseFieldRuleS string, key *MessageEventKey, value *MessageDDLEventValue) *DDLChangedEvent {
+	var schemaName, tableName string
+	switch caseFieldRuleS {
+	case constant.ParamValueRuleCaseFieldNameUpper:
+		schemaName = strings.ToUpper(schemaName)
+		tableName = strings.ToUpper(tableName)
+	case constant.ParamValueRuleCaseFieldNameLower:
+		schemaName = strings.ToLower(schemaName)
+		tableName = strings.ToLower(tableName)
+	default:
+		schemaName = key.SchemaName
+		tableName = key.TableName
+	}
 	return &DDLChangedEvent{
 		CommitTs:   key.CommitTs,
-		SchemaName: key.SchemaName,
-		TableName:  key.TableName,
+		SchemaName: schemaName,
+		TableName:  tableName,
 		DdlQuery:   value.DdlQuery,
 		DdlType:    value.DdlType,
 	}

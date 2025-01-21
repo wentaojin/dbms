@@ -20,6 +20,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/wentaojin/dbms/utils/constant"
 )
 
 // MsgEventType is the type of message, which is used by MqSink and RedoLog.
@@ -196,7 +199,7 @@ func (m *MessageRowEventValue) Encode() ([]byte, error) {
 	return data, nil
 }
 
-func (m *MessageRowEventValue) Decode(data []byte) error {
+func (m *MessageRowEventValue) Decode(caseFieldRuleS string, data []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	err := decoder.Decode(m)
@@ -209,6 +212,12 @@ func (m *MessageRowEventValue) Decode(data []byte) error {
 		if err != nil {
 			return err
 		}
+		switch caseFieldRuleS {
+		case constant.ParamValueRuleCaseFieldNameUpper:
+			colName = strings.ToUpper(colName)
+		case constant.ParamValueRuleCaseFieldNameLower:
+			colName = strings.ToLower(colName)
+		}
 		m.Upsert[colName] = newColumn
 	}
 	for colName, column := range m.Delete {
@@ -216,12 +225,24 @@ func (m *MessageRowEventValue) Decode(data []byte) error {
 		if err != nil {
 			return err
 		}
+		switch caseFieldRuleS {
+		case constant.ParamValueRuleCaseFieldNameUpper:
+			colName = strings.ToUpper(colName)
+		case constant.ParamValueRuleCaseFieldNameLower:
+			colName = strings.ToLower(colName)
+		}
 		m.Delete[colName] = newColumn
 	}
 	for colName, column := range m.Before {
 		newColumn, err := FormatColumn(column)
 		if err != nil {
 			return err
+		}
+		switch caseFieldRuleS {
+		case constant.ParamValueRuleCaseFieldNameUpper:
+			colName = strings.ToUpper(colName)
+		case constant.ParamValueRuleCaseFieldNameLower:
+			colName = strings.ToLower(colName)
 		}
 		m.Before[colName] = newColumn
 	}

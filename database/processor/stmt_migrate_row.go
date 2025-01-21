@@ -53,6 +53,7 @@ type StmtMigrateRow struct {
 	CallTimeout       int
 	SafeMode          bool
 	EnablePrepareStmt bool
+	GarbledReplace    string
 	ReadChan          chan []interface{}
 	WriteChan         chan []interface{}
 }
@@ -151,12 +152,12 @@ func (r *StmtMigrateRow) MigrateRead() error {
 	}
 
 	if r.EnablePrepareStmt && r.DatabaseTStmt != nil {
-		err = r.DatabaseS.GetDatabaseTableStmtData(execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
+		err = r.DatabaseS.GetDatabaseTableStmtData(execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.GarbledReplace, r.ReadChan)
 		if err != nil {
 			return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] args [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, queryCondArgsS, err)
 		}
 	} else {
-		err = r.DatabaseS.GetDatabaseTableNonStmtData(r.TaskFlow, execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.ReadChan)
+		err = r.DatabaseS.GetDatabaseTableNonStmtData(r.TaskFlow, execQuerySQL, queryCondArgsS, r.BatchSize, r.CallTimeout, r.DBCharsetS, r.DBCharsetT, r.Dmt.ColumnDetailO, r.GarbledReplace, r.ReadChan)
 		if err != nil {
 			return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] source sql [%v] args [%v] execute failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, execQuerySQL, queryCondArgsS, err)
 		}

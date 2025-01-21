@@ -58,25 +58,25 @@ func (e *RowChangedEvent) String() string {
 	return string(js)
 }
 
-func (e *RowChangedEvent) Delete(dbTypeS, dbTypeT string,
+func (e *RowChangedEvent) Delete(dbTypeS, dbTypeT, schemaNameT string,
 	tableRoute []*rule.TableRouteRule,
 	columnRoute []*rule.ColumnRouteRule,
 	caseFieldRuleT string) (string, []interface{}, error) {
 	switch dbTypeS {
 	case constant.DatabaseTypeOceanbaseMYSQL:
-		return e.DeleteFromObMySQL(dbTypeT, tableRoute, columnRoute, caseFieldRuleT)
+		return e.DeleteFromObMySQL(dbTypeT, schemaNameT, tableRoute, columnRoute, caseFieldRuleT)
 	default:
 		return "", nil, fmt.Errorf("the upstream database type [%s] not support, please contact author or reselect", dbTypeS)
 	}
 }
 
-func (e *RowChangedEvent) Insert(dbTypeS, dbTypeT string,
+func (e *RowChangedEvent) Insert(dbTypeS, dbTypeT, schemaNameT string,
 	tableRoute []*rule.TableRouteRule,
 	columnRoute []*rule.ColumnRouteRule,
 	caseFieldRuleT string) (string, []interface{}, error) {
 	switch dbTypeS {
 	case constant.DatabaseTypeOceanbaseMYSQL:
-		return e.InsertFromObMySQL(dbTypeT, tableRoute, columnRoute, caseFieldRuleT)
+		return e.InsertFromObMySQL(dbTypeT, schemaNameT, tableRoute, columnRoute, caseFieldRuleT)
 	default:
 		return "", nil, fmt.Errorf("the upstream database type [%s] not support, please contact author or reselect", dbTypeS)
 	}
@@ -84,11 +84,12 @@ func (e *RowChangedEvent) Insert(dbTypeS, dbTypeT string,
 
 func (e *RowChangedEvent) DeleteFromObMySQL(
 	dbTypeT string,
+	schemaNameT string,
 	tableRoute []*rule.TableRouteRule,
 	columnRoute []*rule.ColumnRouteRule,
 	caseFieldRuleT string) (string, []interface{}, error) {
 	var schemaName, tableName string
-	schemaName, tableName = e.rewriteSchemaTable(tableRoute)
+	schemaName, tableName = e.rewriteSchemaTable(schemaNameT, caseFieldRuleT, tableRoute)
 	switch caseFieldRuleT {
 	case constant.ParamValueRuleCaseFieldNameUpper:
 		schemaName = strings.ToUpper(schemaName)
@@ -146,46 +147,46 @@ func (e *RowChangedEvent) DeleteFromObMySQL(
 			params []interface{}
 		)
 		for c, p := range uniqColumnData {
-			if ds, ok := dows.tableColumns[c]; ok {
+			if ds, ok := dows.TableColumns[c]; ok {
 				if tys, ok := upstreamColumnTypeS[c]; ok {
 					if p != nil {
 						switch {
 						case stringutil.IsContainedStringIgnoreCase(
 							message.MYSQLCompatibleMsgColumnStringCharacterDatatype, tys) && stringutil.IsContainedStringIgnoreCase(
-							constant.OracleCompatibleDatabaseTableColumnBinaryDatatype, ds.columnType):
+							constant.OracleCompatibleDatabaseTableColumnBinaryDatatype, ds.ColumnType):
 							cols = append(cols, fmt.Sprintf("%s = :%s", c, c))
 							params = append(params, []byte(p.(string)))
 							continue
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnDatetimeCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeDate) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeDate) {
 								cols = append(cols, fmt.Sprintf("%s = TO_DATE(:%s,'YYYY-MM-DD HH24:MI:SS')", c, c))
 								params = append(params, p)
 								continue
-							} else if strings.Contains(strings.ToUpper(ds.columnType), constant.BuildInOracleDatatypeTimestamp) {
+							} else if strings.Contains(strings.ToUpper(ds.ColumnType), constant.BuildInOracleDatatypeTimestamp) {
 								cols = append(cols, fmt.Sprintf("%s = TO_TIMESTAMP(:%s,'YYYY-MM-DD HH24:MI:SS.FF6')", c, c))
 								params = append(params, p)
 								continue
 							}
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnYearCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeDate) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeDate) {
 								cols = append(cols, fmt.Sprintf("%s = TO_DATE(:%s,'YYYY')", c, c))
 								params = append(params, p)
 								continue
-							} else if strings.Contains(strings.ToUpper(ds.columnType), constant.BuildInOracleDatatypeTimestamp) {
+							} else if strings.Contains(strings.ToUpper(ds.ColumnType), constant.BuildInOracleDatatypeTimestamp) {
 								cols = append(cols, fmt.Sprintf("%s = TO_TIMESTAMP(:%s,'YYYY')", c, c))
 								params = append(params, p)
 								continue
 							}
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnTimeCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeDate) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeDate) {
 								cols = append(cols, fmt.Sprintf("%s = TO_DATE(:%s,'HH24:MI:SS')", c, c))
 								params = append(params, p)
 								continue
-							} else if strings.Contains(strings.ToUpper(ds.columnType), constant.BuildInOracleDatatypeTimestamp) {
+							} else if strings.Contains(strings.ToUpper(ds.ColumnType), constant.BuildInOracleDatatypeTimestamp) {
 								cols = append(cols, fmt.Sprintf("%s = TO_TIMESTAMP(:%s,'HH24:MI:SS')", c, c))
 								params = append(params, p)
 								continue
-							} else if strings.Contains(strings.ToUpper(ds.columnType), "INTERVAL DAY") {
+							} else if strings.Contains(strings.ToUpper(ds.ColumnType), "INTERVAL DAY") {
 								sec, err := stringutil.ConvertTimeToSeconds(p.(string))
 								if err != nil {
 									return "", nil, err
@@ -195,12 +196,12 @@ func (e *RowChangedEvent) DeleteFromObMySQL(
 								continue
 							}
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnCharCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeChar) ||
-								strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeCharacter) ||
-								strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeNchar) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeChar) ||
+								strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeCharacter) ||
+								strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeNchar) {
 								cols = append(cols, fmt.Sprintf("%s = :%s", c, c))
 								str := p.(string)
-								inter := ds.dataLength - len(str)
+								inter := ds.DataLength - len(str)
 								if inter > 0 {
 									params = append(params, fmt.Sprintf("%s%s", str, stringutil.PaddingString(inter, " ", " ")))
 								} else {
@@ -234,23 +235,23 @@ func (e *RowChangedEvent) DeleteFromObMySQL(
 		)
 		placeholder := 1
 		for c, p := range uniqColumnData {
-			if ds, ok := dows.tableColumns[c]; ok {
+			if ds, ok := dows.TableColumns[c]; ok {
 				if tys, ok := upstreamColumnTypeS[c]; ok {
 					if p != nil {
 						switch {
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnStringCharacterDatatype, tys) && stringutil.IsContainedStringIgnoreCase(
-							constant.PostgresDatabaseTableColumnBinaryDatatype, ds.columnType):
+							constant.PostgresDatabaseTableColumnBinaryDatatype, ds.ColumnType):
 							cols = append(cols, fmt.Sprintf("%s = $%d", c, placeholder))
 							placeholder++
 							params = append(params, []byte(p.(string)))
 							continue
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnTimeCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInPostgresDatatypeTimeWithoutTimeZone) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInPostgresDatatypeTimeWithoutTimeZone) {
 								cols = append(cols, fmt.Sprintf("%s = $%d", c, placeholder))
 								placeholder++
 								params = append(params, p)
 								continue
-							} else if strings.EqualFold(ds.columnType, constant.BuildInPostgresDatatypeInterval) {
+							} else if strings.EqualFold(ds.ColumnType, constant.BuildInPostgresDatatypeInterval) {
 								sec, err := stringutil.ConvertTimeToSeconds(p.(string))
 								if err != nil {
 									return "", nil, err
@@ -261,10 +262,10 @@ func (e *RowChangedEvent) DeleteFromObMySQL(
 								continue
 							}
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnCharCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInPostgresDatatypeCharacter) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInPostgresDatatypeCharacter) {
 								cols = append(cols, fmt.Sprintf("%s = :%s", c, c))
 								str := p.(string)
-								inter := ds.dataLength - len(str)
+								inter := ds.DataLength - len(str)
 								if inter > 0 {
 									params = append(params, fmt.Sprintf("%s%s", str, stringutil.PaddingString(inter, " ", " ")))
 								} else {
@@ -310,7 +311,7 @@ func (e *RowChangedEvent) DeleteFromObMySQL(
 
 }
 
-func (e *RowChangedEvent) InsertFromObMySQL(dbTypeT string,
+func (e *RowChangedEvent) InsertFromObMySQL(dbTypeT, schemaNameT string,
 	tableRoute []*rule.TableRouteRule,
 	columnRoute []*rule.ColumnRouteRule,
 	caseFieldRuleT string) (string, []interface{}, error) {
@@ -318,7 +319,7 @@ func (e *RowChangedEvent) InsertFromObMySQL(dbTypeT string,
 		schemaName, tableName string
 		// validUniqColumns      []string
 	)
-	schemaName, tableName = e.rewriteSchemaTable(tableRoute)
+	schemaName, tableName = e.rewriteSchemaTable(schemaNameT, caseFieldRuleT, tableRoute)
 	switch caseFieldRuleT {
 	case constant.ParamValueRuleCaseFieldNameUpper:
 		schemaName = strings.ToUpper(schemaName)
@@ -350,8 +351,8 @@ func (e *RowChangedEvent) InsertFromObMySQL(dbTypeT string,
 			}
 		}
 
-		if meta, existd := dows.tableColumns[colName]; existd {
-			if e.isGeneratedColumn(schemaName, tableName, colName) && meta.isGeneraed {
+		if meta, existd := dows.TableColumns[colName]; existd {
+			if e.isGeneratedColumn(schemaName, tableName, colName) && meta.IsGeneraed {
 				continue
 			} else {
 				newColumnData[colName] = p
@@ -376,8 +377,8 @@ func (e *RowChangedEvent) InsertFromObMySQL(dbTypeT string,
 				colName = c
 			}
 		}
-		if meta, existd := dows.tableColumns[colName]; existd {
-			if e.isGeneratedColumn(schemaName, tableName, colName) && meta.isGeneraed {
+		if meta, existd := dows.TableColumns[colName]; existd {
+			if e.isGeneratedColumn(schemaName, tableName, colName) && meta.IsGeneraed {
 				continue
 			} else {
 				upstreamColumnTypeS[colName] = v
@@ -397,45 +398,45 @@ func (e *RowChangedEvent) InsertFromObMySQL(dbTypeT string,
 		)
 		for c, p := range newColumnData {
 			cols = append(cols, fmt.Sprintf(`"%s"`, c))
-			if ds, ok := dows.tableColumns[c]; ok {
+			if ds, ok := dows.TableColumns[c]; ok {
 				if tys, ok := upstreamColumnTypeS[c]; ok {
 					if p != nil {
 						switch {
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnStringCharacterDatatype, tys) && stringutil.IsContainedStringIgnoreCase(
-							constant.OracleCompatibleDatabaseTableColumnBinaryDatatype, ds.columnType):
+							constant.OracleCompatibleDatabaseTableColumnBinaryDatatype, ds.ColumnType):
 							pals = append(pals, fmt.Sprintf(":%s", c))
 							params = append(params, []byte(p.(string)))
 							continue
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnDatetimeCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeDate) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeDate) {
 								pals = append(pals, fmt.Sprintf("TO_DATE(:%s,'YYYY-MM-DD HH24:MI:SS')", c))
 								params = append(params, p)
 								continue
-							} else if strings.Contains(strings.ToUpper(ds.columnType), constant.BuildInOracleDatatypeTimestamp) {
+							} else if strings.Contains(strings.ToUpper(ds.ColumnType), constant.BuildInOracleDatatypeTimestamp) {
 								pals = append(pals, fmt.Sprintf("TO_TIMESTAMP(:%s,'YYYY-MM-DD HH24:MI:SS.FF6')", c))
 								params = append(params, p)
 								continue
 							}
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnYearCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeDate) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeDate) {
 								pals = append(pals, fmt.Sprintf("TO_DATE(:%s,'YYYY')", c))
 								params = append(params, p)
 								continue
-							} else if strings.Contains(strings.ToUpper(ds.columnType), constant.BuildInOracleDatatypeTimestamp) {
+							} else if strings.Contains(strings.ToUpper(ds.ColumnType), constant.BuildInOracleDatatypeTimestamp) {
 								pals = append(pals, fmt.Sprintf("TO_TIMESTAMP(:%s,'YYYY')", c))
 								params = append(params, p)
 								continue
 							}
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnTimeCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInOracleDatatypeDate) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInOracleDatatypeDate) {
 								pals = append(pals, fmt.Sprintf("TO_DATE(:%s,'HH24:MI:SS')", c))
 								params = append(params, p)
 								continue
-							} else if strings.Contains(strings.ToUpper(ds.columnType), constant.BuildInOracleDatatypeTimestamp) {
+							} else if strings.Contains(strings.ToUpper(ds.ColumnType), constant.BuildInOracleDatatypeTimestamp) {
 								pals = append(pals, fmt.Sprintf("TO_TIMESTAMP(:%s,'HH24:MI:SS')", c))
 								params = append(params, p)
 								continue
-							} else if strings.Contains(strings.ToUpper(ds.columnType), "INTERVAL DAY") {
+							} else if strings.Contains(strings.ToUpper(ds.ColumnType), "INTERVAL DAY") {
 								sec, err := stringutil.ConvertTimeToSeconds(p.(string))
 								if err != nil {
 									return "", nil, err
@@ -477,19 +478,19 @@ func (e *RowChangedEvent) InsertFromObMySQL(dbTypeT string,
 
 			placeholder++
 
-			if ds, ok := dows.tableColumns[c]; ok {
+			if ds, ok := dows.TableColumns[c]; ok {
 				if tys, ok := upstreamColumnTypeS[c]; ok {
 					if p != nil {
 						switch {
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnStringCharacterDatatype, tys) && stringutil.IsContainedStringIgnoreCase(
-							constant.PostgresDatabaseTableColumnBinaryDatatype, ds.columnType):
+							constant.PostgresDatabaseTableColumnBinaryDatatype, ds.ColumnType):
 							params = append(params, []byte(p.(string)))
 							continue
 						case stringutil.IsContainedStringIgnoreCase(message.MYSQLCompatibleMsgColumnTimeCharacterDatatype, tys):
-							if strings.EqualFold(ds.columnType, constant.BuildInPostgresDatatypeTimeWithoutTimeZone) {
+							if strings.EqualFold(ds.ColumnType, constant.BuildInPostgresDatatypeTimeWithoutTimeZone) {
 								params = append(params, p)
 								continue
-							} else if strings.EqualFold(ds.columnType, constant.BuildInPostgresDatatypeInterval) {
+							} else if strings.EqualFold(ds.ColumnType, constant.BuildInPostgresDatatypeInterval) {
 								sec, err := stringutil.ConvertTimeToSeconds(p.(string))
 								if err != nil {
 									return "", nil, err
@@ -532,13 +533,23 @@ func (e *RowChangedEvent) InsertFromObMySQL(dbTypeT string,
 	}
 }
 
-func (e *RowChangedEvent) rewriteSchemaTable(tableRoute []*rule.TableRouteRule) (string, string) {
+func (e *RowChangedEvent) rewriteSchemaTable(schemaNameT, caseFieldRuleT string, tableRoute []*rule.TableRouteRule) (string, string) {
 	for _, t := range tableRoute {
 		if e.SchemaName == t.SchemaNameS && e.TableName == t.TableNameS {
 			return t.SchemaNameT, t.TableNameT
 		}
 	}
-	return e.SchemaName, e.TableName
+
+	var tableNameT string
+	switch caseFieldRuleT {
+	case constant.ParamValueRuleCaseFieldNameUpper:
+		tableNameT = strings.ToUpper(e.TableName)
+	case constant.ParamValueRuleCaseFieldNameLower:
+		tableNameT = strings.ToLower(e.TableName)
+	default:
+		tableNameT = e.TableName
+	}
+	return schemaNameT, tableNameT
 }
 
 func (e *RowChangedEvent) rewriteTableColumn(columnRoute []*rule.ColumnRouteRule) map[string]string {
@@ -551,19 +562,19 @@ func (e *RowChangedEvent) rewriteTableColumn(columnRoute []*rule.ColumnRouteRule
 	return columnR
 }
 
-func (e *RowChangedEvent) metadata(schemaName, tableName string) *metadata {
-	metadata, existed := downMetaCache.Get(schemaName, tableName)
+func (e *RowChangedEvent) metadata(schemaNameT, tableNameT string) *metadata {
+	metadata, existed := downMetaCache.Get(schemaNameT, tableNameT)
 	if existed {
 		return metadata
 	}
 	return nil
 }
 
-func (e *RowChangedEvent) isGeneratedColumn(schemaName, tableName, columnName string) bool {
-	metadata, existed := upMetaCache.Get(schemaName, tableName)
+func (e *RowChangedEvent) isGeneratedColumn(schemaNameT, tableNameT, columnNameT string) bool {
+	metadata, existed := upMetaCache.Get(schemaNameT, tableNameT)
 	if existed {
-		if val, ok := metadata.tableColumns[columnName]; ok {
-			return val.isGeneraed
+		if val, ok := metadata.TableColumns[columnNameT]; ok {
+			return val.IsGeneraed
 		}
 	}
 	return false

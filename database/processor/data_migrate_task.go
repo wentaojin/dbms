@@ -750,6 +750,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 					CallTimeout:       int(cmt.StmtParams.CallTimeout),
 					SafeMode:          cmt.StmtParams.EnableSafeMode,
 					EnablePrepareStmt: cmt.StmtParams.EnablePrepareStmt,
+					GarbledReplace:    cmt.StmtParams.GarbledCharReplace,
 					ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 					WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 				})

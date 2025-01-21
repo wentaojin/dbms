@@ -117,12 +117,13 @@ func (c *Constraint) Inspect(ctx context.Context) error {
 // v6.5 [>=v6.5.5] tidb database version greater than v6.5.5 and less than v7.0.0 All versions are supported normally
 // v7 version and above [>=v7.1.2] all versions of the tidb database version greater than v7.1.2 can be supported normally
 func (c *Constraint) InspectUpstream(ctx context.Context) error {
+	timeS := time.Now()
 	version, err := c.DatabaseS.GetDatabaseVersion()
 	if err != nil {
 		return err
 	}
 
-	logger.Info("inspect upstream database",
+	logger.Info("inspect upstream constraint",
 		zap.String("task_name", c.Task.TaskName),
 		zap.String("task_mode", c.Task.TaskMode),
 		zap.String("task_flow", c.Task.TaskFlow),
@@ -154,7 +155,16 @@ func (c *Constraint) InspectUpstream(ctx context.Context) error {
 		for _, tab := range noValidTables {
 			t := tab
 			g.Go(func() error {
-				isvalid, err := c.DatabaseS.GetDatabaseSchemaTableValidIndex(c.SchemaRoute.SchemaNameS, t)
+				var tableName string
+				switch c.Task.CaseFieldRuleS {
+				case constant.ParamValueRuleCaseFieldNameUpper:
+					tableName = strings.ToUpper(t)
+				case constant.ParamValueRuleCaseFieldNameLower:
+					tableName = strings.ToLower(t)
+				default:
+					tableName = t
+				}
+				isvalid, err := c.DatabaseS.GetDatabaseSchemaTableValidIndex(c.SchemaRoute.SchemaNameS, tableName)
 				if err != nil {
 					return err
 				}
@@ -172,14 +182,22 @@ func (c *Constraint) InspectUpstream(ctx context.Context) error {
 		if len(doubleCValidTables) > 0 {
 			return fmt.Errorf("the upstream database tables [%v] does not meet the data synchronization requirements. Data synchronization requirements must have a primary key or a non-null unique key", stringutil.StringJoin(doubleCValidTables, constant.StringSeparatorComma))
 		}
-
+		logger.Info("inspect upstream constraint",
+			zap.String("task_name", c.Task.TaskName),
+			zap.String("task_mode", c.Task.TaskMode),
+			zap.String("task_flow", c.Task.TaskFlow),
+			zap.String("schema_name_s", c.SchemaRoute.SchemaNameS),
+			zap.String("version", version),
+			zap.String("inspect", "with valid index column"),
+			zap.Duration("cost", time.Since(timeS)))
 		return nil
 	}
 	return fmt.Errorf("the upstream database version [%s] does not support real-time synchronization based on the message queue + index-value distribution mode. There may be update events that cause data correctness issues. please choose other methods for data synchronization, details: https://docs.pingcap.com/zh/tidb/dev/ticdc-split-update-behavior", version)
 }
 
 func (c *Constraint) InspectDownstream(ctx context.Context) error {
-	logger.Info("inspect downstream database",
+	timeS := time.Now()
+	logger.Info("inspect downstream constraint",
 		zap.String("task_name", c.Task.TaskName),
 		zap.String("task_mode", c.Task.TaskMode),
 		zap.String("task_flow", c.Task.TaskFlow),
@@ -202,10 +220,8 @@ func (c *Constraint) InspectDownstream(ctx context.Context) error {
 	}
 
 	oriTableRoutes := make(map[string]string)
-	revTableRoutes := make(map[string]string)
 
 	for _, s := range c.TableRoutes {
-		revTableRoutes[s.TableNameT] = s.TableNameS
 		oriTableRoutes[s.TableNameS] = s.TableNameT
 	}
 
@@ -225,9 +241,7 @@ func (c *Constraint) InspectDownstream(ctx context.Context) error {
 			tableName = t
 		}
 
-		if tableNameS, exits := revTableRoutes[tableName]; exits {
-			c.validDownstream.append(tableNameS)
-		}
+		c.validDownstream.append(tableName)
 	}
 
 	noValidTables := stringutil.StringItemsFilterDifference(taskTables, c.validDownstream.get())
@@ -245,7 +259,14 @@ func (c *Constraint) InspectDownstream(ctx context.Context) error {
 			if val, exist := oriTableRoutes[t]; exist {
 				tableName = val
 			} else {
-				tableName = t
+				switch c.Task.CaseFieldRuleT {
+				case constant.ParamValueRuleCaseFieldNameUpper:
+					tableName = strings.ToUpper(t)
+				case constant.ParamValueRuleCaseFieldNameLower:
+					tableName = strings.ToLower(t)
+				default:
+					tableName = t
+				}
 			}
 			isValid, err := c.DatabaseT.GetDatabaseSchemaTableValidIndex(c.SchemaRoute.SchemaNameT, tableName)
 			if err != nil {
@@ -274,6 +295,13 @@ func (c *Constraint) InspectDownstream(ctx context.Context) error {
 		}
 		return fmt.Errorf("the dowstream database tables [%v] does not meet the data synchronization requirements. data synchronization requirements must have a primary key or a non-null unique key", stringutil.StringJoin(revTables, constant.StringSeparatorComma))
 	}
+	logger.Info("inspect downstream constraint",
+		zap.String("task_name", c.Task.TaskName),
+		zap.String("task_mode", c.Task.TaskMode),
+		zap.String("task_flow", c.Task.TaskFlow),
+		zap.String("schema_name_s", c.SchemaRoute.SchemaNameS),
+		zap.String("inspect", "with valid index column"),
+		zap.Duration("cost", time.Since(timeS)))
 	return nil
 }
 
@@ -299,6 +327,29 @@ type Metadata struct {
 	CaseFieldRuleT string
 }
 
+func (m *Metadata) GenMetadata(ctx context.Context) error {
+	timeS := time.Now()
+	logger.Info("gen database metadata",
+		zap.String("task_name", m.TaskName),
+		zap.String("task_mode", m.TaskMode),
+		zap.String("task_flow", m.TaskFlow),
+		zap.String("schema_name_s", m.SchemaNameS),
+		zap.String("schema_name_t", m.SchemaNameT),
+		zap.Time("start_time", timeS))
+
+	if err := m.GenDownstream(ctx); err != nil {
+		return err
+	}
+
+	logger.Info("gen database metadata completed",
+		zap.String("task_name", m.TaskName),
+		zap.String("task_mode", m.TaskMode),
+		zap.String("task_flow", m.TaskFlow),
+		zap.String("schema_name_s", m.SchemaNameS),
+		zap.String("schema_name_t", m.SchemaNameT),
+		zap.Duration("cost", time.Now().Sub(timeS)))
+	return nil
+}
 func (m *Metadata) GenDownstream(ctx context.Context) error {
 	logger.Info("get downstream metadata",
 		zap.String("task_name", m.TaskName),
@@ -347,13 +398,6 @@ func (m *Metadata) GenDownstream(ctx context.Context) error {
 					tableNameT = tableNameS
 				}
 			}
-
-			logger.Info("get downstream metadata",
-				zap.String("task_name", m.TaskName),
-				zap.String("task_mode", m.TaskMode),
-				zap.String("task_flow", m.TaskFlow),
-				zap.String("schema_name_t", m.SchemaNameT),
-				zap.String("table_name_t", tableNameT))
 
 			res, err := m.DatabaseT.GetDatabaseTableColumnMetadata(m.SchemaNameT, tableNameT)
 			if err != nil {
@@ -412,6 +456,7 @@ func (m *Metadata) GenDownstream(ctx context.Context) error {
 		zap.String("task_mode", m.TaskMode),
 		zap.String("task_flow", m.TaskFlow),
 		zap.String("schema_name_t", m.SchemaNameT),
+		zap.String("metadata", metaCache.All()),
 		zap.Duration("cost", time.Now().Sub(startTime)))
 	return nil
 }

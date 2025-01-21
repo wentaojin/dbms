@@ -73,11 +73,12 @@ func (e *RowChangedEvent) String() string {
 
 func (e *RowChangedEvent) Delete(
 	dbTypeT string,
+	schemaNameT string,
 	tableRoute []*rule.TableRouteRule,
 	columnRoute []*rule.ColumnRouteRule,
 	caseFieldRuleT string) (string, []interface{}, error) {
 	var schemaName, tableName string
-	schemaName, tableName = e.rewriteSchemaTable(tableRoute)
+	schemaName, tableName = e.rewriteSchemaTable(schemaNameT, caseFieldRuleT, tableRoute)
 	switch caseFieldRuleT {
 	case constant.ParamValueRuleCaseFieldNameUpper:
 		schemaName = strings.ToUpper(schemaName)
@@ -300,7 +301,9 @@ func (e *RowChangedEvent) Delete(
 
 }
 
-func (e *RowChangedEvent) Insert(dbTypeT string,
+func (e *RowChangedEvent) Insert(
+	dbTypeT string,
+	schemaNameT string,
 	tableRoute []*rule.TableRouteRule,
 	columnRoute []*rule.ColumnRouteRule,
 	caseFieldRuleT string) (string, []interface{}, error) {
@@ -308,7 +311,7 @@ func (e *RowChangedEvent) Insert(dbTypeT string,
 		schemaName, tableName string
 		// validUniqColumns      []string
 	)
-	schemaName, tableName = e.rewriteSchemaTable(tableRoute)
+	schemaName, tableName = e.rewriteSchemaTable(schemaNameT, caseFieldRuleT, tableRoute)
 	switch caseFieldRuleT {
 	case constant.ParamValueRuleCaseFieldNameUpper:
 		schemaName = strings.ToUpper(schemaName)
@@ -631,13 +634,23 @@ func (e *RowChangedEvent) Insert(dbTypeT string,
 	}
 }
 
-func (e *RowChangedEvent) rewriteSchemaTable(tableRoute []*rule.TableRouteRule) (string, string) {
+func (e *RowChangedEvent) rewriteSchemaTable(schemaNameT, caseFieldRuleT string, tableRoute []*rule.TableRouteRule) (string, string) {
 	for _, t := range tableRoute {
 		if e.SchemaName == t.SchemaNameS && e.TableName == t.TableNameS {
 			return t.SchemaNameT, t.TableNameT
 		}
 	}
-	return e.SchemaName, e.TableName
+
+	var tableNameT string
+	switch caseFieldRuleT {
+	case constant.ParamValueRuleCaseFieldNameUpper:
+		tableNameT = strings.ToUpper(e.TableName)
+	case constant.ParamValueRuleCaseFieldNameLower:
+		tableNameT = strings.ToLower(e.TableName)
+	default:
+		tableNameT = e.TableName
+	}
+	return schemaNameT, tableNameT
 }
 
 func (e *RowChangedEvent) rewriteTableColumn(columnRoute []*rule.ColumnRouteRule) map[string]string {

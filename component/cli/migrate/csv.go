@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/service"
 
@@ -60,6 +61,7 @@ type CsvMigrateParam struct {
 	EnableConsistentRead bool              `toml:"enable-consistent-read" json:"enableConsistentRead"`
 	EnableImportFeature  bool              `toml:"enable-import-feature" json:"enableImportFeature"`
 	CsvImportParams      map[string]string `toml:"csv-import-params" json:"csvImportParams"`
+	GarbledCharReplace   string            `toml:"garbled-char-replace" json:"garbledCharReplace"`
 }
 
 func (c *CsvConfig) String() string {

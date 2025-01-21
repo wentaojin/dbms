@@ -463,7 +463,7 @@ END;`, taskName)
 	return nil
 }
 
-func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
+func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO, garbledReplace string, dataChan chan []interface{}) error {
 	var (
 		databaseTypes []string
 		err           error
@@ -582,11 +582,11 @@ func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interfa
 						//rowsMap[cols[i]] = `NULL` -> sql
 						rowData[columnNameOrderIndexMap[colName]] = nil
 					} else {
-						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+						convertUtf8Raw, err := stringutil.CharsetConvertReplace([]byte(val), dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
 						if err != nil {
 							return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
 						}
-						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						convertTargetRaw, err := stringutil.CharsetConvertReplace(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
 						if err != nil {
 							return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
 						}
@@ -594,11 +594,11 @@ func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interfa
 					}
 				case []uint8:
 					// binary data -> raw、long raw、blob
-					convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+					convertUtf8Raw, err := stringutil.CharsetConvertReplace(val, dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
 					if err != nil {
 						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
 					}
-					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+					convertTargetRaw, err := stringutil.CharsetConvertReplace(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
 					if err != nil {
 						return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 					}
@@ -636,7 +636,7 @@ func (d *Database) GetDatabaseTableStmtData(querySQL string, queryArgs []interfa
 	return nil
 }
 
-func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO string, dataChan chan []interface{}) error {
+func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryArgs []interface{}, batchSize, callTimeout int, dbCharsetS, dbCharsetT, columnDetailO, garbledReplace string, dataChan chan []interface{}) error {
 	var (
 		databaseTypes []string
 		err           error
@@ -745,7 +745,7 @@ func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryA
 						}
 						switch {
 						case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-							convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase([]byte(res.String()))), constant.CharsetUTF8MB4, dbCharsetT)
+							convertTargetRaw, err := stringutil.CharsetConvertReplace([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase([]byte(res.String()))), constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
 							if err != nil {
 								return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 							}
@@ -762,14 +762,14 @@ func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryA
 					if strings.EqualFold(val, "") {
 						rowData[columnNameOrderIndexMap[colName]] = `NULL`
 					} else {
-						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+						convertUtf8Raw, err := stringutil.CharsetConvertReplace([]byte(val), dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
 						if err != nil {
 							return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
 						}
 
 						switch {
 						case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-							convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
+							convertTargetRaw, err := stringutil.CharsetConvertReplace([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
 							if err != nil {
 								return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 							}
@@ -782,11 +782,11 @@ func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryA
 					// binary data -> raw、long raw、blob
 					switch {
 					case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-						convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+						convertUtf8Raw, err := stringutil.CharsetConvertReplace(val, dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
 						if err != nil {
 							return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
 						}
-						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						convertTargetRaw, err := stringutil.CharsetConvertReplace(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
 						if err != nil {
 							return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 						}
@@ -842,7 +842,7 @@ func (d *Database) GetDatabaseTableNonStmtData(taskFlow, querySQL string, queryA
 	return nil
 }
 
-func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interface{}, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter string, dataChan chan []string) error {
+func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interface{}, callTimeout int, taskFlow, dbCharsetS, dbCharsetT, columnDetailO string, escapeBackslash bool, nullValue, separator, delimiter, garbledReplace string, dataChan chan []string) error {
 	var (
 		databaseTypes []string
 		err           error
@@ -958,11 +958,11 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interfac
 					}
 				case []uint8:
 					// binary data -> raw、long raw、blob
-					convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+					convertUtf8Raw, err := stringutil.CharsetConvertReplace(val, dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
 					if err != nil {
 						return fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
 					}
-					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+					convertTargetRaw, err := stringutil.CharsetConvertReplace(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
 					if err != nil {
 						return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 					}
@@ -986,7 +986,7 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interfac
 						}
 					} else {
 						var convertTargetRaw []byte
-						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+						convertUtf8Raw, err := stringutil.CharsetConvertReplace([]byte(val), dbCharsetS, constant.CharsetUTF8MB4, garbledReplace)
 						if err != nil {
 							return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 						}
@@ -995,7 +995,7 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interfac
 						if escapeBackslash {
 							switch {
 							case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-								convertTargetRaw, err = stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
+								convertTargetRaw, err = stringutil.CharsetConvertReplace([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
 								if err != nil {
 									return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 								}
@@ -1004,7 +1004,7 @@ func (d *Database) GetDatabaseTableCsvData(querySQL string, queryArgs []interfac
 							}
 
 						} else {
-							convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+							convertTargetRaw, err = stringutil.CharsetConvertReplace(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT, garbledReplace)
 							if err != nil {
 								return fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 							}

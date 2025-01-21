@@ -347,6 +347,7 @@ func (smt *SqlMigrateTask) Process() error {
 						BatchSize:         int(smt.TaskParams.BatchSize),
 						CallTimeout:       int(smt.TaskParams.CallTimeout),
 						SafeMode:          smt.TaskParams.EnableSafeMode,
+						GarbledReplace:    smt.TaskParams.GarbledCharReplace,
 						ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 						WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 						EnablePrepareStmt: smt.TaskParams.EnablePrepareStmt,

@@ -16,6 +16,7 @@ limitations under the License.
 package tidb
 
 import (
+	"encoding/json"
 	"sync"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
@@ -75,8 +76,8 @@ func (m *MetadataCache) Get(schemaName, tableName string) (*metadata, bool) {
 
 // Set sets or updates the metadata for a given schema and table name.
 func (m *MetadataCache) Set(schemaName, tableName string, metadata *metadata) {
-	m.rwMutex.RLock()
-	defer m.rwMutex.RUnlock()
+	m.rwMutex.Lock()
+	defer m.rwMutex.Unlock()
 
 	m.metadata[m.Build(schemaName, tableName)] = metadata
 }
@@ -103,8 +104,17 @@ func (m *MetadataCache) DeleteSchema(schemaName string) {
 
 // Size returns the number of entries in the cache.
 func (m *MetadataCache) Size() int {
-	m.rwMutex.Lock()
-	defer m.rwMutex.Unlock()
+	m.rwMutex.RLock()
+	defer m.rwMutex.RUnlock()
 
 	return len(m.metadata)
+}
+
+// All returns the all of entries in the cache.
+func (m *MetadataCache) All() string {
+	m.rwMutex.RLock()
+	defer m.rwMutex.RUnlock()
+
+	jsBs, _ := json.Marshal(m.metadata)
+	return string(jsBs)
 }
