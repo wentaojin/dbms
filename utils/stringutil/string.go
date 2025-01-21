@@ -775,6 +775,9 @@ func CharsetConvert(data []byte, fromCharset, toCharset string) ([]byte, error) 
 
 // CharsetCoCharsetConvertReplacenvert used for string data charset convert
 func CharsetConvertReplace(data []byte, fromCharset, toCharset, garbledReplaceChar string) ([]byte, error) {
+	if garbledReplaceChar == string(utf8.RuneError) {
+		return CharsetConvert(data, fromCharset, toCharset)
+	}
 	switch {
 	case strings.EqualFold(fromCharset, constant.CharsetUTF8MB4) && strings.EqualFold(toCharset, constant.CharsetGBK):
 		reader := transform.NewReader(bytes.NewReader(data), encoding.ReplaceUnsupported(simplifiedchinese.GBK.NewEncoder()))
