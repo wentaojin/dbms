@@ -251,6 +251,7 @@ func (cct *CdcConsumeTask) Start() error {
 				TaskMode:       cct.Task.TaskMode,
 				SchemaNameS:    schemaRoute.SchemaNameS,
 				SchemaNameT:    schemaRoute.SchemaNameT,
+				DBTypeS:        dbTypeS,
 				TaskTables:     conTables.TaskTables,
 				TableThread:    int(cct.MigrateParams.TableThread),
 				TableRoutes:    tableRoutes,

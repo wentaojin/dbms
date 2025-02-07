@@ -33,7 +33,7 @@ func init() {
 type MetadataCache struct {
 	rwMutex  sync.RWMutex
 	metadata map[string]*metadata
-	timeZone string
+	Timezone string
 }
 
 type metadata struct {
@@ -102,13 +102,13 @@ func (m *MetadataCache) SetTimezone(timeZone string) {
 	m.rwMutex.Lock()
 	defer m.rwMutex.Unlock()
 
-	m.timeZone = timeZone
+	m.Timezone = timeZone
 }
 
 func (m *MetadataCache) GetTimezone() string {
 	m.rwMutex.RLock()
 	defer m.rwMutex.RUnlock()
-	return m.timeZone
+	return m.Timezone
 }
 
 // Size returns the number of entries in the cache.

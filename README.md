@@ -49,7 +49,9 @@
 - TiDB -> Postgres 兼容性数据库迁移服务
   - Schema 表数据校验，支持 schema、表、列级别路由规则、配置上下游快照数据校验以及自定义筛选过滤字段
 - TiDB -> Oracle、Postgres、MYSQL、TiDB 数据库实时同步
-  - 基于 TiCDC + Kafka 实时消费数据同步
+  - 基于 TiCDC + Kafka 实时消费数据同步（ONLY 支持增量）
+- OCEANBASE MYSQL -> Oracle、Postgres、MYSQL、TiDB 数据库实时同步
+  - 基于 OMS + Kafka 实时消费数据同步（支持全量 + 增量）
 - ...
 
 ------
@@ -77,6 +79,8 @@ DBMS 数据库分布式迁移服务平台由 dbms-master、dbms-worker、dbms-ct
 [POSTGRES 迁移服务手册](doc/postgres_migrate_manual.md)
 
 [TiDB 迁移服务手册](doc/tidb_migrate_manual.md)
+
+[OCEANBASE 迁移服务手册](doc/oceanbase_migrate_manual.md)
 
 -------
 ### Development 🧬
@@ -133,4 +137,4 @@ If you like the project and want to buy me a cola or have tech exchange, you can
 -------
 ### License 📓
 
-This software is free to use under the Apache License.
+This software is licensed under the Apache License 2.0. For details, see [LICENSE](./LICENSE)

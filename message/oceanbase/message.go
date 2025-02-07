@@ -133,6 +133,7 @@ func (m *Message) DecodeRowChangedEvent(dbTypeS, caseFieldRuleS string) (*RowCha
 	columnType := make(map[string]string)
 	postStruct := make(map[string]interface{})
 	prevStruct := make(map[string]interface{})
+	isDefaultExtendColumnType := false
 
 	for c, v := range m.PostStruct {
 		if c == "__light_type" {
@@ -148,6 +149,7 @@ func (m *Message) DecodeRowChangedEvent(dbTypeS, caseFieldRuleS string) (*RowCha
 				}
 				columnType[name] = t.(map[string]interface{})["schemaType"].(string)
 			}
+			isDefaultExtendColumnType = true
 		}
 	}
 
@@ -171,45 +173,45 @@ func (m *Message) DecodeRowChangedEvent(dbTypeS, caseFieldRuleS string) (*RowCha
 			default:
 				name = c
 			}
-			if strings.EqualFold(dbTypeS, constant.DatabaseTypeOceanbaseMYSQL) {
-				if typs, ok := columnType[name]; ok {
-					if stringutil.IsContainedStringIgnoreCase(message.OceanbaseMsgColumnBytesDatatype, typs) {
-						if v != nil {
+			if v == nil {
+				postStruct[name] = v
+			} else {
+				if strings.EqualFold(dbTypeS, constant.DatabaseTypeOceanbaseMYSQL) {
+					if typs, ok := columnType[name]; ok {
+						if stringutil.IsContainedStringIgnoreCase(message.OceanbaseMsgColumnBytesDatatype, typs) {
 							decodedBytes, err := base64.StdEncoding.DecodeString(v.(string))
 							if err != nil {
 								return nil, err
 							}
 							postStruct[name] = decodedBytes
-						} else {
-							postStruct[name] = v
-						}
-					} else if strings.EqualFold(typs, constant.BuildInMySQLDatatypeTimestamp) {
-						// The OceanBase database converts TIMESTAMP values ​​from the current time zone to UTC for storage, and then converts from UTC back to the current time zone for retrieval. By default, the current time zone for each connection follows the server's time, but the time zone for each connection can be changed. If the same time zone is not used for bidirectional conversion, the retrieved value may be different from the stored value after changing the time zone. As long as the time zone setting remains unchanged, the stored value can be retrieved. The current time zone is available as the value of the time_zone system variable.
-						times := stringutil.StringSplit(v.(string), ".")
-						unixTs, err := strconv.ParseInt(times[0], 10, 64)
-						if err != nil {
-							return nil, err
-						}
-						var nanos int64
-						if len(times) == 2 {
-							nanos, err = strconv.ParseInt(times[1], 10, 64)
+						} else if strings.EqualFold(typs, constant.BuildInMySQLDatatypeTimestamp) {
+							// The OceanBase database converts TIMESTAMP values ​​from the current time zone to UTC for storage, and then converts from UTC back to the current time zone for retrieval. By default, the current time zone for each connection follows the server's time, but the time zone for each connection can be changed. If the same time zone is not used for bidirectional conversion, the retrieved value may be different from the stored value after changing the time zone. As long as the time zone setting remains unchanged, the stored value can be retrieved. The current time zone is available as the value of the time_zone system variable.
+							times := stringutil.StringSplit(v.(string), ".")
+							unixTs, err := strconv.ParseInt(times[0], 10, 64)
 							if err != nil {
 								return nil, err
 							}
+							var nanos int64
+							if len(times) == 2 {
+								nanos, err = strconv.ParseInt(times[1], 10, 64)
+								if err != nil {
+									return nil, err
+								}
+							} else {
+								nanos = 0
+							}
+							timeObj, err := createTimeWithOffset(unixTs, nanos, upMetaCache.GetTimezone())
+							if err != nil {
+								return nil, err
+							}
+							postStruct[name] = formatTimeWithNanos(timeObj, 9)
 						} else {
-							nanos = 0
+							postStruct[name] = v
 						}
-						timeObj, err := createTimeWithOffset(unixTs, nanos, upMetaCache.GetTimezone())
-						if err != nil {
-							return nil, err
-						}
-						postStruct[name] = formatTimeWithNanos(timeObj, 9)
-					} else {
-						postStruct[name] = v
 					}
+				} else {
+					postStruct[name] = v
 				}
-			} else {
-				postStruct[name] = v
 			}
 		}
 	}
@@ -225,6 +227,14 @@ func (m *Message) DecodeRowChangedEvent(dbTypeS, caseFieldRuleS string) (*RowCha
 			name = c
 		}
 		prevStruct[name] = v
+
+		if c == "__light_type" {
+			isDefaultExtendColumnType = true
+		}
+	}
+
+	if !isDefaultExtendColumnType {
+		return nil, fmt.Errorf("the message format require DefaultExtendColumnType JSON, not found __light_type colum")
 	}
 
 	return &RowChangedEvent{

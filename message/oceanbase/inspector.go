@@ -369,11 +369,12 @@ func (m *Metadata) GenUpstream(ctx context.Context) error {
 	startTime := time.Now()
 
 	if strings.EqualFold(m.DBTypeS, constant.DatabaseTypeOceanbaseMYSQL) {
-		_, res, err := m.DatabaseS.GeneralQuery(`SHOW VARIABLES LIKE 'time_zone'`)
+		_, res, err := m.DatabaseS.GeneralQuery(`select variable_value AS "VALUE" from 
+		INFORMATION_SCHEMA.GLOBAL_VARIABLES where VARIABLE_NAME='time_zone'`)
 		if err != nil {
 			return err
 		}
-		upMetaCache.SetTimezone(res[0]["Value"])
+		upMetaCache.SetTimezone(res[0]["VALUE"])
 	}
 
 	g, _ := errgroup.WithContext(ctx)

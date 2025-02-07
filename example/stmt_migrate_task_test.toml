@@ -1,6 +1,6 @@
 task-name = "dmt_33to45"
 datasource-name-s = "ora151"
-datasource-name-t = "tidb85"
+datasource-name-t = "tidb161"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -17,12 +17,13 @@ case-field-rule-t = "0"
 
 [schema-route-rule]
 schema-name-s = "MARVIN"
-schema-name-t = "pingcap"
+schema-name-t = "marvin"
 # include-table-s 迁移所有表需指定 "*"，特定表写具体表名
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05","MARVIN_COLUMN_T"]
-include-table-s = []
+include-table-s = ["ABLE"]
+exclude-table-s = []
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
-exclude-table-s = ["C_COMPRESSION_T","C_RANDOM","C_STORE_GEN_COL","C_GEN_STORE_T","C_UNSIGNED_INT","T1","C_PARTITION_RANGE","C_CLUSTERED_T0","C_CLUSTERED_T1","C_CLUSTERED_T2","C_CLUSTERED_T3","C_NONCLUSTERED_T0","C_NONCLUSTERED_T1","C_NONCLUSTERED_T2","C_NONCLUSTERED_T3","C_VITUAL_GEN_COL","C_GEN_VIRTUAL_T","C_INT","C_TEXT","C_CHAR_BINARY","C_BLOB","C_TIME","C_REAL","C_UNSIGNED_REAL","C_OTHER_DATATYPE","C_UPDATE00","C_UPDATE01","C_UPDATE02","C_PARTITION_HASH","T2","T3","C_SAVEPOINT_T","C_MULTI_DATA_TYPE","T5"]
+# exclude-table-s = ["C_COMPRESSION_T","C_RANDOM","C_STORE_GEN_COL","C_GEN_STORE_T","C_UNSIGNED_INT","T1","C_PARTITION_RANGE","C_CLUSTERED_T0","C_CLUSTERED_T1","C_CLUSTERED_T2","C_CLUSTERED_T3","C_NONCLUSTERED_T0","C_NONCLUSTERED_T1","C_NONCLUSTERED_T2","C_NONCLUSTERED_T3","C_VITUAL_GEN_COL","C_GEN_VIRTUAL_T","C_INT","C_TEXT","C_CHAR_BINARY","C_BLOB","C_TIME","C_REAL","C_UNSIGNED_REAL","C_OTHER_DATATYPE","C_UPDATE00","C_UPDATE01","C_UPDATE02","C_PARTITION_HASH","T2","T3","C_SAVEPOINT_T","C_MULTI_DATA_TYPE","T5"]
 
 [[schema-route-rule.table-route-rules]]
 table-name-s = ""
@@ -72,7 +73,7 @@ enable-consistent-read = false
 enable-safe-mode = false
 # 是否开启 prepare stmt
 enable-prepare-stmt = true
-# 指定在源数据文件的字符集转换过程中，出现不兼容字符时的替换字符。
+# 指定在源数据字符集转换过程中，出现不兼容字符时的替换字符。
 # 此项不可与字段分隔符、引用界定符和换行符号重复。
 # 默认值为 "\uFFFD"，即 UTF-8 编码中的 "error" Rune 或 Unicode replacement character。
 # 改变默认值可能会导致潜在的源数据文件解析性能下降
