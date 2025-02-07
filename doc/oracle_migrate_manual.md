@@ -109,7 +109,7 @@ ORACLE MIGRATE MYSQL 兼容性数据库，提供以下功能实现：
 - 自定义配置 SQL Hint 
 - 断点续传
 - 上游数据库一致性/非一致性读
-- 表数据字符集参照上下游数据源参数配置 charset 进行自动转换传输
+- 表数据字符集参照上下游数据源参数配置 charset 进行自动转换传输，支持乱码 garbled-char-replace 字符替换功能
 - 支持统计信息以及 CHUNK 形式划分数据迁移范围，并自动识别 ORACLE 数据库版本并采用最优的方式迁移
 - 数据存放空间检查是否满足数据表大小，不满足自动跳过，直至找到满足条件的数据表导出或者任务结束 （ONLY CSV MIGRATE TASK）
 - 下游 TiDB 数据库 CSV 数据迁移支持自动导入（Require: TiDB Version >= v7.5）
@@ -124,7 +124,7 @@ ORACLE MIGRATE MYSQL 兼容性数据库，提供以下功能实现：
 - 自定义配置路由规则映射
   - 列名称路由
 - 上游数据库一致性/非一致性读
-- 表数据字符集参照上下游数据源参数配置 charset 进行自动转换传输
+- 表数据字符集参照上下游数据源参数配置 charset 进行自动转换传输，支持乱码 garbled-char-replace 字符替换功能
 
 
 <mark>NOTE:</mark>
