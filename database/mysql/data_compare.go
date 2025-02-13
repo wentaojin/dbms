@@ -19,10 +19,12 @@ import (
 	"context"
 	"fmt"
 	"hash/crc32"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/shopspring/decimal"
 	"github.com/wentaojin/dbms/logger"
@@ -450,7 +452,7 @@ func (d *Database) GetDatabaseTableCompareRow(query string, args ...any) ([]stri
 			// Notes: oracle database NULL and ""
 			//	1, if the return value is NULLABLE, it represents the value is NULL, oracle sql query statement had be required the field NULL judgement, and if the filed is NULL, it returns that the value is NULLABLE
 			//	2, if the return value is nil, it represents the value is NULL
-			//	3, if the return value is "", it represents the value is "" string
+			//	3, if the return value is "", it represents the value is '' string
 			//	4, if the return value is 'NULL' or 'null', it represents the value is NULL or null string
 			if v == nil {
 				row[columns[k]] = "NULLABLE"
@@ -470,12 +472,12 @@ func (d *Database) GetDatabaseTableCompareRow(query string, args ...any) ([]stri
 
 func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error) {
 	var (
-		rowData        []string
-		columnNames    []string
-		databaaseTypes []string
-		scanTypes      []string
-		err            error
-		crc32Sum       uint32
+		rowData       []string
+		columnNames   []string
+		databaseTypes []string
+		scanTypes     []string
+		err           error
+		crc32Sum      uint32
 	)
 
 	var crc32Val uint32 = 0
@@ -505,7 +507,7 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 			return nil, crc32Sum, nil, fmt.Errorf("column [%s] charset convert failed, %v", ct.Name(), err)
 		}
 		columnNames = append(columnNames, stringutil.BytesToString(convertUtf8Raw))
-		databaaseTypes = append(databaaseTypes, ct.DatabaseTypeName())
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
 		scanTypes = append(scanTypes, ct.ScanType().String())
 	}
 
@@ -526,7 +528,7 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 
 		for i, colName := range columnNames {
 			val := rawResult[i]
-			// ORACLE database NULL and "" are the same, but mysql database NULL and "" are the different
+			// ORACLE database NULL and '' are the same, but mysql database NULL and '' are the different
 			if val == nil {
 				rowData = append(rowData, `NULL`)
 			} else if stringutil.BytesToString(val) == "" {
@@ -542,21 +544,21 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 				case "sql.NullFloat64":
 					rowData = append(rowData, stringutil.BytesToString(val))
 				default:
-					if strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeDecimal) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeBigint) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeDouble) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeDoublePrecision) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeFloat) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeInt) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeInteger) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeMediumint) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeNumeric) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeReal) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeSmallint) ||
-						strings.EqualFold(databaaseTypes[i], constant.BuildInMySQLDatatypeTinyint) {
+					if strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeDecimal) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeBigint) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeDouble) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeDoublePrecision) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeFloat) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeInt) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeInteger) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeMediumint) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeNumeric) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeReal) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeSmallint) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeTinyint) {
 						rfs, err := decimal.NewFromString(stringutil.BytesToString(val))
 						if err != nil {
-							return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaaseTypes[i], val, err)
+							return nil, crc32Sum, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaseTypes[i], val, err)
 						}
 						rowData = append(rowData, rfs.String())
 					} else {
@@ -593,4 +595,183 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 	}
 
 	return columnNames, crc32Sum, batchRowsM, nil
+}
+
+func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
+	var (
+		columnNames         []string
+		scanTypes           []string
+		databaseTypes       []string
+		err                 error
+		chunkColumnDatas    [][]string
+		abnormalColumnDatas []map[string]string
+	)
+
+	chunkColumnDataOrderIndex := make(map[string]int)
+	for i, c := range chunkColumns {
+		chunkColumnDataOrderIndex[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, querySQL, queryArgs...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	chunkColumnNameIndex := make(map[int]string)
+	asciiColumnNameIndex := make(map[int]string)
+	originColumnNameIndex := make(map[int]string)
+	asciiOriginColumnNameMap := make(map[string]string)
+
+	re := regexp.MustCompile(fmt.Sprintf(`%s([^%s]*)%s`, constant.StringSeparatorBacktick, constant.StringSeparatorBacktick, constant.StringSeparatorBacktick))
+
+	for i, ct := range colTypes {
+		columnNames = append(columnNames, ct.Name())
+		scanTypes = append(scanTypes, ct.ScanType().String())
+
+		matcheColumnS := re.FindAllStringSubmatch(ct.Name(), -1)
+		originColumnSliS := make(map[string]struct{})
+		for _, match := range matcheColumnS {
+			if len(match) > 1 {
+				originColumnSliS[match[1]] = struct{}{}
+			}
+		}
+		if strings.HasPrefix(strings.ToUpper(ct.Name()), constant.DataCompareSeekAsciiColumnPrefix) {
+			asciiColumnNameIndex[i] = ct.Name()
+			for originC, _ := range originColumnSliS {
+				asciiOriginColumnNameMap[ct.Name()] = originC
+			}
+		} else {
+			for originC, _ := range originColumnSliS {
+				originColumnNameIndex[i] = originC
+			}
+		}
+
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
+
+		for _, c := range chunkColumns {
+			if strings.EqualFold(ct.Name(), c) {
+				chunkColumnNameIndex[i] = c
+				break
+			}
+		}
+	}
+
+	// data scan
+	columnNums := len(columnNames)
+
+	rawResult := make([][]byte, columnNums)
+	valuePtrs := make([]interface{}, columnNums)
+	for i, _ := range columnNames {
+		valuePtrs[i] = &rawResult[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var rowData []string
+
+		for i, colName := range columnNames {
+			val := rawResult[i]
+			// ORACLE database NULL and '' are the same, but mysql database NULL and '' are the different
+			if val == nil {
+				rowData = append(rowData, `NULL`)
+			} else if stringutil.BytesToString(val) == "" {
+				rowData = append(rowData, "")
+			} else {
+				switch scanTypes[i] {
+				case "sql.NullInt16":
+					rowData = append(rowData, stringutil.BytesToString(val))
+				case "sql.NullInt32":
+					rowData = append(rowData, stringutil.BytesToString(val))
+				case "sql.NullInt64":
+					rowData = append(rowData, stringutil.BytesToString(val))
+				case "sql.NullFloat64":
+					rowData = append(rowData, stringutil.BytesToString(val))
+				default:
+					if strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeDecimal) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeBigint) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeDouble) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeDoublePrecision) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeFloat) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeInt) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeInteger) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeMediumint) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeNumeric) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeReal) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeSmallint) ||
+						strings.EqualFold(databaseTypes[i], constant.BuildInMySQLDatatypeTinyint) {
+						rfs, err := decimal.NewFromString(stringutil.BytesToString(val))
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaseTypes[i], val, err)
+						}
+						rowData = append(rowData, rfs.String())
+					} else {
+						convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						}
+						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						}
+						rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+					}
+				}
+			}
+		}
+
+		// resaon -> garbled、uncommonWords(60159 <= ascii <= 66000)、unknown
+		// columnName[reason][columnData]
+		abnormalRowColumnData := make(map[string]string)
+		chunkColumnDataSli := make([]string, len(chunkColumns))
+
+		for i, data := range rowData {
+			if chunkColName, exist := chunkColumnNameIndex[i]; exist {
+				chunkColumnDataSli[chunkColumnDataOrderIndex[chunkColName]] = data
+			} else if asciiColumnName, isAsciiCol := asciiColumnNameIndex[i]; isAsciiCol {
+				asciiValue, err := stringutil.StrconvIntBitSize(data, 64)
+				if err != nil {
+					return nil, nil, err
+				}
+				if asciiValue >= 60159 && asciiValue <= 66000 {
+					if val, exist := abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]]; exist {
+						abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]] = fmt.Sprintf("%s/%s", val, constant.DataCompareSeekUncommonWordsAbnormalData)
+					} else {
+						abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]] = constant.DataCompareSeekUncommonWordsAbnormalData
+					}
+				}
+			} else if strings.ContainsRune(data, utf8.RuneError) {
+				if val, exist := abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]]; exist {
+					abnormalRowColumnData[originColumnNameIndex[i]] = fmt.Sprintf("%s/%s", val, constant.DataCompareSeekGarbledAbnormalData)
+				} else {
+					abnormalRowColumnData[originColumnNameIndex[i]] = constant.DataCompareSeekGarbledAbnormalData
+				}
+			}
+		}
+
+		if len(abnormalRowColumnData) > 0 {
+			chunkColumnDatas = append(chunkColumnDatas, chunkColumnDataSli)
+			abnormalColumnDatas = append(abnormalColumnDatas, abnormalRowColumnData)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	return chunkColumnDatas, abnormalColumnDatas, nil
 }

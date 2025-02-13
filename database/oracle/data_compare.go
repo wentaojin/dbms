@@ -21,10 +21,12 @@ import (
 	"hash/crc32"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/utils/structure"
@@ -727,6 +729,256 @@ func (d *Database) filterDatabaseTableColumnBucketSupportDatatype(columnType str
 		return true
 	}
 	return false
+}
+
+func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
+	var (
+		columnNames []string
+
+		databaseTypes       []string
+		err                 error
+		chunkColumnDatas    [][]string
+		abnormalColumnDatas []map[string]string
+	)
+
+	chunkColumnDataOrderIndex := make(map[string]int)
+	for i, c := range chunkColumns {
+		chunkColumnDataOrderIndex[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, querySQL, queryArgs...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	chunkColumnNameIndex := make(map[int]string)
+	asciiColumnNameIndex := make(map[int]string)
+	originColumnNameIndex := make(map[int]string)
+
+	asciiOriginColumnNameMap := make(map[string]string)
+
+	re := regexp.MustCompile(fmt.Sprintf(`%s([^%s]*)%s`, constant.StringSeparatorDoubleQuotes, constant.StringSeparatorDoubleQuotes, constant.StringSeparatorDoubleQuotes))
+
+	for i, ct := range colTypes {
+		columnNames = append(columnNames, ct.Name())
+
+		matcheColumnS := re.FindAllStringSubmatch(ct.Name(), -1)
+		originColumnSliS := make(map[string]struct{})
+		for _, match := range matcheColumnS {
+			if len(match) > 1 {
+				originColumnSliS[match[1]] = struct{}{}
+			}
+		}
+		if strings.HasPrefix(strings.ToUpper(ct.Name()), constant.DataCompareSeekAsciiColumnPrefix) {
+			asciiColumnNameIndex[i] = ct.Name()
+			for originC, _ := range originColumnSliS {
+				asciiOriginColumnNameMap[ct.Name()] = originC
+			}
+		} else {
+			for originC, _ := range originColumnSliS {
+				originColumnNameIndex[i] = originC
+			}
+		}
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
+
+		for _, c := range chunkColumns {
+			if strings.EqualFold(ct.Name(), c) {
+				chunkColumnNameIndex[i] = c
+				break
+			}
+		}
+	}
+
+	// data scan
+	columnNums := len(columnNames)
+
+	values := make([]interface{}, columnNums)
+	valuePtrs := make([]interface{}, columnNums)
+	for i, _ := range columnNames {
+		valuePtrs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var rowDatas []string
+
+		for i, colName := range columnNames {
+			valRes := values[i]
+			if stringutil.IsValueNil(valRes) {
+				rowDatas = append(rowDatas, `NULL`)
+			} else {
+				value := reflect.ValueOf(valRes).Interface()
+				switch val := value.(type) {
+				case godror.Number:
+					rfs, err := decimal.NewFromString(val.String())
+					if err != nil {
+						return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] NewFromString strconv failed, %v", colName, databaseTypes[i], val, err)
+					}
+					rowDatas = append(rowDatas, rfs.String())
+				case *godror.Lob:
+					lobD, err := val.Hijack()
+					if err != nil {
+						return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack failed, %v", colName, databaseTypes[i], val, err)
+					}
+					if strings.EqualFold(databaseTypes[i], "BFILE") {
+						dir, file, err := lobD.GetFileName()
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack getfilename failed, %v", colName, databaseTypes[i], val, err)
+						}
+						dirPath, err := d.GetDatabaseDirectoryName(dir)
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack get directory name failed, %v", colName, databaseTypes[i], val, err)
+						}
+						rowDatas = append(rowDatas, fmt.Sprintf("'%v'", filepath.Join(dirPath, file)))
+					} else {
+						// get actual data
+						lobSize, err := lobD.Size()
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack size failed, %v", colName, databaseTypes[i], val, err)
+						}
+
+						buf := make([]byte, lobSize)
+
+						var (
+							res    strings.Builder
+							offset int64
+						)
+						for {
+							count, err := lobD.ReadAt(buf, offset)
+							if err != nil {
+								return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack readAt failed, %v", colName, databaseTypes[i], val, err)
+							}
+							if int64(count) > lobSize/int64(4) {
+								count = int(lobSize / 4)
+							}
+							offset += int64(count)
+							res.Write(buf[:count])
+							if count == 0 {
+								break
+							}
+						}
+						switch {
+						case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
+							convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase([]byte(res.String()))), constant.CharsetUTF8MB4, dbCharsetT)
+							if err != nil {
+								return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+							}
+							rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+						default:
+							return nil, nil, fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+						}
+					}
+					err = lobD.Close()
+					if err != nil {
+						return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] hijack close failed, %v", colName, databaseTypes[i], val, err)
+					}
+				case string:
+					// ORACLE database NULL and '' are the same, but mysql/postgres database NULL and '' are the different
+					if strings.EqualFold(val, "") {
+						rowDatas = append(rowDatas, `NULL`)
+					} else {
+						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+						}
+
+						switch {
+						case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
+							convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
+							if err != nil {
+								return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+							}
+							rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+						default:
+							return nil, nil, fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+						}
+					}
+				case []uint8:
+					// binary data -> raw、long raw、blob
+					switch {
+					case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
+						convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+						}
+						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						}
+
+						rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.SpecialLettersMySQLCompatibleDatabase(convertTargetRaw)))
+					default:
+						return nil, nil, fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+					}
+				case int64:
+					rowDatas = append(rowDatas, decimal.NewFromInt(val).String())
+				case uint64:
+					rowDatas = append(rowDatas, strconv.FormatUint(val, 10))
+				case float32:
+					rowDatas = append(rowDatas, decimal.NewFromFloat32(val).String())
+				case float64:
+					rowDatas = append(rowDatas, decimal.NewFromFloat(val).String())
+				case int32:
+					rowDatas = append(rowDatas, decimal.NewFromInt32(val).String())
+				default:
+					return nil, nil, fmt.Errorf("the task_flow [%s] query [%s] column [%s] unsupported type: %T", taskFlow, querySQL, colName, value)
+				}
+			}
+		}
+
+		// resaon -> garbled、uncommonWords(60159 <= ascii <= 66000)
+		// columnName[reason][columnData]
+		abnormalRowColumnData := make(map[string]string)
+		chunkColumnDataSli := make([]string, len(chunkColumns))
+
+		for i, rowData := range rowDatas {
+			if chunkColName, exist := chunkColumnNameIndex[i]; exist {
+				chunkColumnDataSli[chunkColumnDataOrderIndex[chunkColName]] = rowData
+			} else if asciiColumnName, isAsciiCol := asciiColumnNameIndex[i]; isAsciiCol {
+				asciiValue, err := stringutil.StrconvIntBitSize(rowData, 64)
+				if err != nil {
+					return nil, nil, err
+				}
+				if asciiValue >= 60159 && asciiValue <= 66000 {
+					if val, exist := abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]]; exist {
+						abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]] = fmt.Sprintf("%s/%s", val, constant.DataCompareSeekUncommonWordsAbnormalData)
+					} else {
+						abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]] = constant.DataCompareSeekUncommonWordsAbnormalData
+					}
+				}
+			} else if strings.ContainsRune(rowData, utf8.RuneError) {
+				if val, exist := abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]]; exist {
+					abnormalRowColumnData[originColumnNameIndex[i]] = fmt.Sprintf("%s/%s", val, constant.DataCompareSeekGarbledAbnormalData)
+				} else {
+					abnormalRowColumnData[originColumnNameIndex[i]] = constant.DataCompareSeekGarbledAbnormalData
+				}
+			}
+		}
+		if len(abnormalRowColumnData) > 0 {
+			chunkColumnDatas = append(chunkColumnDatas, chunkColumnDataSli)
+			abnormalColumnDatas = append(abnormalColumnDatas, abnormalRowColumnData)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	return chunkColumnDatas, abnormalColumnDatas, nil
 }
 
 //func (d *Database) findDatabaseTableBestColumn(schemaNameS, tableNameS, columnNameS string) ([]string, error) {

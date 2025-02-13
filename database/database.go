@@ -62,7 +62,7 @@ type IDatabaseSchemaTableRule interface {
 	GenSchemaNameRule() (string, string, error)
 	GenSchemaTableNameRule() (string, string, error)
 	GetSchemaTableColumnNameRule() (map[string]string, error)
-	GenSchemaTableColumnSelectRule() (string, string, string, string, error)
+	GenSchemaTableColumnSelectRule() (string, string, string, string, string, string, error)
 }
 
 // IDatabaseRunner used for database table migrate runner

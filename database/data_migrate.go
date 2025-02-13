@@ -62,7 +62,7 @@ type DataMigrateAttributesRule struct {
 	TableNameS          string `json:"tableNameS"`
 	TableTypeS          string `json:"tableTypeS"`
 	TableNameT          string `json:"tableNameT"`
-	ColumnDetailO       string `json:"columnDetailO"`
+	ColumnDetailSO      string `json:"columnDetailSO"`
 	ColumnDetailS       string `json:"columnDetailS"`
 	ColumnDetailT       string `json:"columnDetailT"`
 	EnableChunkStrategy bool   `json:"enableChunkStrategy"`
@@ -79,7 +79,7 @@ func IDataMigrateAttributesRule(i IDataMigrateRuleInitializer) (*DataMigrateAttr
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}
-	sourceColumnO, sourceColumnS, _, targetColumnT, err := i.GenSchemaTableColumnSelectRule()
+	sourceColumnSO, sourceColumnS, _, targetColumnT, _, _, err := i.GenSchemaTableColumnSelectRule()
 	if err != nil {
 		return &DataMigrateAttributesRule{}, err
 	}
@@ -93,7 +93,7 @@ func IDataMigrateAttributesRule(i IDataMigrateRuleInitializer) (*DataMigrateAttr
 		TableNameS:          sourceTable,
 		TableNameT:          targetTable,
 		TableTypeS:          i.GenSchemaTableTypeRule(),
-		ColumnDetailO:       sourceColumnO,
+		ColumnDetailSO:      sourceColumnSO,
 		ColumnDetailS:       sourceColumnS,
 		ColumnDetailT:       targetColumnT,
 		EnableChunkStrategy: enableChunkStrategy,

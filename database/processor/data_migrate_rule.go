@@ -139,7 +139,7 @@ func (r *DataMigrateRule) GetSchemaTableColumnNameRule() (map[string]string, err
 	return nil, nil
 }
 
-func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, string, string, error) {
+func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, string, string, string, string, error) {
 	columnRules := make(map[string]string)
 
 	columnRoutes, err := model.GetIMigrateColumnRouteRW().FindColumnRouteRule(r.Ctx, &rule.ColumnRouteRule{
@@ -148,12 +148,12 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		TableNameS:  r.TableNameS,
 	})
 	if err != nil {
-		return "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 
 	sourceColumnNameS, err := r.DatabaseS.GetDatabaseTableColumnNameTableDimensions(r.SchemaNameS, r.TableNameS)
 	if err != nil {
-		return "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 
 	for _, c := range sourceColumnNameS {
@@ -162,17 +162,17 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
+				return "", "", "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
 			}
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(c), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
+				return "", "", "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, c, err)
 			}
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 		default:
-			return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
+			return "", "", "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 		}
 
 		// column name caseFieldRule
@@ -215,7 +215,7 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 
 	sourceColumnInfos, err := r.DatabaseS.GetDatabaseTableColumnInfo(r.SchemaNameS, r.TableNameS)
 	if err != nil {
-		return "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 
 	for _, rowCol := range sourceColumnInfos {
@@ -225,29 +225,29 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnName), constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenTableQueryColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName, err)
+				return "", "", "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenTableQueryColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName, err)
 			}
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 
 			columnNameS, err := OptimizerOracleDataMigrateColumnS(stringutil.StringBuilder(constant.StringSeparatorDoubleQuotes, columnName, constant.StringSeparatorDoubleQuotes), rowCol["DATA_TYPE"], rowCol["DATA_SCALE"])
 			if err != nil {
-				return "", "", "", "", err
+				return "", "", "", "", "", "", err
 			}
 			columnNameSilS = append(columnNameSilS, columnNameS)
 		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
 			columnNameUtf8Raw, err := stringutil.CharsetConvert([]byte(columnName), constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.DBCharsetS)], constant.CharsetUTF8MB4)
 			if err != nil {
-				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenTableQueryColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName, err)
+				return "", "", "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GenTableQueryColumnRule] schema [%s] table [%s] column [%s] charset convert [UTFMB4] failed, error: %v", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName, err)
 			}
 			columnName = stringutil.BytesToString(columnNameUtf8Raw)
 
 			columnNameS, err := OptimizerPostgresDataMigrateColumnS(stringutil.StringBuilder(constant.StringSeparatorDoubleQuotes, columnName, constant.StringSeparatorDoubleQuotes), rowCol["DATA_TYPE"], rowCol["DATETIME_PRECISION"])
 			if err != nil {
-				return "", "", "", "", err
+				return "", "", "", "", "", "", err
 			}
 			columnNameSilS = append(columnNameSilS, columnNameS)
 		default:
-			return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
+			return "", "", "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] isn't support, please contact author or reselect", r.TaskName, r.TaskFlow, r.TaskMode)
 		}
 
 		var (
@@ -275,10 +275,10 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 					columnNameT = val
 				}
 			default:
-				return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TaskFlow)
+				return "", "", "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TaskFlow)
 			}
 		} else {
-			return "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName)
+			return "", "", "", "", "", "", fmt.Errorf("the task_name [%s] task_flow [%s] and task_mode [%s] [GetTableColumnRule] schema [%s] table [%s] column [%s] isn't exist, please contact author or double check again", r.TaskName, r.TaskFlow, r.TaskMode, r.SchemaNameS, r.TableNameS, columnName)
 		}
 		columnNameSliT = append(columnNameSliT, columnNameT)
 	}
@@ -286,7 +286,9 @@ func (r *DataMigrateRule) GenSchemaTableColumnSelectRule() (string, string, stri
 	return stringutil.StringJoin(sourceColumnNameS, constant.StringSeparatorComma),
 		stringutil.StringJoin(columnNameSilS, constant.StringSeparatorComma),
 		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma),
-		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma), nil
+		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComma),
+		stringutil.StringJoin(sourceColumnNameS, constant.StringSeparatorComplexSymbol),
+		stringutil.StringJoin(columnNameSliT, constant.StringSeparatorComplexSymbol), nil
 }
 
 func (r *DataMigrateRule) GenSchemaTableTypeRule() string {

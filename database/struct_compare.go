@@ -16,8 +16,9 @@ limitations under the License.
 package database
 
 import (
-	"github.com/wentaojin/dbms/utils/stringutil"
 	"strings"
+
+	"github.com/wentaojin/dbms/utils/stringutil"
 
 	"github.com/wentaojin/dbms/utils/structure"
 )

@@ -180,11 +180,12 @@ func (a *AppVerifyGet) RunE(cmd *cobra.Command, args []string) error {
 
 type AppVerifyGen struct {
 	*AppVerify
-	task       string
-	schemaName string
-	tableName  string
-	outputDir  string
-	force      bool
+	task         string
+	schemaName   string
+	tableName    string
+	outputDir    string
+	ignoreStatus bool
+	ignoreVerify bool
 }
 
 func (a *AppVerify) AppVerifyGen() component.Cmder {
@@ -204,7 +205,8 @@ func (a *AppVerifyGen) Cmd() *cobra.Command {
 	cmd.Flags().StringVarP(&a.schemaName, "schema", "S", "", "the data compare task schema_name_s")
 	cmd.Flags().StringVarP(&a.tableName, "table", "T", "", "the data compare task schema table_name_s")
 	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the data compare task output file dir")
-	cmd.Flags().BoolVarP(&a.force, "force", "f", false, "the data compare task force ignore the task status success check, output fixed file")
+	cmd.Flags().BoolVar(&a.ignoreStatus, "ignoreStatus", false, "forces the consistency check of unsuccessful task status and continue output fixed file")
+	cmd.Flags().BoolVar(&a.ignoreVerify, "ignoreVerify", false, "forced to ignore chunk failure records to check if there is a repair statement and continue output fixed file")
 	return cmd
 }
 
@@ -242,7 +244,7 @@ func (a *AppVerifyGen) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := service.GenDataCompareTask(context.Background(), a.Server, a.task, a.schemaName, a.tableName, a.outputDir, a.force)
+	err := service.GenDataCompareTask(context.Background(), a.Server, a.task, a.schemaName, a.tableName, a.outputDir, a.ignoreStatus, a.ignoreVerify)
 	if err != nil {
 		if errors.Is(err, errors.New(constant.TaskDatabaseStatusEqual)) {
 			fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
@@ -250,7 +252,7 @@ func (a *AppVerifyGen) RunE(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
-		fmt.Printf("Response:     %s\n", color.RedString("the request failed: %v", err))
+		fmt.Printf("Response:     %s\n", color.RedString("the request failed: \n%v", err))
 		return nil
 	}
 	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
@@ -258,25 +260,28 @@ func (a *AppVerifyGen) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-type AppVerifyCount struct {
+type AppVerifyScan struct {
 	*AppVerify
-	task       string
-	schemaName string
-	tableName  string
-	chunkIDs   []string
-	outputDir  string
-	force      bool
+	task         string
+	schemaName   string
+	tableName    string
+	chunkIDs     []string
+	outputDir    string
+	force        bool
+	callTimeout  int64
+	chunkThreads int
+	stream       string
 }
 
-func (a *AppVerify) AppVerifyCount() component.Cmder {
-	return &AppVerifyGen{AppVerify: a}
+func (a *AppVerify) AppVerifyScan() component.Cmder {
+	return &AppVerifyScan{AppVerify: a}
 }
 
-func (a *AppVerifyCount) Cmd() *cobra.Command {
+func (a *AppVerifyScan) Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "count",
-		Short:            "count cluster data compare task chunk",
-		Long:             `count cluster data compare task detail`,
+		Use:              "scan",
+		Short:            "scan for unequal chunk records caused by crc32 or md5 data verification methods tasks",
+		Long:             `scan for unequal chunk records caused by crc32 or md5 data verification methods tasks`,
 		RunE:             a.RunE,
 		TraverseChildren: true,
 		SilenceUsage:     true,
@@ -285,12 +290,15 @@ func (a *AppVerifyCount) Cmd() *cobra.Command {
 	cmd.Flags().StringVarP(&a.schemaName, "schema", "S", "", "the data compare task schema_name_s")
 	cmd.Flags().StringVarP(&a.tableName, "table", "T", "", "the data compare task schema table_name_s")
 	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the data compare task output file dir")
-	cmd.Flags().StringArrayVarP(&a.chunkIDs, "chunkIds", "c", nil, "the data compare task table chunk ids")
+	cmd.Flags().StringVar(&a.stream, "stream", "upstream", "the data compare seek task running stream(upstream/downstream)")
+	cmd.Flags().StringArrayVarP(&a.chunkIDs, "chunkIds", "c", nil, "the data compare task table not equal chunk ids")
 	cmd.Flags().BoolVarP(&a.force, "force", "f", false, "the data compare task force ignore the task status success check, output file")
+	cmd.Flags().Int64Var(&a.callTimeout, "timeout", 36000, "the data compare task query timeout, unit: seconds")
+	cmd.Flags().IntVar(&a.chunkThreads, "thread", 5, "the data compare task scan threads")
 	return cmd
 }
 
-func (a *AppVerifyCount) RunE(cmd *cobra.Command, args []string) error {
+func (a *AppVerifyScan) RunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		if err := cmd.Help(); err != nil {
 			return err
@@ -301,7 +309,7 @@ func (a *AppVerifyCount) RunE(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Component:    %s\n", cyan.Sprint("dbms-ctl"))
 	fmt.Printf("Command:      %s\n", cyan.Sprint("verify"))
 	fmt.Printf("Task:         %s\n", cyan.Sprint(a.task))
-	fmt.Printf("Action:       %s\n", cyan.Sprint("count"))
+	fmt.Printf("Action:       %s\n", cyan.Sprint("scan"))
 	if strings.EqualFold(a.task, "") || strings.EqualFold(a.outputDir, "") {
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
 		fmt.Printf("Response:     %s\n", color.RedString("flag parameter [task] and [outputDir] are requirement, can not null"))
@@ -324,11 +332,12 @@ func (a *AppVerifyCount) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := service.GenDataCompareTask(context.Background(), a.Server, a.task, a.schemaName, a.tableName, a.outputDir, a.force)
+	err := service.ScanDataCompareTask(context.Background(), a.Server, a.task, a.schemaName, a.tableName, a.chunkIDs, a.outputDir, a.force,
+		a.callTimeout, a.chunkThreads, a.stream)
 	if err != nil {
 		if errors.Is(err, errors.New(constant.TaskDatabaseStatusEqual)) {
 			fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
-			fmt.Printf("Response:     %s\n", color.GreenString("the data compare task all of the table records are equal, current not exist not equal table records."))
+			fmt.Printf("Response:     %s\n", color.GreenString("the data compare task all of the table records are equal, current not exist not equal table chunk records."))
 			return nil
 		}
 		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
@@ -336,6 +345,6 @@ func (a *AppVerifyCount) RunE(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	fmt.Printf("Status:       %s\n", cyan.Sprint("success"))
-	fmt.Printf("Response:     %s\n", color.GreenString("the data compare task fixed sql file had be output to [%v], please forward to view\n", a.outputDir))
+	fmt.Printf("Response:     %s\n", color.GreenString("the data compare task scan chunk records had be output to [%v], please forward to view\n", a.outputDir))
 	return nil
 }

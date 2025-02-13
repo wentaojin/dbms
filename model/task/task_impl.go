@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"golang.org/x/sync/errgroup"
@@ -1581,8 +1582,15 @@ func (rw *RWDataCompareTask) QueryDataCompareTask(ctx context.Context, task *Dat
 }
 
 func (rw *RWDataCompareTask) QueryDataCompareTaskChunk(ctx context.Context, task *DataCompareTask, chunkIds []string) ([]*DataCompareTask, error) {
-	var dataS []*DataCompareTask
-	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_id in (?)", task.TaskName, task.SchemaNameS, task.TableNameS, chunkIds).Find(&dataS).Error
+	var (
+		dataS []*DataCompareTask
+		err   error
+	)
+	if strings.EqualFold(task.TaskStatus, "") {
+		err = rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND chunk_id in (?)", task.TaskName, task.SchemaNameS, task.TableNameS, chunkIds).Find(&dataS).Error
+	} else {
+		err = rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status = ? AND chunk_id in (?)", task.TaskName, task.SchemaNameS, task.TableNameS, task.TaskStatus, chunkIds).Find(&dataS).Error
+	}
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

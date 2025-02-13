@@ -157,4 +157,10 @@ const (
 
 	// DataCompareDisabledCollationSettingFillEmptyString represent disabled collation setting and the column name is not support collation setting
 	DataCompareDisabledCollationSettingFillEmptyString = ""
+
+	// Garbled characters and rare characters can cause inconsistent data verification, but no repair statements can be generated
+	// verify scan command tool can be used to scan and locate specific problem lines
+	DataCompareSeekAsciiColumnPrefix         = "ASCII"
+	DataCompareSeekGarbledAbnormalData       = "GARBLED"
+	DataCompareSeekUncommonWordsAbnormalData = "UNCOMMON_WORDS"
 )

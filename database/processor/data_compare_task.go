@@ -503,24 +503,6 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 					return errW
 				}
 
-				var dbCharsetS, dbCharsetT string
-				switch dmt.Task.TaskFlow {
-				case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
-					dbCharsetS = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
-					dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-				case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
-					dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
-					dbCharsetT = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-				case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
-					dbCharsetS = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
-					dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-				case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
-					dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetS)]
-					dbCharsetT = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(dmt.DBCharsetT)]
-				default:
-					return fmt.Errorf("the task [%s] schema [%s] taskflow [%s] column rule isn't support, please contact author", dmt.Task.TaskName, dt.SchemaNameS, dmt.Task.TaskFlow)
-				}
-
 				err = database.IDataCompareProcess(&DataCompareRow{
 					Ctx:            dmt.Ctx,
 					TaskMode:       dmt.Task.TaskMode,
@@ -532,8 +514,8 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 					BatchSize:      int(dmt.TaskParams.BatchSize),
 					WriteThread:    int(dmt.TaskParams.WriteThread),
 					CallTimeout:    int(dmt.TaskParams.CallTimeout),
-					DBCharsetS:     dbCharsetS,
-					DBCharsetT:     dbCharsetT,
+					ConnCharsetS:   dmt.DBCharsetS,
+					ConnCharsetT:   dmt.DBCharsetT,
 					RepairStmtFlow: dmt.TaskParams.RepairStmtFlow,
 					Separator:      dmt.TaskParams.Separator,
 				})
@@ -967,8 +949,10 @@ func (dmt *DataCompareTask) ProcessTableScan(ctx context.Context, globalScnS, gl
 			CompareMethod:   attsRule.CompareMethod,
 			ColumnDetailSO:  attsRule.ColumnDetailSO,
 			ColumnDetailS:   attsRule.ColumnDetailS,
+			ColumnDetailSS:  attsRule.ColumnDetailSS,
 			ColumnDetailTO:  attsRule.ColumnDetailTO,
 			ColumnDetailT:   attsRule.ColumnDetailT,
+			ColumnDetailTS:  attsRule.ColumnDetailTS,
 			SqlHintS:        attsRule.SqlHintS,
 			SqlHintT:        attsRule.SqlHintT,
 			ChunkID:         uuid.New().String(),
@@ -1088,9 +1072,11 @@ func (dmt *DataCompareTask) PrepareStatisticsRange(globalScnS, globalScnT string
 			SnapshotPointT:  globalScnT,
 			CompareMethod:   attsRule.CompareMethod,
 			ColumnDetailSO:  attsRule.ColumnDetailSO,
+			ColumnDetailSS:  attsRule.ColumnDetailSS,
 			ColumnDetailS:   attsRule.ColumnDetailS,
 			ColumnDetailTO:  attsRule.ColumnDetailTO,
 			ColumnDetailT:   attsRule.ColumnDetailT,
+			ColumnDetailTS:  attsRule.ColumnDetailTS,
 			SqlHintS:        attsRule.SqlHintS,
 			SqlHintT:        attsRule.SqlHintT,
 			ChunkID:         uuid.New().String(),

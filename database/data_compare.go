@@ -32,6 +32,7 @@ type IDatabaseDataCompare interface {
 	GetDatabaseTableRandomValues(schemaNameS, tableNameS string, columns []string, conditions string, condArgs []interface{}, limit int, collations []string) ([][]string, error)
 	GetDatabaseTableCompareRow(query string, args ...any) ([]string, []map[string]string, error)
 	GetDatabaseTableCompareCrc(querySQL string, callTimeout int, dbCharsetS, dbCharsetT, separator string, queryArgs []interface{}) ([]string, uint32, map[string]int64, error)
+	GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error)
 }
 
 // IDataCompareRuleInitializer used for database table rule initializer
@@ -49,8 +50,10 @@ type DataCompareAttributesRule struct {
 	TableNameT             string            `json:"tableNameT"`
 	ColumnDetailSO         string            `json:"columnDetailSO"`
 	ColumnDetailS          string            `json:"columnDetailS"`
+	ColumnDetailSS         string            `json:"columnDetailSS"`
 	ColumnDetailT          string            `json:"columnDetailT"`
 	ColumnDetailTO         string            `json:"columnDetailTO"`
+	ColumnDetailTS         string            `json:"columnDetailTS"`
 	CompareMethod          string            `json:"compareMethod"`
 	ColumnNameRouteRule    map[string]string `json:"columnNameRouteRule"` // keep the column name upstream and downstream mapping, a -> b
 	CompareConditionFieldS string            `json:"compareConditionFieldS"`
@@ -74,7 +77,7 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
-	sourceColumnSO, sourceColumnS, targetColumnTO, targetColumnT, err := i.GenSchemaTableColumnSelectRule()
+	sourceColumnSO, sourceColumnS, targetColumnTO, targetColumnT, columnNameSS, columnNameTS, err := i.GenSchemaTableColumnSelectRule()
 	if err != nil {
 		return &DataCompareAttributesRule{}, err
 	}
@@ -90,8 +93,10 @@ func IDataCompareAttributesRule(i IDataCompareRuleInitializer) (*DataCompareAttr
 		TableTypeS:             i.GenSchemaTableTypeRule(),
 		ColumnDetailSO:         sourceColumnSO,
 		ColumnDetailS:          sourceColumnS,
+		ColumnDetailSS:         columnNameSS,
 		ColumnDetailTO:         targetColumnTO,
 		ColumnDetailT:          targetColumnT,
+		ColumnDetailTS:         columnNameTS,
 		CompareMethod:          i.GenSchemaTableCompareMethodRule(),
 		CompareConditionFieldS: columnFields,
 		CompareConditionRangeS: compareRangeS,

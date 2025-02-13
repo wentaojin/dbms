@@ -288,8 +288,10 @@ type DataCompareTask struct {
 	CompareMethod   string  `gorm:"type:varchar(50);not null;comment:compare method status" json:"compareMethod"`
 	ColumnDetailSO  string  `gorm:"type:longtext;not null;comment:source table column origin detail" json:"columnDetailSO"`
 	ColumnDetailS   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailS"`
+	ColumnDetailSS  string  `gorm:"type:longtext;comment:source column used to seek query information" json:"columnDetailSS"`
 	ColumnDetailTO  string  `gorm:"type:longtext;not null;comment:target table column origin detail" json:"columnDetailTO"`
 	ColumnDetailT   string  `gorm:"type:longtext;comment:source column used to query information" json:"columnDetailT"`
+	ColumnDetailTS  string  `gorm:"type:longtext;comment:source column used to seek query information" json:"columnDetailTS"`
 	SqlHintS        string  `gorm:"type:varchar(300);comment:source sql hint" json:"sqlHintS"`
 	SqlHintT        string  `gorm:"type:varchar(300);comment:target sql hint" json:"sqlHintT"`
 	ChunkID         string  `gorm:"type:varchar(300);not null;uniqueIndex:uniq_schema_table_name_complex;comment:source table chunk random id" json:"chunkID"`

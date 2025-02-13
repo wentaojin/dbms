@@ -51,8 +51,8 @@ type DataCompareRow struct {
 	BatchSize      int
 	WriteThread    int
 	CallTimeout    int
-	DBCharsetS     string
-	DBCharsetT     string
+	ConnCharsetS   string
+	ConnCharsetT   string
 	RepairStmtFlow string
 	Separator      string
 }
@@ -70,6 +70,10 @@ func (r *DataCompareRow) CompareRows() error {
 		queryCondArgsS, queryCondArgsT                           []interface{}
 	)
 
+	dbCharsetS, dbCharsetT, err := r.genDatabaseConvertCharset()
+	if err != nil {
+		return err
+	}
 	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 	if err != nil {
 		return err
@@ -91,23 +95,23 @@ func (r *DataCompareRow) CompareRows() error {
 
 	desChunkDetailT = stringutil.BytesToString(decChunkDetailT)
 
-	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailS), constant.CharsetUTF8MB4, r.DBCharsetS)
+	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailS), constant.CharsetUTF8MB4, dbCharsetS)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	columnDetailS = stringutil.BytesToString(convertRaw)
-	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailS), constant.CharsetUTF8MB4, r.DBCharsetS)
+	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailS), constant.CharsetUTF8MB4, dbCharsetS)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	chunkDetailS = stringutil.BytesToString(convertRaw)
 
-	convertRaw, err = stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailT), constant.CharsetUTF8MB4, r.DBCharsetT)
+	convertRaw, err = stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailT), constant.CharsetUTF8MB4, dbCharsetT)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailT, err)
 	}
 	columnDetailT = stringutil.BytesToString(convertRaw)
-	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailT), constant.CharsetUTF8MB4, r.DBCharsetT)
+	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailT), constant.CharsetUTF8MB4, dbCharsetT)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
@@ -474,6 +478,11 @@ func (r *DataCompareRow) CompareMd5ORCrc32() error {
 		queryCondArgsS, queryCondArgsT                           []interface{}
 	)
 
+	dbCharsetS, dbCharsetT, err := r.genDatabaseConvertCharset()
+	if err != nil {
+		return err
+	}
+
 	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 	if err != nil {
 		return err
@@ -495,27 +504,33 @@ func (r *DataCompareRow) CompareMd5ORCrc32() error {
 
 	desChunkDetailT = stringutil.BytesToString(decChunkDetailT)
 
-	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailS), constant.CharsetUTF8MB4, r.DBCharsetS)
+	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailS), constant.CharsetUTF8MB4, dbCharsetS)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	columnDetailS = stringutil.BytesToString(convertRaw)
-	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailS), constant.CharsetUTF8MB4, r.DBCharsetS)
+
+	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailS), constant.CharsetUTF8MB4, dbCharsetS)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	chunkDetailS = stringutil.BytesToString(convertRaw)
 
-	convertRaw, err = stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailT), constant.CharsetUTF8MB4, r.DBCharsetT)
+	convertRaw, err = stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailT), constant.CharsetUTF8MB4, dbCharsetT)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailT, err)
 	}
 	columnDetailT = stringutil.BytesToString(convertRaw)
-	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailT), constant.CharsetUTF8MB4, r.DBCharsetT)
+	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailT), constant.CharsetUTF8MB4, dbCharsetT)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	chunkDetailT = stringutil.BytesToString(convertRaw)
+
+	columnDetailS, columnDetailT, err = r.genDatabaseMd5OrCrc32ColumnDetail(columnDetailS, chunkDetailT)
+	if err != nil {
+		return err
+	}
 
 	dbTypeSli := stringutil.StringSplit(r.TaskFlow, constant.StringSeparatorAite)
 
@@ -875,7 +890,7 @@ FROM
 		zap.String("chunk_result_t", resultStrT),
 		zap.String("cost", endTime.Sub(startTime).String()))
 
-	err = r.compareMd5OrCrc32Row()
+	err = r.compareDatabaseMd5OrCrc32Row()
 	if err != nil {
 		return err
 	}
@@ -890,6 +905,11 @@ func (r *DataCompareRow) CompareCRC32() error {
 		columnDetailS, columnDetailT, chunkDetailS, chunkDetailT string
 		queryCondArgsS, queryCondArgsT                           []interface{}
 	)
+
+	dbCharsetS, dbCharsetT, err := r.genDatabaseConvertCharset()
+	if err != nil {
+		return err
+	}
 
 	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 	if err != nil {
@@ -911,23 +931,23 @@ func (r *DataCompareRow) CompareCRC32() error {
 	}
 	desChunkDetailT = stringutil.BytesToString(decChunkDetailT)
 
-	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailSO), constant.CharsetUTF8MB4, r.DBCharsetS)
+	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailSO), constant.CharsetUTF8MB4, dbCharsetS)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	columnDetailS = stringutil.BytesToString(convertRaw)
-	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailS), constant.CharsetUTF8MB4, r.DBCharsetS)
+	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailS), constant.CharsetUTF8MB4, dbCharsetS)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	chunkDetailS = stringutil.BytesToString(convertRaw)
 
-	convertRaw, err = stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailTO), constant.CharsetUTF8MB4, r.DBCharsetT)
+	convertRaw, err = stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailTO), constant.CharsetUTF8MB4, dbCharsetT)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	columnDetailT = stringutil.BytesToString(convertRaw)
-	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailT), constant.CharsetUTF8MB4, r.DBCharsetT)
+	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailT), constant.CharsetUTF8MB4, dbCharsetT)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
@@ -1067,7 +1087,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			columnS, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareCrc(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, r.Separator, queryCondArgsS)
+			columnS, crc32ValS, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareCrc(execQueryS, r.CallTimeout, dbCharsetS, constant.CharsetUTF8MB4, r.Separator, queryCondArgsS)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] comparing failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
@@ -1100,7 +1120,7 @@ func (r *DataCompareRow) CompareCRC32() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			columnT, crc32ValT, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareCrc(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, r.Separator, queryCondArgsT)
+			columnT, crc32ValT, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareCrc(execQueryT, r.CallTimeout, dbCharsetT, constant.CharsetUTF8MB4, r.Separator, queryCondArgsT)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] comparing failed: [%v]", execQueryT, queryCondArgsT, err)
 			}
@@ -1504,7 +1524,81 @@ func (r *DataCompareRow) CompareCRC32() error {
 	return nil
 }
 
-func (r *DataCompareRow) compareMd5OrCrc32Row() error {
+func (r *DataCompareRow) genDatabaseMd5OrCrc32ColumnDetail(columnNameSilSC, columnNameSliTC string) (string, string, error) {
+	if strings.EqualFold(r.CompareMethod(), constant.DataCompareMethodDatabaseCheckMD5) {
+		switch r.TaskFlow {
+		case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+			return fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(%s),'%s','%s'), 2)) AS ROWSCHECKSUM`,
+					columnNameSilSC, constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.ConnCharsetS)),
+				fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+					columnNameSliTC, constant.MYSQLCharsetUTF8MB4), nil
+		case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
+			return fmt.Sprintf(`UPPER(MD5(CONVERT(CONCAT(%s) USING '%s'))) AS ROWSCHECKSUM`,
+					columnNameSilSC, constant.MYSQLCharsetUTF8MB4),
+				fmt.Sprintf(`UPPER(DBMS_CRYPTO.HASH(CONVERT(TO_CLOB(%s),'%s','%s'), 2)) AS ROWSCHECKSUM`,
+					columnNameSliTC, constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.ConnCharsetT)), nil
+		case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+			return fmt.Sprintf(`MD5(CONVERT_TO(%s,'%s')) AS "ROWSCHECKSUM"`,
+					columnNameSilSC, constant.PostgreSQLCharsetUTF8),
+				fmt.Sprintf(`MD5(CONVERT(CONCAT(%s) USING '%s')) AS ROWSCHECKSUM`,
+					columnNameSliTC, constant.MYSQLCharsetUTF8MB4), nil
+		case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+			return fmt.Sprintf(`MD5(CONVERT(CONCAT(%s) USING '%s')) AS ROWSCHECKSUM`,
+					columnNameSilSC, constant.MYSQLCharsetUTF8MB4),
+				fmt.Sprintf(`MD5(CONVERT_TO(%s,'%s')) AS "ROWSCHECKSUM"`,
+					columnNameSliTC, constant.PostgreSQLCharsetUTF8), nil
+		default:
+			return "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] return isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskFlow)
+		}
+	}
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToMySQL, constant.TaskFlowOracleToTiDB:
+		return fmt.Sprintf(`TO_CHAR(NVL(SUM(CRC32(CONVERT(%s,'%s','%s'))),0)) AS ROWSCHECKSUM`,
+				columnNameSilSC, constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.ConnCharsetS)),
+			fmt.Sprintf(`CAST(IFNULL(SUM(CRC32(CONVERT(CONCAT(%s) USING '%s'))),0) AS CHAR) AS ROWSCHECKSUM`,
+				columnNameSliTC, constant.MYSQLCharsetUTF8MB4), nil
+	case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
+		return fmt.Sprintf(`CAST(IFNULL(SUM(CRC32(CONVERT(CONCAT(%s) USING '%s'))),0) AS CHAR) AS ROWSCHECKSUM`,
+				columnNameSilSC, constant.MYSQLCharsetUTF8MB4),
+			fmt.Sprintf(`TO_CHAR(NVL(SUM(CRC32(CONVERT(%s,'%s','%s'))),0)) AS ROWSCHECKSUM`,
+				columnNameSliTC, constant.ORACLECharsetAL32UTF8, stringutil.StringUpper(r.ConnCharsetT)), nil
+	case constant.TaskFlowPostgresToMySQL, constant.TaskFlowPostgresToTiDB:
+		return fmt.Sprintf(`COALESCE(SUM(CRC32(CONVERT_TO(%s,'%s'))),0)::TEXT AS "ROWSCHECKSUM"`,
+				columnNameSilSC, constant.PostgreSQLCharsetUTF8),
+			fmt.Sprintf(`CAST(IFNULL(SUM(CRC32(CONVERT(CONCAT(%s) USING '%s'))),0) AS CHAR) AS ROWSCHECKSUM`,
+				columnNameSliTC, constant.MYSQLCharsetUTF8MB4), nil
+	case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+		return fmt.Sprintf(`CAST(IFNULL(SUM(CRC32(CONVERT(CONCAT(%s) USING '%s'))),0) AS CHAR) AS ROWSCHECKSUM`,
+				columnNameSilSC, constant.MYSQLCharsetUTF8MB4),
+			fmt.Sprintf(`COALESCE(SUM(CRC32(CONVERT_TO(%s,'%s'))),0)::TEXT AS "ROWSCHECKSUM"`,
+				columnNameSliTC, constant.PostgreSQLCharsetUTF8), nil
+	default:
+		return "", "", fmt.Errorf("the task_name [%s] schema [%s] taskflow [%s] return isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskFlow)
+	}
+}
+
+func (r *DataCompareRow) genDatabaseConvertCharset() (string, string, error) {
+	var dbCharsetS, dbCharsetT string
+	switch r.TaskFlow {
+	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
+		dbCharsetS = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.ConnCharsetS)]
+		dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.ConnCharsetT)]
+	case constant.TaskFlowTiDBToOracle, constant.TaskFlowMySQLToOracle:
+		dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.ConnCharsetS)]
+		dbCharsetT = constant.MigrateOracleCharsetStringConvertMapping[stringutil.StringUpper(r.ConnCharsetT)]
+	case constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
+		dbCharsetS = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.ConnCharsetS)]
+		dbCharsetT = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.ConnCharsetT)]
+	case constant.TaskFlowTiDBToPostgres, constant.TaskFlowMySQLToPostgres:
+		dbCharsetS = constant.MigrateMySQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.ConnCharsetS)]
+		dbCharsetT = constant.MigratePostgreSQLCompatibleCharsetStringConvertMapping[stringutil.StringUpper(r.ConnCharsetT)]
+	default:
+		return "", "", fmt.Errorf("the taskflow [%s] schema [%s] gen database charset isn't support, please contact author", r.TaskFlow, r.Dmt.SchemaNameS)
+	}
+	return dbCharsetS, dbCharsetT, nil
+}
+
+func (r *DataCompareRow) compareDatabaseMd5OrCrc32Row() error {
 	startTime := time.Now()
 
 	var (
@@ -1512,6 +1606,10 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 		columnDetailS, columnDetailT, chunkDetailS, chunkDetailT string
 		queryCondArgsS, queryCondArgsT                           []interface{}
 	)
+	dbCharsetS, dbCharsetT, err := r.genDatabaseConvertCharset()
+	if err != nil {
+		return err
+	}
 
 	desChunkDetailS, err := stringutil.Decrypt(r.Dmt.ChunkDetailS, []byte(constant.DefaultDataEncryptDecryptKey))
 	if err != nil {
@@ -1533,23 +1631,23 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 	}
 	desChunkDetailT = stringutil.BytesToString(decChunkDetailT)
 
-	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailSO), constant.CharsetUTF8MB4, r.DBCharsetS)
+	convertRaw, err := stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailSO), constant.CharsetUTF8MB4, dbCharsetS)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	columnDetailS = stringutil.BytesToString(convertRaw)
-	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailS), constant.CharsetUTF8MB4, r.DBCharsetS)
+	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailS), constant.CharsetUTF8MB4, dbCharsetS)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	chunkDetailS = stringutil.BytesToString(convertRaw)
 
-	convertRaw, err = stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailTO), constant.CharsetUTF8MB4, r.DBCharsetT)
+	convertRaw, err = stringutil.CharsetConvert([]byte(r.Dmt.ColumnDetailTO), constant.CharsetUTF8MB4, dbCharsetT)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
 	columnDetailT = stringutil.BytesToString(convertRaw)
-	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailT), constant.CharsetUTF8MB4, r.DBCharsetT)
+	convertRaw, err = stringutil.CharsetConvert([]byte(desChunkDetailT), constant.CharsetUTF8MB4, dbCharsetT)
 	if err != nil {
 		return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] schema [%s] table [%s] column [%s] charset convert failed, %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.Dmt.ColumnDetailS, err)
 	}
@@ -1689,7 +1787,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			columnS, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareCrc(execQueryS, r.CallTimeout, r.DBCharsetS, constant.CharsetUTF8MB4, r.Separator, queryCondArgsS)
+			columnS, _, columnDataS, err := r.DatabaseS.GetDatabaseTableCompareCrc(execQueryS, r.CallTimeout, dbCharsetS, constant.CharsetUTF8MB4, r.Separator, queryCondArgsS)
 			if err != nil {
 				return fmt.Errorf("the database source query sql [%v] args [%v] comparing failed: [%v]", execQueryS, queryCondArgsS, err)
 			}
@@ -1720,7 +1818,7 @@ func (r *DataCompareRow) compareMd5OrCrc32Row() error {
 			return nil
 		default:
 			streamTime := time.Now()
-			columnT, _, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareCrc(execQueryT, r.CallTimeout, r.DBCharsetT, constant.CharsetUTF8MB4, r.Separator, queryCondArgsT)
+			columnT, _, columnDataT, err := r.DatabaseT.GetDatabaseTableCompareCrc(execQueryT, r.CallTimeout, dbCharsetT, constant.CharsetUTF8MB4, r.Separator, queryCondArgsT)
 			if err != nil {
 				return fmt.Errorf("the database target query sql [%v] args [%v] comparing failed: [%v]", execQueryT, queryCondArgsT, err)
 			}

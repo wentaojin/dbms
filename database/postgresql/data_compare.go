@@ -22,10 +22,12 @@ import (
 	"hash/crc32"
 	"math"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/greatcloak/decimal"
 	"github.com/lib/pq"
@@ -658,4 +660,146 @@ WHERE schemaname = '%s'
 		return nil, nil, err
 	}
 	return columnDistKeys, columnBounds, nil
+}
+
+func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
+	var (
+		columnNames []string
+
+		databaseTypes       []string
+		err                 error
+		chunkColumnDatas    [][]string
+		abnormalColumnDatas []map[string]string
+	)
+
+	chunkColumnDataOrderIndex := make(map[string]int)
+	for i, c := range chunkColumns {
+		chunkColumnDataOrderIndex[c] = i
+	}
+
+	deadline := time.Now().Add(time.Duration(callTimeout) * time.Second)
+
+	ctx, cancel := context.WithDeadline(d.Ctx, deadline)
+	defer cancel()
+
+	rows, err := d.QueryContext(ctx, querySQL, queryArgs...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	chunkColumnNameIndex := make(map[int]string)
+	asciiColumnNameIndex := make(map[int]string)
+	originColumnNameIndex := make(map[int]string)
+	asciiOriginColumnNameMap := make(map[string]string)
+
+	re := regexp.MustCompile(fmt.Sprintf(`%s([^%s]*)%s`, constant.StringSeparatorDoubleQuotes, constant.StringSeparatorDoubleQuotes, constant.StringSeparatorDoubleQuotes))
+
+	for i, ct := range colTypes {
+		columnNames = append(columnNames, ct.Name())
+
+		matcheColumnS := re.FindAllStringSubmatch(ct.Name(), -1)
+		originColumnSliS := make(map[string]struct{})
+		for _, match := range matcheColumnS {
+			if len(match) > 1 {
+				originColumnSliS[match[1]] = struct{}{}
+			}
+		}
+		if strings.HasPrefix(strings.ToUpper(ct.Name()), constant.DataCompareSeekAsciiColumnPrefix) {
+			asciiColumnNameIndex[i] = ct.Name()
+			for originC, _ := range originColumnSliS {
+				asciiOriginColumnNameMap[ct.Name()] = originC
+			}
+		} else {
+			for originC, _ := range originColumnSliS {
+				originColumnNameIndex[i] = originC
+			}
+		}
+
+		databaseTypes = append(databaseTypes, ct.DatabaseTypeName())
+
+		for _, c := range chunkColumns {
+			if strings.EqualFold(ct.Name(), c) {
+				chunkColumnNameIndex[i] = c
+				break
+			}
+		}
+	}
+
+	// data scan
+	columnNums := len(columnNames)
+
+	rawResult := make([][]byte, columnNums)
+	valuePtrs := make([]interface{}, columnNums)
+	for i, _ := range columnNames {
+		valuePtrs[i] = &rawResult[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var rowData []string
+
+		for i, colName := range columnNames {
+			valRes := rawResult[i]
+			// postgres database NULL and "" are differently
+			if stringutil.IsValueNil(valRes) {
+				// ORACLE database NULL and "" are the same, but postgres database NULL and "" are the different
+				rowData = append(rowData, `NULL`)
+			} else {
+				str, err := d.RecursiveCRC(colName, dbCharsetS, dbCharsetT, valRes)
+				if err != nil {
+					return nil, nil, err
+				}
+				rowData = append(rowData, str)
+			}
+		}
+
+		// resaon -> garbled、uncommonWords(60159 <= ascii <= 66000)
+		// columnName[reason][columnData]
+		abnormalRowColumnData := make(map[string]string)
+		chunkColumnDataSli := make([]string, len(chunkColumns))
+
+		for i, data := range rowData {
+			if chunkColName, exist := chunkColumnNameIndex[i]; exist {
+				chunkColumnDataSli[chunkColumnDataOrderIndex[chunkColName]] = data
+			} else if asciiColumnName, isAsciiCol := asciiColumnNameIndex[i]; isAsciiCol {
+				asciiValue, err := stringutil.StrconvIntBitSize(data, 64)
+				if err != nil {
+					return nil, nil, err
+				}
+				if asciiValue >= 60159 && asciiValue <= 66000 {
+					if val, exist := abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]]; exist {
+						abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]] = fmt.Sprintf("%s/%s", val, constant.DataCompareSeekUncommonWordsAbnormalData)
+					} else {
+						abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]] = constant.DataCompareSeekUncommonWordsAbnormalData
+					}
+				}
+			} else if strings.ContainsRune(data, utf8.RuneError) {
+				if val, exist := abnormalRowColumnData[asciiOriginColumnNameMap[asciiColumnName]]; exist {
+					abnormalRowColumnData[originColumnNameIndex[i]] = fmt.Sprintf("%s/%s", val, constant.DataCompareSeekGarbledAbnormalData)
+				} else {
+					abnormalRowColumnData[originColumnNameIndex[i]] = constant.DataCompareSeekGarbledAbnormalData
+				}
+			}
+		}
+		if len(abnormalRowColumnData) > 0 {
+			chunkColumnDatas = append(chunkColumnDatas, chunkColumnDataSli)
+			abnormalColumnDatas = append(abnormalColumnDatas, abnormalRowColumnData)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	return chunkColumnDatas, abnormalColumnDatas, nil
 }

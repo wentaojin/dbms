@@ -36,6 +36,7 @@ import (
 	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/model/params"
+	"github.com/wentaojin/dbms/model/rule"
 	"github.com/wentaojin/dbms/model/task"
 	"github.com/wentaojin/dbms/proto/pb"
 	"github.com/wentaojin/dbms/utils/constant"
@@ -551,7 +552,86 @@ func StopDataCompareTask(ctx context.Context, taskName string) error {
 	return nil
 }
 
-func GenDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, tableName, outputDir string, force bool) error {
+func GenDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, tableName, outputDir string, ignoreStatus, ignoreVerify bool) error {
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
+	if err != nil {
+		return err
+	}
+	keyResp, err := etcdutil.GetKey(etcdClient, constant.DefaultMasterDatabaseDBMSKey, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case len(keyResp.Kvs) > 1:
+		return fmt.Errorf("get key [%v] values is over one record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	case len(keyResp.Kvs) == 1:
+		// open database conn
+		var dbCfg *model.Database
+		err = json.Unmarshal(keyResp.Kvs[0].Value, &dbCfg)
+		if err != nil {
+			return fmt.Errorf("json unmarshal [%v] to struct database faild: [%v]", stringutil.BytesToString(keyResp.Kvs[0].Value), err)
+		}
+		err = model.CreateDatabaseReadWrite(dbCfg)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
+	}
+	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeDataCompare})
+	if err != nil {
+		return err
+	}
+
+	if !ignoreStatus {
+		if !strings.EqualFold(taskInfo.TaskStatus, constant.TaskDatabaseStatusSuccess) {
+			return fmt.Errorf("the [%v] task [%v] is status [%v] in the worker [%v], please waiting success or set flag --ignoreStatus skip the check items",
+				stringutil.StringLower(taskInfo.TaskMode), taskInfo.TaskName, stringutil.StringLower(taskInfo.TaskStatus), taskInfo.WorkerAddr)
+		}
+	}
+
+	if !strings.EqualFold(schemaName, "") && strings.EqualFold(tableName, "") {
+		return fmt.Errorf("the [%v] task [%v] flag schema_name_s [%s] has been setted, the flag table_name_s can't be null", stringutil.StringLower(taskInfo.TaskMode),
+			taskInfo.TaskName, schemaName)
+	} else if strings.EqualFold(schemaName, "") && !strings.EqualFold(tableName, "") {
+		return fmt.Errorf("the [%v] task [%v] flag table_name_s [%s] has been setted, the flag schema_name_s can't be null", stringutil.StringLower(taskInfo.TaskMode),
+			taskInfo.TaskName, tableName)
+	}
+
+	var w database.IFileWriter
+	w = processor.NewDataCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, schemaName, tableName, outputDir, ignoreVerify)
+	err = w.InitFile()
+	if err != nil {
+		return err
+	}
+	err = w.SyncFile()
+	if err != nil {
+		return err
+	}
+	err = w.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
+Notes:
+ 1. Use --stream upstream/downstream to control which end of the data verification metadata is used as the benchmark to generate the upstream and downstream chunk ranges, and ignore the mapping relationship of the field type. NULL and empty strings are also based on the source end specified by --stream. For example:
+
+Data verification tasks datasource-name-s oracle and datasource-name-t tidb, and the oracle chunk field c data type is RAW, but the tidb chunk field c data type is VARCHAR. If the parameter --stream downstream is specified, the oracle data is used as the benchmark for search and verification
+
+  - Generate oracle chunk query conditions based on tidb data and ignore the data type of the oracle chunk field c. Both use c = 'XXX' as the query range
+
+  - NULL tidb / oracle are all c IS NULL
+
+  - Empty string tidb / oracle are all c = ”
+
+    2. If a table does not have a specific chunk field in the data verification task, for example: a table chunk condition is WHERE 1 = 1, when 1 = 1 If there are multiple garbled characters or rare words in the query conditions, the query conditions for each row of data records are 1 = 1, and manual query confirmation is required (generally 1 = 1 appears when chunks are divided based on statistical information, but the statistical information does not exist or the estimated number of rows in the table does not exist)
+*/
+func ScanDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, tableName string, chunkIds []string, outputDir string, force bool, callTimeout int64, chunkThreads int, stream string) error {
 	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
 	if err != nil {
 		return err
@@ -598,21 +678,66 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, t
 			taskInfo.TaskName, tableName)
 	}
 
-	var w database.IFileWriter
-	w = processor.NewDataCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, schemaName, tableName, outputDir)
-	err = w.InitFile()
-	if err != nil {
+	if len(chunkIds) > 0 && strings.EqualFold(schemaName, "") && strings.EqualFold(tableName, "") {
+		return fmt.Errorf("the [%v] task [%v] flag chunk-ids [%s] has been setted, the flag schema_name_s and table_name_s can't be null", stringutil.StringLower(taskInfo.TaskMode), taskInfo.TaskName, chunkIds)
+	}
+
+	var (
+		datasourceS, datasourceT *datasource.Datasource
+		databaseS, databaseT     database.IDatabase
+		disableCompareMd5        bool
+	)
+
+	if err = model.Transaction(ctx, func(txnCtx context.Context) error {
+		datasourceS, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameS)
+		if err != nil {
+			return err
+		}
+		datasourceT, err = model.GetIDatasourceRW().GetDatasource(txnCtx, taskInfo.DatasourceNameT)
+		if err != nil {
+			return err
+		}
+		schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(txnCtx, &rule.SchemaRouteRule{TaskName: taskName})
+		if err != nil {
+			return err
+		}
+		databaseS, err = database.NewDatabase(txnCtx, datasourceS, schemaRoute.SchemaNameS, callTimeout)
+		if err != nil {
+			return err
+		}
+		databaseT, err = database.NewDatabase(txnCtx, datasourceT, schemaRoute.SchemaNameS, callTimeout)
+		if err != nil {
+			return err
+		}
+		compareCfg, err := model.GetIParamsRW().GetTaskCustomParam(txnCtx, &params.TaskCustomParam{
+			TaskName:  taskName,
+			TaskMode:  constant.TaskModeDataCompare,
+			ParamName: constant.ParamNameDataCompareDisableMd5Checksum,
+		})
+		if err != nil {
+			return err
+		}
+		disableCompareMd5, err = strconv.ParseBool(compareCfg.ParamValue)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
+
+	w := processor.NewDataCompareScan(ctx, taskInfo.TaskName, taskInfo.TaskFlow,
+		datasourceS.DbType,
+		datasourceT.DbType,
+		schemaName, tableName,
+		outputDir,
+		datasourceS.ConnectCharset,
+		datasourceT.ConnectCharset,
+		chunkIds, databaseS, databaseT, chunkThreads, disableCompareMd5, int(callTimeout), stream)
 	err = w.SyncFile()
 	if err != nil {
 		return err
 	}
-	err = w.Close()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

@@ -37,27 +37,29 @@ import (
 )
 
 type DataCompareFile struct {
-	Ctx         context.Context `json:"-"`
-	Mutex       *sync.Mutex     `json:"-"`
-	CompFile    *os.File        `json:"-"`
-	CompWriter  *bufio.Writer   `json:"-"`
-	TaskName    string          `json:"taskName"`
-	TaskFlow    string          `json:"taskFlow"`
-	SchemaNameS string          `json:"schemaNameS"`
-	TableNameS  string          `json:"tableNameS"`
-	OutputDir   string          `json:"outputDir"`
+	Ctx          context.Context `json:"-"`
+	Mutex        *sync.Mutex     `json:"-"`
+	CompFile     *os.File        `json:"-"`
+	CompWriter   *bufio.Writer   `json:"-"`
+	TaskName     string          `json:"taskName"`
+	TaskFlow     string          `json:"taskFlow"`
+	SchemaNameS  string          `json:"schemaNameS"`
+	TableNameS   string          `json:"tableNameS"`
+	OutputDir    string          `json:"outputDir"`
+	IgnoreVerify bool            `json:"ignoreVerify"`
 }
 
 func NewDataCompareFile(ctx context.Context,
-	taskName, taskFlow, schemaName, tableName, outputDir string) *DataCompareFile {
+	taskName, taskFlow, schemaName, tableName, outputDir string, ignoreVerify bool) *DataCompareFile {
 	return &DataCompareFile{
-		Ctx:         ctx,
-		TaskName:    taskName,
-		TaskFlow:    taskFlow,
-		SchemaNameS: schemaName,
-		TableNameS:  tableName,
-		OutputDir:   outputDir,
-		Mutex:       &sync.Mutex{},
+		Ctx:          ctx,
+		TaskName:     taskName,
+		TaskFlow:     taskFlow,
+		SchemaNameS:  schemaName,
+		TableNameS:   tableName,
+		OutputDir:    outputDir,
+		IgnoreVerify: ignoreVerify,
+		Mutex:        &sync.Mutex{},
 	}
 }
 
@@ -114,22 +116,24 @@ func (s *DataCompareFile) SyncFile() error {
 		return errors.New(constant.TaskDatabaseStatusEqual)
 	}
 
-	taskChunkIds, err := model.GetIDataCompareTaskRW().DistinctDataCompareTaskChunkByTaskStatus(s.Ctx, &task.DataCompareTask{
-		TaskName:   s.TaskName,
-		TaskStatus: constant.TaskDatabaseStatusNotEqual,
-	})
-	if err != nil {
-		return err
-	}
-	resultChunkIds, err := model.GetIDataCompareResultRW().DistinctDataCompareResultChunkByTaskStatus(s.Ctx, &task.DataCompareResult{
-		TaskName: s.TaskName,
-	})
-	if err != nil {
-		return err
-	}
-	diffChunkIds := stringutil.StringItemsFilterDifference(taskChunkIds, resultChunkIds)
-	if len(diffChunkIds) > 0 {
-		return fmt.Errorf("The chunk_id of the not_queal record of the data verification task does not appear in the data verification result table. This indicates that there may be garbled characters in the upstream and downstream data, which makes it impossible to identify and locate the data repair problem. Please set garbled-char-replace to re-migrate or use the verify garbled command to replace the garbled data, and then re-verify the data. The abnormal chunk_id list：[%v]", stringutil.StringJoin(diffChunkIds, ","))
+	if !s.IgnoreVerify {
+		taskChunkIds, err := model.GetIDataCompareTaskRW().DistinctDataCompareTaskChunkByTaskStatus(s.Ctx, &task.DataCompareTask{
+			TaskName:   s.TaskName,
+			TaskStatus: constant.TaskDatabaseStatusNotEqual,
+		})
+		if err != nil {
+			return err
+		}
+		resultChunkIds, err := model.GetIDataCompareResultRW().DistinctDataCompareResultChunkByTaskStatus(s.Ctx, &task.DataCompareResult{
+			TaskName: s.TaskName,
+		})
+		if err != nil {
+			return err
+		}
+		diffChunkIds := stringutil.StringItemsFilterDifference(taskChunkIds, resultChunkIds)
+		if len(diffChunkIds) > 0 {
+			return fmt.Errorf("the chunk_id of the not_queal record of the data verification task does not appear in the data verification result table, indicating that garbled characters or rare characters may exist in the upstream and downstream data, resulting in inconsistent data verification but no repair statements can be generated. you can set the flag --ignoreVerify skip the check items or set the garbled-char-replace parameter to re-migrate the data, and then re-verify the data or use the verify scan command to scan and detect, and then re-verify the data. the abnormal chunk_id list: [%v]", stringutil.StringJoin(diffChunkIds, ","))
+		}
 	}
 
 	schemaTableTaskM := make(map[string]string)
