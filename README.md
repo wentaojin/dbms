@@ -20,7 +20,7 @@
     <a href="#architecture-">Architecture 🌈</a> &bull;
     <a href="#quick-start-">Quick Start 🛠️</a> &bull;
     <a href="#development-">Development 🧬</a> &bull;
-    <a href="#license-">License 📓</a> &bull;
+    <a href="#license-">License 📓</a>
 </p>
 
 -------
