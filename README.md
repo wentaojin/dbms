@@ -20,9 +20,7 @@
     <a href="#architecture-">Architecture 🌈</a> &bull;
     <a href="#quick-start-">Quick Start 🛠️</a> &bull;
     <a href="#development-">Development 🧬</a> &bull;
-    <a href="#customization-">Customization 🖍️</a> &bull;
     <a href="#license-">License 📓</a> &bull;
-    <a href="#acknowledgments-">Acknowledgments ⛳</a>
 </p>
 
 -------
@@ -124,17 +122,9 @@ Flags:
 
 Use "dbmsctl [command] --help" for more information about a command.
 ```
-
--------
-### Customization 🖍️
-If you like the project and want to buy me a cola or have tech exchange, you can button sponsor or join tech group:
-
-| QQ Group                                      |
-|-----------------------------------------------|
-| <img src="image/tech-exchange.jpg" height="200" width="200"/> |
-
-
 -------
 ### License 📓
 
 This software is licensed under the Apache License 2.0. For details, see [LICENSE](./LICENSE)
+
+[def]: quick-start
