@@ -1,4 +1,4 @@
-FROM wentaojin/dbms1804:go1.22.9
+FROM wentaojin/dbms1804:go1.24.3
 
 # Create a working directory
 ENV APP_WORK_DIR=/dbms

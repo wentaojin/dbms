@@ -1,3 +1,4 @@
+# BUILD DOCKER IMAGE COMMAND: docker buildx build --platform linux/amd64 -f chain.dockerfile -t wentaojin/dbms1804:go1.24.3 --push .
 # Considering that the glibc version in the conventional production environment is relatively low, ubuntu:18.04 is used
 # ubuntu:18.04 -> glibc 2.27
 # ubuntu:20.04 -> glibc 2.31
@@ -9,7 +10,7 @@ ENV GOPATH=/go
 ENV GOROOT=/usr/local/go
 ENV PATH=${GOROOT}/bin:$PATH
 
-ENV GO_VERSION=1.22.9
+ENV GO_VERSION=1.24.3
 
 # Set environment variables to avoid interactive configuration prompts
 ENV DEBIAN_FRONTEND=noninteractive
