@@ -303,6 +303,7 @@ func (p *Progress) PrintProgress() {
 				fields = append(fields, zap.Uint64("chunks_counts", cp.TableChunkCounts))
 				fields = append(fields, zap.Uint64("chunks_completed", cp.TableChunksProcessed))
 				fields = append(fields, zap.String("processed_chunks/sec", fmt.Sprintf("%2.f", math.Round(chunkPerSec))))
+				fields = append(fields, zap.String("chunks_completion_ratio", fmt.Sprintf("%2.f%%", float64(cp.TableChunksProcessed)/float64(cp.TableChunkCounts)*100)))
 
 				// The original number of rows is based on statistical data, and the actual number of rows processed may exceed the original number of rows. Breakpoint resume is based on the number of completed chunks. The completed rows are calculated by evenly dividing the statistical information. It may happen that the completed chunks are less than the average calculated rows, and the unfinished parts are more than the average calculated rows, resulting in the number of rows exceeding the original number of rows.
 				// to avoid confusion, avoid row_completed and rows_completion_ration output
