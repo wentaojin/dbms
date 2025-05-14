@@ -27,8 +27,6 @@ import (
 	"github.com/wentaojin/dbms/database/processor"
 	"github.com/wentaojin/dbms/database/taskflow"
 
-	"github.com/wentaojin/dbms/model/common"
-
 	"github.com/wentaojin/dbms/utils/etcdutil"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -38,8 +36,10 @@ import (
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/logger"
 
+	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/datasource"
 	"github.com/wentaojin/dbms/model/migrate"
+	"github.com/wentaojin/dbms/model/rule"
 
 	"github.com/wentaojin/dbms/model/params"
 
@@ -554,9 +554,23 @@ func GenStructCompareTask(ctx context.Context, serverAddr, taskName, outputDir s
 	default:
 		return fmt.Errorf("get key [%v] values isn't exist record from etcd server, it's panic, need check and fix, records are [%v]", constant.DefaultMasterDatabaseDBMSKey, keyResp.Kvs)
 	}
-	taskInfo, err := model.GetITaskRW().GetTask(ctx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeStructCompare})
-	if err != nil {
-		return err
+
+	var (
+		taskInfo    *task.Task
+		schemaRoute *rule.SchemaRouteRule
+	)
+	if errMsg := model.Transaction(ctx, func(txnCtx context.Context) error {
+		taskInfo, err = model.GetITaskRW().GetTask(txnCtx, &task.Task{TaskName: taskName, TaskMode: constant.TaskModeStructCompare})
+		if err != nil {
+			return err
+		}
+		schemaRoute, err = model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(txnCtx, &rule.SchemaRouteRule{TaskName: taskName})
+		if err != nil {
+			return err
+		}
+		return nil
+	}); errMsg != nil {
+		return errMsg
 	}
 
 	if !strings.EqualFold(taskInfo.TaskStatus, constant.TaskDatabaseStatusSuccess) {
@@ -565,7 +579,7 @@ func GenStructCompareTask(ctx context.Context, serverAddr, taskName, outputDir s
 	}
 
 	var w database.IFileWriter
-	w = processor.NewStructCompareFile(ctx, taskInfo.TaskName, taskInfo.TaskFlow, outputDir)
+	w = processor.NewStructCompareFile(ctx, taskInfo.TaskName, schemaRoute.SchemaNameS, outputDir)
 	err = w.InitFile()
 	if err != nil {
 		return err

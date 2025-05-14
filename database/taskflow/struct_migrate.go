@@ -59,12 +59,10 @@ func (st *StructMigrateTask) Start() error {
 		err                  error
 	)
 
-	logger.Info("struct migrate task processing",
+	logger.Info("init database connection",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("start_time", startTime.String()),
-		zap.String("task_stage", "database connection init"))
+		zap.String("task_flow", st.Task.TaskFlow))
 
 	switch st.Task.TaskFlow {
 	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
@@ -93,11 +91,10 @@ func (st *StructMigrateTask) Start() error {
 		return fmt.Errorf("the task_name [%v] task_mode [%v] task_flow [%s] isn't support, please contact author or reselect", st.Task.TaskName, st.Task.TaskMode, st.Task.TaskFlow)
 	}
 
-	logger.Info("struct migrate task processing",
+	logger.Info("query task buildin rule",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("task_stage", "buildin rule get"))
+		zap.String("task_flow", st.Task.TaskFlow))
 
 	dbTypeSli := stringutil.StringSplit(st.Task.TaskFlow, constant.StringSeparatorAite)
 
@@ -122,11 +119,10 @@ func (st *StructMigrateTask) Start() error {
 		return err
 	}
 
-	logger.Info("struct migrate task processing",
+	logger.Info("inspect struct migrate task",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("task_stage", "task migrate inspect"))
+		zap.String("task_flow", st.Task.TaskFlow))
 
 	switch st.Task.TaskFlow {
 	case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL:
@@ -210,14 +206,13 @@ func (st *StructMigrateTask) Start() error {
 		return err
 	}
 
-	logger.Info("struct migrate task processing",
+	logger.Info("generate schema create sql",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("create_schema_sql", createSchema),
-		zap.String("task_stage", "schema create sql gen"))
+		zap.String("create_schema_sql", createSchema))
 
 	_, err = model.GetITaskLogRW().CreateLog(st.Ctx, &task.Log{
 		TaskName: st.Task.TaskName,
@@ -233,13 +228,54 @@ func (st *StructMigrateTask) Start() error {
 		return err
 	}
 
-	logger.Info("struct migrate task processing",
+	logger.Info("query migrate checkppoint",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "schema table process"))
+		zap.Bool("enable_checkpoint", st.TaskParams.EnableCheckpoint))
+
+	if !st.TaskParams.EnableCheckpoint {
+		err := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
+			err := model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(txnCtx, []string{st.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTaskName(txnCtx, []string{st.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetISequenceMigrateSummaryRW().DeleteSequenceMigrateSummaryName(txnCtx, []string{st.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetISequenceMigrateTaskRW().DeleteSequenceMigrateTaskName(txnCtx, []string{st.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	logger.Info("process migrate schema tables",
+		zap.String("task_name", st.Task.TaskName),
+		zap.String("task_mode", st.Task.TaskMode),
+		zap.String("task_flow", st.Task.TaskFlow),
+		zap.String("schema_name_s", st.SchemaNameS),
+		zap.String("schema_name_t", st.SchemaNameT))
+
+	// interval 10 seconds print
+	progress := processor.NewProgresser(st.Ctx)
+	defer progress.Close()
+
+	progress.Init(
+		processor.WithTaskName(st.Task.TaskName),
+		processor.WithTaskMode(st.Task.TaskMode),
+		processor.WithTaskFlow(st.Task.TaskFlow))
 
 	err = database.IDatabaseRun(&processor.StructMigrateTask{
 		Ctx:                      st.Ctx,
@@ -258,16 +294,16 @@ func (st *StructMigrateTask) Start() error {
 		TaskParams:               st.TaskParams,
 		StructReadyInit:          make(chan bool, 1),
 		SequenceReadyInit:        make(chan bool, 1),
+		Progress:                 progress,
 	})
 	if err != nil {
 		return err
 	}
 
-	endTime := time.Now()
-	logger.Info("struct migrate task processing",
+	logger.Info("process migrate tables finished",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("cost", endTime.Sub(startTime).String()))
+		zap.String("cost", time.Since(startTime).String()))
 	return nil
 }

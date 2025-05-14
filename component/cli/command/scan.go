@@ -18,14 +18,15 @@ package command
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/wentaojin/dbms/component"
 	"github.com/wentaojin/dbms/component/cli/migrate"
 	"github.com/wentaojin/dbms/service"
 	"github.com/wentaojin/dbms/utils/stringutil"
-	"path/filepath"
-	"strings"
 )
 
 type AppScan struct {

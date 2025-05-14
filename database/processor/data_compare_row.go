@@ -527,7 +527,7 @@ func (r *DataCompareRow) CompareMd5ORCrc32() error {
 	}
 	chunkDetailT = stringutil.BytesToString(convertRaw)
 
-	columnDetailS, columnDetailT, err = r.genDatabaseMd5OrCrc32ColumnDetail(columnDetailS, chunkDetailT)
+	columnDetailS, columnDetailT, err = r.genDatabaseMd5OrCrc32ColumnDetail(columnDetailS, columnDetailT)
 	if err != nil {
 		return err
 	}

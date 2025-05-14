@@ -18,6 +18,7 @@ package processor
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -54,8 +55,9 @@ type DataCompareTask struct {
 	GlobalSnapshotT string
 	TaskParams      *pb.DataCompareParam
 
-	WaiterC chan *WaitingRecs
-	ResumeC chan *WaitingRecs
+	WaiterC  chan *WaitingRecs
+	ResumeC  chan *WaitingRecs
+	Progress *Progress
 }
 
 func (dmt *DataCompareTask) Init() error {
@@ -198,8 +200,18 @@ func (dmt *DataCompareTask) Init() error {
 	dbTypeS := dbTypeSli[0]
 	dbTypeT := dbTypeSli[1]
 
+	taskNums := len(databaseTaskTables)
 	logger.Info("data compare task init",
-		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow), zap.Any("tables", databaseTaskTables))
+		zap.String("task_name", dmt.Task.TaskName),
+		zap.String("task_mode", dmt.Task.TaskMode),
+		zap.String("task_flow", dmt.Task.TaskFlow),
+		zap.Int("table_counts", taskNums),
+		zap.Any("table_menus", databaseTaskTables))
+
+	dmt.Progress.SetTableCounts(uint64(taskNums))
+
+	// print struct migrate progress
+	go dmt.Progress.PrintProgress()
 
 	g, gCtx := errgroup.WithContext(dmt.Ctx)
 	g.SetLimit(int(dmt.TaskParams.TableThread))
@@ -227,6 +239,9 @@ func (dmt *DataCompareTask) Init() error {
 					return err
 				}
 				if strings.EqualFold(s.InitFlag, constant.TaskInitStatusFinished) {
+					dmt.Progress.SetTableRowCounts(s.TableRowsS)
+					dmt.Progress.SetTableSizeCounts(uint64(s.TableSizeS))
+					dmt.Progress.SetTableChunkCounts(s.ChunkTotals)
 					// the database task has init flag,skip
 					select {
 					case dmt.ResumeC <- &WaitingRecs{
@@ -269,6 +284,8 @@ func (dmt *DataCompareTask) Init() error {
 				if err != nil {
 					return err
 				}
+				dmt.Progress.SetTableRowCounts(tableRows)
+				dmt.Progress.SetTableSizeCounts(uint64(tableSize))
 
 				dataRule := &DataCompareRule{
 					Ctx:                         gCtx,
@@ -395,8 +412,10 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 		zap.String("table_name_s", s.TableNameS))
 
 	var (
-		migrateTasks []*task.DataCompareTask
-		err          error
+		migrateTasks       []*task.DataCompareTask
+		finishedChunkTasks []*task.DataCompareTask
+		summary            *task.DataCompareSummary
+		err                error
 	)
 	err = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
 		// get migrate task tables
@@ -405,45 +424,56 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SchemaNameS,
 				TableNameS:  s.TableNameS,
-				TaskStatus:  constant.TaskDatabaseStatusWaiting,
-			})
+			},
+			[]string{constant.TaskDatabaseStatusWaiting, constant.TaskDatabaseStatusFailed, constant.TaskDatabaseStatusRunning, constant.TaskDatabaseStatusStopped})
 		if err != nil {
 			return err
 		}
-		migrateFailedTasks, err := model.GetIDataCompareTaskRW().FindDataCompareTask(txnCtx,
+		finishedChunkTasks, err = model.GetIDataCompareTaskRW().FindDataCompareTask(txnCtx,
 			&task.DataCompareTask{
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SchemaNameS,
 				TableNameS:  s.TableNameS,
-				TaskStatus:  constant.TaskDatabaseStatusFailed})
+			},
+			[]string{constant.TaskDatabaseStatusSuccess, constant.TaskDatabaseStatusEqual, constant.TaskDatabaseStatusNotEqual})
 		if err != nil {
 			return err
 		}
-		migrateRunningTasks, err := model.GetIDataCompareTaskRW().FindDataCompareTask(txnCtx,
-			&task.DataCompareTask{
-				TaskName:    s.TaskName,
-				SchemaNameS: s.SchemaNameS,
-				TableNameS:  s.TableNameS,
-				TaskStatus:  constant.TaskDatabaseStatusRunning})
+		summary, err = model.GetIDataCompareSummaryRW().GetDataCompareSummary(txnCtx, &task.DataCompareSummary{
+			TaskName:    s.TaskName,
+			SchemaNameS: s.SchemaNameS,
+			TableNameS:  s.TableNameS,
+		})
 		if err != nil {
 			return err
 		}
-		migrateStopTasks, err := model.GetIDataCompareTaskRW().FindDataCompareTask(txnCtx,
-			&task.DataCompareTask{
-				TaskName:    s.TaskName,
-				SchemaNameS: s.SchemaNameS,
-				TableNameS:  s.TableNameS,
-				TaskStatus:  constant.TaskDatabaseStatusStopped})
-		if err != nil {
-			return err
-		}
-		migrateTasks = append(migrateTasks, migrateFailedTasks...)
-		migrateTasks = append(migrateTasks, migrateRunningTasks...)
-		migrateTasks = append(migrateTasks, migrateStopTasks...)
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+
+	// The task progress is processed based on the data line. The processed lines are in memory status. When the task is restarted or the transfer is resumed, the memory status line will disappear. To display the processed line information normally, the percentage of completed blocks is calculated, and the completed lines and bytes are calculated. However, there is a certain probability that the row_completed displayed in the log progress is less than row_counts. The reason is that the actual rows of some previous chunks are more than the calculation method above, and the unprocessed chunk rows are relatively small，which can be ignored.
+	finishedChunkNums := len(finishedChunkTasks)
+
+	// Round up to an integer and calculate the average number of rows per chunk, which is the same as counting the number of rows per chunk processed.
+	avgChunkRows := max(1, (summary.TableRowsS+summary.ChunkTotals-1)/summary.ChunkTotals)
+
+	var avgChunkBytes uint64
+	roundedUp := math.Ceil(summary.TableSizeS / float64(summary.ChunkTotals))
+	if roundedUp < 1 {
+		avgChunkBytes = 1
+	} else {
+		avgChunkBytes = uint64(roundedUp)
+	}
+
+	if finishedChunkNums > 0 {
+		dmt.Progress.UpdateTableRowsProcessed(calcSuccRatioResult(finishedChunkNums, int(summary.ChunkTotals), summary.TableRowsS))
+		dmt.Progress.UpdateTableBytesProcessed(calcSuccRatioResult(finishedChunkNums, int(summary.ChunkTotals), uint64(summary.TableSizeS)))
+		dmt.Progress.UpdateTableChunksProcessed(uint64(finishedChunkNums))
+		dmt.Progress.SetLastTableRowsProcessed(calcSuccRatioResult(finishedChunkNums, int(summary.ChunkTotals), summary.TableRowsS))
+		dmt.Progress.SetLastTableBytesProcessed(calcSuccRatioResult(finishedChunkNums, int(summary.ChunkTotals), uint64(summary.TableSizeS)))
+		dmt.Progress.SetLastTableChunksProcessed(uint64(finishedChunkNums))
 	}
 
 	logger.Info("data compare task process chunks",
@@ -529,6 +559,9 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 	}()
 
 	for res := range g.ResultC {
+		dmt.Progress.UpdateTableChunksProcessed(1)
+		dmt.Progress.UpdateTableRowsProcessed(avgChunkRows)
+		dmt.Progress.UpdateTableBytesProcessed(avgChunkBytes)
 		if res.Error != nil {
 			smt := res.Task.(*task.DataCompareTask)
 			logger.Error("data compare task process tables",
@@ -709,7 +742,7 @@ func (dmt *DataCompareTask) Process(s *WaitingRecs) error {
 	if err != nil {
 		return err
 	}
-
+	dmt.Progress.UpdateTableNameProcessed(1)
 	logger.Info("data compare task process table finished",
 		zap.String("task_name", dmt.Task.TaskName),
 		zap.String("task_mode", dmt.Task.TaskMode),
@@ -874,6 +907,8 @@ func (dmt *DataCompareTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		return err
 	}
 
+	dmt.Progress.SetTableChunkCounts(uint64(totalChunks))
+
 	select {
 	case dmt.WaiterC <- &WaitingRecs{
 		TaskName:    dmt.Task.TaskName,
@@ -988,6 +1023,8 @@ func (dmt *DataCompareTask) ProcessTableScan(ctx context.Context, globalScnS, gl
 	if err != nil {
 		return err
 	}
+
+	dmt.Progress.SetTableChunkCounts(1)
 
 	select {
 	case dmt.WaiterC <- &WaitingRecs{

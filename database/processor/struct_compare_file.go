@@ -34,23 +34,23 @@ import (
 )
 
 type StructCompareFile struct {
-	Ctx        context.Context `json:"-"`
-	Mutex      *sync.Mutex     `json:"-"`
-	CompFile   *os.File        `json:"-"`
-	CompWriter *bufio.Writer   `json:"-"`
-	TaskName   string          `json:"taskName"`
-	TaskFlow   string          `json:"taskFlow"`
-	OutputDir  string          `json:"outputDir"`
+	Ctx         context.Context `json:"-"`
+	Mutex       *sync.Mutex     `json:"-"`
+	CompFile    *os.File        `json:"-"`
+	CompWriter  *bufio.Writer   `json:"-"`
+	TaskName    string          `json:"taskName"`
+	SchemaNameS string          `json:"schemaNameS"`
+	OutputDir   string          `json:"outputDir"`
 }
 
 func NewStructCompareFile(ctx context.Context,
-	taskName, taskFlow, outputDir string) *StructCompareFile {
+	taskName, schemaNameS, outputDir string) *StructCompareFile {
 	return &StructCompareFile{
-		Ctx:       ctx,
-		TaskName:  taskName,
-		TaskFlow:  taskFlow,
-		OutputDir: outputDir,
-		Mutex:     &sync.Mutex{},
+		Ctx:         ctx,
+		TaskName:    taskName,
+		SchemaNameS: schemaNameS,
+		OutputDir:   outputDir,
+		Mutex:       &sync.Mutex{},
 	}
 }
 
@@ -68,8 +68,11 @@ func (s *StructCompareFile) SyncFile() error {
 		migrateTasks []*task.StructCompareTask
 	)
 	// get migrate task tables
-	migrateTasks, err = model.GetIStructCompareTaskRW().FindStructCompareTask(s.Ctx, &task.StructCompareTask{
-		TaskName: s.TaskName, TaskStatus: constant.TaskDatabaseStatusNotEqual})
+	migrateTasks, err = model.GetIStructCompareTaskRW().FindStructCompareTask(s.Ctx,
+		&task.StructCompareTask{
+			TaskName:    s.TaskName,
+			SchemaNameS: s.SchemaNameS},
+		[]string{constant.TaskDatabaseStatusNotEqual})
 	if err != nil {
 		return err
 	}

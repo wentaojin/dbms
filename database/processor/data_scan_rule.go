@@ -18,8 +18,9 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/database"
 	"strings"
+
+	"github.com/wentaojin/dbms/database"
 
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/rule"

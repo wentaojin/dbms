@@ -19,8 +19,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/wentaojin/dbms/utils/stringutil"
 	"os"
+
+	"github.com/wentaojin/dbms/utils/stringutil"
 
 	"github.com/wentaojin/dbms/utils/configutil"
 

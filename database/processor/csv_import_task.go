@@ -18,9 +18,10 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/database"
 	"strconv"
 	"strings"
+
+	"github.com/wentaojin/dbms/database"
 )
 
 type ImportTiDBDatabase struct {

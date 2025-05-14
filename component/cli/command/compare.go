@@ -18,10 +18,11 @@ package command
 import (
 	"context"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/wentaojin/dbms/utils/stringutil"
 	"path/filepath"
 	"strings"
+
+	"github.com/fatih/color"
+	"github.com/wentaojin/dbms/utils/stringutil"
 
 	"github.com/wentaojin/dbms/component"
 	"github.com/wentaojin/dbms/component/cli/migrate"

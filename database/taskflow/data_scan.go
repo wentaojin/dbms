@@ -18,6 +18,8 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/database/processor"
 	"github.com/wentaojin/dbms/logger"
@@ -29,7 +31,6 @@ import (
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"go.uber.org/zap"
-	"time"
 )
 
 type DataScanTask struct {
@@ -49,6 +50,15 @@ func (dst *DataScanTask) Start() error {
 		return err
 	}
 	schemaNameS := schemaNameRoute.SchemaNameS
+
+	// interval 10 seconds print
+	progress := processor.NewProgresser(dst.Ctx)
+	defer progress.Close()
+
+	progress.Init(
+		processor.WithTaskName(dst.Task.TaskName),
+		processor.WithTaskMode(dst.Task.TaskMode),
+		processor.WithTaskFlow(dst.Task.TaskFlow))
 
 	logger.Info("data scan task init database connection",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
@@ -93,6 +103,7 @@ func (dst *DataScanTask) Start() error {
 		TaskParams:  dst.TaskParams,
 		WaiterC:     make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 		ResumeC:     make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		Progress:    progress,
 	})
 	if err != nil {
 		return err

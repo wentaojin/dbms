@@ -17,8 +17,9 @@ package oracle
 
 import (
 	"fmt"
-	"github.com/wentaojin/dbms/utils/structure"
 	"time"
+
+	"github.com/wentaojin/dbms/utils/structure"
 
 	"github.com/wentaojin/dbms/utils/filter"
 

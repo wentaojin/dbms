@@ -24,6 +24,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/database/msgsrv"
+	"github.com/wentaojin/dbms/database/processor"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/message/oceanbase"
 	"github.com/wentaojin/dbms/message/tidb"
@@ -349,6 +350,14 @@ func (cct *CdcConsumeTask) Start() error {
 			return err
 		}
 
+		progress := processor.NewProgresser(cct.Ctx)
+		defer progress.Close()
+
+		progress.Init(
+			processor.WithTaskName(cct.Task.TaskName),
+			processor.WithTaskMode(cct.Task.TaskMode),
+			processor.WithTaskFlow(cct.Task.TaskFlow))
+
 		if strings.EqualFold(dbTypeS, constant.DatabaseTypeTiDB) {
 			if err := tidb.NewConsumerGroup(
 				cct.Ctx,
@@ -362,6 +371,7 @@ func (cct *CdcConsumeTask) Start() error {
 				dbTypeT,
 				databaseS,
 				databaseT,
+				progress,
 			).Run(); err != nil {
 				return err
 			}
@@ -380,6 +390,7 @@ func (cct *CdcConsumeTask) Start() error {
 				dbTypeT,
 				databaseS,
 				databaseT,
+				progress,
 			).Run(); err != nil {
 				return err
 			}

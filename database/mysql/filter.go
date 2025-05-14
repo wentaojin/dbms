@@ -17,8 +17,9 @@ package mysql
 
 import (
 	"fmt"
-	"github.com/wentaojin/dbms/utils/structure"
 	"time"
+
+	"github.com/wentaojin/dbms/utils/structure"
 
 	"github.com/wentaojin/dbms/utils/filter"
 	"github.com/wentaojin/dbms/utils/stringutil"

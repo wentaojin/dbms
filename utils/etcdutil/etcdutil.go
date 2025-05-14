@@ -20,9 +20,10 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
-	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 )

@@ -77,12 +77,11 @@ func (g *Group) Go(job interface{}, fn func(job interface{}) error) {
 
 		startTime := time.Now()
 
-		if err := fn(job); err != nil {
-			g.ResultC <- Result{
-				Task:     job,
-				Duration: fmt.Sprintf("%f", time.Now().Sub(startTime).Seconds()),
-				Error:    err,
-			}
+		err := fn(job)
+		g.ResultC <- Result{
+			Task:     job,
+			Duration: fmt.Sprintf("%f", time.Now().Sub(startTime).Seconds()),
+			Error:    err,
 		}
 	}(job)
 }

@@ -25,11 +25,11 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/stringutil"
 
-	"github.com/wentaojin/dbms/utils/constant"
-
 	"github.com/wentaojin/dbms/model/buildin"
+	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/consume"
 
 	"github.com/wentaojin/dbms/model/migrate"
@@ -47,7 +47,6 @@ import (
 	"github.com/wentaojin/dbms/logger"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/wentaojin/dbms/model/common"
 	"github.com/wentaojin/dbms/model/datasource"
 
 	"gorm.io/driver/mysql"

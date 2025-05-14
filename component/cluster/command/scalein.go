@@ -19,8 +19,9 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/wentaojin/dbms/utils/configutil"
 	"strings"
+
+	"github.com/wentaojin/dbms/utils/configutil"
 
 	"github.com/wentaojin/dbms/utils/constant"
 	"github.com/wentaojin/dbms/utils/ctxt"

@@ -69,6 +69,15 @@ func (dmt *StructCompareTask) Start() error {
 		return err
 	}
 
+	// interval 10 seconds print
+	progress := processor.NewProgresser(dmt.Ctx)
+	defer progress.Close()
+
+	progress.Init(
+		processor.WithTaskName(dmt.Task.TaskName),
+		processor.WithTaskMode(dmt.Task.TaskMode),
+		processor.WithTaskFlow(dmt.Task.TaskFlow))
+
 	logger.Info("struct compare task init database connection",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 	var (
@@ -133,6 +142,7 @@ func (dmt *StructCompareTask) Start() error {
 		BuildInDatatypeRulesT:     buildInDatatypeRulesT,
 		BuildInDefaultValueRulesT: buildInDefaultValueRulesT,
 		ReadyInit:                 make(chan bool, 1),
+		Progress:                  progress,
 	})
 	if err != nil {
 		return err

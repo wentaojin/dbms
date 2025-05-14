@@ -18,10 +18,11 @@ package command
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/utils/constant"
 	"io/fs"
 	"path/filepath"
 	"strings"
+
+	"github.com/wentaojin/dbms/utils/constant"
 
 	"github.com/wentaojin/dbms/utils/ctxt"
 

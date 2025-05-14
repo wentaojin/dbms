@@ -18,14 +18,15 @@ package manager
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/utils/constant"
-	"github.com/wentaojin/dbms/utils/etcdutil"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"math"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wentaojin/dbms/utils/constant"
+	"github.com/wentaojin/dbms/utils/etcdutil"
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/fatih/color"
 

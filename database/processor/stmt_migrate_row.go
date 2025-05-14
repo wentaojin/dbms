@@ -56,6 +56,7 @@ type StmtMigrateRow struct {
 	GarbledReplace    string
 	ReadChan          chan []interface{}
 	WriteChan         chan []interface{}
+	Progress          *Progress
 }
 
 func (r *StmtMigrateRow) MigrateRead() error {
@@ -180,7 +181,23 @@ func (r *StmtMigrateRow) MigrateRead() error {
 
 func (r *StmtMigrateRow) MigrateProcess() error {
 	defer close(r.WriteChan)
+
+	columnDetailSCounts := len(stringutil.StringSplit(r.Dmt.ColumnDetailO, constant.StringSeparatorComma))
+	argRowsNums := columnDetailSCounts * r.BatchSize
+
 	for batchRows := range r.ReadChan {
+		if r.EnablePrepareStmt && r.DatabaseTStmt != nil {
+			valsLen := len(batchRows)
+			if valsLen == argRowsNums {
+				r.Progress.UpdateTableRowsReaded(uint64(r.BatchSize))
+			} else {
+				bathSize := valsLen / columnDetailSCounts
+				r.Progress.UpdateTableRowsReaded(uint64(bathSize))
+			}
+		} else {
+			valsLen := len(batchRows[0].([]string))
+			r.Progress.UpdateTableRowsReaded(uint64(valsLen))
+		}
 		r.WriteChan <- batchRows
 	}
 	return nil
@@ -218,14 +235,16 @@ func (r *StmtMigrateRow) MigrateApply() error {
 		vals := dataC
 		g.Go(func() error {
 			if r.EnablePrepareStmt && r.DatabaseTStmt != nil {
+				valsLen := len(vals)
 				// prepare exec
-				if len(vals) == argRowsNums {
+				if valsLen == argRowsNums {
 					_, err := r.DatabaseTStmt.ExecContext(r.Ctx, vals...)
 					if err != nil {
 						return fmt.Errorf("the task [%s] task_mode [%s] task_flow [%v] tagert prepare sql stmt execute params [%v] failed: %v", r.Dmt.TaskName, r.TaskMode, r.TaskFlow, vals, err)
 					}
+					r.Progress.UpdateTableRowsProcessed(uint64(r.BatchSize))
 				} else {
-					bathSize := len(vals) / columnDetailSCounts
+					bathSize := valsLen / columnDetailSCounts
 					switch r.TaskFlow {
 					case constant.TaskFlowOracleToTiDB, constant.TaskFlowOracleToMySQL, constant.TaskFlowPostgresToTiDB, constant.TaskFlowPostgresToMySQL:
 						sqlStr := GenMYSQLCompatibleDatabasePrepareStmt(r.Dmt.SchemaNameT, r.Dmt.TableNameT, r.Dmt.SqlHintT, r.Dmt.ColumnDetailT, bathSize, r.SafeMode)
@@ -236,6 +255,7 @@ func (r *StmtMigrateRow) MigrateApply() error {
 					default:
 						return fmt.Errorf("the task_name [%s] schema_name_s [%s] task_mode [%s] task_flow [%s] prepare sql stmt isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.TaskMode, r.TaskFlow)
 					}
+					r.Progress.UpdateTableRowsProcessed(uint64(bathSize))
 				}
 			} else {
 				switch r.TaskFlow {
@@ -244,6 +264,8 @@ func (r *StmtMigrateRow) MigrateApply() error {
 					for _, c := range stringutil.StringSplit(r.Dmt.ColumnDetailT, constant.StringSeparatorComma) {
 						newColumnDetailT = append(newColumnDetailT, stringutil.TrimIfBothExist(c, '`'))
 					}
+
+					valsLen := len(vals[0].([]string))
 					sqlStr := GenMYSQLCompatibleDatabaseInsertStmtSQL(
 						r.Dmt.SchemaNameT,
 						r.Dmt.TableNameT,
@@ -256,6 +278,7 @@ func (r *StmtMigrateRow) MigrateApply() error {
 					if err != nil {
 						return fmt.Errorf("the task [%s] schema_name_s [%s] table_name_s [%s] task_mode [%s] task_flow [%v] tagert sql [%s] execute failed: %v", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.TaskMode, r.TaskFlow, sqlStr, err)
 					}
+					r.Progress.UpdateTableRowsProcessed(uint64(valsLen))
 				default:
 					return fmt.Errorf("the task_name [%s] schema_name_t [%s] table_name_t [%s] task_mode [%s] task_flow [%s] sql query isn't support, please contact author", r.Dmt.TaskName, r.Dmt.SchemaNameS, r.Dmt.TableNameS, r.TaskMode, r.TaskFlow)
 				}

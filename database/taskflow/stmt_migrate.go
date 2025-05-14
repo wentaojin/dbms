@@ -59,6 +59,49 @@ func (stm *StmtMigrateTask) Start() error {
 		return err
 	}
 
+	logger.Info("data migrate task processor",
+		zap.String("task_name", stm.Task.TaskName),
+		zap.String("task_mode", stm.Task.TaskMode),
+		zap.String("task_flow", stm.Task.TaskFlow),
+		zap.String("schema_name_s", schemaRoute.SchemaNameS),
+		zap.String("schema_name_t", schemaRoute.SchemaNameT),
+		zap.Bool("enable_checkpoint", stm.TaskParams.EnableCheckpoint),
+		zap.String("task_stage", "stmt task checkpoint"))
+
+	if !stm.TaskParams.EnableCheckpoint {
+		logger.Warn("data migrate task processor",
+			zap.String("task_name", stm.Task.TaskName),
+			zap.String("task_mode", stm.Task.TaskMode),
+			zap.String("task_flow", stm.Task.TaskFlow),
+			zap.String("schema_name_s", schemaRoute.SchemaNameS),
+			zap.String("schema_name_t", schemaRoute.SchemaNameT),
+			zap.Bool("enable_checkpoint", stm.TaskParams.EnableCheckpoint),
+			zap.String("task_stage", "delete stmt records"))
+		err := model.Transaction(stm.Ctx, func(txnCtx context.Context) error {
+			err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{stm.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(txnCtx, []string{stm.Task.TaskName})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// interval 10 seconds print
+	progress := processor.NewProgresser(stm.Ctx)
+	defer progress.Close()
+
+	progress.Init(
+		processor.WithTaskName(stm.Task.TaskName),
+		processor.WithTaskMode(stm.Task.TaskMode),
+		processor.WithTaskFlow(stm.Task.TaskFlow))
+
 	logger.Info("stmt migrate task processing",
 		zap.String("task_name", stm.Task.TaskName),
 		zap.String("task_mode", stm.Task.TaskMode),
@@ -128,6 +171,7 @@ func (stm *StmtMigrateTask) Start() error {
 			GlobalSnapshotS: globalScnS,
 			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			Progress:        progress,
 		})
 		if err != nil {
 			return err
@@ -196,6 +240,7 @@ func (stm *StmtMigrateTask) Start() error {
 			GlobalSnapshotS: globalScnS,
 			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			Progress:        progress,
 		})
 		if err != nil {
 			return err

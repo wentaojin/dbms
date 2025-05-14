@@ -20,8 +20,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"io"
 	"net"
 	"os"
@@ -32,6 +30,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 
 	"github.com/otiai10/copy"
 	"github.com/pingcap/errors"

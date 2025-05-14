@@ -18,8 +18,9 @@ package module
 import (
 	"context"
 	"fmt"
-	"github.com/wentaojin/dbms/utils/stringutil"
 	"strings"
+
+	"github.com/wentaojin/dbms/utils/stringutil"
 
 	"github.com/wentaojin/dbms/utils/executor"
 )

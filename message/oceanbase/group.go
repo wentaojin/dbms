@@ -23,6 +23,7 @@ import (
 
 	"github.com/segmentio/kafka-go"
 	"github.com/wentaojin/dbms/database"
+	"github.com/wentaojin/dbms/database/processor"
 	"github.com/wentaojin/dbms/logger"
 	"github.com/wentaojin/dbms/model"
 	"github.com/wentaojin/dbms/model/consume"
@@ -69,6 +70,7 @@ type ConsumerGroup struct {
 	columnRoute   []*rule.ColumnRouteRule
 	consumeParam  *pb.CdcConsumeParam
 	consumeTables []string
+	progress      *processor.Progress
 }
 
 func NewConsumerGroup(
@@ -82,7 +84,7 @@ func NewConsumerGroup(
 	partitions []int,
 	dbTypeS string,
 	dbTypeT string,
-	databaseS, databaseT database.IDatabase) *ConsumerGroup {
+	databaseS, databaseT database.IDatabase, progress *processor.Progress) *ConsumerGroup {
 	cancelCtx, cancelFn := context.WithCancel(ctx)
 
 	return &ConsumerGroup{
@@ -101,6 +103,7 @@ func NewConsumerGroup(
 		tableRoute:    tableRoute,
 		columnRoute:   columnRoute,
 		consumers:     make(map[int]*Consumer),
+		progress:      progress,
 	}
 }
 

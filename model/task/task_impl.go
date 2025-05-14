@@ -441,9 +441,9 @@ func (rw *RWStructMigrateTask) BatchUpdateStructMigrateTask(ctx context.Context,
 	return task, nil
 }
 
-func (rw *RWStructMigrateTask) QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error) {
+func (rw *RWStructMigrateTask) QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask, taskStatus []string) ([]*StructMigrateTask, error) {
 	var dataS []*StructMigrateTask
-	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&StructMigrateTask{}).Where("task_name = ? AND task_status IN (?)", task.TaskName, taskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("query table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -878,9 +878,9 @@ func (rw *RWStructCompareTask) BatchUpdateStructCompareTask(ctx context.Context,
 	return task, nil
 }
 
-func (rw *RWStructCompareTask) FindStructCompareTask(ctx context.Context, task *StructCompareTask) ([]*StructCompareTask, error) {
+func (rw *RWStructCompareTask) FindStructCompareTask(ctx context.Context, task *StructCompareTask, taskStatus []string) ([]*StructCompareTask, error) {
 	var dataS []*StructCompareTask
-	err := rw.DB(ctx).Model(&StructCompareTask{}).Where("task_name = ? AND task_status = ?", task.TaskName, task.TaskStatus).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&StructCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND task_status IN (?)", task.TaskName, task.SchemaNameS, taskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -1120,15 +1120,6 @@ func (rw *RWDataMigrateTask) FindDataMigrateTaskBySchemaTableChunkStatus(ctx con
 	err := rw.DB(ctx).Model(&DataMigrateTask{}).Select("task_name,schema_name_s,table_name_s,task_status,count(1) as status_totals").Where("task_name = ? AND schema_name_s = ? AND table_name_s = ?", task.TaskName, task.SchemaNameS, task.TableNameS).Group("task_name,schema_name_s,table_name_s,task_status").Order("status_totals desc").Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] group by the the task_name and schema_name_s and table_name_s ans task_status record failed: %v", rw.TableName(ctx), err)
-	}
-	return dataS, nil
-}
-
-func (rw *RWDataMigrateTask) FindDataMigrateTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataGroupTaskStatusResult, error) {
-	var dataS []*DataGroupTaskStatusResult
-	err := rw.DB(ctx).Model(&DataMigrateTask{}).Select("task_name,task_status,count(1) as status_totals").Where("task_name = ?", taskName).Group("task_name,task_status").Order("status_totals desc").Find(&dataS).Error
-	if err != nil {
-		return nil, fmt.Errorf("find table [%s] group by the the task_name and schema_name_s and table_name_s record failed: %v", rw.TableName(ctx), err)
 	}
 	return dataS, nil
 }
@@ -1484,9 +1475,9 @@ func (rw *RWDataCompareTask) BatchUpdateDataCompareTask(ctx context.Context, tas
 	return task, nil
 }
 
-func (rw *RWDataCompareTask) FindDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error) {
+func (rw *RWDataCompareTask) FindDataCompareTask(ctx context.Context, task *DataCompareTask, taskStatus []string) ([]*DataCompareTask, error) {
 	var dataS []*DataCompareTask
-	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.TaskStatus).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&DataCompareTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status IN (?)", task.TaskName, task.SchemaNameS, task.TableNameS, taskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
 	}
@@ -1852,9 +1843,9 @@ func (rw *RWDataScanTask) DeleteDataScanTaskName(ctx context.Context, taskName [
 	return nil
 }
 
-func (rw *RWDataScanTask) FindDataScanTask(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error) {
+func (rw *RWDataScanTask) FindDataScanTask(ctx context.Context, task *DataScanTask, taskStatus []string) ([]*DataScanTask, error) {
 	var dataS []*DataScanTask
-	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status = ?", task.TaskName, task.SchemaNameS, task.TableNameS, task.TaskStatus).Find(&dataS).Error
+	err := rw.DB(ctx).Model(&DataScanTask{}).Where("task_name = ? AND schema_name_s = ? AND table_name_s = ? AND task_status IN (?)", task.TaskName, task.SchemaNameS, task.TableNameS, taskStatus).Find(&dataS).Error
 	if err != nil {
 		return nil, fmt.Errorf("find table [%s] record failed: %v", rw.TableName(ctx), err)
 	}

@@ -55,6 +55,8 @@ type DataMigrateTask struct {
 
 	WaiterC chan *WaitingRecs
 	ResumeC chan *WaitingRecs
+
+	Progress *Progress
 }
 
 func (cmt *DataMigrateTask) Init() error {
@@ -72,40 +74,6 @@ func (cmt *DataMigrateTask) Init() error {
 		zap.String("schema_name_t", cmt.SchemaNameT),
 		zap.String("task_stage", "stmt records init"),
 		zap.String("startTime", startTime.String()))
-
-	logger.Info("data migrate task processor",
-		zap.String("task_name", cmt.Task.TaskName),
-		zap.String("task_mode", cmt.Task.TaskMode),
-		zap.String("task_flow", cmt.Task.TaskFlow),
-		zap.String("schema_name_s", cmt.SchemaNameS),
-		zap.String("schema_name_t", cmt.SchemaNameT),
-		zap.Bool("enable_checkpoint", cmt.StmtParams.EnableCheckpoint),
-		zap.String("task_stage", "stmt task checkpoint"))
-
-	if !cmt.StmtParams.EnableCheckpoint {
-		logger.Warn("data migrate task processor",
-			zap.String("task_name", cmt.Task.TaskName),
-			zap.String("task_mode", cmt.Task.TaskMode),
-			zap.String("task_flow", cmt.Task.TaskFlow),
-			zap.String("schema_name_s", cmt.SchemaNameS),
-			zap.String("schema_name_t", cmt.SchemaNameT),
-			zap.Bool("enable_checkpoint", cmt.StmtParams.EnableCheckpoint),
-			zap.String("task_stage", "clear stmt records"))
-		err := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
-			err := model.GetIDataMigrateSummaryRW().DeleteDataMigrateSummaryName(txnCtx, []string{cmt.Task.TaskName})
-			if err != nil {
-				return err
-			}
-			err = model.GetIDataMigrateTaskRW().DeleteDataMigrateTaskName(txnCtx, []string{cmt.Task.TaskName})
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
 
 	// filter database table
 	schemaTaskTables, err := model.GetIMigrateTaskTableRW().FindMigrateTaskTable(cmt.Ctx, &rule.MigrateTaskTable{
@@ -215,6 +183,11 @@ func (cmt *DataMigrateTask) Init() error {
 		zap.String("schema_name_t", cmt.SchemaNameT),
 		zap.String("task_stage", "init concurrency start"))
 
+	cmt.Progress.SetTableCounts(uint64(len(databaseTaskTables)))
+
+	// print struct migrate progress
+	go cmt.Progress.PrintProgress()
+
 	g, gCtx := errgroup.WithContext(cmt.Ctx)
 	g.SetLimit(int(cmt.StmtParams.TableThread))
 
@@ -235,6 +208,9 @@ func (cmt *DataMigrateTask) Init() error {
 					return err
 				}
 				if strings.EqualFold(initDone.InitFlag, constant.TaskInitStatusFinished) {
+					cmt.Progress.SetTableRowCounts(initDone.TableRowsS)
+					cmt.Progress.SetTableSizeCounts(uint64(initDone.TableSizeS))
+					cmt.Progress.SetTableChunkCounts(initDone.ChunkTotals)
 					// the database task has init flag,skip
 					wr := &WaitingRecs{
 						TaskName:    initDone.TaskName,
@@ -283,6 +259,9 @@ func (cmt *DataMigrateTask) Init() error {
 				if err != nil {
 					return err
 				}
+
+				cmt.Progress.SetTableRowCounts(tableRows)
+				cmt.Progress.SetTableSizeCounts(uint64(tableSize))
 
 				dataRule := &DataMigrateRule{
 					Ctx:            gCtx,
@@ -376,6 +355,8 @@ func (cmt *DataMigrateTask) Init() error {
 					if err != nil {
 						return err
 					}
+
+					cmt.Progress.SetTableChunkCounts(1)
 
 					wr := &WaitingRecs{
 						TaskName:    cmt.Task.TaskName,
@@ -613,6 +594,11 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		return err
 	}
 	if strings.EqualFold(summary.MigrateFlag, constant.TaskMigrateStatusFinished) {
+		cmt.Progress.UpdateTableNameProcessed(1)
+		cmt.Progress.UpdateTableRowsProcessed(summary.TableRowsS)
+		cmt.Progress.UpdateTableBytesProcessed(uint64(summary.TableSizeS))
+		cmt.Progress.UpdateTableChunksProcessed(summary.ChunkTotals)
+
 		logger.Warn("data migrate task flag processing",
 			zap.String("task_name", cmt.Task.TaskName),
 			zap.String("task_mode", cmt.Task.TaskMode),
@@ -670,15 +656,44 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		return fmt.Errorf("the task_name [%s] schema [%s] task_mode [%s] task_flow [%s] prepare isn't support, please contact author", cmt.Task.TaskName, s.SchemaNameS, cmt.Task.TaskMode, cmt.Task.TaskFlow)
 	}
 
-	var migrateTasks []*task.DataMigrateTask
-	migrateTasks, err = model.GetIDataMigrateTaskRW().FindDataMigrateTaskTableStatus(cmt.Ctx,
-		s.TaskName,
-		s.SchemaNameS,
-		s.TableNameS,
-		[]string{constant.TaskDatabaseStatusWaiting, constant.TaskDatabaseStatusFailed, constant.TaskDatabaseStatusRunning, constant.TaskDatabaseStatusStopped},
+	var (
+		migrateTasks      []*task.DataMigrateTask
+		successChunkTasks []*task.DataMigrateTask
 	)
-	if err != nil {
-		return err
+
+	if errMsg := model.Transaction(cmt.Ctx, func(txnCtx context.Context) error {
+		migrateTasks, err = model.GetIDataMigrateTaskRW().FindDataMigrateTaskTableStatus(cmt.Ctx,
+			s.TaskName,
+			s.SchemaNameS,
+			s.TableNameS,
+			[]string{constant.TaskDatabaseStatusWaiting, constant.TaskDatabaseStatusFailed, constant.TaskDatabaseStatusRunning, constant.TaskDatabaseStatusStopped},
+		)
+		if err != nil {
+			return err
+		}
+		successChunkTasks, err = model.GetIDataMigrateTaskRW().FindDataMigrateTaskTableStatus(cmt.Ctx,
+			s.TaskName,
+			s.SchemaNameS,
+			s.TableNameS,
+			[]string{constant.TaskDatabaseStatusSuccess},
+		)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); errMsg != nil {
+		return errMsg
+	}
+
+	// The task progress is processed based on the data line. The processed lines are in memory status. When the task is restarted or the transfer is resumed, the memory status line will disappear. To display the processed line information normally, the percentage of completed blocks is calculated, and the completed lines and bytes are calculated. However, there is a certain probability that the row_completed displayed in the log progress is less than row_counts. The reason is that the actual rows of some previous chunks are more than the calculation method above, and the unprocessed chunk rows are relatively small，which can be ignored.
+	successChunkNums := len(successChunkTasks)
+	if successChunkNums > 0 {
+		cmt.Progress.UpdateTableRowsProcessed(calcSuccRatioResult(successChunkNums, int(summary.ChunkTotals), summary.TableRowsS))
+		cmt.Progress.UpdateTableBytesProcessed(calcSuccRatioResult(successChunkNums, int(summary.ChunkTotals), uint64(summary.TableSizeS)))
+		cmt.Progress.UpdateTableChunksProcessed(uint64(successChunkNums))
+		cmt.Progress.SetLastTableRowsProcessed(calcSuccRatioResult(successChunkNums, int(summary.ChunkTotals), summary.TableRowsS))
+		cmt.Progress.SetLastTableBytesProcessed(calcSuccRatioResult(successChunkNums, int(summary.ChunkTotals), uint64(summary.TableSizeS)))
+		cmt.Progress.SetLastTableChunksProcessed(uint64(successChunkNums))
 	}
 
 	logger.Warn("data migrate task chunks processing",
@@ -753,6 +768,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 					GarbledReplace:    cmt.StmtParams.GarbledCharReplace,
 					ReadChan:          make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
 					WriteChan:         make(chan []interface{}, constant.DefaultMigrateTaskQueueSize),
+					Progress:          cmt.Progress,
 				})
 				if err != nil {
 					return err
@@ -805,6 +821,7 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 	}()
 
 	for res := range g.ResultC {
+		cmt.Progress.UpdateTableChunksProcessed(1)
 		if res.Error != nil {
 			smt := res.Task.(*task.DataMigrateTask)
 			logger.Error("data migrate task chunk processing",
@@ -985,6 +1002,8 @@ func (cmt *DataMigrateTask) Process(s *WaitingRecs) error {
 		return err
 	}
 
+	cmt.Progress.UpdateTableNameProcessed(1)
+
 	logger.Info("data migrate task processing",
 		zap.String("task_name", cmt.Task.TaskName),
 		zap.String("task_mode", cmt.Task.TaskMode),
@@ -1123,6 +1142,8 @@ func (cmt *DataMigrateTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, 
 		return err
 	}
 
+	cmt.Progress.SetTableChunkCounts(uint64(totalChunks))
+
 	wr := &WaitingRecs{
 		TaskName:    cmt.Task.TaskName,
 		SchemaNameS: attsRule.SchemaNameS,
@@ -1230,6 +1251,8 @@ func (cmt *DataMigrateTask) ProcessTableScan(ctx context.Context, globalScn stri
 	if err != nil {
 		return err
 	}
+
+	cmt.Progress.SetTableChunkCounts(1)
 
 	wr := &WaitingRecs{
 		TaskName:    cmt.Task.TaskName,
@@ -1373,6 +1396,8 @@ func (cmt *DataMigrateTask) ProcessChunkScan(ctx context.Context, globalScn stri
 	if err != nil {
 		return err
 	}
+
+	cmt.Progress.SetTableChunkCounts(uint64(totalChunkRecs))
 
 	wr := &WaitingRecs{
 		TaskName:    cmt.Task.TaskName,

@@ -84,6 +84,12 @@ func (cg *ConsumerGroup) ConsumeMessage(c *Consumer) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("write message failed: [%v]", err)
 	}
+
+	// update message count, byte count, and accumulate total latency of all message consumption
+	cg.progress.UpdateMsgConsumeCounts(c.partition, 1)
+	cg.progress.UpdateMsgConsumeBytes(c.partition, uint64(len(msg.Value)))
+	cg.progress.UpdateMsgConsumeDelay(c.partition, time.Since(msg.Time))
+
 	if needCommit {
 		if err := cg.CommitMessage(c, msg); err != nil {
 			return false, fmt.Errorf("commit message failed: [%v]", err)

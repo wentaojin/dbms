@@ -45,6 +45,7 @@ type DataScanRow struct {
 	Dst        *task.DataScanTask
 	DatabaseS  database.IDatabase
 	DBCharsetS string
+	Progress   *Progress
 }
 
 func (r *DataScanRow) ScanRows() error {

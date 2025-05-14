@@ -54,7 +54,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	// https://github.com/godror/godror/pull/65
 	//connClass := fmt.Sprintf("pool_%v", xid.New().String())
 	//connString = fmt.Sprintf("oracle://@%s/%s?connectionClass=%s&%s",
-	//	common.StringsBuilder(datasource.Host, ":", strconv.Itoa(datasource.Port)),
+	//	stringutil.StringsBuilder(datasource.Host, ":", strconv.Itoa(datasource.Port)),
 	//	datasource.ServiceName, "connClass", datasource.ConnectParams)
 	if strings.EqualFold(datasource.ConnectParams, "") {
 		connString = fmt.Sprintf("oracle://@%s/%s?standaloneConnection=1",

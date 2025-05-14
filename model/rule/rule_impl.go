@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/wentaojin/dbms/utils/stringutil"
 	"golang.org/x/sync/errgroup"
 
 	"gorm.io/gorm/clause"
 
 	"github.com/wentaojin/dbms/model/common"
+	"github.com/wentaojin/dbms/utils/stringutil"
 	"gorm.io/gorm"
 )
 

@@ -17,10 +17,11 @@ package launchd
 
 import (
 	"bytes"
-	"github.com/wentaojin/dbms/utils/cluster/embed"
-	"github.com/wentaojin/dbms/utils/stringutil"
 	"path"
 	"text/template"
+
+	"github.com/wentaojin/dbms/utils/cluster/embed"
+	"github.com/wentaojin/dbms/utils/stringutil"
 )
 
 // https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html#//apple_ref/doc/uid/TP40001762-104142

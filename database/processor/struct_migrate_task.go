@@ -60,6 +60,8 @@ type StructMigrateTask struct {
 
 	StructReadyInit   chan bool
 	SequenceReadyInit chan bool
+
+	Progress *Progress
 }
 
 func (st *StructMigrateTask) Init() error {
@@ -69,41 +71,7 @@ func (st *StructMigrateTask) Init() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "task record init"))
-
-	logger.Info("struct migrate task processor",
-		zap.String("task_name", st.Task.TaskName),
-		zap.String("task_mode", st.Task.TaskMode),
-		zap.String("task_flow", st.Task.TaskFlow),
-		zap.String("schema_name_s", st.SchemaNameS),
-		zap.String("schema_name_t", st.SchemaNameT),
-		zap.Bool("enable_checkpoint", st.TaskParams.EnableCheckpoint),
-		zap.String("task_stage", "task checkpoint action"))
-
-	if !st.TaskParams.EnableCheckpoint {
-		err := model.Transaction(st.Ctx, func(txnCtx context.Context) error {
-			err := model.GetIStructMigrateSummaryRW().DeleteStructMigrateSummaryName(txnCtx, []string{st.Task.TaskName})
-			if err != nil {
-				return err
-			}
-			err = model.GetIStructMigrateTaskRW().DeleteStructMigrateTaskName(txnCtx, []string{st.Task.TaskName})
-			if err != nil {
-				return err
-			}
-			err = model.GetISequenceMigrateSummaryRW().DeleteSequenceMigrateSummaryName(txnCtx, []string{st.Task.TaskName})
-			if err != nil {
-				return err
-			}
-			err = model.GetISequenceMigrateTaskRW().DeleteSequenceMigrateTaskName(txnCtx, []string{st.Task.TaskName})
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
+		zap.String("task_stage", "init migrate record"))
 
 	gSeq := &errgroup.Group{}
 
@@ -117,6 +85,9 @@ func (st *StructMigrateTask) Init() error {
 	if err := gSeq.Wait(); err != nil {
 		return err
 	}
+
+	// print struct migrate progress
+	go st.Progress.PrintProgress()
 
 	gStru := &errgroup.Group{}
 
@@ -141,7 +112,7 @@ func (st *StructMigrateTask) Run() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "task record running"))
+		zap.String("task_stage", "process migrate record"))
 
 	gSeq := &errgroup.Group{}
 
@@ -242,7 +213,7 @@ func (st *StructMigrateTask) initStructMigrate() error {
 			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("detail", "config file schema-route-table include-table-s/exclude-table-s params are null, skip struct migrate"),
 			zap.String("task_stage", "skip struct migrate"),
-			zap.String("cost", time.Now().Sub(st.StartTime).String()))
+			zap.String("cost", time.Since(st.StartTime).String()))
 		st.StructReadyInit <- false
 		return nil
 	}
@@ -253,7 +224,7 @@ func (st *StructMigrateTask) initStructMigrate() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "schema tables get"))
+		zap.String("task_stage", "query schema tables"))
 
 	var (
 		includeTables      []string
@@ -306,7 +277,7 @@ func (st *StructMigrateTask) initStructMigrate() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "table routes get"))
+		zap.String("task_stage", "query table routes"))
 
 	tableRouteRule := make(map[string]string)
 
@@ -325,7 +296,7 @@ func (st *StructMigrateTask) initStructMigrate() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "schema table clear"))
+		zap.String("task_stage", "delete repeated tables"))
 
 	migrateTasks, err := model.GetIStructMigrateTaskRW().BatchFindStructMigrateTask(st.Ctx, &task.StructMigrateTask{TaskName: st.Task.TaskName})
 	if err != nil {
@@ -346,6 +317,8 @@ func (st *StructMigrateTask) initStructMigrate() error {
 			}
 		}
 	}
+
+	st.Progress.SetTableCounts(uint64(len(databaseTaskTables)))
 
 	// database tables
 	// init database table
@@ -403,7 +376,7 @@ func (st *StructMigrateTask) initStructMigrate() error {
 
 	_, err = model.GetITaskLogRW().CreateLog(st.Ctx, &task.Log{
 		TaskName: st.Task.TaskName,
-		LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] struct migrate record init done",
+		LogDetail: fmt.Sprintf("%v [%v] the task_name [%v] task_flow [%s] worker_addr [%v] schema_name_s [%s] init struct migrate record finished",
 			stringutil.CurrentTimeFormatString(),
 			stringutil.StringLower(constant.TaskModeStructMigrate),
 			st.Task.TaskName,
@@ -415,14 +388,14 @@ func (st *StructMigrateTask) initStructMigrate() error {
 	if err != nil {
 		return err
 	}
-	logger.Warn("sequence migrate task processor",
+	logger.Warn("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
 		zap.String("task_mode", st.Task.TaskMode),
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "struct records done"),
-		zap.String("cost", time.Now().Sub(st.StartTime).String()))
+		zap.String("task_stage", "init struct records finished"),
+		zap.String("cost", time.Since(st.StartTime).String()))
 
 	return nil
 }
@@ -434,7 +407,7 @@ func (st *StructMigrateTask) processStructMigrate() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "struct migrate start"))
+		zap.String("task_stage", "process struct migrate"))
 
 	s, err := model.GetIStructMigrateSummaryRW().GetStructMigrateSummary(st.Ctx, &task.StructMigrateSummary{TaskName: st.Task.TaskName, SchemaNameS: st.SchemaNameS})
 	if err != nil {
@@ -450,7 +423,7 @@ func (st *StructMigrateTask) processStructMigrate() error {
 			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("init_flag", s.InitFlag),
 			zap.String("migrate_flag", s.MigrateFlag),
-			zap.String("task_stage", "struct migrate skip"))
+			zap.String("task_stage", "skip struct migrate"))
 
 		_, err = model.GetIStructMigrateSummaryRW().UpdateStructMigrateSummary(st.Ctx,
 			&task.StructMigrateSummary{
@@ -463,6 +436,8 @@ func (st *StructMigrateTask) processStructMigrate() error {
 		if err != nil {
 			return err
 		}
+
+		st.Progress.UpdateTableNameProcessed(1)
 		return nil
 	}
 
@@ -472,51 +447,36 @@ func (st *StructMigrateTask) processStructMigrate() error {
 		zap.String("task_flow", st.Task.TaskFlow),
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
-		zap.String("task_stage", "struct records get"))
+		zap.String("task_stage", "query struct records"))
 	var (
 		migrateTasks []*task.StructMigrateTask
+		successTasks []*task.StructMigrateTask
 	)
 
 	err = model.Transaction(st.Ctx, func(txnCtx context.Context) error {
 		// get migrate task tables
 		migrateTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
-			&task.StructMigrateTask{
-				TaskName:   st.Task.TaskName,
-				TaskStatus: constant.TaskDatabaseStatusWaiting})
+			&task.StructMigrateTask{TaskName: st.Task.TaskName},
+			[]string{constant.TaskDatabaseStatusWaiting, constant.TaskDatabaseStatusFailed, constant.TaskDatabaseStatusRunning, constant.TaskDatabaseStatusStopped})
 		if err != nil {
 			return err
 		}
-		migrateFailedTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
-			&task.StructMigrateTask{
-				TaskName:   st.Task.TaskName,
-				TaskStatus: constant.TaskDatabaseStatusFailed,
-			})
+		successTasks, err = model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
+			&task.StructMigrateTask{TaskName: st.Task.TaskName},
+			[]string{constant.TaskDatabaseStatusSuccess})
 		if err != nil {
 			return err
 		}
-		migrateRunningTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
-			&task.StructMigrateTask{
-				TaskName:   st.Task.TaskName,
-				TaskStatus: constant.TaskDatabaseStatusRunning,
-			})
-		if err != nil {
-			return err
-		}
-		migrateStopTasks, err := model.GetIStructMigrateTaskRW().QueryStructMigrateTask(txnCtx,
-			&task.StructMigrateTask{
-				TaskName:   st.Task.TaskName,
-				TaskStatus: constant.TaskDatabaseStatusStopped,
-			})
-		if err != nil {
-			return err
-		}
-		migrateTasks = append(migrateTasks, migrateFailedTasks...)
-		migrateTasks = append(migrateTasks, migrateRunningTasks...)
-		migrateTasks = append(migrateTasks, migrateStopTasks...)
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+
+	successTableNums := len(successTasks)
+	if successTableNums > 0 {
+		st.Progress.UpdateTableNameProcessed(uint64(successTableNums))
+		st.Progress.SetLastTableNameProcessed(uint64(successTableNums))
 	}
 
 	logger.Info("struct migrate task processor",
@@ -545,6 +505,7 @@ func (st *StructMigrateTask) processStructMigrate() error {
 	}()
 
 	for res := range g.ResultC {
+		st.Progress.UpdateTableNameProcessed(1)
 		if res.Error != nil {
 			smt := res.Task.(*task.StructMigrateTask)
 			logger.Error("struct migrate task processor",
@@ -631,20 +592,20 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 			zap.String("schema_name_s", st.SchemaNameS),
 			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("task_stage", "the task migrate has success, skip the struct migrate"),
-			zap.String("cost", time.Now().Sub(st.StartTime).String()))
+			zap.String("cost", time.Since(st.StartTime).String()))
 		return nil
 	}
 	// if the table is MATERIALIZED VIEW, SKIP
 	// MATERIALIZED VIEW isn't support struct migrate
 	if strings.EqualFold(smt.TableTypeS, constant.DatabaseMigrateTableStructDisabledMaterializedView) {
-		logger.Warn("struct migrate task processor",
+		logger.Error("struct migrate task processor",
 			zap.String("task_name", st.Task.TaskName),
 			zap.String("task_mode", st.Task.TaskMode),
 			zap.String("task_flow", st.Task.TaskFlow),
 			zap.String("schema_name_s", st.SchemaNameS),
 			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("task_stage", "the materialized view not support, skip the migrate, if necessary, please manually process the tables in the above list"),
-			zap.String("cost", time.Now().Sub(st.StartTime).String()))
+			zap.String("cost", time.Since(st.StartTime).String()))
 		return nil
 	}
 
@@ -703,7 +664,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("datasource", datasourceS.String()),
 		zap.String("task_stage", "struct attribute gen"),
-		zap.String("cost", time.Now().Sub(sourceTime).String()))
+		zap.String("cost", time.Since(sourceTime).String()))
 
 	logger.Debug("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
@@ -714,7 +675,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("datasource", datasourceS.String()),
 		zap.String("arrtibutes", attrs.String()),
 		zap.String("task_stage", "struct attribute gen"),
-		zap.String("cost", time.Now().Sub(sourceTime).String()))
+		zap.String("cost", time.Since(sourceTime).String()))
 
 	ruleTime := time.Now()
 	dataRule := &StructMigrateRule{
@@ -744,7 +705,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("task_stage", "struct rule prepare"),
-		zap.String("cost", time.Now().Sub(ruleTime).String()))
+		zap.String("cost", time.Since(ruleTime).String()))
 
 	logger.Debug("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
@@ -754,7 +715,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("migrate_rules", dataRule.String()),
 		zap.String("task_stage", "struct rule prepare"),
-		zap.String("cost", time.Now().Sub(ruleTime).String()))
+		zap.String("cost", time.Since(ruleTime).String()))
 
 	rules, err := database.IStructMigrateAttributesRule(dataRule)
 	if err != nil {
@@ -767,7 +728,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("task_stage", "struct rule gen"),
-		zap.String("cost", time.Now().Sub(ruleTime).String()))
+		zap.String("cost", time.Since(ruleTime).String()))
 
 	logger.Debug("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
@@ -777,7 +738,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("struct_rules", rules.String()),
 		zap.String("task_stage", "struct rule gen"),
-		zap.String("cost", time.Now().Sub(ruleTime).String()))
+		zap.String("cost", time.Since(ruleTime).String()))
 
 	tableTime := time.Now()
 	dataTable := &StructMigrateTable{
@@ -800,7 +761,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("task_stage", "struct table gen"),
-		zap.String("cost", time.Now().Sub(tableTime).String()))
+		zap.String("cost", time.Since(tableTime).String()))
 
 	logger.Debug("struct migrate task processor",
 		zap.String("task_name", st.Task.TaskName),
@@ -810,7 +771,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("struct_table", tableStruct.String()),
 		zap.String("task_stage", "struct table gen"),
-		zap.String("cost", time.Now().Sub(tableTime).String()))
+		zap.String("cost", time.Since(tableTime).String()))
 
 	writerTime := time.Now()
 	var w database.IStructMigrateDatabaseWriter
@@ -828,7 +789,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 			zap.String("schema_name_s", st.SchemaNameS),
 			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("task_stage", "struct sync database"),
-			zap.String("cost", time.Now().Sub(writerTime).String()))
+			zap.String("cost", time.Since(writerTime).String()))
 
 		return nil
 	}
@@ -844,7 +805,7 @@ func (st *StructMigrateTask) structMigrateStart(smt *task.StructMigrateTask) err
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("task_stage", "struct write database"),
-		zap.String("cost", time.Now().Sub(writerTime).String()))
+		zap.String("cost", time.Since(writerTime).String()))
 	return nil
 }
 
@@ -901,7 +862,7 @@ func (st *StructMigrateTask) initSequenceMigrate() error {
 			zap.String("schema_name_t", st.SchemaNameT),
 			zap.String("detail", "config file schema-route-table include-sequence-s/exclude-sequence-s params are null, skip sequence migrate"),
 			zap.String("task_stage", "skip sequence migrate"),
-			zap.String("cost", time.Now().Sub(st.StartTime).String()))
+			zap.String("cost", time.Since(st.StartTime).String()))
 
 		st.SequenceReadyInit <- false
 		return nil
@@ -1026,7 +987,7 @@ func (st *StructMigrateTask) initSequenceMigrate() error {
 		zap.String("schema_name_s", st.SchemaNameS),
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.String("task_stage", "sequence records done"),
-		zap.String("cost", time.Now().Sub(st.StartTime).String()))
+		zap.String("cost", time.Since(st.StartTime).String()))
 	return nil
 }
 
@@ -1355,7 +1316,7 @@ func (st *StructMigrateTask) sequenceMigrateStart(smt *task.SequenceMigrateTask)
 			zap.String("schema_name_t", st.SchemaNameT),
 			zap.Bool("enable_direct_create", st.TaskParams.EnableDirectCreate),
 			zap.String("task_stage", "sync sequence database"),
-			zap.String("cost", time.Now().Sub(startTime).String()))
+			zap.String("cost", time.Since(startTime).String()))
 		return nil
 	}
 
@@ -1371,6 +1332,6 @@ func (st *StructMigrateTask) sequenceMigrateStart(smt *task.SequenceMigrateTask)
 		zap.String("schema_name_t", st.SchemaNameT),
 		zap.Bool("enable_direct_create", st.TaskParams.EnableDirectCreate),
 		zap.String("task_stage", "write sequence database"),
-		zap.String("cost", time.Now().Sub(startTime).String()))
+		zap.String("cost", time.Since(startTime).String()))
 	return nil
 }

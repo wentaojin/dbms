@@ -19,11 +19,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/jedib0t/go-pretty/v6/table"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/wentaojin/dbms/utils/stringutil"
 

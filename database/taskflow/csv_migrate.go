@@ -46,14 +46,23 @@ type CsvMigrateTask struct {
 func (cmt *CsvMigrateTask) Start() error {
 	schemaTaskTime := time.Now()
 
-	logger.Info("data migrate task get schema route",
+	logger.Info("csv migrate task get schema route",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 	schemaRoute, err := model.GetIMigrateSchemaRouteRW().GetSchemaRouteRule(cmt.Ctx, &rule.SchemaRouteRule{TaskName: cmt.Task.TaskName})
 	if err != nil {
 		return err
 	}
 
-	logger.Info("data migrate task init database connection",
+	// interval 10 seconds print
+	progress := processor.NewProgresser(cmt.Ctx)
+	defer progress.Close()
+
+	progress.Init(
+		processor.WithTaskName(cmt.Task.TaskName),
+		processor.WithTaskMode(cmt.Task.TaskMode),
+		processor.WithTaskFlow(cmt.Task.TaskFlow))
+
+	logger.Info("csv migrate task init database connection",
 		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 
 	var (
@@ -72,7 +81,7 @@ func (cmt *CsvMigrateTask) Start() error {
 		}
 		defer databaseT.Close()
 
-		logger.Info("data migrate task inspect migrate task",
+		logger.Info("csv migrate task inspect migrate task",
 			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 		_, err = processor.InspectOracleMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 		if err != nil {
@@ -124,6 +133,7 @@ func (cmt *CsvMigrateTask) Start() error {
 			CsvParams:       cmt.MigrateParams,
 			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			Progress:        progress,
 		})
 		if err != nil {
 			return err
@@ -141,7 +151,7 @@ func (cmt *CsvMigrateTask) Start() error {
 		}
 		defer databaseT.Close()
 
-		logger.Info("data migrate task inspect migrate task",
+		logger.Info("csv migrate task inspect migrate task",
 			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 		_, err = processor.InspectOracleMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 		if err != nil {
@@ -187,6 +197,7 @@ func (cmt *CsvMigrateTask) Start() error {
 			CsvParams:       cmt.MigrateParams,
 			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			Progress:        progress,
 		})
 		if err != nil {
 			return err
@@ -204,7 +215,7 @@ func (cmt *CsvMigrateTask) Start() error {
 		}
 		defer databaseT.Close()
 
-		logger.Info("data migrate task inspect migrate task",
+		logger.Info("csv migrate task inspect migrate task",
 			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 		_, err = processor.InspectPostgresMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 		if err != nil {
@@ -261,6 +272,7 @@ func (cmt *CsvMigrateTask) Start() error {
 			CsvParams:       cmt.MigrateParams,
 			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			Progress:        progress,
 		})
 		if err != nil {
 			return err
@@ -282,7 +294,7 @@ func (cmt *CsvMigrateTask) Start() error {
 		}
 		defer databaseT.Close()
 
-		logger.Info("data migrate task inspect migrate task",
+		logger.Info("csv migrate task inspect migrate task",
 			zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow))
 		_, err = processor.InspectPostgresMigrateTask(cmt.Task.TaskName, cmt.Task.TaskFlow, cmt.Task.TaskMode, databaseS, stringutil.StringUpper(cmt.DatasourceS.ConnectCharset), stringutil.StringUpper(cmt.DatasourceT.ConnectCharset))
 		if err != nil {
@@ -332,6 +344,7 @@ func (cmt *CsvMigrateTask) Start() error {
 			CsvParams:       cmt.MigrateParams,
 			WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 			ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+			Progress:        progress,
 		})
 		if err != nil {
 			return err
@@ -345,8 +358,10 @@ func (cmt *CsvMigrateTask) Start() error {
 		return fmt.Errorf("the task_name [%s] task_mode [%s] task_flow [%s] schema_name_s [%s] isn't support, please contact author or reselect", cmt.Task.TaskName, cmt.Task.TaskMode, cmt.Task.TaskFlow, schemaRoute.SchemaNameS)
 	}
 
-	logger.Info("data migrate task",
-		zap.String("task_name", cmt.Task.TaskName), zap.String("task_mode", cmt.Task.TaskMode), zap.String("task_flow", cmt.Task.TaskFlow),
+	logger.Info("csv migrate task",
+		zap.String("task_name", cmt.Task.TaskName),
+		zap.String("task_mode", cmt.Task.TaskMode),
+		zap.String("task_flow", cmt.Task.TaskFlow),
 		zap.String("cost", time.Now().Sub(schemaTaskTime).String()))
 	return nil
 }

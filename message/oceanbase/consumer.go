@@ -85,6 +85,12 @@ func (cg *ConsumerGroup) ConsumeMessage(c *Consumer) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("write message failed: [%v]", err)
 	}
+
+	// update message count, byte count, and accumulate total latency of all message consumption
+	cg.progress.UpdateMsgConsumeCounts(c.partition, 1)
+	cg.progress.UpdateMsgConsumeBytes(c.partition, uint64(len(msg.Value)))
+	cg.progress.UpdateMsgConsumeDelay(c.partition, time.Since(msg.Time))
+
 	if needCommit {
 		if err := cg.CommitMessage(c, msg); err != nil {
 			return false, fmt.Errorf("commit message failed: [%v]", err)
@@ -856,7 +862,7 @@ func (c *Consumer) updateUpstreamTableColumnMetadataCache(tableName string, ddlT
 		zap.String("schema_name_s", c.schemaRoute.SchemaNameS),
 		zap.String("table_name_s", tableNameS),
 		zap.String("ddl_type", ddlType),
-		zap.Duration("cost", time.Now().Sub(timeS)))
+		zap.String("cost", time.Since(timeS).String()))
 	return nil
 }
 
@@ -953,7 +959,7 @@ func (c *Consumer) updateDowstreamTableColumnMetadataCache(tableName string, ddl
 		zap.String("schema_name_t", c.schemaRoute.SchemaNameT),
 		zap.String("table_name_t", tableNameT),
 		zap.String("ddl_type", ddlType),
-		zap.Duration("cost", time.Now().Sub(timeS)))
+		zap.String("cost", time.Since(timeS).String()))
 	return nil
 }
 

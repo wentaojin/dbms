@@ -53,6 +53,15 @@ func (dmt *DataCompareTask) Start() error {
 		return err
 	}
 
+	// interval 10 seconds print
+	progress := processor.NewProgresser(dmt.Ctx)
+	defer progress.Close()
+
+	progress.Init(
+		processor.WithTaskName(dmt.Task.TaskName),
+		processor.WithTaskMode(dmt.Task.TaskMode),
+		processor.WithTaskFlow(dmt.Task.TaskFlow))
+
 	logger.Info("data compare task init database connection",
 		zap.String("task_name", dmt.Task.TaskName), zap.String("task_mode", dmt.Task.TaskMode), zap.String("task_flow", dmt.Task.TaskFlow))
 
@@ -251,6 +260,7 @@ func (dmt *DataCompareTask) Start() error {
 		TaskParams:      dmt.TaskParams,
 		WaiterC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
 		ResumeC:         make(chan *processor.WaitingRecs, constant.DefaultMigrateTaskQueueSize),
+		Progress:        progress,
 	})
 	if err != nil {
 		return err

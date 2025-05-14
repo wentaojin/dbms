@@ -48,6 +48,7 @@ type CsvMigrateRow struct {
 	TaskParams *pb.CsvMigrateParam
 	ReadChan   chan []string
 	WriteChan  chan string
+	Progress   *Progress
 }
 
 func (r *CsvMigrateRow) MigrateRead() error {
@@ -160,6 +161,7 @@ func (r *CsvMigrateRow) MigrateRead() error {
 func (r *CsvMigrateRow) MigrateProcess() error {
 	defer close(r.WriteChan)
 	for rows := range r.ReadChan {
+		r.Progress.UpdateTableRowsReaded(1)
 		r.WriteChan <- stringutil.StringBuilder(stringutil.StringJoin(rows, r.TaskParams.Separator), r.TaskParams.Terminator)
 	}
 	return nil
@@ -202,6 +204,7 @@ func (r *CsvMigrateRow) MigrateApply() error {
 		if _, err = writer.WriteString(dataC); err != nil {
 			return fmt.Errorf("failed to write data row to csv: %v", err)
 		}
+		r.Progress.UpdateTableRowsProcessed(1)
 	}
 	logger.Info("data migrate task chunk rows applier finished",
 		zap.String("task_name", r.Dmt.TaskName),

@@ -70,7 +70,7 @@ type IStructMigrateTask interface {
 	FindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
 	FindStructMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructGroupStatusResult, error)
 	BatchFindStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
-	QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask) ([]*StructMigrateTask, error)
+	QueryStructMigrateTask(ctx context.Context, task *StructMigrateTask, taskStatus []string) ([]*StructMigrateTask, error)
 	ListStructMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*StructMigrateTask, error)
 	DeleteStructMigrateTask(ctx context.Context, id uint64) error
 	DeleteStructMigrateTaskName(ctx context.Context, taskName []string) error
@@ -121,7 +121,7 @@ type IStructCompareTask interface {
 	GetStructCompareTaskTable(ctx context.Context, task *StructCompareTask) ([]*StructCompareTask, error)
 	UpdateStructCompareTask(ctx context.Context, task *StructCompareTask, updates map[string]interface{}) (*StructCompareTask, error)
 	BatchUpdateStructCompareTask(ctx context.Context, task *StructCompareTask, updates map[string]interface{}) (*StructCompareTask, error)
-	FindStructCompareTask(ctx context.Context, task *StructCompareTask) ([]*StructCompareTask, error)
+	FindStructCompareTask(ctx context.Context, task *StructCompareTask, taskStatus []string) ([]*StructCompareTask, error)
 	FindStructCompareTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*StructGroupStatusResult, error)
 	BatchFindStructCompareTask(ctx context.Context, task *StructCompareTask) ([]*StructCompareTask, error)
 	ListStructCompareTask(ctx context.Context, page uint64, pageSize uint64) ([]*StructCompareTask, error)
@@ -149,7 +149,6 @@ type IDataMigrateTask interface {
 	FindDataMigrateTaskTableStatus(ctx context.Context, taskName, schemaName, tableName string, taskStatus []string) ([]*DataMigrateTask, error)
 	QueryDataMigrateTask(ctx context.Context, task *DataMigrateTask) ([]*DataMigrateTask, error)
 	FindDataMigrateTaskBySchemaTableChunkStatus(ctx context.Context, task *DataMigrateTask) ([]*DataGroupTaskStatusResult, error)
-	FindDataMigrateTaskGroupByTaskSchemaTableStatus(ctx context.Context, taskName string) ([]*DataGroupTaskStatusResult, error)
 	FindDataMigrateTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataGroupStatusResult, error)
 	ListDataMigrateTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataMigrateTask, error)
 	DeleteDataMigrateTask(ctx context.Context, task *DataMigrateTask) error
@@ -171,7 +170,7 @@ type IDataCompareTask interface {
 	CreateInBatchDataCompareTask(ctx context.Context, task []*DataCompareTask, thread, batchSize int) error
 	UpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
 	BatchUpdateDataCompareTask(ctx context.Context, task *DataCompareTask, updates map[string]interface{}) (*DataCompareTask, error)
-	FindDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
+	FindDataCompareTask(ctx context.Context, task *DataCompareTask, taskStatus []string) ([]*DataCompareTask, error)
 	QueryDataCompareTask(ctx context.Context, task *DataCompareTask) ([]*DataCompareTask, error)
 	QueryDataCompareTaskChunk(ctx context.Context, task *DataCompareTask, chunkIds []string) ([]*DataCompareTask, error)
 	DistinctDataCompareTaskChunkByTaskStatus(ctx context.Context, task *DataCompareTask) ([]string, error)
@@ -234,7 +233,7 @@ type IDataScanTask interface {
 	ListDataScanTask(ctx context.Context, page uint64, pageSize uint64) ([]*DataScanTask, error)
 	DeleteDataScanTask(ctx context.Context, task *DataScanTask) error
 	DeleteDataScanTaskName(ctx context.Context, taskName []string) error
-	FindDataScanTask(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error)
+	FindDataScanTask(ctx context.Context, task *DataScanTask, taskStatus []string) ([]*DataScanTask, error)
 	QueryDataScanTask(ctx context.Context, task *DataScanTask) ([]*DataScanTask, error)
 	FindDataScanTaskGroupByTaskStatus(ctx context.Context, taskName string) ([]*DataGroupStatusResult, error)
 	FindDataScanTaskGroupByTaskSchemaTable(ctx context.Context, taskName string) ([]*DataGroupChunkResult, error)

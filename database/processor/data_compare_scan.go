@@ -104,7 +104,8 @@ func (s *DataCompareScan) SyncFile() error {
 			TaskName:    s.TaskName,
 			SchemaNameS: s.SchemaNameS,
 			TableNameS:  s.TableNameS,
-			TaskStatus:  constant.TaskDatabaseStatusNotEqual})
+		},
+			[]string{constant.TaskDatabaseStatusNotEqual})
 		if err != nil {
 			return err
 		}

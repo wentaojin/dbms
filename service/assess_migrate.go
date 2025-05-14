@@ -19,10 +19,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
 
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/utils/etcdutil"

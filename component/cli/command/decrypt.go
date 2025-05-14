@@ -18,12 +18,13 @@ package command
 import (
 	"context"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/golang/snappy"
-	"github.com/wentaojin/dbms/service"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/fatih/color"
+	"github.com/golang/snappy"
+	"github.com/wentaojin/dbms/service"
 
 	"github.com/wentaojin/dbms/component"
 

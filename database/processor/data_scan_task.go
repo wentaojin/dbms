@@ -19,6 +19,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -51,6 +52,8 @@ type DataScanTask struct {
 	TaskParams *pb.DataScanParam
 	WaiterC    chan *WaitingRecs
 	ResumeC    chan *WaitingRecs
+
+	Progress *Progress
 }
 
 func (dst *DataScanTask) Init() error {
@@ -178,6 +181,11 @@ func (dst *DataScanTask) Init() error {
 	logger.Info("data scan task start init",
 		zap.String("task_name", dst.Task.TaskName), zap.String("task_mode", dst.Task.TaskMode), zap.String("task_flow", dst.Task.TaskFlow))
 
+	dst.Progress.SetTableCounts(uint64(len(databaseTaskTables)))
+
+	// print struct migrate progress
+	go dst.Progress.PrintProgress()
+
 	g, gCtx := errgroup.WithContext(dst.Ctx)
 	g.SetLimit(int(dst.TaskParams.TableThread))
 
@@ -198,6 +206,9 @@ func (dst *DataScanTask) Init() error {
 					return err
 				}
 				if strings.EqualFold(s.InitFlag, constant.TaskInitStatusFinished) {
+					dst.Progress.SetTableRowCounts(s.TableRowsS)
+					dst.Progress.SetTableSizeCounts(uint64(s.TableSizeS))
+					dst.Progress.SetTableChunkCounts(s.ChunkTotals)
 					// the database task has init flag,skip
 					select {
 					case dst.ResumeC <- &WaitingRecs{
@@ -283,6 +294,9 @@ func (dst *DataScanTask) Init() error {
 						zap.String("database_role", dst.DBRoleS),
 						zap.String("migrate_method", "scan"))
 
+					sampleRows := uint64(float64(tableRows) * size)
+					sampleRowSizes := float64(tableSize) * size
+
 					whereRange = `sample_scan`
 					encChunkS := snappy.Encode(nil, []byte(whereRange))
 					encryptChunkS, err := stringutil.Encrypt(stringutil.BytesToString(encChunkS), []byte(constant.DefaultDataEncryptDecryptKey))
@@ -315,8 +329,8 @@ func (dst *DataScanTask) Init() error {
 							SchemaNameS:    attsRule.SchemaNameS,
 							TableNameS:     attsRule.TableNameS,
 							SnapshotPointS: globalScn,
-							TableRowsS:     tableRows,
-							TableSizeS:     tableSize,
+							TableRowsS:     sampleRows,
+							TableSizeS:     sampleRowSizes,
 							ChunkTotals:    1,
 							InitFlag:       constant.TaskInitStatusFinished,
 							ScanFlag:       constant.TaskScanStatusNotFinished,
@@ -329,8 +343,15 @@ func (dst *DataScanTask) Init() error {
 					if err != nil {
 						return err
 					}
+
+					dst.Progress.SetTableRowCounts(sampleRows)
+					dst.Progress.SetTableSizeCounts(uint64(sampleRowSizes))
+					dst.Progress.SetTableChunkCounts(1)
 					return nil
 				}
+
+				dst.Progress.SetTableRowCounts(tableRows)
+				dst.Progress.SetTableSizeCounts(uint64(tableSize))
 
 				// statistic
 				switch stringutil.StringUpper(dbTypeS) {
@@ -444,6 +465,11 @@ func (dst *DataScanTask) Process(s *WaitingRecs) error {
 		return err
 	}
 	if strings.EqualFold(summary.ScanFlag, constant.TaskScanStatusFinished) {
+		dst.Progress.UpdateTableNameProcessed(1)
+		dst.Progress.UpdateTableRowsProcessed(summary.TableRowsS)
+		dst.Progress.UpdateTableBytesProcessed(uint64(summary.TableSizeS))
+		dst.Progress.UpdateTableChunksProcessed(summary.ChunkTotals)
+
 		logger.Warn("data scan task init",
 			zap.String("task_name", dst.Task.TaskName),
 			zap.String("task_mode", dst.Task.TaskMode),
@@ -466,7 +492,10 @@ func (dst *DataScanTask) Process(s *WaitingRecs) error {
 		zap.String("schema_name_s", s.SchemaNameS),
 		zap.String("table_name_s", s.TableNameS))
 
-	var migrateTasks []*task.DataScanTask
+	var (
+		migrateTasks []*task.DataScanTask
+		successTasks []*task.DataScanTask
+	)
 	err = model.Transaction(dst.Ctx, func(txnCtx context.Context) error {
 		// get migrate task tables
 		migrateTasks, err = model.GetIDataScanTaskRW().FindDataScanTask(txnCtx,
@@ -474,45 +503,46 @@ func (dst *DataScanTask) Process(s *WaitingRecs) error {
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SchemaNameS,
 				TableNameS:  s.TableNameS,
-				TaskStatus:  constant.TaskDatabaseStatusWaiting,
-			})
+			},
+			[]string{constant.TaskDatabaseStatusWaiting, constant.TaskDatabaseStatusFailed, constant.TaskDatabaseStatusRunning, constant.TaskDatabaseStatusStopped})
 		if err != nil {
 			return err
 		}
-		migrateFailedTasks, err := model.GetIDataScanTaskRW().FindDataScanTask(txnCtx,
+		successTasks, err = model.GetIDataScanTaskRW().FindDataScanTask(txnCtx,
 			&task.DataScanTask{
 				TaskName:    s.TaskName,
 				SchemaNameS: s.SchemaNameS,
 				TableNameS:  s.TableNameS,
-				TaskStatus:  constant.TaskDatabaseStatusFailed})
+			},
+			[]string{constant.TaskDatabaseStatusSuccess})
 		if err != nil {
 			return err
 		}
-		migrateRunningTasks, err := model.GetIDataScanTaskRW().FindDataScanTask(txnCtx,
-			&task.DataScanTask{
-				TaskName:    s.TaskName,
-				SchemaNameS: s.SchemaNameS,
-				TableNameS:  s.TableNameS,
-				TaskStatus:  constant.TaskDatabaseStatusRunning})
-		if err != nil {
-			return err
-		}
-		migrateStopTasks, err := model.GetIDataScanTaskRW().FindDataScanTask(txnCtx,
-			&task.DataScanTask{
-				TaskName:    s.TaskName,
-				SchemaNameS: s.SchemaNameS,
-				TableNameS:  s.TableNameS,
-				TaskStatus:  constant.TaskDatabaseStatusStopped})
-		if err != nil {
-			return err
-		}
-		migrateTasks = append(migrateTasks, migrateFailedTasks...)
-		migrateTasks = append(migrateTasks, migrateRunningTasks...)
-		migrateTasks = append(migrateTasks, migrateStopTasks...)
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+
+	successChunkNums := len(successTasks)
+	if successChunkNums > 0 {
+		dst.Progress.UpdateTableRowsProcessed(calcSuccRatioResult(successChunkNums, int(summary.ChunkTotals), summary.TableRowsS))
+		dst.Progress.UpdateTableBytesProcessed(calcSuccRatioResult(successChunkNums, int(summary.ChunkTotals), uint64(summary.TableSizeS)))
+		dst.Progress.UpdateTableChunksProcessed(uint64(successChunkNums))
+		dst.Progress.SetLastTableRowsProcessed(calcSuccRatioResult(successChunkNums, int(summary.ChunkTotals), summary.TableRowsS))
+		dst.Progress.SetLastTableBytesProcessed(calcSuccRatioResult(successChunkNums, int(summary.ChunkTotals), uint64(summary.TableSizeS)))
+		dst.Progress.SetLastTableChunksProcessed(uint64(successChunkNums))
+	}
+
+	// Round up to an integer and calculate the average number of rows per chunk, which is the same as counting the number of rows per chunk processed.
+	avgChunkRows := max(1, (summary.TableRowsS+summary.ChunkTotals-1)/summary.ChunkTotals)
+
+	var avgChunkBytes uint64
+	roundedUp := math.Ceil(summary.TableSizeS / float64(summary.ChunkTotals))
+	if roundedUp < 1 {
+		avgChunkBytes = 1
+	} else {
+		avgChunkBytes = uint64(roundedUp)
 	}
 
 	logger.Info("data scan task process chunks",
@@ -580,6 +610,9 @@ func (dst *DataScanTask) Process(s *WaitingRecs) error {
 	}()
 
 	for res := range g.ResultC {
+		dst.Progress.UpdateTableChunksProcessed(1)
+		dst.Progress.UpdateTableRowsProcessed(avgChunkRows)
+		dst.Progress.UpdateTableBytesProcessed(avgChunkBytes)
 		if res.Error != nil {
 			mt := res.Task.(*task.DataScanTask)
 			logger.Error("data scan task process tables",
@@ -753,6 +786,8 @@ func (dst *DataScanTask) Process(s *WaitingRecs) error {
 		return err
 	}
 
+	dst.Progress.UpdateTableNameProcessed(1)
+
 	logger.Info("data scan task process table",
 		zap.String("task_name", dst.Task.TaskName),
 		zap.String("task_mode", dst.Task.TaskMode),
@@ -884,6 +919,8 @@ func (dst *DataScanTask) ProcessStatisticsScan(ctx context.Context, dbTypeS, glo
 		return err
 	}
 
+	dst.Progress.SetTableChunkCounts(uint64(totalChunks))
+
 	select {
 	case dst.WaiterC <- &WaitingRecs{
 		TaskName:    dst.Task.TaskName,
@@ -967,6 +1004,8 @@ func (dst *DataScanTask) ProcessTableScan(ctx context.Context, globalScn string,
 	if err != nil {
 		return err
 	}
+
+	dst.Progress.SetTableChunkCounts(1)
 
 	select {
 	case dst.WaiterC <- &WaitingRecs{
@@ -1094,6 +1133,8 @@ func (dst *DataScanTask) ProcessChunkScan(ctx context.Context, schemaNameS, tabl
 	if err != nil {
 		return err
 	}
+
+	dst.Progress.SetTableChunkCounts(uint64(totalChunkRecs))
 
 	select {
 	case dst.WaiterC <- &WaitingRecs{

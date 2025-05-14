@@ -55,6 +55,7 @@ type StructCompareTask struct {
 	BuildInDefaultValueRulesT []*buildin.BuildinDefaultvalRule
 
 	ReadyInit chan bool
+	Progress  *Progress
 }
 
 func (dmt *StructCompareTask) Init() error {
@@ -82,6 +83,8 @@ func (dmt *StructCompareTask) Init() error {
 	if err != nil {
 		return err
 	}
+
+	go dmt.Progress.PrintProgress()
 
 	if strings.EqualFold(s.InitFlag, constant.TaskInitStatusNotFinished) {
 		err = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
@@ -253,6 +256,8 @@ func (dmt *StructCompareTask) Init() error {
 		return err
 	}
 
+	dmt.Progress.SetTableCounts(uint64(len(databaseTaskTableSliS)))
+
 	// database tables
 	// init database table
 	// get table column route rule
@@ -360,6 +365,7 @@ func (dmt *StructCompareTask) Process() error {
 		if err != nil {
 			return err
 		}
+		dmt.Progress.UpdateTableNameProcessed(1)
 		return nil
 	}
 	logger.Info("struct compare task get tables",
@@ -368,49 +374,40 @@ func (dmt *StructCompareTask) Process() error {
 		zap.String("task_flow", dmt.Task.TaskFlow),
 		zap.String("schema_name_s", dmt.SchemaNameS))
 
-	var migrateTasks []*task.StructCompareTask
+	var (
+		migrateTasks  []*task.StructCompareTask
+		finishedTasks []*task.StructCompareTask
+	)
 	err = model.Transaction(dmt.Ctx, func(txnCtx context.Context) error {
 		// get migrate task tables
 		migrateTasks, err = model.GetIStructCompareTaskRW().FindStructCompareTask(txnCtx,
 			&task.StructCompareTask{
 				TaskName:    dmt.Task.TaskName,
 				SchemaNameS: dmt.SchemaNameS,
-				TaskStatus:  constant.TaskDatabaseStatusWaiting,
-			})
+			},
+			[]string{constant.TaskDatabaseStatusWaiting, constant.TaskDatabaseStatusFailed, constant.TaskDatabaseStatusRunning, constant.TaskDatabaseStatusStopped})
 		if err != nil {
 			return err
 		}
-		migrateFailedTasks, err := model.GetIStructCompareTaskRW().FindStructCompareTask(txnCtx,
+		finishedTasks, err = model.GetIStructCompareTaskRW().FindStructCompareTask(txnCtx,
 			&task.StructCompareTask{
 				TaskName:    dmt.Task.TaskName,
 				SchemaNameS: dmt.SchemaNameS,
-				TaskStatus:  constant.TaskDatabaseStatusFailed})
+			},
+			[]string{constant.TaskDatabaseStatusEqual, constant.TaskDatabaseStatusNotEqual, constant.TaskDatabaseStatusSuccess})
 		if err != nil {
 			return err
 		}
-		migrateRunningTasks, err := model.GetIStructCompareTaskRW().FindStructCompareTask(txnCtx,
-			&task.StructCompareTask{
-				TaskName:    dmt.Task.TaskName,
-				SchemaNameS: dmt.SchemaNameS,
-				TaskStatus:  constant.TaskDatabaseStatusRunning})
-		if err != nil {
-			return err
-		}
-		migrateStopTasks, err := model.GetIStructCompareTaskRW().FindStructCompareTask(txnCtx,
-			&task.StructCompareTask{
-				TaskName:    dmt.Task.TaskName,
-				SchemaNameS: dmt.SchemaNameS,
-				TaskStatus:  constant.TaskDatabaseStatusStopped})
-		if err != nil {
-			return err
-		}
-		migrateTasks = append(migrateTasks, migrateFailedTasks...)
-		migrateTasks = append(migrateTasks, migrateRunningTasks...)
-		migrateTasks = append(migrateTasks, migrateStopTasks...)
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+
+	finishedTableNums := len(finishedTasks)
+	if finishedTableNums > 0 {
+		dmt.Progress.UpdateTableNameProcessed(uint64(finishedTableNums))
+		dmt.Progress.SetLastTableNameProcessed(uint64(finishedTableNums))
 	}
 
 	logger.Info("struct compare task process table",
@@ -647,6 +644,7 @@ func (dmt *StructCompareTask) Process() error {
 	}()
 
 	for res := range g.ResultC {
+		dmt.Progress.UpdateTableNameProcessed(1)
 		if res.Error != nil {
 			smt := res.Task.(*task.StructCompareTask)
 			logger.Error("struct compare task process tables",

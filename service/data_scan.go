@@ -19,6 +19,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/database"
 	"github.com/wentaojin/dbms/database/processor"
@@ -36,9 +40,6 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func PromptDataScanTask(ctx context.Context, taskName, serverAddr string) error {
