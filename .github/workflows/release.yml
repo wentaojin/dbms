@@ -126,7 +126,7 @@ jobs:
                 },
                 {
                     "title": "## 🧪 Tests",
-                    "labels": ["test"]
+                    "labels": ["test","tests"]
                 },
                 {
                     "title": "## 📦 Docs",
@@ -139,7 +139,7 @@ jobs:
               ],
               "label_extractor": [
                 {
-                  "pattern": "^(chore|doc|docs|feat|feats|fix|fixs|fixes|fixed|perf|refactor|revert|style|test){1}(\\([\\w\\-\\.]+\\))?(!)?: ([\\w ])+([\\s\\S]*)",
+                  "pattern": "^(chore|doc|docs|feat|feats|fix|fixs|fixes|fixed|perf|refactor|revert|style|test|tests){1}(\\([\\w\\-\\.]+\\))?(!)?: ([\\w ])+([\\s\\S]*)",
                   "target": "$1"
                 }
               ]
