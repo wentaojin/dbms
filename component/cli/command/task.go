@@ -96,6 +96,13 @@ func (a *AppTaskStart) RunE(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	err := service.PromptTask(context.TODO(), a.Server, a.task)
+	if err != nil {
+		fmt.Printf("Status:       %s\n", cyan.Sprint("failed"))
+		fmt.Printf("Response:     %s\n", color.RedString("failed prompt task [%s]: %v", a.task, err))
+		return nil
+	}
+
 	bodyReq := make(map[string]interface{})
 	bodyReq["taskName"] = a.task
 	bodyReq["operate"] = constant.TaskOperationStart

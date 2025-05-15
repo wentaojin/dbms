@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/wentaojin/dbms/proto/pb"
 	"go.uber.org/zap"
 
@@ -41,6 +42,33 @@ import (
 	"github.com/wentaojin/dbms/utils/stringutil"
 	"google.golang.org/grpc"
 )
+
+func PromptTask(ctx context.Context, serverAddr, taskName string) error {
+	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
+	if err != nil {
+		return err
+	}
+	req := stringutil.StringBuilder(constant.DefaultInstanceTaskReferencesPrefixKey, taskName)
+	key, err := etcdutil.GetKey(etcdClient, req)
+	if err != nil {
+		return err
+	}
+	resp := len(key.Kvs)
+	if resp > 1 {
+		return fmt.Errorf("the current task [%s] key [%s] has multiple values, the number exceeds 1, which does not meet expectations, Please contac author or retry", taskName, req)
+	} else if resp == 1 {
+		// return worker addr
+		workerAddr := stringutil.BytesToString(key.Kvs[0].Value)
+		if err = stringutil.PromptForAnswerOrAbortError(
+			"Yes, I confirm non-duplicate submission task.",
+			fmt.Sprintf("The task will continue to run on worker [%s]. Please confirm that it is not a repeated task submission behavior.\n", color.RedString(workerAddr))+"\nAre you sure to continue?",
+		); err != nil {
+			return err
+		}
+		return nil
+	}
+	return nil
+}
 
 func StartTask(ctx context.Context, cli *clientv3.Client, discoveries *etcdutil.Discovery, req *pb.OperateTaskRequest) (*pb.OperateTaskResponse, error) {
 	// the non-scheduled task request express is always empty and needs to be judged by branching.

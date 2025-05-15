@@ -79,7 +79,7 @@ func PromptSqlMigrateTask(ctx context.Context, taskName, serverAddr string) erro
 	if strings.EqualFold(taskInfo.TaskMode, constant.TaskModeSqlMigrate) {
 		if err = stringutil.PromptForAnswerOrAbortError(
 			"Yes, I know my configuration file will be overwrite.",
-			fmt.Sprintf("This operation will overwrite the task_mode [%s] task_name [%s] configuration file\n.",
+			fmt.Sprintf("This operation will overwrite the task_mode [%s] task_name [%s] configuration file.\n",
 				color.HiYellowString(strings.ToLower(constant.TaskModeSqlMigrate)),
 				color.HiYellowString(taskInfo.TaskName),
 			)+"\nAre you sure to continue?",

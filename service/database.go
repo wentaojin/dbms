@@ -51,7 +51,7 @@ func PromptDatabase(ctx context.Context, serverAddr string) error {
 	case len(keyResp.Kvs) == 1:
 		if err = stringutil.PromptForAnswerOrAbortError(
 			"Yes, I know my configuration file will be overwrite.",
-			fmt.Sprintf("This operation will overwrite the database configuration file\n.")+"\nAre you sure to continue?",
+			fmt.Sprintf("This operation will overwrite the database configuration file.\n")+"\nAre you sure to continue?",
 		); err != nil {
 			return err
 		}
@@ -148,7 +148,7 @@ func PromptDatasource(ctx context.Context, serverAddr string, datasources []stri
 	if len(isRecords) > 0 {
 		if err = stringutil.PromptForAnswerOrAbortError(
 			"Yes, I know my configuration file will be overwrite.",
-			fmt.Sprintf("This operation will overwrite the datasourcees configuration file\n.")+"\nAre you sure to continue?",
+			fmt.Sprintf("This operation will overwrite the datasourcees configuration file.\n")+"\nAre you sure to continue?",
 		); err != nil {
 			return err
 		}

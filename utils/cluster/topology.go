@@ -24,11 +24,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/wentaojin/dbms/utils/etcdutil"
 	"github.com/wentaojin/dbms/utils/stringutil"
 
 	"github.com/wentaojin/dbms/utils/constant"
-
-	"github.com/wentaojin/dbms/utils/etcdutil"
 )
 
 // SystemdMode is the mode used by systemctl
