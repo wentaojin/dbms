@@ -239,20 +239,20 @@ func (s *DataCompareScan) SyncFile() error {
 						asciiColumns []string
 						queryStr     strings.Builder
 					)
-					for _, c := range seeks.columnNameS {
+					for _, c := range seeks.columnNameT {
 						asciiColumns = append(asciiColumns, fmt.Sprintf(`ASCII(%s)`, c))
 					}
 
-					queryStr.WriteString(fmt.Sprintf(`SELECT %s`, strings.Join(seeks.columnNameS, constant.StringSeparatorComma)))
-					if len(seeks.chunkColumnS) > 0 {
-						// when seeks.chunkColumnS == 0, chunk detail where 1 = 1, not found chunk
-						queryStr.WriteString(fmt.Sprintf(`,%s`, strings.Join(seeks.chunkColumnS, constant.StringSeparatorComma)))
+					queryStr.WriteString(fmt.Sprintf(`SELECT %s`, strings.Join(seeks.columnNameT, constant.StringSeparatorComma)))
+					if len(seeks.chunkColumnT) > 0 {
+						// when seeks.chunkColumnT == 0, chunk detail where 1 = 1, not found chunk
+						queryStr.WriteString(fmt.Sprintf(`,%s`, strings.Join(seeks.chunkColumnT, constant.StringSeparatorComma)))
 					}
-					queryStr.WriteString(fmt.Sprintf(`,%s FROM %s.%s WHERE %s`, strings.Join(asciiColumns, constant.StringSeparatorComma), dmts.SchemaNameS,
-						dmts.TableNameS,
-						seeks.chunkDetailS))
+					queryStr.WriteString(fmt.Sprintf(`,%s FROM %s.%s WHERE %s`, strings.Join(asciiColumns, constant.StringSeparatorComma), dmts.SchemaNameT,
+						dmts.TableNameT,
+						seeks.chunkDetailT))
 					// considering that the downstream data sources are all transmitted and written by the upstream database, the downstream data remains as it is without character set conversion.
-					chunkColumnValues, abnormalDatas, err = s.DatabaseS.GetDatabaseTableSeekAbnormalData(s.TaskFlow, queryStr.String(), seeks.queryCondArgsT, s.CallTimeout, dbCharsetT, dbCharsetT, seeks.chunkColumnT)
+					chunkColumnValues, abnormalDatas, err = s.DatabaseT.GetDatabaseTableSeekAbnormalData(s.TaskFlow, queryStr.String(), seeks.queryCondArgsT, s.CallTimeout, dbCharsetT, dbCharsetS, seeks.chunkColumnT)
 					if err != nil {
 						return err
 					}

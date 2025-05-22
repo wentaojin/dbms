@@ -705,7 +705,7 @@ func ScanDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, 
 		if err != nil {
 			return err
 		}
-		databaseT, err = database.NewDatabase(txnCtx, datasourceT, schemaRoute.SchemaNameS, callTimeout)
+		databaseT, err = database.NewDatabase(txnCtx, datasourceT, schemaRoute.SchemaNameT, callTimeout)
 		if err != nil {
 			return err
 		}

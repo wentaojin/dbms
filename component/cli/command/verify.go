@@ -290,7 +290,7 @@ func (a *AppVerifyScan) Cmd() *cobra.Command {
 	cmd.Flags().StringVarP(&a.schemaName, "schema", "S", "", "the data compare task schema_name_s")
 	cmd.Flags().StringVarP(&a.tableName, "table", "T", "", "the data compare task schema table_name_s")
 	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the data compare task output file dir")
-	cmd.Flags().StringVar(&a.stream, "stream", "upstream", "the data compare seek task running stream(upstream/downstream)")
+	cmd.Flags().StringVar(&a.stream, "stream", "upstream", "refer to the upstream and downstream of the datasource of the data verification task to control whether the data scanning task runs upstream or downstream, options: [upstream / downstream]")
 	cmd.Flags().StringArrayVarP(&a.chunkIDs, "chunkIds", "c", nil, "the data compare task table not equal chunk ids")
 	cmd.Flags().BoolVarP(&a.force, "force", "f", false, "the data compare task force ignore the task status success check, output file")
 	cmd.Flags().Int64Var(&a.callTimeout, "timeout", 36000, "the data compare task query timeout, unit: seconds")
