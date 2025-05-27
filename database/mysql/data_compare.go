@@ -597,7 +597,7 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 	return columnNames, crc32Sum, batchRowsM, nil
 }
 
-func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
+func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
 	var (
 		columnNames         []string
 		scanTypes           []string

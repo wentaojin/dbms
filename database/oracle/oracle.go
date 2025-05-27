@@ -96,6 +96,7 @@ func NewDatabase(ctx context.Context, datasource *datasource.Datasource, current
 	// close external auth
 	oraDSN.ExternalAuth = false
 	oraDSN.OnInitStmts = sessionParams
+	oraDSN.LibDir = "/Users/wentaojin/storehouse/oracle/instantclient_19_8"
 
 	// charset
 	if !strings.EqualFold(datasource.ConnectCharset, "") {

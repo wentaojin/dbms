@@ -731,7 +731,7 @@ func (d *Database) filterDatabaseTableColumnBucketSupportDatatype(columnType str
 	return false
 }
 
-func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
+func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
 	var (
 		columnNames []string
 
@@ -872,16 +872,12 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, q
 								break
 							}
 						}
-						switch {
-						case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-							convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase([]byte(res.String()))), constant.CharsetUTF8MB4, dbCharsetT)
-							if err != nil {
-								return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
-							}
-							rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
-						default:
-							return nil, nil, fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+
+						convertTargetRaw, err := stringutil.CharsetConvert([]byte(res.String()), constant.CharsetUTF8MB4, dbCharsetT)
+						if err != nil {
+							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 						}
+						rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
 					}
 					err = lobD.Close()
 					if err != nil {
@@ -897,34 +893,24 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, q
 							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
 						}
 
-						switch {
-						case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-							convertTargetRaw, err := stringutil.CharsetConvert([]byte(stringutil.SpecialLettersMySQLCompatibleDatabase(convertUtf8Raw)), constant.CharsetUTF8MB4, dbCharsetT)
-							if err != nil {
-								return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
-							}
-							rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
-						default:
-							return nil, nil, fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
-						}
-					}
-				case []uint8:
-					// binary data -> raw、long raw、blob
-					switch {
-					case strings.EqualFold(taskFlow, constant.TaskFlowOracleToTiDB) || strings.EqualFold(taskFlow, constant.TaskFlowOracleToMySQL):
-						convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
-						if err != nil {
-							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
-						}
 						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
 						if err != nil {
 							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 						}
-
-						rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.SpecialLettersMySQLCompatibleDatabase(convertTargetRaw)))
-					default:
-						return nil, nil, fmt.Errorf("the task_flow [%s] isn't support, please contact author or reselect, %v", taskFlow, err)
+						rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
 					}
+				case []uint8:
+					// binary data -> raw、long raw、blob
+
+					convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+					if err != nil {
+						return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+					}
+					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+					if err != nil {
+						return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+					}
+					rowDatas = append(rowDatas, fmt.Sprintf("'%v'", convertTargetRaw))
 				case int64:
 					rowDatas = append(rowDatas, decimal.NewFromInt(val).String())
 				case uint64:
@@ -936,7 +922,7 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, q
 				case int32:
 					rowDatas = append(rowDatas, decimal.NewFromInt32(val).String())
 				default:
-					return nil, nil, fmt.Errorf("the task_flow [%s] query [%s] column [%s] unsupported type: %T", taskFlow, querySQL, colName, value)
+					return nil, nil, fmt.Errorf("the current database type [oracle] seek query [%s] column [%s] unsupported type: %T", querySQL, colName, value)
 				}
 			}
 		}
@@ -978,6 +964,7 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(taskFlow, querySQL string, q
 	if err = rows.Err(); err != nil {
 		return nil, nil, err
 	}
+	fmt.Println(querySQL, queryArgs)
 	return chunkColumnDatas, abnormalColumnDatas, nil
 }
 

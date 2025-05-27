@@ -137,20 +137,21 @@ func (s *DataCompareScan) SyncFile() error {
 
 	schemaTableTaskM := make(map[string][]*task.DataCompareTask)
 
-	var schemaTables []string
+	schemaTableNameRule := make(map[string]string)
 	for _, mt := range migrateTasks {
 		// ignore row counts data compare
 		if mt.CompareMethod == constant.DataCompareMethodDatabaseCheckRows {
 			continue
 		}
-		schemaTables = append(schemaTables, stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS))
+		schemaTableNameRule[stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS)] = stringutil.StringBuilder(mt.SchemaNameT, constant.StringSeparatorAite, mt.TableNameT)
+
 	}
 
-	if len(schemaTables) == 0 {
+	if len(schemaTableNameRule) == 0 {
 		return fmt.Errorf("the verify scan only supports scanning of chunk records that are unequal due to crc32 or md5 data verification methods. it does not support scanning of chunks with unequal number of rows. currently, no chunk record data table that meets the conditions is found, so it is skipped.")
 	}
 
-	for _, st := range schemaTables {
+	for st, _ := range schemaTableNameRule {
 		var compareTasks []*task.DataCompareTask
 		for _, mt := range migrateTasks {
 			if st == stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS) {
@@ -172,6 +173,13 @@ func (s *DataCompareScan) SyncFile() error {
 	// tableName[chunkID][problemFields]
 	for st, ts := range schemaTableTaskM {
 		schemaTabSli := strings.Split(st, constant.StringSeparatorAite)
+
+		tt, ok := schemaTableNameRule[st]
+		if !ok {
+			return fmt.Errorf("the task_name [%s] schema_name table name mapping rule not found, please contact author or retry", s.TableNameS)
+		}
+		schemaTabSliT := strings.Split(tt, constant.StringSeparatorAite)
+
 		err := s.initFile(schemaTabSli[1])
 		if err != nil {
 			return err
@@ -183,8 +191,13 @@ func (s *DataCompareScan) SyncFile() error {
 		}
 
 		startTime := time.Now()
-		fmt.Printf("scan abnormal schema_name_s [%s] table_name_s [%s] started at [%s]\n",
-			color.RedString(schemaTabSli[0]), color.RedString(schemaTabSli[1]), color.RedString(startTime.Format("2006-01-02 15:04:05")))
+		if strings.EqualFold(s.Stream, "UPSTREAM") {
+			fmt.Printf("scan abnormal schema_name_s [%s] table_name_s [%s] started at [%s]\n",
+				color.RedString(schemaTabSli[0]), color.RedString(schemaTabSli[1]), color.RedString(startTime.Format("2006-01-02 15:04:05")))
+		} else {
+			fmt.Printf("scan abnormal schema_name_t [%s] table_name_t [%s] started at [%s]\n",
+				color.RedString(schemaTabSliT[0]), color.RedString(schemaTabSliT[1]), color.RedString(startTime.Format("2006-01-02 15:04:05")))
+		}
 
 		g, gCtx := errgroup.WithContext(s.Ctx)
 		g.SetLimit(s.ChunkThreads)
@@ -230,7 +243,7 @@ func (s *DataCompareScan) SyncFile() error {
 						dmts.TableNameS,
 						seeks.chunkDetailS))
 
-					chunkColumnValues, abnormalDatas, err = s.DatabaseS.GetDatabaseTableSeekAbnormalData(s.TaskFlow, queryStr.String(), seeks.queryCondArgsS, s.CallTimeout, dbCharsetS, dbCharsetT, seeks.chunkColumnS)
+					chunkColumnValues, abnormalDatas, err = s.DatabaseS.GetDatabaseTableSeekAbnormalData(queryStr.String(), seeks.queryCondArgsS, s.CallTimeout, dbCharsetS, dbCharsetT, seeks.chunkColumnS)
 					if err != nil {
 						return err
 					}
@@ -251,8 +264,8 @@ func (s *DataCompareScan) SyncFile() error {
 					queryStr.WriteString(fmt.Sprintf(`,%s FROM %s.%s WHERE %s`, strings.Join(asciiColumns, constant.StringSeparatorComma), dmts.SchemaNameT,
 						dmts.TableNameT,
 						seeks.chunkDetailT))
-					// considering that the downstream data sources are all transmitted and written by the upstream database, the downstream data remains as it is without character set conversion.
-					chunkColumnValues, abnormalDatas, err = s.DatabaseT.GetDatabaseTableSeekAbnormalData(s.TaskFlow, queryStr.String(), seeks.queryCondArgsT, s.CallTimeout, dbCharsetT, dbCharsetS, seeks.chunkColumnT)
+
+					chunkColumnValues, abnormalDatas, err = s.DatabaseT.GetDatabaseTableSeekAbnormalData(queryStr.String(), seeks.queryCondArgsT, s.CallTimeout, dbCharsetT, dbCharsetS, seeks.chunkColumnT)
 					if err != nil {
 						return err
 					}
@@ -309,7 +322,7 @@ func (s *DataCompareScan) SyncFile() error {
 				}
 
 				chunkStr.WriteString(wt.Render())
-				if _, err := s.writeFile(chunkStr.String()); err != nil {
+				if _, err := s.writeFile(chunkStr.String() + "\n\n"); err != nil {
 					return err
 				}
 
@@ -325,7 +338,12 @@ func (s *DataCompareScan) SyncFile() error {
 		if err := s.closeFile(); err != nil {
 			return err
 		}
-		fmt.Printf("scan abnormal schema_name_s [%s] table_name_s [%s] finished, duration: [%s]\n---\n", color.RedString(schemaTabSli[0]), color.RedString(schemaTabSli[1]), time.Now().Sub(startTime))
+
+		if strings.EqualFold(s.Stream, "UPSTREAM") {
+			fmt.Printf("scan abnormal schema_name_s [%s] table_name_s [%s] finished, duration: [%s]\n---\n", color.RedString(schemaTabSli[0]), color.RedString(schemaTabSli[1]), time.Now().Sub(startTime))
+		} else {
+			fmt.Printf("scan abnormal schema_name_t [%s] table_name_t [%s] finished, duration: [%s]\n---\n", color.RedString(schemaTabSliT[0]), color.RedString(schemaTabSliT[1]), time.Now().Sub(startTime))
+		}
 	}
 
 	return nil
@@ -574,7 +592,7 @@ func (s *DataCompareScan) genDatabaseChunkRange(chunkColumnS, chunkColumnT, chun
 }
 
 func (s *DataCompareScan) genDatabaseChunkRangeByDBType(baselineDBType string, chunkColumnS, chunkColumnT, chunkValues []string) (string, string, error) {
-	switch baselineDBType {
+	switch strings.ToUpper(baselineDBType) {
 	case constant.DatabaseTypeOracle:
 		chunkRangeS, chunkRangeT := s.genDatabaseChunkRangeSeekOracleStream(chunkColumnS, chunkColumnT, chunkValues)
 		return chunkRangeS, chunkRangeT, nil

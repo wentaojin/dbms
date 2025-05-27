@@ -618,18 +618,22 @@ func GenDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, t
 }
 
 /*
+Suggestion:
+--stream parameter is recommended to be more suitable for data migration flow and setting upstream flow scan
+
+Data verification task scenario assumptions:
+Data verification tasks datasource-name-s tidb and datasource-name-t oracle, where the data type of the tidb chunk partition field c is VARCHAR, and the data type of the oracle chunk field c is RAW
+
 Notes:
- 1. Use --stream upstream/downstream to control which end of the data verification metadata is used as the benchmark to generate the upstream and downstream chunk ranges, and ignore the mapping relationship of the field type. NULL and empty strings are also based on the source end specified by --stream. For example:
+1. Data scanning tasks are all based on the results of data verification and the partitioned metadata
 
-Data verification tasks datasource-name-s oracle and datasource-name-t tidb, and the oracle chunk field c data type is RAW, but the tidb chunk field c data type is VARCHAR. If the parameter --stream downstream is specified, the oracle data is used as the benchmark for search and verification
+2. Use the --stream downstream/upstream parameter to control which end of the data verification metadata the data scan uses as the benchmark, and the data scanning task ignores the mapping relationship of the field type (NULL and empty strings are also based on the source end specified by --stream). Taking the data verification task scenario assumption as an example, if the --stream parameter specifies downstream, it means that the data scan runs on the oracle database
 
-  - Generate oracle chunk query conditions based on tidb data and ignore the data type of the oracle chunk field c. Both use c = 'XXX' as the query range
+- Generate oracle / tidb chunk query conditions based on the oracle scan results, and ignore the data type of the tidb chunk field c. c = 'XXX' is used as the query range
 
-  - NULL tidb / oracle are all c IS NULL
+- NULL and empty string values ​​oracle and tidb databases are both c IS NULL, otherwise --stream upstream and tidb, the empty string value tidb / oracle are both c = ”
 
-  - Empty string tidb / oracle are all c = ”
-
-    2. If a table does not have a specific chunk field in the data verification task, for example: a table chunk condition is WHERE 1 = 1, when 1 = 1 If there are multiple garbled characters or rare words in the query conditions, the query conditions for each row of data records are 1 = 1, and manual query confirmation is required (generally 1 = 1 appears when chunks are divided based on statistical information, but the statistical information does not exist or the estimated number of rows in the table does not exist)
+3. If a table does not have a specific Chunk field in the data verification task, for example: the Chunk condition of a table is WHERE 1 = 1, when 1 = 1, there are multiple garbled characters or rare words in the query condition, then the query condition of each row of data record is 1 = 1, and manual query confirmation is required (generally, Chunks are divided according to statistical information, but when statistical information does not exist or the estimated number of rows in the table does not exist, 1 = 1 will appear)
 */
 func ScanDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, tableName string, chunkIds []string, outputDir string, force bool, callTimeout int64, chunkThreads int, stream string) error {
 	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)

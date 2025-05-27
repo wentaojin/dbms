@@ -1,6 +1,6 @@
 task-name = "compare-task01"
-datasource-name-s = "ora151"
-datasource-name-t = "tidb161"
+datasource-name-s = "tidb85"
+datasource-name-t = "ora151"
 comment = "测试数据源"
 
 [case-field-rule]
@@ -13,12 +13,12 @@ case-field-rule-s = "0"
 # 1，参数值是 0 代表统一转换数据库名、表名、字段名值以当前配置文件为准
 # 2，参数值是 1 代表统一转换数据库名、表名、字段名值为小写
 # 3，参数值是 2 代表统一转换数据库名、表名、字段名值为大写
-case-field-rule-t = "1"
+case-field-rule-t = "2"
 
 [schema-route-rule]
-schema-name-s = "SCOTT"
-schema-name-t = "ucccis"
-include-table-s =  ["T4"]
+schema-name-s = "pingan"
+schema-name-t = "MARVIN"
+include-table-s =  ["pingan"]
 #include-table-s = ["MARVIN00","MARVIN01","MARVIN05"]
 #include-table-s = ["PM_TC_PROCESS_CODE","MARVIN00","MARVIN01"]
 exclude-table-s = []
@@ -84,7 +84,7 @@ separator = '|#|'
 # 修复语句产生流向 upstream or downstream，默认 downstream
 # upstream 产生上游 datasource-name-s 修复语句
 # downstream 产生下游 datasource-name-t 修复语句
-repair-stmt-flow = "downstream"
+repair-stmt-flow = "upstream"
 # 开启代表上下游数据库自动进行 collation 配置，关闭代表上下游数据库不进行 collation 配置
 # Note：开启该参数不会走索引，上下游需手工建立函数索引，字符集以及排序规则需根据实际情况调整
 # 创建 index ORACLE 示例：

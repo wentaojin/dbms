@@ -133,7 +133,7 @@ func (s *DataCompareFile) SyncFile() error {
 		}
 		diffChunkIds := stringutil.StringItemsFilterDifference(taskChunkIds, resultChunkIds)
 		if len(diffChunkIds) > 0 {
-			return fmt.Errorf("the chunk_id of the not_queal record of the data verification task does not appear in the data verification result table, indicating that garbled characters or rare characters may exist in the upstream and downstream data, resulting in inconsistent data verification but no repair statements can be generated. you can set the flag --ignoreVerify skip the check items or set the garbled-char-replace parameter to re-migrate the data, and then re-verify the data or use the verify scan command to scan and detect, and then re-verify the data. the abnormal chunk_id list: [%v]", stringutil.StringJoin(diffChunkIds, ","))
+			return fmt.Errorf("the chunk_id of the not_queal record of the data verification task does not appear in the data verification result table, indicating that garbled characters or rare characters may exist in the upstream and downstream data, resulting in inconsistent data verification but no repair statements can be generated. you can set the [verify gen] command add flag [--ignoreVerify] skip the check items OR set the garbled-char-replace parameter to re-migrate the data, and then re-verify the data OR use the [verify scan] command to scan and detect, and then re-verify the data. the abnormal chunk_id list: [%v]", stringutil.StringJoin(diffChunkIds, ","))
 		}
 	}
 

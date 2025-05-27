@@ -31,8 +31,21 @@ jobs:
       - name: Checkout Project Code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           path: ${{ github.workspace }}
+      - name: Setup Node.js for Changelog
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install Conventional Changelog CLI
+        run: |
+          npm install -g conventional-changelog-cli
+      - name: Generate Changelog from Commit Messages
+        id: generate_changelog
+        run: |
+          conventional-changelog -p angular -i CHANGELOG.md -s --verbose
+          cat CHANGELOG.md
+          echo '::set-output name=changelog_body::'"$(cat CHANGELOG.md | sed 's/"/\\"/g')"
       - name: Remove Old Docker Environment
         run: |
           sudo apt-get update
@@ -106,46 +119,46 @@ jobs:
           sudo tar -zcvf dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz dbms-community-${{ github.ref_name }}-linux-arm64/
 
           ls -lnrt ${{ github.workspace }}/build
-      - name: Build Release Changelog
-        id: github_release
-        uses: mikepenz/release-changelog-builder-action@v4
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          fetchViaCommits: true
-          configurationJson: |
-            {
-              "template": "#{{CHANGELOG}}\n\n<details>\n<summary>Uncategorized</summary>\n\n#{{UNCATEGORIZED}}\n</details>",
-              "categories": [
-                {
-                    "title": "## 🚀 Features",
-                    "labels": ["feature","feat","feats"]
-                },
-                {
-                    "title": "## 🐛 Fixes",
-                    "labels": ["fix","fixs","fixes","fixed"]
-                },
-                {
-                    "title": "## 🧪 Tests",
-                    "labels": ["test","tests"]
-                },
-                {
-                    "title": "## 📦 Docs",
-                    "labels": ["docs","doc"]
-                },
-                {
-                    "title": "## 💬 chore",
-                    "labels": []
-                }
-              ],
-              "label_extractor": [
-                {
-                  "pattern": "^(chore|doc|docs|feat|feats|fix|fixs|fixes|fixed|perf|refactor|revert|style|test|tests){1}(\\([\\w\\-\\.]+\\))?(!)?: ([\\w ])+([\\s\\S]*)",
-                  "target": "$1"
-                }
-              ]
-            }
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Build Release Changelog
+      #   id: github_release
+      #   uses: mikepenz/release-changelog-builder-action@v4
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   with:
+      #     fetchViaCommits: true
+      #     configurationJson: |
+      #       {
+      #         "template": "#{{CHANGELOG}}\n\n<details>\n<summary>Uncategorized</summary>\n\n#{{UNCATEGORIZED}}\n</details>",
+      #         "categories": [
+      #           {
+      #               "title": "## 🚀 Features",
+      #               "labels": ["feature","feat","feats"]
+      #           },
+      #           {
+      #               "title": "## 🐛 Fixes",
+      #               "labels": ["fix","fixs","fixes","fixed"]
+      #           },
+      #           {
+      #               "title": "## 🧪 Tests",
+      #               "labels": ["test","tests"]
+      #           },
+      #           {
+      #               "title": "## 📦 Docs",
+      #               "labels": ["docs","doc"]
+      #           },
+      #           {
+      #               "title": "## 💬 chore",
+      #               "labels": []
+      #           }
+      #         ],
+      #         "label_extractor": [
+      #           {
+      #             "pattern": "^(chore|doc|docs|feat|feats|fix|fixs|fixes|fixed|perf|refactor|revert|style|test|tests){1}(\\([\\w\\-\\.]+\\))?(!)?: ([\\w ])+([\\s\\S]*)",
+      #             "target": "$1"
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Platform Asserts
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -153,10 +166,9 @@ jobs:
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          body: ${{steps.github_release.outputs.changelog}}
+          #body: ${{steps.github_release.outputs.changelog}}
+          body: ${{ steps.generate_changelog.outputs.changelog_body }}
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-b') || contains(github.ref, '-a') }}
           files: |
             ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz
             ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-arm64.tar.gz
-            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-amd64.tar.gz
-            ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-windows-386.tar.gz

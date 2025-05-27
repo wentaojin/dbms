@@ -61,7 +61,7 @@ func PromptTask(ctx context.Context, serverAddr, taskName string) error {
 		workerAddr := stringutil.BytesToString(key.Kvs[0].Value)
 		if err = stringutil.PromptForAnswerOrAbortError(
 			"Yes, I confirm non-duplicate submission task.",
-			fmt.Sprintf("The task will continue to run on worker [%s]. Please confirm that it is not a repeated task submission behavior.\n", color.RedString(workerAddr))+"\nAre you sure to continue?",
+			fmt.Sprintf("The task will continue to run on worker [%s]. Please make sure you restart the task normally and not accidentally restart the task multiple times.\n", color.RedString(workerAddr))+"\nAre you sure to continue?",
 		); err != nil {
 			return err
 		}

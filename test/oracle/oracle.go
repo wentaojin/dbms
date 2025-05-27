@@ -17,9 +17,13 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/wentaojin/dbms/database/oracle"
 	"github.com/wentaojin/dbms/model/datasource"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -56,11 +60,87 @@ func main() {
 	// 	panic(err)
 	// }
 
-	var sx []interface{}
-	sx = append(sx, "test-2    ")
+	// var sx []interface{}
+	// sx = append(sx, "test-2    ")
 
-	_, err = d.ExecContext(ctx, `DELETE FROM "MARVIN"."C_CLUSTERED_T2" WHERE A = :1`, sx...)
-	if err != nil {
+	// _, err = d.ExecContext(ctx, `DELETE FROM "MARVIN"."C_CLUSTERED_T2" WHERE A = :1`, sx...)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	g := &errgroup.Group{}
+	g.SetLimit(1024)
+
+	stime := time.Now()
+	for i := 1; i < 1000000; i++ {
+		g.Go(func() error {
+			if i >= 60159 && i <= 66000 {
+				// ascii
+				if _, err := d.ExecContext(ctx, fmt.Sprintf(`INSERT INTO MARVIN.PINGAN (ID,COL1,COL2) VALUES (%d,CHR(%d),'%s')`, i, i, "normal_col2")); err != nil {
+					return err
+				}
+			} else if i >= 200 && i <= 210 {
+				// garbled
+				invalidGBKData := generateInvalidGBKData(10)
+				if _, err := d.ExecContext(ctx, fmt.Sprintf(`INSERT INTO MARVIN.PINGAN (ID,COL1,COL2) VALUES (%d,'%s','%s')`, i, "normal_col1", string(invalidGBKData))); err != nil {
+					return err
+				}
+			} else {
+				if _, err := d.ExecContext(ctx, fmt.Sprintf(`INSERT INTO MARVIN.PINGAN (ID,COL1,COL2) VALUES (%d,'%s','%s')`, i, "nromal_col1", "nromal_col2")); err != nil {
+					return err
+				}
+			}
+			fmt.Printf("successlly inserted sequence [%d], continue....\n", i)
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
 		panic(err)
 	}
+	fmt.Printf("completed successully inserted, finished in %fs.\n", time.Since(stime).Seconds())
+}
+
+func init() {
+	// Seed the random number generator
+	rand.Seed(time.Now().UnixNano())
+}
+
+// generateInvalidGBKData generates a byte slice that contains invalid GBK encoding.
+// This ensures the data cannot be correctly decoded as GBK and will appear as "garbled".
+func generateInvalidGBKData(length int) []byte {
+	data := make([]byte, length)
+	for i := 0; i < length; {
+		if rand.Intn(2) == 0 {
+			// Generate a single-byte value that is not valid in GBK (not ASCII)
+			// Valid ASCII is 0x00 to 0x7F; we avoid it to create garbage
+			b := byte(rand.Intn(256))
+			for b <= 0x7F {
+				b = byte(rand.Intn(256))
+			}
+			data[i] = b
+			i++
+		} else {
+			// Generate an invalid GBK double-byte sequence
+			// First byte should NOT be in 0x81 - 0xFE (valid GBK first byte)
+			first := byte(rand.Intn(256))
+			for first >= 0x81 && first <= 0xFE {
+				first = byte(rand.Intn(256))
+			}
+			data[i] = first
+			i++
+
+			if i < length {
+				// Second byte should NOT be in valid GBK second byte ranges:
+				// Not in 0x40 - 0x7E or 0x80 - 0xFE
+				second := byte(rand.Intn(256))
+				for (second >= 0x40 && second <= 0x7E) || (second >= 0x80 && second <= 0xFE) {
+					second = byte(rand.Intn(256))
+				}
+				data[i] = second
+				i++
+			}
+		}
+	}
+	return data
 }

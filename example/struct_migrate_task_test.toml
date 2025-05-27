@@ -1,6 +1,6 @@
 task-name = "smig-task00"
 datasource-name-s = "ora151"
-datasource-name-t = "tidb161"
+datasource-name-t = "tidb85"
 comment = "测试数据源"
 
 [struct-migrate-param]
@@ -24,10 +24,10 @@ case-field-rule-s = "0"
 case-field-rule-t = "1"
 
 [schema-route-rule]
-schema-name-s = "SCOTT"
-schema-name-t = "ucccis"
+schema-name-s = "MARVIN"
+schema-name-t = "pingan"
 # include-table-s 迁移所有表需指定 *，特定表写具体表名
-include-table-s = ["T4","T6"]
+include-table-s = ["PINGAN"]
 exclude-table-s = []
 # sequence 设置空代表不迁移 sequence
 include-sequence-s = []
