@@ -1,0 +1,24 @@
+
+# Changelog
+
+{{#each releases}}
+## [{{this.version}}]({{this.compareUrl}}) - {{ formatDate this.date }}
+
+{{#if this.notes}}
+### 🔥 BREAKING CHANGES
+{{#each this.notes}}
+- {{this.text}}
+{{/each}}
+{{/if}}
+
+{{#each this.commits}}
+### {{this.title}}
+{{#each this.commit.notes}}
+- 💥 **BREAKING CHANGE**: {{this.text}} ({{../commit.shortHash}})
+{{/each}}
+{{#each this.items}}
+- {{this.subject}} ({{this.hash}})
+{{/each}}
+{{/each}}
+
+{{/each}}

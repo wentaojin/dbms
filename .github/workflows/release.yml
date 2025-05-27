@@ -43,7 +43,7 @@ jobs:
       - name: Generate Changelog from Commit Messages
         id: generate_changelog
         run: |
-          conventional-changelog -p angular -i CHANGELOG.md -s --verbose
+          conventional-changelog -p angular -i CHANGELOG.md -s --template ./changelog-template.hbs
           cat CHANGELOG.md
           echo '::set-output name=changelog_body::'"$(cat CHANGELOG.md | sed 's/"/\\"/g')"
       - name: Remove Old Docker Environment
