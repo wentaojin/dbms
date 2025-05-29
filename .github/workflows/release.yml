@@ -113,7 +113,7 @@ jobs:
       - name: Generate Changelog from Commit Messages
         id: generate_changelog
         run: |
-          docker run -v "$PWD":/workdir quay.io/git-chglog/git-chglog --config ${{ github.workspace }}/sample/gitchglog_config.yml ${{ github.ref_name }} > CHANGELOG.md
+          docker run -v "$PWD":/workdir quay.io/git-chglog/git-chglog --config /workdir/sample/gitchglog_config.yml ${{ github.ref_name }} > CHANGELOG.md
       - name: Upload Platform Asserts
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
