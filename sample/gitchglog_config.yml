@@ -4,31 +4,34 @@ info:
   title: CHANGELOG
   repository_url: github.com/wentaojin/dbms
 options:
-  tag_filter_pattern: '^v'
-  sort: "date"
   commits:
-    # filters:
-    #   Type:
-    #     - feat
-    #     - fix
-    #     - perf
-    #     - refactor
+    filters:
+      Type:
+        - feat
+        - fix
+        - perf
+        - refactor
+        - chore
+        - docs
+        - style
+        - test
+        - revert
   commit_groups:
-    group_by: Type
-    sort_by: Title
     title_maps:
       feat: Features
       fix: Bug Fixes
       perf: Performance Improvements
       refactor: Code Refactoring
-      style: Styles
-      docs: Documentation
-      chore: Chore
-      revert: Revert
+      chore: Chores
+      docs: Documentation Changes
+      style: Code Style Changes
+      test: Tests
+      revert: Reverts
   header:
-    pattern: "^(\\w*)\\:\\s(.*)$"
+    pattern: "^(\\w*)(?:\\(([\\w\\$\\.\\-\\*\\s]*)\\))?\\:\\s(.*)$"
     pattern_maps:
       - Type
+      - Scope
       - Subject
   notes:
     keywords:
