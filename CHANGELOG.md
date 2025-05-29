@@ -1,7 +1,9 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
-### Feat
+### Features
+- opti gitchr
+- add gitchr
 - opti verify scan
 
 
@@ -10,7 +12,7 @@
 ### Chore
 - add via commits action
 
-### Feat
+### Features
 - add repeat submission warn
 - add chunk ratio display
 
@@ -57,7 +59,7 @@
 
 <a name="v0.0.16"></a>
 ## [v0.0.16] - 2024-11-18
-### Feat
+### Features
 - add task assign host option, close [#77](github.com/wentaojin/dbms/issues/77)
 - add pg struct compare, close [#73](github.com/wentaojin/dbms/issues/73), close [#76](github.com/wentaojin/dbms/issues/76)
 - add struct attrs * match, close [#75](github.com/wentaojin/dbms/issues/75)
@@ -65,7 +67,10 @@
 
 <a name="v0.0.15"></a>
 ## [v0.0.15] - 2024-10-26
-### Feat
+### Feats
+- add prepare stmt option, close [#74](github.com/wentaojin/dbms/issues/74)
+
+### Features
 - add pg mysql verify, close [#72](github.com/wentaojin/dbms/issues/72)
 - add pg migrate csv, close [#71](github.com/wentaojin/dbms/issues/71)
 - opti data compare table level hint, close [#69](github.com/wentaojin/dbms/issues/69)
@@ -73,16 +78,13 @@
 - add pg stmt migrate, close [#68](github.com/wentaojin/dbms/issues/68)
 - add pg migrate struct mysql, close [#4](github.com/wentaojin/dbms/issues/4)
 
-### Feats
-- add prepare stmt option, close [#74](github.com/wentaojin/dbms/issues/74)
-
 
 <a name="v0.0.14"></a>
 ## [v0.0.14] - 2024-09-23
 ### Chros
 - modify readme
 
-### Feat
+### Features
 - verify support table gen, close [#63](github.com/wentaojin/dbms/issues/63)
 - add tidb import feat, close [#62](github.com/wentaojin/dbms/issues/62)
 
@@ -97,13 +99,13 @@
 ### Bug
 - struct unique cons using index, close [#60](github.com/wentaojin/dbms/issues/60)
 
-### Feat
+### Bug Fixes
+- data compare cmp, close [#54](github.com/wentaojin/dbms/issues/54)
+
+### Features
 - clear delete task meta, close [#61](github.com/wentaojin/dbms/issues/61)
 - column default null string, close [#59](github.com/wentaojin/dbms/issues/59)
 - add data compare separator, close [#53](github.com/wentaojin/dbms/issues/53)
-
-### Fix
-- data compare cmp, close [#54](github.com/wentaojin/dbms/issues/54)
 
 ### Fixed
 - sequence and compare struct, close [#57](github.com/wentaojin/dbms/issues/57) close [#58](github.com/wentaojin/dbms/issues/58)
@@ -133,7 +135,7 @@
 
 <a name="v0.0.9"></a>
 ## [v0.0.9] - 2024-08-22
-### Feat
+### Features
 - opti perf and add fix force, close [#29](github.com/wentaojin/dbms/issues/29), close [#45](github.com/wentaojin/dbms/issues/45)
 - opti compare range stats, close [#44](github.com/wentaojin/dbms/issues/44)
 - opti init meta, close [#43](github.com/wentaojin/dbms/issues/43)
@@ -141,7 +143,7 @@
 
 <a name="v0.0.8"></a>
 ## [v0.0.8] - 2024-08-08
-### Feat
+### Features
 - machine load balancing, close [#42](github.com/wentaojin/dbms/issues/42)
 - opt data compare column
 - opt data compare effic
@@ -170,16 +172,16 @@
 
 <a name="v0.0.7"></a>
 ## [v0.0.7] - 2024-07-25
-### Feat
-- add collation setting, close [#31](github.com/wentaojin/dbms/issues/31)
-- data compare tidb, close [#28](github.com/wentaojin/dbms/issues/28), close[#30](github.com/wentaojin/dbms/issues/30)
-- data compare tidb, close [#28](github.com/wentaojin/dbms/issues/28)
-
-### Fix
+### Bug Fixes
 - repair data compare
 - repair data compare and decrypt
 - repair data compare
 - repair stmt flow
+
+### Features
+- add collation setting, close [#31](github.com/wentaojin/dbms/issues/31)
+- data compare tidb, close [#28](github.com/wentaojin/dbms/issues/28), close[#30](github.com/wentaojin/dbms/issues/30)
+- data compare tidb, close [#28](github.com/wentaojin/dbms/issues/28)
 
 ### Fixed
 - fix data comapre random, close [#34](github.com/wentaojin/dbms/issues/34)
@@ -191,7 +193,7 @@
 
 <a name="v0.0.6"></a>
 ## [v0.0.6] - 2024-07-08
-### Feat
+### Features
 - opti init and fix compare thread, close [#26](github.com/wentaojin/dbms/issues/26)
 - opti privileges, close [#25](github.com/wentaojin/dbms/issues/25)
 - add struct migrate other table filter, close [#21](github.com/wentaojin/dbms/issues/21)
@@ -207,7 +209,7 @@
 
 <a name="v0.0.5"></a>
 ## [v0.0.5] - 2024-06-26
-### Feat
+### Features
 - config params comment, close [#11](github.com/wentaojin/dbms/issues/11)
 
 ### Fixed
@@ -219,7 +221,7 @@
 
 <a name="v0.0.4"></a>
 ## [v0.0.4] - 2024-06-25
-### Feat
+### Features
 - data compare snapshot, close [#9](github.com/wentaojin/dbms/issues/9)
 
 ### Fixed
@@ -228,13 +230,13 @@
 
 <a name="v0.0.3"></a>
 ## [v0.0.3] - 2024-06-21
-### Feat
+### Features
 - support task init and fixed delete stmt close [#8](github.com/wentaojin/dbms/issues/8)
 
 
 <a name="v0.0.2"></a>
 ## [v0.0.2] - 2024-06-18
-### Feat
+### Features
 - support mysql special close [#7](github.com/wentaojin/dbms/issues/7)
 
 
@@ -262,11 +264,11 @@
 ### Chore
 - remove instance name flag param
 
-### Docs
+### Documentation
 - markdown
 - readme
 
-### Feat
+### Features
 - data scan
 - add data scan close [#1](github.com/wentaojin/dbms/issues/1)
 
@@ -277,10 +279,10 @@
 - release action
 - releaser
 
-### Docs
+### Documentation
 - releaser action
 
-### Feat
+### Features
 - opti management and docs
 - opti management
 - cluster management
