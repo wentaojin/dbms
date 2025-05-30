@@ -635,7 +635,7 @@ Notes:
 
 3. If a table does not have a specific Chunk field in the data verification task, for example: the Chunk condition of a table is WHERE 1 = 1, when 1 = 1, there are multiple garbled characters or rare words in the query condition, then the query condition of each row of data record is 1 = 1, and manual query confirmation is required (generally, Chunks are divided according to statistical information, but when statistical information does not exist or the estimated number of rows in the table does not exist, 1 = 1 will appear)
 */
-func ScanDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, tableName string, chunkIds []string, outputDir string, force bool, callTimeout int64, chunkThreads int, stream string) error {
+func ScanDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, tableName string, chunkIds []string, outputDir string, force bool, callTimeout int64, chunkThreads int, stream string, disableCharsetConv bool) error {
 	etcdClient, err := etcdutil.CreateClient(ctx, []string{stringutil.WithHostPort(serverAddr)}, nil)
 	if err != nil {
 		return err
@@ -737,7 +737,7 @@ func ScanDataCompareTask(ctx context.Context, serverAddr, taskName, schemaName, 
 		outputDir,
 		datasourceS.ConnectCharset,
 		datasourceT.ConnectCharset,
-		chunkIds, databaseS, databaseT, chunkThreads, disableCompareMd5, int(callTimeout), stream)
+		chunkIds, databaseS, databaseT, chunkThreads, disableCompareMd5, int(callTimeout), stream, disableCharsetConv)
 	err = w.SyncFile()
 	if err != nil {
 		return err

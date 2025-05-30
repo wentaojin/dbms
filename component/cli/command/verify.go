@@ -262,15 +262,16 @@ func (a *AppVerifyGen) RunE(cmd *cobra.Command, args []string) error {
 
 type AppVerifyScan struct {
 	*AppVerify
-	task         string
-	schemaName   string
-	tableName    string
-	chunkIDs     []string
-	outputDir    string
-	force        bool
-	callTimeout  int64
-	chunkThreads int
-	stream       string
+	task               string
+	schemaName         string
+	tableName          string
+	chunkIDs           []string
+	outputDir          string
+	force              bool
+	callTimeout        int64
+	chunkThreads       int
+	stream             string
+	disableCharsetConv bool
 }
 
 func (a *AppVerify) AppVerifyScan() component.Cmder {
@@ -287,14 +288,16 @@ func (a *AppVerifyScan) Cmd() *cobra.Command {
 		SilenceUsage:     true,
 	}
 	cmd.Flags().StringVarP(&a.task, "task", "t", "", "the data compare task")
-	cmd.Flags().StringVarP(&a.schemaName, "schema", "S", "", "the data compare task schema_name_s")
-	cmd.Flags().StringVarP(&a.tableName, "table", "T", "", "the data compare task schema table_name_s")
+	cmd.Flags().StringVarP(&a.schemaName, "schema_name_s", "S", "", "the data compare task schema_name_s")
+	cmd.Flags().StringVarP(&a.tableName, "table_name_s", "T", "", "the data compare task schema table_name_s")
 	cmd.Flags().StringVarP(&a.outputDir, "outputDir", "o", "/tmp", "the data compare task output file dir")
 	cmd.Flags().StringVar(&a.stream, "stream", "upstream", "refer to the upstream and downstream of the datasource of the data verification task to control whether the data scanning task runs upstream or downstream, options: [upstream / downstream]")
 	cmd.Flags().StringArrayVarP(&a.chunkIDs, "chunkIds", "c", nil, "the data compare task table not equal chunk ids")
 	cmd.Flags().BoolVarP(&a.force, "force", "f", false, "the data compare task force ignore the task status success check, output file")
 	cmd.Flags().Int64Var(&a.callTimeout, "timeout", 36000, "the data compare task query timeout, unit: seconds")
 	cmd.Flags().IntVar(&a.chunkThreads, "thread", 5, "the data compare task scan threads")
+	cmd.Flags().BoolVar(&a.disableCharsetConv, "disable-charset-conv", false, "the data check process prohibits data character set conversion and retains the original character set scanning")
+
 	return cmd
 }
 
@@ -332,8 +335,12 @@ func (a *AppVerifyScan) RunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err := service.ScanDataCompareTask(context.Background(), a.Server, a.task, a.schemaName, a.tableName, a.chunkIDs, a.outputDir, a.force,
-		a.callTimeout, a.chunkThreads, a.stream)
+	err := service.ScanDataCompareTask(context.Background(),
+		a.Server,
+		a.task,
+		a.schemaName,
+		a.tableName, a.chunkIDs, a.outputDir, a.force,
+		a.callTimeout, a.chunkThreads, a.stream, a.disableCharsetConv)
 	if err != nil {
 		if errors.Is(err, errors.New(constant.TaskDatabaseStatusEqual)) {
 			fmt.Printf("Status:       %s\n", cyan.Sprint("success"))

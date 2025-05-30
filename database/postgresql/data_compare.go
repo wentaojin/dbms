@@ -599,16 +599,20 @@ func (d *Database) RecursiveCRC(columnName, dbCharsetS, dbCharsetT string, valRe
 		return strconv.FormatBool(v.Bool()), nil
 	case reflect.String:
 		// postgres database NULL and "" are differently, so "" no special attention is required
-		var convertTargetRaw []byte
-		convertUtf8Raw, err := stringutil.CharsetConvert([]byte(v.String()), dbCharsetS, constant.CharsetUTF8MB4)
-		if err != nil {
-			return "", fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+		if !strings.EqualFold(dbCharsetS, "") && !strings.EqualFold(dbCharsetT, "") {
+			var convertTargetRaw []byte
+			convertUtf8Raw, err := stringutil.CharsetConvert([]byte(v.String()), dbCharsetS, constant.CharsetUTF8MB4)
+			if err != nil {
+				return "", fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+			}
+			convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+			if err != nil {
+				return "", fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
+			}
+			return fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)), nil
+		} else {
+			return fmt.Sprintf("'%v'", v.String()), nil
 		}
-		convertTargetRaw, err = stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
-		if err != nil {
-			return "", fmt.Errorf("column [%s] charset convert failed, %v", columnName, err)
-		}
-		return fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)), nil
 	case reflect.Array, reflect.Slice:
 		return fmt.Sprintf("'%v'", stringutil.BytesToString(v.Bytes())), nil
 	case reflect.Interface:
@@ -662,7 +666,7 @@ WHERE schemaname = '%s'
 	return columnDistKeys, columnBounds, nil
 }
 
-func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
+func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs []interface{}, callTimeout int, chunkColumns []string, dbCharsetSli ...string) ([][]string, []map[string]string, error) {
 	var (
 		columnNames []string
 
@@ -755,6 +759,11 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs [
 				// ORACLE database NULL and "" are the same, but postgres database NULL and "" are the different
 				rowData = append(rowData, `NULL`)
 			} else {
+				var dbCharsetS, dbCharsetT string
+				if len(dbCharsetSli) == 2 {
+					dbCharsetS = dbCharsetSli[0]
+					dbCharsetT = dbCharsetSli[1]
+				}
 				str, err := d.RecursiveCRC(colName, dbCharsetS, dbCharsetT, valRes)
 				if err != nil {
 					return nil, nil, err

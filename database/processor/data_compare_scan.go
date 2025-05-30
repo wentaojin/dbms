@@ -40,26 +40,27 @@ import (
 )
 
 type DataCompareScan struct {
-	Ctx               context.Context    `json:"-"`
-	Mutex             *sync.Mutex        `json:"-"`
-	CompFile          *os.File           `json:"-"`
-	CompWriter        *bufio.Writer      `json:"-"`
-	DBTypeS           string             `json:"dbTypeS"`
-	DBTypeT           string             `json:"dbTypeT"`
-	TaskName          string             `json:"taskName"`
-	TaskFlow          string             `json:"taskFlow"`
-	SchemaNameS       string             `json:"schemaNameS"`
-	TableNameS        string             `json:"tableNameS"`
-	DatabaseS         database.IDatabase `json:"-"`
-	DatabaseT         database.IDatabase `json:"-"`
-	ConnCharsetS      string             `json:"connCharsetS"`
-	ConnCharsetT      string             `json:"connCharsetT"`
-	DisableCompareMd5 bool               `json:"disableCompareMd5"`
-	Stream            string             `json:"stream"`
-	ChunkIds          []string           `json:"chunkIds"`
-	ChunkThreads      int                `json:"chunkThreads"`
-	OutputDir         string             `json:"outputDir"`
-	CallTimeout       int                `json:"callTimeout"`
+	Ctx                context.Context    `json:"-"`
+	Mutex              *sync.Mutex        `json:"-"`
+	CompFile           *os.File           `json:"-"`
+	CompWriter         *bufio.Writer      `json:"-"`
+	DBTypeS            string             `json:"dbTypeS"`
+	DBTypeT            string             `json:"dbTypeT"`
+	TaskName           string             `json:"taskName"`
+	TaskFlow           string             `json:"taskFlow"`
+	SchemaNameS        string             `json:"schemaNameS"`
+	TableNameS         string             `json:"tableNameS"`
+	DatabaseS          database.IDatabase `json:"-"`
+	DatabaseT          database.IDatabase `json:"-"`
+	ConnCharsetS       string             `json:"connCharsetS"`
+	ConnCharsetT       string             `json:"connCharsetT"`
+	DisableCompareMd5  bool               `json:"disableCompareMd5"`
+	Stream             string             `json:"stream"`
+	ChunkIds           []string           `json:"chunkIds"`
+	ChunkThreads       int                `json:"chunkThreads"`
+	OutputDir          string             `json:"outputDir"`
+	CallTimeout        int                `json:"callTimeout"`
+	DisableCharsetConv bool               `json:"disableCharsetConv"`
 }
 
 func NewDataCompareScan(ctx context.Context,
@@ -67,26 +68,27 @@ func NewDataCompareScan(ctx context.Context,
 	tableName, outputDir, connCharsetS, connCharsetT string, chunkIds []string,
 	databaseS, databaseT database.IDatabase,
 	chunkThreads int,
-	disableCompareMd5 bool, callTimeout int, stream string) *DataCompareScan {
+	disableCompareMd5 bool, callTimeout int, stream string, disableCharsetConv bool) *DataCompareScan {
 	return &DataCompareScan{
-		Ctx:               ctx,
-		TaskName:          taskName,
-		DBTypeS:           dbTypeS,
-		DBTypeT:           dbTypeT,
-		TaskFlow:          taskFlow,
-		SchemaNameS:       schemaName,
-		TableNameS:        tableName,
-		OutputDir:         outputDir,
-		ChunkIds:          chunkIds,
-		ConnCharsetS:      connCharsetS,
-		ConnCharsetT:      connCharsetT,
-		DatabaseS:         databaseS,
-		DatabaseT:         databaseT,
-		ChunkThreads:      chunkThreads,
-		Mutex:             &sync.Mutex{},
-		DisableCompareMd5: disableCompareMd5,
-		Stream:            stream,
-		CallTimeout:       callTimeout,
+		Ctx:                ctx,
+		TaskName:           taskName,
+		DBTypeS:            dbTypeS,
+		DBTypeT:            dbTypeT,
+		TaskFlow:           taskFlow,
+		SchemaNameS:        schemaName,
+		TableNameS:         tableName,
+		OutputDir:          outputDir,
+		ChunkIds:           chunkIds,
+		ConnCharsetS:       connCharsetS,
+		ConnCharsetT:       connCharsetT,
+		DatabaseS:          databaseS,
+		DatabaseT:          databaseT,
+		ChunkThreads:       chunkThreads,
+		Mutex:              &sync.Mutex{},
+		DisableCompareMd5:  disableCompareMd5,
+		Stream:             stream,
+		CallTimeout:        callTimeout,
+		DisableCharsetConv: disableCharsetConv,
 	}
 }
 
@@ -151,9 +153,20 @@ func (s *DataCompareScan) SyncFile() error {
 		return fmt.Errorf("the verify scan only supports scanning of chunk records that are unequal due to crc32 or md5 data verification methods. it does not support scanning of chunks with unequal number of rows. currently, no chunk record data table that meets the conditions is found, so it is skipped.")
 	}
 
+	resultChunkIds, err := model.GetIDataCompareResultRW().DistinctDataCompareResultChunkByTaskStatus(s.Ctx,
+		&task.DataCompareResult{
+			TaskName: s.TaskName,
+		})
+	if err != nil {
+		return err
+	}
 	for st, _ := range schemaTableNameRule {
 		var compareTasks []*task.DataCompareTask
 		for _, mt := range migrateTasks {
+			// if the chunk has be existed in the data compare result table, skip scan
+			if stringutil.IsContainedStringIgnoreCase(resultChunkIds, mt.ChunkID) {
+				continue
+			}
 			if st == stringutil.StringBuilder(mt.SchemaNameS, constant.StringSeparatorAite, mt.TableNameS) {
 				compareTasks = append(compareTasks, mt)
 			}
@@ -243,9 +256,16 @@ func (s *DataCompareScan) SyncFile() error {
 						dmts.TableNameS,
 						seeks.chunkDetailS))
 
-					chunkColumnValues, abnormalDatas, err = s.DatabaseS.GetDatabaseTableSeekAbnormalData(queryStr.String(), seeks.queryCondArgsS, s.CallTimeout, dbCharsetS, dbCharsetT, seeks.chunkColumnS)
-					if err != nil {
-						return err
+					if !s.DisableCharsetConv {
+						chunkColumnValues, abnormalDatas, err = s.DatabaseS.GetDatabaseTableSeekAbnormalData(queryStr.String(), seeks.queryCondArgsS, s.CallTimeout, seeks.chunkColumnS, dbCharsetS, dbCharsetT)
+						if err != nil {
+							return err
+						}
+					} else {
+						chunkColumnValues, abnormalDatas, err = s.DatabaseS.GetDatabaseTableSeekAbnormalData(queryStr.String(), seeks.queryCondArgsS, s.CallTimeout, seeks.chunkColumnS)
+						if err != nil {
+							return err
+						}
 					}
 				} else {
 					var (
@@ -265,9 +285,16 @@ func (s *DataCompareScan) SyncFile() error {
 						dmts.TableNameT,
 						seeks.chunkDetailT))
 
-					chunkColumnValues, abnormalDatas, err = s.DatabaseT.GetDatabaseTableSeekAbnormalData(queryStr.String(), seeks.queryCondArgsT, s.CallTimeout, dbCharsetT, dbCharsetS, seeks.chunkColumnT)
-					if err != nil {
-						return err
+					if !s.DisableCharsetConv {
+						chunkColumnValues, abnormalDatas, err = s.DatabaseT.GetDatabaseTableSeekAbnormalData(queryStr.String(), seeks.queryCondArgsT, s.CallTimeout, seeks.chunkColumnT, dbCharsetT, dbCharsetS)
+						if err != nil {
+							return err
+						}
+					} else {
+						chunkColumnValues, abnormalDatas, err = s.DatabaseT.GetDatabaseTableSeekAbnormalData(queryStr.String(), seeks.queryCondArgsT, s.CallTimeout, seeks.chunkColumnT)
+						if err != nil {
+							return err
+						}
 					}
 				}
 
@@ -283,7 +310,7 @@ func (s *DataCompareScan) SyncFile() error {
 						"Please Manual Double Check",
 					})
 					chunkStr.WriteString(wt.Render())
-					if _, err := s.writeFile(chunkStr.String()); err != nil {
+					if _, err := s.writeFile(chunkStr.String() + "\n\n"); err != nil {
 						return err
 					}
 					fmt.Printf("   scan abnormal chunk_id [%s] finished, duration: [%s]\n", color.GreenString(dmts.ChunkID), time.Now().Sub(chunkTime))

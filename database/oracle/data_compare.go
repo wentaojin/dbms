@@ -731,7 +731,7 @@ func (d *Database) filterDatabaseTableColumnBucketSupportDatatype(columnType str
 	return false
 }
 
-func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
+func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs []interface{}, callTimeout int, chunkColumns []string, dbCharsetSli ...string) ([][]string, []map[string]string, error) {
 	var (
 		columnNames []string
 
@@ -872,12 +872,16 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs [
 								break
 							}
 						}
-
-						convertTargetRaw, err := stringutil.CharsetConvert([]byte(res.String()), constant.CharsetUTF8MB4, dbCharsetT)
-						if err != nil {
-							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						if len(dbCharsetSli) == 2 {
+							dbCharsetT := dbCharsetSli[1]
+							convertTargetRaw, err := stringutil.CharsetConvert([]byte(res.String()), constant.CharsetUTF8MB4, dbCharsetT)
+							if err != nil {
+								return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+							}
+							rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+						} else {
+							rowDatas = append(rowDatas, fmt.Sprintf("'%v'", res.String()))
 						}
-						rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
 					}
 					err = lobD.Close()
 					if err != nil {
@@ -888,29 +892,40 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs [
 					if strings.EqualFold(val, "") {
 						rowDatas = append(rowDatas, `NULL`)
 					} else {
-						convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+						if len(dbCharsetSli) == 2 {
+							dbCharsetS := dbCharsetSli[0]
+							dbCharsetT := dbCharsetSli[1]
+							convertUtf8Raw, err := stringutil.CharsetConvert([]byte(val), dbCharsetS, constant.CharsetUTF8MB4)
+							if err != nil {
+								return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
+							}
+
+							convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+							if err != nil {
+								return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+							}
+							rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+						} else {
+							rowDatas = append(rowDatas, fmt.Sprintf("'%v'", val))
+						}
+					}
+				case []uint8:
+					// binary data -> raw、long raw、blob
+					if len(dbCharsetSli) == 2 {
+						dbCharsetS := dbCharsetSli[0]
+						dbCharsetT := dbCharsetSli[1]
+						convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
 						if err != nil {
 							return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
 						}
-
 						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
 						if err != nil {
 							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
 						}
 						rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+					} else {
+						rowDatas = append(rowDatas, fmt.Sprintf("'%v'", stringutil.BytesToString(val)))
 					}
-				case []uint8:
-					// binary data -> raw、long raw、blob
-
-					convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
-					if err != nil {
-						return nil, nil, fmt.Errorf("column [%s] datatype [%s] value [%v] charset convert failed, %v", colName, databaseTypes[i], val, err)
-					}
-					convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
-					if err != nil {
-						return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
-					}
-					rowDatas = append(rowDatas, fmt.Sprintf("'%v'", convertTargetRaw))
 				case int64:
 					rowDatas = append(rowDatas, decimal.NewFromInt(val).String())
 				case uint64:
@@ -964,7 +979,6 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs [
 	if err = rows.Err(); err != nil {
 		return nil, nil, err
 	}
-	fmt.Println(querySQL, queryArgs)
 	return chunkColumnDatas, abnormalColumnDatas, nil
 }
 

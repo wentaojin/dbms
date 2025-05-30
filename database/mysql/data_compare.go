@@ -597,7 +597,7 @@ func (d *Database) GetDatabaseTableCompareCrc(querySQL string, callTimeout int, 
 	return columnNames, crc32Sum, batchRowsM, nil
 }
 
-func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs []interface{}, callTimeout int, dbCharsetS, dbCharsetT string, chunkColumns []string) ([][]string, []map[string]string, error) {
+func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs []interface{}, callTimeout int, chunkColumns []string, dbCharsetSli ...string) ([][]string, []map[string]string, error) {
 	var (
 		columnNames         []string
 		scanTypes           []string
@@ -720,15 +720,22 @@ func (d *Database) GetDatabaseTableSeekAbnormalData(querySQL string, queryArgs [
 						}
 						rowData = append(rowData, rfs.String())
 					} else {
-						convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
-						if err != nil {
-							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+						if len(dbCharsetSli) == 2 {
+							dbCharsetS := dbCharsetSli[0]
+							dbCharsetT := dbCharsetSli[1]
+							convertUtf8Raw, err := stringutil.CharsetConvert(val, dbCharsetS, constant.CharsetUTF8MB4)
+							if err != nil {
+								return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+							}
+							convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
+							if err != nil {
+								return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
+							}
+							rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+						} else {
+							rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(val)))
 						}
-						convertTargetRaw, err := stringutil.CharsetConvert(convertUtf8Raw, constant.CharsetUTF8MB4, dbCharsetT)
-						if err != nil {
-							return nil, nil, fmt.Errorf("column [%s] charset convert failed, %v", colName, err)
-						}
-						rowData = append(rowData, fmt.Sprintf("'%v'", stringutil.BytesToString(convertTargetRaw)))
+
 					}
 				}
 			}
