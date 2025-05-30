@@ -121,7 +121,7 @@ jobs:
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          body: CHANGELOG.md
+          body: ${{ github.workspace }}/CHANGELOG.md
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-b') || contains(github.ref, '-a') }}
           files: |
             ${{ github.workspace }}/build/dbms-community-${{ github.ref_name }}-linux-amd64.tar.gz
