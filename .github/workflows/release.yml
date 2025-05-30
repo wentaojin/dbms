@@ -45,9 +45,6 @@ jobs:
         run: |
           sudo docker -v
           sudo docker info
-      - name: Build Cross Platform Environment
-        run: |
-          sudo docker build -f build.dockerfile -t build_docker_img .
       - name: Install Git Changelog CLI
         run: |
           sudo docker pull quay.io/git-chglog/git-chglog:latest
@@ -56,7 +53,12 @@ jobs:
         run: |
           sudo docker run -v "$PWD":/workdir quay.io/git-chglog/git-chglog --config /workdir/sample/gitchglog_config.yml -o /workdir/CHANGELOG.md ${{ github.ref_name }}
           cat ${{ github.workspace }}/CHANGELOG.md
-          echo "changelog_body=$(cat CHANGELOG.md)" >> $GITHUB_OUTPUT
+          echo 'changelog_body<<EOF' >> $GITHUB_OUTPUT
+          cat CHANGELOG.md
+          echo 'EOF' >> $GITHUB_OUTPUT
+      - name: Build Cross Platform Environment
+        run: |
+          sudo docker build -f build.dockerfile -t build_docker_img .  
       - name: Build Cross Platform DBMS Binary
         run: |
           sudo mkdir -p ${{ github.workspace }}/gocache
